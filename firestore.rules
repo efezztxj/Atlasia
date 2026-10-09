@@ -1,0 +1,79 @@
+rules_version = '2';
+
+// Atlasia — Firestore güvenlik kuralları
+// Bu dosyayı Firebase Console > Firestore > Rules sekmesine yapıştır.
+// Test modundaki açık kuralları bununla değiştirdiğinde production'a hazır olursun.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Kullanıcı profilleri: herkes herkesin public bilgilerini (isim, xp, rozet)
+    // görebilir ama sadece kendi dokümanını yazabilir.
+    match /users/{uid} {
+      allow read: if true;
+      allow create: if request.auth != null && request.auth.uid == uid;
+      allow update: if request.auth != null
+                    && request.auth.uid == uid
+                    // XP ve level sunucuda güncellenir, kullanıcı yazamamalı
+                    && (!('xp' in request.resource.data) || request.resource.data.xp == resource.data.xp)
+                    && (!('level' in request.resource.data) || request.resource.data.level == resource.data.level);
+      allow delete: if false;
+
+      // Takip listeleri kendi dokümanındadır, ayrı subcollection'a gerek yok.
+    }
+
+    // Keşif pinleri: herkes okuyabilir, sadece giriş yapmış kullanıcı kendi pinini yazabilir.
+    match /places/{placeId} {
+      allow read: if true;
+      allow create: if request.auth != null
+                    && request.resource.data.authorUid == request.auth.uid
+                    && request.resource.data.title is string
+                    && request.resource.data.title.size() > 0
+                    && request.resource.data.title.size() < 200
+                    && request.resource.data.lng is number
+                    && request.resource.data.lat is number;
+      allow update: if request.auth != null
+                    && resource.data.authorUid == request.auth.uid;
+      allow delete: if request.auth != null
+                    && resource.data.authorUid == request.auth.uid;
+    }
+
+    // Postlar: herkes okuyabilir, sadece sahibi silebilir.
+    match /posts/{postId} {
+      allow read: if true;
+      allow create: if request.auth != null
+                    && request.resource.data.authorUid == request.auth.uid
+                    && request.resource.data.text is string
+                    && request.resource.data.text.size() > 0
+                    && request.resource.data.text.size() < 5000;
+      // Beğeni ve yanıtlar için update serbest (giriş yapmış kullanıcılar).
+      // Sahiplik kontrolü olan alanlar (author, authorUid) değiştirilemez.
+      allow update: if request.auth != null
+                    && request.resource.data.authorUid == resource.data.authorUid
+                    && request.resource.data.author == resource.data.author;
+      allow delete: if request.auth != null
+                    && resource.data.authorUid == request.auth.uid;
+
+      // Yanıtlar post dokümanının içinde tutuluyor; ayrı subcollection kullanılmıyor.
+    }
+
+    // Story'ler: herkes okuyabilir, sadece sahibi silebilir.
+    match /stories/{storyId} {
+      allow read: if true;
+      allow create: if request.auth != null
+                    && request.resource.data.authorUid == request.auth.uid
+                    && request.resource.data.text is string
+                    && request.resource.data.text.size() > 0
+                    && request.resource.data.text.size() < 500;
+      allow update: if request.auth != null
+                    && resource.data.authorUid == request.auth.uid;
+      allow delete: if request.auth != null
+                    && resource.data.authorUid == request.auth.uid;
+    }
+
+    // Bilinmeyen koleksiyonlara erişimi engelle.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
