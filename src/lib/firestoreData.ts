@@ -251,8 +251,8 @@ export async function unfollowUser(me: string, target: string): Promise<void> {
 
 export async function listPlaces(uid?: string): Promise<Place[]> {
   if (!db) return [];
+  // uid parametresi ileride özel pinler için kullanılacak (şu an tüm pinler herkese açık)
   const constraints: QueryConstraint[] = [orderBy("createdAt", "desc")];
-  if (uid) constraints.unshift(where("authorUid", "==", uid));
   const q = query(collection(db, COL_PLACES), ...constraints);
   const snap = await getDocs(q);
   return snap.docs.map((d) => normalizePlace(d.id, d.data()));
