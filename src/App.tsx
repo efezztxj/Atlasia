@@ -422,10 +422,10 @@ function Explorer() {
          profileName={user?.displayName ?? ""}
        />
 
-      {/* Hero + arama */}
+      {/* Hero + arama - sadece masaüstünde göster */}
       <nav
         aria-label="Arama ve tanıtım"
-        className="mobile-home-content pointer-events-none absolute inset-x-0 top-[68px] z-30 px-3 pt-3 md:top-[72px] md:z-10 md:px-8 md:pt-12"
+        className="hidden md:block mobile-home-content pointer-events-none absolute inset-x-0 top-[68px] z-30 px-3 pt-3 md:top-[72px] md:z-10 md:px-8 md:pt-12"
       >
         <div className="mx-auto flex max-w-[1340px] flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-5">
           <Hero hidden={heroHidden} />
