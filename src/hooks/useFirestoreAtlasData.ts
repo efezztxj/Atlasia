@@ -17,6 +17,7 @@ import {
   removePlace as removePlaceFs,
   removePost as removePostFs,
   removeStory as removeStoryFs,
+  subscribePlaces,
   subscribePosts,
   subscribeStories,
   togglePostLike as togglePostLikeFs,
