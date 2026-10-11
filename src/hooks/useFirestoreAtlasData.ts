@@ -55,20 +55,18 @@ export function useFirestoreAtlasData({ uid, enabled = true }: UseFirestoreAtlas
       return;
     }
 
-    // İlk yükleme — hata olursa hazır değiliz
-    listPlacesFs(uid)
-      .then((p) => {
+    // Canlı abone ol (real-time updates)
+    const unsubPlaces = subscribePlaces(
+      (p) => {
         setPlaces(p);
         setReady(true);
-      })
-      .catch((e) => {
-        console.error("[Atlasia] Firestore bağlantısı kurulamadı, yerel moda düşülüyor:", e);
-        console.error("[Atlasia] Config özeti:", firebaseConfigSummary);
-        setError(e instanceof Error ? e : new Error(String(e)));
+      },
+      (e) => {
+        console.error("[Atlasia] Places subscribe hatası:", e);
+        setError(e);
         setReady(false);
-      });
-
-    // Canlı abone ol
+      },
+    );
     const unsubPosts = subscribePosts(
       (p) => {
         setPosts(p);
@@ -93,6 +91,7 @@ export function useFirestoreAtlasData({ uid, enabled = true }: UseFirestoreAtlas
     );
 
     return () => {
+      unsubPlaces();
       unsubPosts();
       unsubStories();
     };
