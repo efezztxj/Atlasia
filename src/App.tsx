@@ -383,7 +383,7 @@ function Explorer() {
   const mobileTab = recordsOpen ? "Kaydet" : feedOpen ? "Topluluk" : profileOpen ? "Profil" : "Keşfet";
 
   return (
-    <div className="space-bg relative h-full w-full overflow-hidden">
+    <div className="space-bg relative h-screen w-full overflow-hidden">
       <a href="#harita" className="skip-link">
         İçeriğe geç
       </a>
@@ -430,7 +430,7 @@ function Explorer() {
         <div className="mx-auto flex max-w-[1340px] flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-5">
           <Hero hidden={heroHidden} />
           {/* SearchBox sadece masaüstünde */}
-          <div className="hidden md:block">
+          <div className="hidden md:order-1 md:block">
             <SearchBox
               places={allPlaces}
               onPick={handleSearchPick}

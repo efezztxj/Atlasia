@@ -6,7 +6,7 @@ export default function Hero({ hidden }: Props) {
   return (
     <div
       className={
-        "max-w-[420px] overflow-hidden transition-all duration-700 ease-out md:order-1 md:overflow-visible " +
+        "max-w-[420px] overflow-hidden transition-all duration-700 ease-out md:order-2 md:overflow-visible " +
         (hidden
           ? "pointer-events-none max-h-0 -translate-x-6 opacity-0 md:max-h-none"
           : "max-h-[260px] translate-x-0 opacity-100 md:max-h-none")
