@@ -1,0 +1,27 @@
+{
+  "id": "/",
+  "name": "Atlasia",
+  "short_name": "Atlasia",
+  "description": "Dünyayı merakınla keşfet. Keşif bırak, hikâye paylaş, gezginlerle konuş.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#021512",
+  "theme_color": "#021512",
+  "lang": "tr",
+  "icons": [
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
