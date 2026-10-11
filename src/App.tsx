@@ -23,7 +23,7 @@ import { GUIDE_PLACES } from "./data/places";
 import { formatAccuracy, useGeolocation } from "./hooks/useGeolocation";
 import { useAtlasData } from "./hooks/useAtlasData";
 import { useFirestoreAtlasData } from "./hooks/useFirestoreAtlasData";
-import { isCloudReady } from "./lib/firebase";
+import { isCloudReady, firebaseConfigSummary } from "./lib/firebase";
 import type { AtlasRoute, CategoryId, Place, ViewState } from "./types";
 import { haversineKm, reverseName, type SearchResult } from "./utils/geo";
 
@@ -34,7 +34,19 @@ function Explorer() {
   // Bulut hazırsa Firestore'dan, değilse localStorage'dan çalış.
   const local = useAtlasData(user!.uid);
   const remote = useFirestoreAtlasData({ uid: user!.uid, enabled: isCloudReady });
-  const cloud = isCloudReady ? remote : local;
+  // remote hazır olmuşsa Firestore kullan; hazır değilse (hata var) localStorage'ya düş
+  const cloud = remote.ready ? remote : local;
+
+  // Kullanıcıya bulut bağlantısı durumunu bildir
+  useEffect(() => {
+    if (isCloudReady && !remote.ready && remote.error) {
+      setToast("Bulut bağlantısı kurulamadı, yerel veri kullanılıyor.");
+      console.warn("[Atlasia] Config özeti:", firebaseConfigSummary);
+    } else if (!isCloudReady) {
+      setToast("Firebase yapılandırması eksik, yerel veri kullanılıyor.");
+      console.warn("[Atlasia] Config özeti:", firebaseConfigSummary);
+    }
+  }, [remote.ready, remote.error]);
   const discoveries = cloud.places;
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [category, setCategory] = useState<CategoryId | null>(null);

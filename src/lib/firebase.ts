@@ -3,7 +3,7 @@
  * Firestore, Storage ve Auth instance'larını tek yerden dışa aktarır.
  */
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
-import { getFirestore, type Firestore } from "firebase/firestore";
+import { getFirestore, type Firestore, connectFirestoreEmulator } from "firebase/firestore";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
 import { getAuth, type Auth } from "firebase/auth";
 
@@ -23,17 +23,36 @@ export const firebaseConfigured = Object.values(firebaseConfig).every(
 /** Diğer modüllerden "cloud hazır mı" sorarken kısa ad. */
 export const isCloudReady = firebaseConfigured;
 
+/** Debug için env değerlerini özet olarak döndürür. */
+export const firebaseConfigSummary = {
+  apiKey: !!firebaseConfig.apiKey,
+  authDomain: firebaseConfig.authDomain || "(missing)",
+  projectId: firebaseConfig.projectId || "(missing)",
+  storageBucket: !!firebaseConfig.storageBucket,
+  messagingSenderId: !!firebaseConfig.messagingSenderId,
+  appId: !!firebaseConfig.appId,
+};
+
 let app: FirebaseApp | null = null;
 let _db: Firestore | null = null;
 let _storage: FirebaseStorage | null = null;
 let _auth: Auth | null = null;
 
 if (firebaseConfigured) {
-  app = getApps()[0] ?? initializeApp(firebaseConfig);
-  _db = getFirestore(app);
-  _storage = getStorage(app);
-  _auth = getAuth(app);
-  _auth.languageCode = "tr";
+  try {
+    app = getApps()[0] ?? initializeApp(firebaseConfig);
+    _db = getFirestore(app);
+    _storage = getStorage(app);
+    _auth = getAuth(app);
+    _auth.languageCode = "tr";
+  } catch (e) {
+    // Firebase init başarısız olursa fallback'e düş
+    console.error("[Atlasia] Firebase init başarısız:", e);
+    app = null;
+    _db = null;
+    _storage = null;
+    _auth = null;
+  }
 }
 
 export const firebaseApp = app;

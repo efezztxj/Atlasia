@@ -1,13 +1,10 @@
 /**
  * Atlasia — useFirestoreAtlasData
  * useAtlasData'nın Firestore destekli versiyonu.
- * Mevcut App.tsx'in beklediği API'yi korur:
- *   { places, posts, stories, clientId, uploadPhoto,
- *     addPlace, removePlace,
- *     addPost, removePost, addReply, toggleLike,
- *     addStory, removeStory }
+ * Mevcut App.tsx'in beklediği API'yi korur.
  *
- * Firestore hazır değilse null döner; App.tsx yerel useAtlasData'ya düşer.
+ * Hata yönetimi: Firestore hata verirse, App.tsx'e hazır olmadığını
+ * `ready=false` ve `error` ile bildirir; App.tsx yerel useAtlasData'ya düşer.
  */
 import { useEffect, useState } from "react";
 import {
@@ -28,6 +25,7 @@ import {
   type NewPostInput,
   type NewStoryInput,
 } from "../lib/firestoreData";
+import { firebaseConfigSummary } from "../lib/firebase";
 import type { FeedPost, Place, Story } from "../types";
 
 function clientId() {
@@ -56,14 +54,43 @@ export function useFirestoreAtlasData({ uid, enabled = true }: UseFirestoreAtlas
       setReady(false);
       return;
     }
-    setReady(true);
 
-    // İlk yükleme
-    listPlacesFs(uid).then(setPlaces).catch((e) => setError(e));
+    // İlk yükleme — hata olursa hazır değiliz
+    listPlacesFs(uid)
+      .then((p) => {
+        setPlaces(p);
+        setReady(true);
+      })
+      .catch((e) => {
+        console.error("[Atlasia] Firestore bağlantısı kurulamadı, yerel moda düşülüyor:", e);
+        console.error("[Atlasia] Config özeti:", firebaseConfigSummary);
+        setError(e instanceof Error ? e : new Error(String(e)));
+        setReady(false);
+      });
 
     // Canlı abone ol
-    const unsubPosts = subscribePosts(setPosts, setError);
-    const unsubStories = subscribeStories(setStories, setError);
+    const unsubPosts = subscribePosts(
+      (p) => {
+        setPosts(p);
+        setReady(true);
+      },
+      (e) => {
+        console.error("[Atlasia] Posts subscribe hatası:", e);
+        setError(e);
+        setReady(false);
+      },
+    );
+    const unsubStories = subscribeStories(
+      (s) => {
+        setStories(s);
+        setReady(true);
+      },
+      (e) => {
+        console.error("[Atlasia] Stories subscribe hatası:", e);
+        setError(e);
+        setReady(false);
+      },
+    );
 
     return () => {
       unsubPosts();
@@ -71,9 +98,13 @@ export function useFirestoreAtlasData({ uid, enabled = true }: UseFirestoreAtlas
     };
   }, [uid, enabled]);
 
-  const uploadPhoto = async (file: File): Promise<string> => uploadPhotoFs(file, "uploads", uid);
+  const uploadPhoto = async (file: File): Promise<string> => {
+    if (!isCloudReady) throw new Error("Bulut bağlantısı yok, fotoğraf yüklenemez.");
+    return uploadPhotoFs(file, "uploads", uid);
+  };
 
   const addPlace = async (p: Omit<Place, "id" | "kind" | "createdAt">): Promise<Place> => {
+    if (!isCloudReady) throw new Error("Bulut bağlantısı yok, pin kaydedilemez.");
     const input: NewPlaceInput = {
       uid,
       title: p.title,
@@ -87,9 +118,13 @@ export function useFirestoreAtlasData({ uid, enabled = true }: UseFirestoreAtlas
     return addPlaceFs(input);
   };
 
-  const removePlace = async (id: string) => removePlaceFs(id);
+  const removePlace = async (id: string) => {
+    if (!isCloudReady) return;
+    return removePlaceFs(id);
+  };
 
   const addPost = async (p: Partial<FeedPost>) => {
+    if (!isCloudReady) throw new Error("Bulut bağlantısı yok, gönderi kaydedilemez.");
     const input: NewPostInput = {
       uid,
       author: p.author ?? "Gezgin",
@@ -101,17 +136,23 @@ export function useFirestoreAtlasData({ uid, enabled = true }: UseFirestoreAtlas
     await addPostFs(input);
   };
 
-  const removePost = async (id: string) => removePostFs(id);
+  const removePost = async (id: string) => {
+    if (!isCloudReady) return;
+    return removePostFs(id);
+  };
 
   const addReply = async (postId: string, author: string, text: string) => {
+    if (!isCloudReady) throw new Error("Bulut bağlantısı yok, yanıt eklenemez.");
     await addReplyFs(postId, author, text);
   };
 
   const toggleLike = async (postId: string) => {
+    if (!isCloudReady) throw new Error("Bulut bağlantısı yok, beğeni kaydedilemez.");
     await togglePostLikeFs(postId, uid);
   };
 
   const addStory = async (s: Partial<Story>) => {
+    if (!isCloudReady) throw new Error("Bulut bağlantısı yok, story kaydedilemez.");
     const input: NewStoryInput = {
       uid,
       author: s.author ?? "Gezgin",
@@ -124,7 +165,10 @@ export function useFirestoreAtlasData({ uid, enabled = true }: UseFirestoreAtlas
     await addStoryFs(input);
   };
 
-  const removeStory = async (id: string) => removeStoryFs(id);
+  const removeStory = async (id: string) => {
+    if (!isCloudReady) return;
+    return removeStoryFs(id);
+  };
 
   return {
     ready,
