@@ -422,18 +422,21 @@ function Explorer() {
          profileName={user?.displayName ?? ""}
        />
 
-      {/* Hero + arama - sadece masaüstünde göster */}
+      {/* Hero - her ekranda göster, sadece mobil için özel stil */}
       <nav
-        aria-label="Arama ve tanıtım"
-        className="hidden md:block mobile-home-content pointer-events-none absolute inset-x-0 top-[68px] z-30 px-3 pt-3 md:top-[72px] md:z-10 md:px-8 md:pt-12"
+        aria-label="Karşılama"
+        className="mobile-home-content pointer-events-none absolute inset-x-0 top-[68px] z-30 px-3 pt-3 md:top-[72px] md:z-10 md:px-8 md:pt-12"
       >
         <div className="mx-auto flex max-w-[1340px] flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-5">
           <Hero hidden={heroHidden} />
-          <SearchBox
-            places={allPlaces}
-            onPick={handleSearchPick}
+          {/* SearchBox sadece masaüstünde */}
+          <div className="hidden md:block">
+            <SearchBox
+              places={allPlaces}
+              onPick={handleSearchPick}
             onOpenFilters={() => { closePanels(); setDrawerOpen(true); }}
-          />
+            />
+          </div>
         </div>
       </nav>
 
