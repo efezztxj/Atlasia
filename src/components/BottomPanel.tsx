@@ -67,7 +67,7 @@ export default function BottomPanel({
   return (
     <div
       className={cn(
-        "pointer-events-none absolute inset-x-0 bottom-[calc(70px+env(safe-area-inset-bottom))] z-20 flex justify-center px-3 pb-3 transition-[padding] duration-500 md:bottom-0 md:pb-7",
+        "pointer-events-none absolute inset-x-0 bottom-[calc(70px+env(safe-area-inset-bottom))] z-20 flex justify-center px-3 pb-3 transition-[padding] duration-500 md:static md:bottom-auto md:z-0 md:justify-center md:px-3 md:pb-4",
         shifted && "lg:pl-[420px]",
       )}
     >
