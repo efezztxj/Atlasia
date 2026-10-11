@@ -49,7 +49,7 @@ export function isSupportedAccount(user: User | null): user is User {
 }
 
 export function toFirebaseAccount(user: User): AtlasAccount {
-  return { uid: user.uid, email: user.email, displayName: user.displayName, phoneNumber: user.phoneNumber, photoURL: user.photoURL, backend: "firebase", emailVerified: user.emailVerified, requiresEmailVerification: !isVerifiedMember(user) };
+  return { uid: user.uid, email: user.email, displayName: user.displayName, phoneNumber: user.phoneNumber, photoURL: user.photoURL, backend: "firebase", emailVerified: user.emailVerified, requiresEmailVerification: false };
 }
 
 export async function signInEmail(email: string, password: string) {
