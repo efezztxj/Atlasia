@@ -523,7 +523,7 @@ function Explorer() {
         </div>
       )}
 
-      {smallScreen && mobilePanelOpen && <BottomPanel
+      {mobilePanelOpen && <BottomPanel
         open={panelOpen}
         onToggle={() => setPanelOpen((v) => !v)}
         category={category}
