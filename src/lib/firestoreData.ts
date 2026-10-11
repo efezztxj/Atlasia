@@ -290,7 +290,7 @@ export async function addPlace(input: NewPlaceInput): Promise<Place> {
   if (input.photoFile) {
     photoUrl = await uploadPhoto(input.photoFile, STORAGE_PLACE_PHOTOS, id);
   }
-  const payload = {
+  const payload: Record<string, unknown> = {
     title: input.title,
     region: input.region,
     category: input.category,
@@ -300,9 +300,9 @@ export async function addPlace(input: NewPlaceInput): Promise<Place> {
     author: input.author,
     authorUid: input.uid,
     kind: "user",
-    photo: photoUrl,
     createdAt: serverTimestamp(),
   };
+  if (photoUrl) payload.photo = photoUrl;
   await setDoc(doc(db, COL_PLACES, id), payload);
   return { ...input, id, kind: "user", photo: photoUrl, createdAt: Date.now() } as Place;
 }
