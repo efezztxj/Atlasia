@@ -4,6 +4,8 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { KKTC_GEOMETRY, KKTC_NAME } from "../data/regions";
 import type { Place, ViewState } from "../types";
 
+export type BaseMapStyle = "satellite" | "dark" | "street" | "topographic";
+
 export interface MapViewHandle {
   flyTo: (lng: number, lat: number, zoom?: number) => void;
   fitBox: (box: [number, number, number, number]) => void;
@@ -28,6 +30,7 @@ interface Props {
   onMapClick: (lng: number, lat: number) => void;
   showLabels: boolean;
   terrainEnabled: boolean;
+  baseMap: BaseMapStyle;
   spin: boolean;
   onUserInteract: () => void;
   onViewChange: (v: ViewState) => void;
@@ -46,7 +49,7 @@ function baseZoom(el: HTMLElement) {
   return Math.max(1.1, Math.log2((d * Math.PI) / 512));
 }
 
-function buildStyle(labels: boolean, terrainEnabled: boolean): maplibregl.StyleSpecification {
+function buildStyle(labels: boolean, terrainEnabled: boolean, baseMap: BaseMapStyle): maplibregl.StyleSpecification {
   return {
     version: 8,
     projection: { type: "globe" },
@@ -66,6 +69,28 @@ function buildStyle(labels: boolean, terrainEnabled: boolean): maplibregl.StyleS
         tiles: [`${ESRI}/World_Imagery/MapServer/tile/{z}/{y}/{x}`],
         tileSize: 256,
         maxzoom: 18,
+        attribution: "Esri, Maxar, Earthstar Geographics, USGS",
+      },
+      dark: {
+        type: "raster",
+        tiles: ["https://a.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png"],
+        tileSize: 256,
+        maxzoom: 20,
+        attribution: "CARTO, OpenStreetMap contributors",
+      },
+      street: {
+        type: "raster",
+        tiles: [`${ESRI}/World_Street_Map/MapServer/tile/{z}/{y}/{x}`],
+        tileSize: 256,
+        maxzoom: 19,
+        attribution: "Esri",
+      },
+      topographic: {
+        type: "raster",
+        tiles: [`${ESRI}/World_Topo_Map/MapServer/tile/{z}/{y}/{x}`],
+        tileSize: 256,
+        maxzoom: 19,
+        attribution: "Esri",
       },
       labels: {
         type: "raster",
@@ -102,6 +127,7 @@ function buildStyle(labels: boolean, terrainEnabled: boolean): maplibregl.StyleS
         id: "satellite",
         type: "raster",
         source: "satellite",
+        layout: { visibility: baseMap === "satellite" ? "visible" : "none" },
         paint: {
           "raster-fade-duration": 250,
           "raster-saturation": 0.13,
@@ -109,6 +135,27 @@ function buildStyle(labels: boolean, terrainEnabled: boolean): maplibregl.StyleS
           "raster-brightness-min": 0.045,
           "raster-brightness-max": 0.97,
         },
+      },
+      {
+        id: "dark",
+        type: "raster",
+        source: "dark",
+        layout: { visibility: baseMap === "dark" ? "visible" : "none" },
+        paint: { "raster-fade-duration": 250, "raster-opacity": 0.96 },
+      },
+      {
+        id: "street",
+        type: "raster",
+        source: "street",
+        layout: { visibility: baseMap === "street" ? "visible" : "none" },
+        paint: { "raster-fade-duration": 250 },
+      },
+      {
+        id: "topographic",
+        type: "raster",
+        source: "topographic",
+        layout: { visibility: baseMap === "topographic" ? "visible" : "none" },
+        paint: { "raster-fade-duration": 250 },
       },
       {
         id: "terrain-relief",
@@ -127,7 +174,7 @@ function buildStyle(labels: boolean, terrainEnabled: boolean): maplibregl.StyleS
         id: "labels",
         type: "raster",
         source: "labels",
-        layout: { visibility: labels ? "visible" : "none" },
+        layout: { visibility: labels && (baseMap === "satellite" || baseMap === "dark") ? "visible" : "none" },
         paint: {
           "raster-opacity": ["interpolate", ["linear"], ["zoom"], 1.6, 0, 3.2, 0.95],
           "raster-fade-duration": 250,
@@ -234,6 +281,7 @@ export default function MapView({
   onMapClick,
   showLabels,
   terrainEnabled,
+  baseMap,
   spin,
   onUserInteract,
   onViewChange,
@@ -421,7 +469,7 @@ export default function MapView({
 
     const map = new maplibregl.Map({
       container: el,
-      style: buildStyle(showLabels, terrainEnabled),
+      style: buildStyle(showLabels, terrainEnabled, baseMap),
       center: HOME_CENTER,
       zoom: baseZoom(el),
       minZoom: 1,
@@ -494,14 +542,26 @@ export default function MapView({
     };
   }, []);
 
-  // Etiket katmanı aç/kapat
+  // Altlık haritayı kaynakları yeniden yüklemeden değiştir; pin ve rota katmanları korunur.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
-    for (const layer of ["labels", "kktc-outline", "kktc-label"]) {
+    for (const layer of ["satellite", "dark", "street", "topographic"] as const) {
+      map.setLayoutProperty(layer, "visibility", layer === baseMap ? "visible" : "none");
+    }
+  }, [baseMap, ready]);
+
+  // Etiket katmanı aç/kapat. Sokak ve topoğrafik altlıklarda temel etiketler
+  // görüntünün parçasıdır; ayrı Esri etiketi yalnızca uydu/karanlıkta kullanılır.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    const overlayLabels = showLabels && (baseMap === "satellite" || baseMap === "dark");
+    map.setLayoutProperty("labels", "visibility", overlayLabels ? "visible" : "none");
+    for (const layer of ["kktc-outline", "kktc-label"]) {
       map.setLayoutProperty(layer, "visibility", showLabels ? "visible" : "none");
     }
-  }, [showLabels, ready]);
+  }, [baseMap, showLabels, ready]);
 
   // Yakınlaşınca gerçek yükseklik verisini ister; düşük güçlü cihazlarda kapatılabilir.
   useEffect(() => {

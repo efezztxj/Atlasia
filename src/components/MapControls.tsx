@@ -84,7 +84,7 @@ export default function MapControls({
       <RoundBtn label="Yer adları" onClick={onToggleLabels} active={labels} pressed={labels}>
         <Tags className="size-[18px]" />
       </RoundBtn>
-      <RoundBtn label="Dünya görünümü" onClick={onToggleTerrain} active={terrain} pressed={terrain}>
+      <RoundBtn label="3B arazi" onClick={onToggleTerrain} active={terrain} pressed={terrain}>
         <Globe2 className="size-[18px]" />
       </RoundBtn>
     </div>

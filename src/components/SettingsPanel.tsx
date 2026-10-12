@@ -5,9 +5,12 @@ import {
   Crosshair,
   Download,
   Eye,
+  Globe2,
   Loader2,
+  Map,
   MapPin,
   Moon,
+  Mountain,
   ShieldCheck,
   Smartphone,
   Sun,
@@ -16,6 +19,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { formatAccuracy, type GeoFix, type GeoStatus } from "../hooks/useGeolocation";
+import type { BaseMapStyle } from "./MapView";
 import type { AppTheme } from "../hooks/useTheme";
 import type { InstallAppController } from "../hooks/useInstallApp";
 import { cn } from "../utils/cn";
@@ -27,6 +31,8 @@ interface Props {
   onClose: () => void;
   theme: AppTheme;
   onTheme: (theme: AppTheme) => void;
+  baseMap: BaseMapStyle;
+  onBaseMap: (style: BaseMapStyle) => void;
   installApp: InstallAppController;
   location: {
     supported: boolean;
@@ -68,6 +74,8 @@ export default function SettingsPanel({
   onClose,
   theme,
   onTheme,
+  baseMap,
+  onBaseMap,
   installApp,
   location: geo,
   onAllowLocation,
@@ -182,7 +190,31 @@ export default function SettingsPanel({
                 <Sun className="size-4" />Açık
               </button>
             </div>
-            <p className="mt-2 text-[12px] leading-relaxed text-mint/50">Seçimin bu cihazda saklanır. Harita katmanı ayrıca değiştirilebilir.</p>
+            <p className="mt-2 text-[12px] leading-relaxed text-mint/50">Renk seçimin bu cihazda saklanır.</p>
+
+            <p className="mt-5 text-[12px] font-semibold text-mint/70">Harita altlığı</p>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              {([
+                { id: "satellite", label: "Uydu", icon: Globe2 },
+                { id: "dark", label: "Karanlık", icon: Moon },
+                { id: "street", label: "Sokak", icon: Map },
+                { id: "topographic", label: "Topoğrafik", icon: Mountain },
+              ] as const).map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  type="button"
+                  aria-pressed={baseMap === id}
+                  onClick={() => onBaseMap(id)}
+                  className={cn(
+                    "flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 text-[13px] font-semibold transition",
+                    baseMap === id ? "border-sun/60 bg-sun/10 text-sun" : "border-leaf/20 text-mint/65 hover:border-leaf/45 hover:text-mint",
+                  )}
+                >
+                  <Icon className="size-4" />{label}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 text-[11.5px] leading-relaxed text-mint/45">Pinlerin, rota çizgin ve 3B arazi tercihin korunur.</p>
           </section>
 
           <div className="my-6 h-px bg-leaf/15" />

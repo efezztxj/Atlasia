@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bell, Bookmark, Compass, Crosshair, MapPin, MousePointerClick, Plus, UserRound, UsersRound, X } from "lucide-react";
-import MapView, { type MapViewHandle } from "./components/MapView";
+import MapView, { type BaseMapStyle, type MapViewHandle } from "./components/MapView";
 import Header from "./components/Header";
 import Hero from "./components/Hero";
 import SearchBox from "./components/SearchBox";
@@ -31,6 +31,17 @@ import { useInstallApp, type InstallAppController } from "./hooks/useInstallApp"
 import { isCloudReady, firebaseConfigSummary } from "./lib/firebase";
 import type { AtlasRoute, CategoryId, Place, ViewState } from "./types";
 import { haversineKm, reverseName, type SearchResult } from "./utils/geo";
+
+const MAP_STYLE_KEY = "atlasia.mapStyle.v1";
+
+function initialMapStyle(): BaseMapStyle {
+  try {
+    const saved = localStorage.getItem(MAP_STYLE_KEY);
+    return saved === "dark" || saved === "street" || saved === "topographic" ? saved : "satellite";
+  } catch {
+    return "satellite";
+  }
+}
 
 function placeDeleteErrorMessage(error: unknown) {
   const code = (error as { code?: string })?.code ?? (error as Error)?.message ?? "";
@@ -71,6 +82,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   const [spin, setSpin] = useState(true);
   const [labels, setLabels] = useState(true);
   const [terrain, setTerrain] = useState(true);
+  const [baseMap, setBaseMap] = useState<BaseMapStyle>(initialMapStyle);
   const [view, setView] = useState<ViewState>({ zoom: 2, lng: 30, lat: 30 });
   const [panelOpen, setPanelOpen] = useState(() => window.innerWidth >= 768);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -106,6 +118,9 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   }, []);
 
   useEffect(() => { if (user?.displayName) localStorage.setItem("atlasia.author", user.displayName); }, [user?.displayName]);
+  useEffect(() => {
+    try { localStorage.setItem(MAP_STYLE_KEY, baseMap); } catch { /* Tercih bu oturumda kalır. */ }
+  }, [baseMap]);
 
   const closePanels = () => {
     setDrawerOpen(false);
@@ -434,6 +449,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         onMapClick={handleMapClick}
         showLabels={labels}
         terrainEnabled={terrain}
+        baseMap={baseMap}
         spin={spin && !reducedMotion && !addMode && !draft}
         onUserInteract={() => setSpin(false)}
         onViewChange={setView}
@@ -538,7 +554,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         )}
       </div>
       <p role="contentinfo" className="pointer-events-none absolute inset-x-0 bottom-[2px] z-20 hidden px-2 text-center text-[11px] leading-none text-mint/45 md:block">
-        Uydu görüntüleri © Esri, Maxar, Earthstar Geographics, USGS · Yükseklik verisi: AWS Terrain Tiles
+        Harita © Esri, CARTO ve OpenStreetMap katkıcıları · Yükseklik verisi: AWS Terrain Tiles
       </p>
 
       {/* Ekleme modu bandı */}
@@ -703,6 +719,8 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
           onClose={closeSettings}
           theme={theme}
           onTheme={setTheme}
+          baseMap={baseMap}
+          onBaseMap={setBaseMap}
           installApp={installApp}
           location={{
             supported: geo.supported,
