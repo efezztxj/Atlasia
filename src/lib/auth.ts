@@ -1,6 +1,4 @@
-import { getApps, initializeApp } from "firebase/app";
 import {
-  getAuth,
   GoogleAuthProvider,
   OAuthProvider,
   createUserWithEmailAndPassword,
@@ -10,29 +8,18 @@ import {
   signInWithPopup,
   signInWithRedirect,
   updateProfile,
-  type Auth,
   type User,
 } from "firebase/auth";
 import { AccountError, normalizeEmail, type AtlasAccount, type SignupDetails } from "./accountTypes";
+import { auth as firebaseAuth, isCloudReady } from "./firebase";
 
-const config = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY as string | undefined,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN as string | undefined,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID as string | undefined,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID as string | undefined,
-};
-
-export const authConfigured = Object.values(config).every((value) => !!value?.trim());
+/** Auth, Firestore ve Storage her zaman aynı Firebase uygulamasını kullanır. */
+export const authConfigured = isCloudReady && firebaseAuth !== null;
 export const authBackend = authConfigured ? "firebase" : "device";
-let instance: Auth | null = null;
 
 export function getAtlasAuth() {
-  if (!authConfigured) throw new Error("auth/not-configured");
-  if (!instance) {
-    instance = getAuth(getApps()[0] ?? initializeApp(config));
-    instance.languageCode = "tr";
-  }
-  return instance;
+  if (!authConfigured || !firebaseAuth) throw new Error("auth/not-configured");
+  return firebaseAuth;
 }
 
 export function isVerifiedMember(user: User | null): user is User {

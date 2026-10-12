@@ -3,7 +3,7 @@
  * Firestore, Storage ve Auth instance'larını tek yerden dışa aktarır.
  */
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
-import { getFirestore, type Firestore, connectFirestoreEmulator } from "firebase/firestore";
+import { getFirestore, type Firestore } from "firebase/firestore";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
 import { getAuth, type Auth } from "firebase/auth";
 

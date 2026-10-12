@@ -23,6 +23,8 @@ interface Props {
 export default function AddDiscoveryModal({ draft, uploadPhoto, onClose, onSave }: Props) {
   const [photo, setPhoto] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState<CategoryId>("nature");
@@ -49,29 +51,40 @@ export default function AddDiscoveryModal({ draft, uploadPhoto, onClose, onSave 
   }, [onClose]);
 
   const coords = formatCoords(draft.lat, draft.lng);
-  const canSave = title.trim().length >= 2;
+  const canSave = title.trim().length >= 2 && !saving && !uploading;
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSave) return;
     if (author.trim()) localStorage.setItem("atlasia.author", author.trim());
-    void onSave({
-      title: title.trim(),
-      category,
-      note: note.trim(),
-      author: author.trim(),
-      region: region ?? coords,
-      photo: photo ?? undefined,
-    });
+    setSaving(true);
+    setError(null);
+    try {
+      await onSave({
+        title: title.trim(),
+        category,
+        note: note.trim(),
+        author: author.trim(),
+        region: region ?? coords,
+        photo: photo ?? undefined,
+      });
+    } catch (failure) {
+      console.error("[Atlasia] İz kaydedilemedi:", failure);
+      setError("İz kaydedilemedi. Bağlantını kontrol edip tekrar dene.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const pick = async (file?: File) => {
     if (!file) return;
     setUploading(true);
+    setError(null);
     try {
       setPhoto(await uploadPhoto(file));
-    } catch {
-      /* sessizce geç */
+    } catch (failure) {
+      console.error("[Atlasia] Fotoğraf yüklenemedi:", failure);
+      setError("Fotoğraf yüklenemedi. İstersen fotoğrafsız devam edebilirsin.");
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -216,6 +229,8 @@ export default function AddDiscoveryModal({ draft, uploadPhoto, onClose, onSave 
           />
         </label>
 
+        {error && <p role="alert" className="mt-4 rounded-xl border border-red-400/20 bg-red-400/[0.07] px-3 py-2 text-[12px] leading-relaxed text-red-200">{error}</p>}
+
         <div className="mt-6 flex items-center justify-end gap-2">
           <button
             type="button"
@@ -229,8 +244,8 @@ export default function AddDiscoveryModal({ draft, uploadPhoto, onClose, onSave 
             disabled={!canSave}
             className="flex items-center gap-2 rounded-full bg-sun px-6 py-2.5 text-[13px] font-bold text-ink transition hover:bg-sun-2 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <Check className="size-4" strokeWidth={2.6} />
-            İz bırak
+            {saving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" strokeWidth={2.6} />}
+            {saving ? "Kaydediliyor…" : "İz bırak"}
           </button>
         </div>
       </form>
