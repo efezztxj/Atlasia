@@ -36,7 +36,7 @@ const features = [
 
 export default function LandingPage({ onStart }: Props) {
   return (
-    <main className="h-dvh overflow-y-auto scroll-smooth bg-[#020d17] text-white">
+    <main className="landing-page h-dvh overflow-y-auto scroll-smooth bg-[#020d17] text-white">
       <section className="relative isolate min-h-dvh overflow-hidden border-b border-white/10">
         <img
           src="/images/atlasia-earth-hero.jpg"

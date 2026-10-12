@@ -6,12 +6,15 @@ import {
   Eye,
   Loader2,
   MapPin,
+  Moon,
   ShieldCheck,
+  Sun,
   TriangleAlert,
   X,
   type LucideIcon,
 } from "lucide-react";
 import { formatAccuracy, type GeoFix, type GeoStatus } from "../hooks/useGeolocation";
+import type { AppTheme } from "../hooks/useTheme";
 import { cn } from "../utils/cn";
 import { formatCoords } from "../utils/geo";
 
@@ -19,6 +22,8 @@ export type SettingsTab = "location";
 
 interface Props {
   onClose: () => void;
+  theme: AppTheme;
+  onTheme: (theme: AppTheme) => void;
   location: {
     supported: boolean;
     secure: boolean;
@@ -57,6 +62,8 @@ function Notice({ children }: { children: ReactNode }) {
 
 export default function SettingsPanel({
   onClose,
+  theme,
+  onTheme,
   location: geo,
   onAllowLocation,
   onClearLocation,
@@ -123,9 +130,9 @@ export default function SettingsPanel({
       >
         <header className="flex items-start justify-between px-6 pt-6 sm:px-7">
           <div>
-            <p className="text-[12px] font-bold tracking-[0.18em] text-sun uppercase">Konum</p>
+            <p className="text-[12px] font-bold tracking-[0.18em] text-sun uppercase">Ayarlar</p>
             <h2 id="settings-title" className="font-display mt-1.5 text-[26px] leading-tight font-semibold text-mint">
-              Haritada doğru noktada ol
+              Atlasia deneyimin
             </h2>
           </div>
           <button
@@ -140,6 +147,31 @@ export default function SettingsPanel({
         </header>
 
         <div className="thin-scroll min-h-0 flex-1 overflow-y-auto px-6 py-5 sm:px-7">
+          <section aria-labelledby="appearance-title">
+            <p id="appearance-title" className="text-[12px] font-bold tracking-[0.16em] text-mint/55 uppercase">Görünüm</p>
+            <div className="mt-3 grid grid-cols-2 gap-2 rounded-2xl border border-leaf/20 bg-white/[0.04] p-1.5">
+              <button
+                type="button"
+                aria-pressed={theme === "dark"}
+                onClick={() => onTheme("dark")}
+                className={cn("flex min-h-12 items-center justify-center gap-2 rounded-xl text-[14px] font-semibold transition", theme === "dark" ? "bg-ink-3 text-sun shadow-lg" : "text-mint/65 hover:bg-white/[0.05]")}
+              >
+                <Moon className="size-4" />Koyu
+              </button>
+              <button
+                type="button"
+                aria-pressed={theme === "light"}
+                onClick={() => onTheme("light")}
+                className={cn("flex min-h-12 items-center justify-center gap-2 rounded-xl text-[14px] font-semibold transition", theme === "light" ? "bg-sun text-ink shadow-lg" : "text-mint/65 hover:bg-white/[0.05]")}
+              >
+                <Sun className="size-4" />Açık
+              </button>
+            </div>
+            <p className="mt-2 text-[12px] leading-relaxed text-mint/50">Seçimin bu cihazda saklanır. Harita katmanı ayrıca değiştirilebilir.</p>
+          </section>
+
+          <div className="my-6 h-px bg-leaf/15" />
+          <p className="mb-3 text-[12px] font-bold tracking-[0.16em] text-mint/55 uppercase">Konum ve gizlilik</p>
           <div className="flex items-center gap-3 rounded-2xl border border-leaf/20 bg-white/[0.05] p-4">
             <span className={cn("grid size-11 shrink-0 place-items-center rounded-xl", geo.fix ? "bg-leaf/15 text-leaf" : "bg-sun/15 text-sun")}>
               {busy ? <Loader2 className="size-5 animate-spin" /> : geo.fix ? <CheckCircle2 className="size-5" /> : <Crosshair className="size-5" />}

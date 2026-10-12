@@ -26,6 +26,7 @@ import { GUIDE_PLACES } from "./data/places";
 import { formatAccuracy, useGeolocation } from "./hooks/useGeolocation";
 import { useAtlasData } from "./hooks/useAtlasData";
 import { useFirestoreAtlasData } from "./hooks/useFirestoreAtlasData";
+import { useTheme } from "./hooks/useTheme";
 import { isCloudReady, firebaseConfigSummary } from "./lib/firebase";
 import type { AtlasRoute, CategoryId, Place, ViewState } from "./types";
 import { haversineKm, reverseName, type SearchResult } from "./utils/geo";
@@ -33,6 +34,7 @@ import { haversineKm, reverseName, type SearchResult } from "./utils/geo";
 function Explorer() {
   const mapRef = useRef<MapViewHandle>(null);
   const { user } = useAuth();
+  const { theme, setTheme } = useTheme();
 
   // Bulut hazırsa Firestore'dan, değilse localStorage'dan çalış.
   const local = useAtlasData(user!.uid);
@@ -689,6 +691,8 @@ function Explorer() {
       {settingsOpen && (
         <SettingsPanel
           onClose={closeSettings}
+          theme={theme}
+          onTheme={setTheme}
           location={{
             supported: geo.supported,
             secure: geo.secure,

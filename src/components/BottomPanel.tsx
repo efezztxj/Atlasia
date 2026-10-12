@@ -165,7 +165,7 @@ export default function BottomPanel({
           </span>
         </div>
 
-        <section aria-label="Keşif önerileri" className="pointer-events-auto hidden animate-rise rounded-[28px] border border-leaf/20 bg-[#021915] p-4 shadow-2xl shadow-black/60 md:block md:p-6">
+        <section aria-label="Keşif önerileri" className="desktop-discovery-panel pointer-events-auto hidden animate-rise rounded-[28px] border border-leaf/20 bg-[#021915] p-4 shadow-2xl shadow-black/60 md:block md:p-6">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <h2 className="font-display text-[17px] leading-tight font-semibold tracking-tight text-white md:text-[21px]">

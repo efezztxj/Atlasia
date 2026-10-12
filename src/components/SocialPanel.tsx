@@ -241,7 +241,7 @@ export default function SocialPanel({
     <>
       <section
         className={cn(
-          "animate-rise fixed z-50 flex flex-col overflow-hidden border border-leaf/20 bg-[#021915]/92 shadow-2xl shadow-black/70 backdrop-blur-2xl md:z-40",
+          "social-panel animate-rise fixed z-50 flex flex-col overflow-hidden border border-leaf/20 bg-[#021915]/92 shadow-2xl shadow-black/70 backdrop-blur-2xl md:z-40",
           "inset-x-0 bottom-[calc(70px+env(safe-area-inset-bottom))] h-[min(74dvh,650px)] rounded-t-[28px] rounded-b-[18px] pb-0 md:bottom-0 md:h-[82dvh] md:rounded-b-none",
           "lg:inset-x-auto lg:bottom-4 lg:left-4 lg:h-[min(64vh,600px)] lg:w-[380px] lg:rounded-[26px] lg:pb-0",
         )}

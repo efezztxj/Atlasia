@@ -138,7 +138,7 @@ export default function ProfilePanel({ onClose, onRecords }: Props) {
 
       {confirmLogout && (
         <div className="absolute inset-0 z-20 grid place-items-end bg-black/65 p-4 backdrop-blur-sm md:place-items-center">
-          <section role="alertdialog" aria-modal="true" aria-labelledby="logout-title" className="w-full rounded-[24px] border border-white/10 bg-[#06221b] p-5 shadow-2xl">
+          <section role="alertdialog" aria-modal="true" aria-labelledby="logout-title" className="logout-confirm w-full rounded-[24px] border border-white/10 bg-[#06221b] p-5 shadow-2xl">
             <h3 id="logout-title" className="font-display text-lg font-semibold">Hesaptan çıkılsın mı?</h3>
             <p className="mt-2 text-[13px] leading-relaxed text-mint/70">Tekrar keşfetmek için hesabınla yeniden giriş yapman gerekir.</p>
             <div className="mt-5 grid grid-cols-2 gap-2">
