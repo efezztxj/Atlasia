@@ -26,6 +26,8 @@ export interface Place {
   /** Yerin özgün hikâyesi */
   story?: string;
   author: string;
+  /** Kullanıcı üretimi bir izin Firebase hesap sahibi. Rehber yerlerinde bulunmaz. */
+  authorUid?: string;
   kind: "guide" | "user";
   createdAt?: number;
 }

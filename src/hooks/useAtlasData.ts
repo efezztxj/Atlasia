@@ -58,10 +58,10 @@ export function useAtlasData(uid: string) {
   }, []);
 
   const addPlace = useCallback(async (p: Omit<Place, "id" | "kind" | "createdAt">) => {
-    const created: Place = { ...p, id: newId("u"), kind: "user", createdAt: Date.now() };
+    const created: Place = { ...p, authorUid: uid, id: newId("u"), kind: "user", createdAt: Date.now() };
     setPlaces((prev) => [created, ...prev]);
     return created;
-  }, []);
+  }, [uid]);
 
   const removePlace = useCallback(async (id: string) => {
     setPlaces((prev) => prev.filter((p) => p.id !== id));

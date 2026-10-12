@@ -13,7 +13,6 @@ import {
   addReply as addReplyFs,
   addStory as addStoryFs,
   isCloudReady,
-  listPlaces as listPlacesFs,
   removePlace as removePlaceFs,
   removePost as removePostFs,
   removeStory as removeStoryFs,
@@ -114,6 +113,7 @@ export function useFirestoreAtlasData({ uid, enabled = true }: UseFirestoreAtlas
       lat: p.lat,
       note: p.note,
       author: p.author,
+      photoUrl: p.photo,
     };
     return addPlaceFs(input);
   };

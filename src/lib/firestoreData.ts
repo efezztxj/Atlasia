@@ -66,6 +66,7 @@ function normalizePlace(id: string, raw: DocumentData): Place {
     gallery: raw.gallery,
     story: raw.story,
     author: raw.author ?? "Gezgin",
+    authorUid: typeof raw.authorUid === "string" ? raw.authorUid : undefined,
     kind: raw.kind === "guide" ? "guide" : "user",
     createdAt: toMillis(raw.createdAt),
   };
@@ -286,7 +287,7 @@ export interface NewPlaceInput {
 export async function addPlace(input: NewPlaceInput): Promise<Place> {
   if (!db) throw new Error("Firestore hazır değil.");
   const id = newId("p");
-  let photoUrl: string | undefined;
+  let photoUrl = input.photoUrl;
   if (input.photoFile) {
     photoUrl = await uploadPhoto(input.photoFile, STORAGE_PLACE_PHOTOS, id);
   }
@@ -304,7 +305,20 @@ export async function addPlace(input: NewPlaceInput): Promise<Place> {
   };
   if (photoUrl) payload.photo = photoUrl;
   await setDoc(doc(db, COL_PLACES, id), payload);
-  return { ...input, id, kind: "user", photo: photoUrl, createdAt: Date.now() } as Place;
+  return {
+    id,
+    title: input.title,
+    region: input.region,
+    category: input.category,
+    lng: input.lng,
+    lat: input.lat,
+    note: input.note,
+    author: input.author,
+    authorUid: input.uid,
+    kind: "user",
+    photo: photoUrl,
+    createdAt: Date.now(),
+  };
 }
 
 export async function removePlace(id: string): Promise<void> {
