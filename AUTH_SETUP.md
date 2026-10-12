@@ -32,6 +32,13 @@ Google/Apple/SMS düğmeleri yapılandırılmadan etkin gösterilmez. Cihaz hesa
 Yapılandırma verilirse e-posta/şifre de Firebase üzerinden çalışır. Yeni e-posta hesapları doğrulama ekranına alınır; doğrulama tamamlanmadan harita açılmaz.
 Bu ortamda Google/Apple sağlayıcıları ve SMS uçtan uca test edilemez.
 
+## Doğrulama e-postaları
+
+- Firebase proje görünen adı **Atlasia** olarak ayarlanmıştır ve istemci Türkçe doğrulama e-postası ister.
+- Doğrulama ve şifre yenileme bağlantıları işlemden sonra `https://atlasia.pages.dev/` adresine geri döner.
+- Firebase bu projede şablon güncellemesini `EMAIL_TEMPLATE_UPDATE_NOT_ALLOWED` ile sunucu tarafında engelliyor. Görsel HTML şablonu için Firebase Support üzerinden şablon düzenleme yetkisinin açılması/uygulanması istenmelidir; istemci kodu bu kısıtı güvenli biçimde aşamaz.
+- Gmail'de gönderen alanını tamamen markalamak ve teslim edilebilirliği yükseltmek için Atlasia'nın sahip olduğu özel bir alan adı doğrulanıp Authentication > Templates > **customize domain** bölümünde DNS kayıtları eklenmelidir. `pages.dev` alt alanının DNS sahipliği kullanıcıda olmadığı için gönderen alanı olarak kullanılamaz.
+
 ## App Check
 
 Atlasia Web uygulaması yalnız **reCAPTCHA Enterprise / Fraud Defense** sağlayıcısıyla App Check'e kayıtlıdır. Ekranda kullanımdan kaldırıldığı belirtilen klasik reCAPTCHA ayrıca bağlanmamalıdır.
@@ -62,6 +69,8 @@ Kaynaklar:
 - https://firebase.google.com/docs/auth/web/password-auth
 - https://firebase.google.com/docs/auth/web/apple
 - https://firebase.google.com/docs/auth/web/phone-auth
+- https://firebase.google.com/docs/auth/custom-email-handler
+- https://firebase.google.com/docs/auth/email-custom-domain
 - https://firebase.google.com/docs/firestore/quotas
 - https://firebase.google.com/docs/rules/manage-deploy
 - https://firebase.google.com/docs/app-check/web/recaptcha-enterprise-provider

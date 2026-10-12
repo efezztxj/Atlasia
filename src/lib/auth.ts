@@ -8,13 +8,23 @@ import {
   signInWithPopup,
   signInWithRedirect,
   updateProfile,
+  type ActionCodeSettings,
   type User,
 } from "firebase/auth";
 import { AccountError, normalizeEmail, type AtlasAccount, type SignupDetails } from "./accountTypes";
 import { auth as firebaseAuth, isCloudReady } from "./firebase";
 
-/** Auth, Firestore ve Storage her zaman aynı Firebase uygulamasını kullanır. */
+/** Auth ve Firestore her zaman aynı Firebase uygulamasını kullanır. */
 export const authConfigured = isCloudReady && firebaseAuth !== null;
+
+const EMAIL_ACTION_SETTINGS: ActionCodeSettings = {
+  url: "https://atlasia.pages.dev/",
+  handleCodeInApp: false,
+};
+
+export function sendAtlasVerificationEmail(user: User) {
+  return sendEmailVerification(user, EMAIL_ACTION_SETTINGS);
+}
 export const authBackend = authConfigured ? "firebase" : "device";
 
 export function getAtlasAuth() {
@@ -50,13 +60,13 @@ export async function registerEmail(details: SignupDetails) {
   // Keep the created account pending verification if delivery fails; do not
   // discard a valid account or grant a verified session on an email error.
   await updateProfile(credential.user, { displayName: details.displayName.trim().slice(0, 40) });
-  try { await sendEmailVerification(credential.user); } catch { /* A pending member can request another email. */ }
+  try { await sendAtlasVerificationEmail(credential.user); } catch { /* A pending member can request another email. */ }
   return credential;
 }
 
 export async function requestPasswordReset(email: string) {
   if (!authConfigured) throw new AccountError("device/recovery-required");
-  try { await sendPasswordResetEmail(getAtlasAuth(), normalizeEmail(email)); }
+  try { await sendPasswordResetEmail(getAtlasAuth(), normalizeEmail(email), EMAIL_ACTION_SETTINGS); }
   catch (error) { if ((error as { code?: string }).code !== "auth/user-not-found") throw error; }
 }
 

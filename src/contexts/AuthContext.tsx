@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { getRedirectResult, onAuthStateChanged, reload, sendEmailVerification, signOut, updateProfile } from "firebase/auth";
+import { getRedirectResult, onAuthStateChanged, reload, signOut, updateProfile } from "firebase/auth";
 import {
   authBackend,
   authConfigured,
@@ -7,6 +7,7 @@ import {
   getAtlasAuth,
   isSupportedAccount,
   registerEmail,
+  sendAtlasVerificationEmail,
   signInEmail,
   toFirebaseAccount,
 } from "../lib/auth";
@@ -164,7 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const resendVerification = async () => {
     const current = getAtlasAuth().currentUser;
     if (!current) throw new AccountError("auth/session-expired");
-    await sendEmailVerification(current);
+    await sendAtlasVerificationEmail(current);
   };
 
   useEffect(() => {
