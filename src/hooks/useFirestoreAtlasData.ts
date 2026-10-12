@@ -25,7 +25,6 @@ import {
   type NewPostInput,
   type NewStoryInput,
 } from "../lib/firestoreData";
-import { firebaseConfigSummary } from "../lib/firebase";
 import type { FeedPost, Place, Story } from "../types";
 
 function clientId() {
@@ -119,8 +118,8 @@ export function useFirestoreAtlasData({ uid, enabled = true }: UseFirestoreAtlas
   };
 
   const removePlace = async (id: string) => {
-    if (!isCloudReady) return;
-    return removePlaceFs(id);
+    if (!isCloudReady) throw new Error("Bulut bağlantısı yok, pin silinemedi.");
+    return removePlaceFs(id, uid);
   };
 
   const addPost = async (p: Partial<FeedPost>) => {

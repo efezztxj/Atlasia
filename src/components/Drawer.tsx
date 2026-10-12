@@ -12,6 +12,7 @@ interface Props {
   category: CategoryId | null;
   onCategory: (c: CategoryId | null) => void;
   onPick: (p: Place) => void;
+  isMine: (p: Place) => boolean;
   onAdd: () => void;
   showLabels: boolean;
   terrainEnabled: boolean;
@@ -21,7 +22,7 @@ interface Props {
   locationReady: boolean;
 }
 
-export default function Drawer({ open, onClose, places, category, onCategory, onPick, onAdd, showLabels, terrainEnabled, onToggleLabels, onToggleTerrain, onOpenLocation, locationReady }: Props) {
+export default function Drawer({ open, onClose, places, category, onCategory, onPick, isMine, onAdd, showLabels, terrainEnabled, onToggleLabels, onToggleTerrain, onOpenLocation, locationReady }: Props) {
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -138,7 +139,7 @@ export default function Drawer({ open, onClose, places, category, onCategory, on
                       {CATEGORY_MAP[p.category].label}
                     </span>
                     {p.kind === "user" && (
-                      <span className="rounded-full bg-leaf/15 px-2 py-0.5 text-leaf">Senin keşfin</span>
+                      <span className="rounded-full bg-leaf/15 px-2 py-0.5 text-leaf">{isMine(p) ? "Senin izin" : "Gezgin izi"}</span>
                     )}
                   </span>
                 </span>

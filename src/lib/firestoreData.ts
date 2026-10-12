@@ -21,7 +21,6 @@ import {
   serverTimestamp,
   setDoc,
   updateDoc,
-  where,
   writeBatch,
   type DocumentData,
   type QueryConstraint,
@@ -42,6 +41,10 @@ const COL_USERS = "users";
 
 const newId = (prefix: string) =>
   `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+
+function dataError(code: string, message: string): Error & { code: string } {
+  return Object.assign(new Error(message), { code });
+}
 
 /** Firestore Timestamp'i veya number'ı güvenli şekilde number'a çevirir. */
 function toMillis(v: unknown): number {
@@ -250,7 +253,7 @@ export async function unfollowUser(me: string, target: string): Promise<void> {
 
 /* ─────────────────────────── Pinler (places) ─────────────────────────── */
 
-export async function listPlaces(uid?: string): Promise<Place[]> {
+export async function listPlaces(_uid?: string): Promise<Place[]> {
   if (!db) return [];
   // uid parametresi ileride özel pinler için kullanılacak (şu an tüm pinler herkese açık)
   const constraints: QueryConstraint[] = [orderBy("createdAt", "desc")];
@@ -281,6 +284,8 @@ export interface NewPlaceInput {
   lat: number;
   note: string;
   author: string;
+  /** Fotoğraf daha önce uploadPhoto ile yüklendiyse doğrudan URL. */
+  photoUrl?: string;
   photoFile?: File;
 }
 
@@ -321,12 +326,19 @@ export async function addPlace(input: NewPlaceInput): Promise<Place> {
   };
 }
 
-export async function removePlace(id: string): Promise<void> {
-  if (!db) return;
-  const snap = await getDoc(doc(db, COL_PLACES, id));
-  const photo = snap.data()?.photo as string | undefined;
+export async function removePlace(id: string, uid: string): Promise<void> {
+  if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
+  const placeRef = doc(db, COL_PLACES, id);
+  const snap = await getDoc(placeRef);
+  if (!snap.exists()) return;
+
+  const ownerUid = snap.data().authorUid as string | undefined;
+  if (!ownerUid) throw dataError("place/owner-missing", "Bu eski izin sahiplik bilgisi eksik.");
+  if (ownerUid !== uid) throw dataError("place/not-owner", "Bu iz başka bir hesaba ait.");
+
+  const photo = snap.data().photo as string | undefined;
   if (photo) await deletePhoto(photo);
-  await deleteDoc(doc(db, COL_PLACES, id));
+  await deleteDoc(placeRef);
 }
 
 /* ─────────────────────────── Postlar ─────────────────────────── */

@@ -31,6 +31,14 @@ import { isCloudReady, firebaseConfigSummary } from "./lib/firebase";
 import type { AtlasRoute, CategoryId, Place, ViewState } from "./types";
 import { haversineKm, reverseName, type SearchResult } from "./utils/geo";
 
+function placeDeleteErrorMessage(error: unknown) {
+  const code = (error as { code?: string })?.code ?? (error as Error)?.message ?? "";
+  if (code === "place/not-owner" || code.includes("permission-denied")) return "Bu iz başka bir hesaba ait. Yalnızca bırakan hesap silebilir.";
+  if (code === "place/owner-missing") return "Bu eski izin sahiplik kaydı eksik. Güvenli taşıma yapılmadan silinemez.";
+  if (code.includes("unavailable") || code.includes("network")) return "Bağlantı kurulamadı. İnternetini kontrol edip tekrar dene.";
+  return "İz silinemedi. Kayıt korunuyor; biraz sonra tekrar deneyebilirsin.";
+}
+
 function Explorer() {
   const mapRef = useRef<MapViewHandle>(null);
   const { user } = useAuth();
@@ -379,7 +387,7 @@ function Explorer() {
       return true;
     } catch (error) {
       console.error("[Atlasia] Pin silinemedi:", error);
-      setToast("İz silinemedi. Bağlantını ve hesap oturumunu kontrol edip tekrar dene.");
+      setToast(placeDeleteErrorMessage(error));
       return false;
     }
   };
@@ -666,6 +674,7 @@ function Explorer() {
         category={category}
         onCategory={handleCategory}
         onPick={handleDrawerPick}
+        isMine={canManagePlace}
       />
 
       {notificationsOpen && (
