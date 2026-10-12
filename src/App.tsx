@@ -18,6 +18,7 @@ import AccountAccess, { EmailVerification, ProfileSetup } from "./components/Acc
 import ProfilePanel from "./components/ProfilePanel";
 import MyPlacesPanel from "./components/MyPlacesPanel";
 import NearbyAudioGuide from "./components/NearbyAudioGuide";
+import LandingPage from "./components/LandingPage";
 import RecordsDock from "./components/RecordsDock";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { CollectionsProvider } from "./hooks/useCollections";
@@ -785,7 +786,18 @@ function Explorer() {
 
 function AuthGate() {
   const { user, checking } = useAuth();
-  if (checking || !user) return <AccountAccess />;
+  const [accessOpen, setAccessOpen] = useState(false);
+  const previousUser = useRef(user);
+
+  useEffect(() => {
+    if (previousUser.current && !user) setAccessOpen(false);
+    previousUser.current = user;
+  }, [user]);
+
+  if (checking) {
+    return <div className="grid h-dvh place-items-center bg-[#020f0d]"><p className="font-display text-3xl font-semibold text-mint">atlasia<span className="text-sun">.</span></p></div>;
+  }
+  if (!user) return accessOpen ? <AccountAccess /> : <LandingPage onStart={() => setAccessOpen(true)} />;
   if (user.requiresEmailVerification) return <EmailVerification />;
   if (!user.displayName?.trim()) return <ProfileSetup />;
   return <CollectionsProvider key={user.uid}><Explorer /></CollectionsProvider>;
