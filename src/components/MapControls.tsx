@@ -66,7 +66,7 @@ export default function MapControls({
       role="toolbar"
       aria-label="Görünüm kontrolleri"
       aria-orientation="vertical"
-      className="mobile-map-controls pointer-events-auto absolute right-3 bottom-[136px] z-20 flex flex-col items-center gap-1.5 md:bottom-7 md:right-8 md:gap-3"
+      className="mobile-map-controls pointer-events-auto absolute right-3 bottom-[136px] z-20 flex flex-col items-center gap-1.5 md:right-8 md:bottom-24 md:gap-3"
     >
       <RoundBtn label="Yakınlaştır" onClick={onZoomIn}>
         <ZoomIn className="size-[18px]" />

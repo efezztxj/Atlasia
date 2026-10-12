@@ -67,12 +67,12 @@ export default function BottomPanel({
   return (
     <div
       className={cn(
-        "pointer-events-none absolute inset-x-0 bottom-[calc(70px+env(safe-area-inset-bottom))] z-20 flex justify-center px-3 pb-3 transition-[padding] duration-500 md:static md:bottom-auto md:z-0 md:justify-center md:px-3 md:pb-4",
+        "pointer-events-none absolute inset-x-0 bottom-[calc(70px+env(safe-area-inset-bottom))] z-20 flex justify-center px-3 pb-3 transition-[padding] duration-500 md:bottom-0 md:pb-7",
         shifted && "lg:pl-[420px]",
       )}
     >
       <div className="w-full max-w-[920px]">
-        <section aria-label="Keşif önerileri" className="mobile-discovery-panel pointer-events-auto rounded-[26px] border border-leaf/25 bg-[#021b16] px-3.5 pb-3.5 pt-3 shadow-2xl shadow-black/60 max-md:fixed max-md:inset-x-3 max-md:bottom-[calc(62px+env(safe-area-inset-bottom))] max-md:z-20 max-md:max-h-[42dvh] max-md:overflow-y-auto md:static md:block md:w-full md:max-w-[920px] md:mx-auto">
+        <section aria-label="Keşif önerileri" className="mobile-discovery-panel pointer-events-auto rounded-[26px] border border-leaf/25 bg-[#021b16] px-3.5 pb-3.5 pt-3 shadow-2xl shadow-black/60 max-md:fixed max-md:inset-x-3 max-md:bottom-[calc(62px+env(safe-area-inset-bottom))] max-md:z-20 max-md:max-h-[42dvh] max-md:overflow-y-auto md:hidden">
           <div className="flex items-center justify-between gap-3">
             <p className="truncate text-[12px] text-mint/75">Yol üstündekilerden küçük ipuçları</p>
             <button type="button" onClick={onToggle} aria-expanded={open} aria-label={open ? "Öneri panelini küçült" : "Öneri panelini genişlet"} className="flex min-h-9 shrink-0 items-center gap-1 text-[12px] font-medium text-sun">
