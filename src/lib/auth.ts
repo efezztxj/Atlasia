@@ -36,6 +36,8 @@ export function isSupportedAccount(user: User | null): user is User {
 }
 
 export function toFirebaseAccount(user: User): AtlasAccount {
+  // Doğrulanmamış e-posta keşfi kilitlemez; gerçek durum profil panelinde açıkça
+  // gösterilir ve kullanıcı oradan bağlantı gönderip oturumu yenileyebilir.
   return { uid: user.uid, email: user.email, displayName: user.displayName, phoneNumber: user.phoneNumber, photoURL: user.photoURL, backend: "firebase", emailVerified: user.emailVerified, requiresEmailVerification: false };
 }
 

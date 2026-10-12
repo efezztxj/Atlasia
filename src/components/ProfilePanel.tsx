@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  AlertCircle,
   Bookmark,
   CheckCircle2,
   Loader2,
@@ -7,7 +8,9 @@ import {
   Mail,
   Monitor,
   Phone,
+  RefreshCw,
   Route,
+  Send,
   ShieldCheck,
   UserRound,
   X,
@@ -23,7 +26,7 @@ interface Props {
 }
 
 export default function ProfilePanel({ onClose, onRecords }: Props) {
-  const { user, logout, setName } = useAuth();
+  const { user, logout, setName, resendVerification, refreshSession } = useAuth();
   const { savedPlaces, savedRoutes } = useCollections();
   const panelRef = usePanelAccess(true, onClose);
   const [name, updateName] = useState(user?.displayName ?? "");
@@ -31,6 +34,36 @@ export default function ProfilePanel({ onClose, onRecords }: Props) {
   const [loggingOut, setLoggingOut] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  const [verificationBusy, setVerificationBusy] = useState<"send" | "check" | null>(null);
+  const [verificationSent, setVerificationSent] = useState(false);
+  const needsEmailVerification = user?.backend === "firebase" && !!user.email && !user.emailVerified;
+
+  const sendVerification = async () => {
+    setVerificationBusy("send");
+    setStatus(null);
+    try {
+      await resendVerification();
+      setVerificationSent(true);
+      setStatus("Doğrulama bağlantısı gönderildi. Gelen kutunu ve spam klasörünü kontrol et.");
+    } catch (error) {
+      setStatus(authErrorMessage(error));
+    } finally {
+      setVerificationBusy(null);
+    }
+  };
+
+  const checkVerification = async () => {
+    setVerificationBusy("check");
+    setStatus(null);
+    try {
+      const account = await refreshSession();
+      setStatus(account?.emailVerified ? "E-posta adresin doğrulandı." : "Doğrulama henüz görünmüyor. Bağlantıyı açtıktan sonra tekrar kontrol et.");
+    } catch (error) {
+      setStatus(authErrorMessage(error));
+    } finally {
+      setVerificationBusy(null);
+    }
+  };
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -80,8 +113,12 @@ export default function ProfilePanel({ onClose, onRecords }: Props) {
           </span>
           <div className="min-w-0">
             <p className="truncate text-lg font-semibold">{user?.displayName ?? "Profil adını ekle"}</p>
-            <p className="mt-1 flex items-center gap-1.5 text-[13px] text-leaf">
-              {user?.backend === "device" ? <><Monitor size={14} />Bu cihaza özel hesap</> : <><ShieldCheck size={14} />Doğrulanmış hesap</>}
+            <p className={`mt-1 flex items-center gap-1.5 text-[13px] ${needsEmailVerification ? "text-sun" : "text-leaf"}`}>
+              {user?.backend === "device"
+                ? <><Monitor size={14} />Bu cihaza özel hesap</>
+                : needsEmailVerification
+                  ? <><AlertCircle size={14} />E-posta doğrulanmadı</>
+                  : <><ShieldCheck size={14} />Doğrulanmış hesap</>}
             </p>
           </div>
         </div>
@@ -90,6 +127,21 @@ export default function ProfilePanel({ onClose, onRecords }: Props) {
           {user?.phoneNumber ? <Phone size={15} /> : <Mail size={15} />}
           {user?.email ?? user?.phoneNumber}
         </p>
+
+        {needsEmailVerification && (
+          <section className="mt-4 rounded-2xl border border-sun/25 bg-sun/[0.07] p-4" aria-labelledby="verify-email-title">
+            <h3 id="verify-email-title" className="flex items-center gap-2 text-[14px] font-semibold text-sun"><AlertCircle size={16} />E-postanı doğrula</h3>
+            <p className="mt-2 text-[12px] leading-relaxed text-mint/70">Hesabını daha güvenilir hâle getirmek için e-postandaki bağlantıyı aç. Keşfe devam etmen bu sırada engellenmez.</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button type="button" onClick={() => void sendVerification()} disabled={!!verificationBusy || verificationSent} className="flex min-h-10 items-center gap-2 rounded-full bg-sun px-3.5 text-[12px] font-semibold text-ink disabled:opacity-50">
+                {verificationBusy === "send" ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}{verificationSent ? "Bağlantı gönderildi" : "Bağlantı gönder"}
+              </button>
+              <button type="button" onClick={() => void checkVerification()} disabled={!!verificationBusy} className="flex min-h-10 items-center gap-2 rounded-full border border-sun/30 px-3.5 text-[12px] font-semibold text-sun disabled:opacity-50">
+                {verificationBusy === "check" ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}Doğrulamayı kontrol et
+              </button>
+            </div>
+          </section>
+        )}
 
         <form onSubmit={(event) => void submit(event)} className="mt-7">
           <label htmlFor="profile-name" className="block text-sm text-mint/80">Profil adın</label>
