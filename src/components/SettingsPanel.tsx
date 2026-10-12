@@ -224,7 +224,7 @@ export default function SettingsPanel({
               <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-leaf/10 text-leaf"><Smartphone className="size-5" /></span>
               <div className="min-w-0 flex-1">
                 <p className="text-[15px] font-semibold text-mint">Atlasia’yı cihazına ekle</p>
-                <p className="mt-1 text-[12px] leading-relaxed text-mint/55">Tam ekran açılır ve ana ekranından hızlıca ulaşabilirsin.</p>
+                <p className="mt-1 text-[12px] leading-relaxed text-mint/55">Tam ekran açılır; son yüklenen uygulama kabuğuna bağlantı kesildiğinde de ulaşabilirsin. Canlı harita ve hesap işlemleri internet ister.</p>
                 {installApp.installed ? (
                   <p className="mt-3 flex items-center gap-2 text-[13px] font-semibold text-leaf"><CheckCircle2 className="size-4" />Bu cihazda yüklü</p>
                 ) : installApp.canPrompt ? (
