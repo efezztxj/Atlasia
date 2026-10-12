@@ -27,16 +27,6 @@ import {
   type NewStoryInput,
 } from "../lib/firestoreData";
 import type { FeedPost, Place, Story, UploadPhotoKind } from "../types";
-import { storageGet, storageSet } from "../utils/storage";
-
-function clientId() {
-  let value = storageGet("atlasia.clientId");
-  if (!value) {
-    value = `c-${Math.random().toString(36).slice(2)}`;
-    storageSet("atlasia.clientId", value);
-  }
-  return value;
-}
 
 export interface UseFirestoreAtlasDataArgs {
   uid: string;
@@ -179,7 +169,9 @@ export function useFirestoreAtlasData({ uid, enabled = true }: UseFirestoreAtlas
   return {
     ready,
     error,
-    clientId: clientId(),
+    // Bulut beğenileri Firestore'a Firebase UID ile yazılır; arayüz de aynı
+    // kimliği kullanmalı ki kalp durumu ve ikinci dokunuş doğru çalışsın.
+    clientId: uid,
     places,
     posts,
     stories,
