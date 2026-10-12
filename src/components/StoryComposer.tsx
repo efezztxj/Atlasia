@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { ImagePlus, Loader2, MapPin, Send, X } from "lucide-react";
 import { STORY_ACCENTS } from "../data/feed";
-import type { StoryAccent } from "../types";
+import type { StoryAccent, UploadPhotoKind } from "../types";
 import { mediaUrl } from "../utils/api";
 import { cn } from "../utils/cn";
 
 interface Props {
   place: { label: string; lng: number; lat: number };
   defaultAuthor: string;
-  uploadPhoto: (file: File) => Promise<string>;
+  uploadPhoto: (file: File, kind: UploadPhotoKind) => Promise<string>;
   onClose: () => void;
   onPublish: (data: {
     text: string;
@@ -49,7 +49,7 @@ export default function StoryComposer({
     setError(null);
     setUploading(true);
     try {
-      setPhoto(await uploadPhoto(file));
+      setPhoto(await uploadPhoto(file, "story"));
     } catch {
       setError("Fotoğraf yüklenemedi, tekrar dene.");
     } finally {

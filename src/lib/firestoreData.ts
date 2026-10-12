@@ -25,14 +25,9 @@ import {
   type DocumentData,
   type QueryConstraint,
 } from "firebase/firestore";
-import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
-import { db, storage, firebaseConfigured } from "./firebase";
-import { compressImage } from "../utils/image";
-import type { FeedPost, FeedReply, Place, Story, StoryAccent } from "../types";
-
-const STORAGE_PLACE_PHOTOS = "places";
-const STORAGE_POST_PHOTOS = "posts";
-const STORAGE_STORY_PHOTOS = "stories";
+import { db, firebaseConfigured } from "./firebase";
+import { compressImageWithinLimit } from "../utils/image";
+import type { FeedPost, FeedReply, Place, Story, StoryAccent, UploadPhotoKind } from "../types";
 
 const COL_PLACES = "places";
 const COL_POSTS = "posts";
@@ -120,30 +115,16 @@ function normalizeStory(id: string, raw: DocumentData): Story {
   };
 }
 
-/* ─────────────────────────── Fotoğraf yükleme ─────────────────────────── */
+/* ─────────────────────────── Fotoğraf hazırlama ─────────────────────────── */
 
-/** Dosyayı sıkıştırıp Firebase Storage'a yükler, indirilebilir URL döner. */
-export async function uploadPhoto(file: File, folder: string, id: string): Promise<string> {
-  if (!storage) throw new Error("Firebase Storage hazır değil.");
-  const { dataUrl } = await compressImage(file, 860, 0.7);
-  // dataUrl'i blob'a çevir
-  const res = await fetch(dataUrl);
-  const blob = await res.blob();
-  const path = `${folder}/${id}/${Date.now()}.jpg`;
-  const ref = storageRef(storage, path);
-  await uploadBytes(ref, blob, { contentType: "image/jpeg" });
-  return getDownloadURL(ref);
-}
-
-/** Storage URL'den dosya referansı çıkarır, silmek için kullanılır. */
-async function deletePhoto(url: string): Promise<void> {
-  if (!storage) return;
-  try {
-    const ref = storageRef(storage, url);
-    await deleteObject(ref);
-  } catch {
-    /* zaten silinmiş olabilir, sessizce geç */
-  }
+/**
+ * Fotoğrafı Firestore'un ücretsiz kotasına uygun, sınırlandırılmış bir JPEG'e
+ * dönüştürür. Veri URL'i ilgili içerikle aynı dokümana atomik olarak yazılır;
+ * ayrı bir ücretli dosya depolama hizmeti gerekmez.
+ */
+export async function uploadPhoto(file: File, _kind: UploadPhotoKind): Promise<string> {
+  const { dataUrl } = await compressImageWithinLimit(file);
+  return dataUrl;
 }
 
 /* ─────────────────────────── Kullanıcı profili ─────────────────────────── */
@@ -296,7 +277,7 @@ export async function addPlace(input: NewPlaceInput): Promise<Place> {
   const id = newId("p");
   let photoUrl = input.photoUrl;
   if (input.photoFile) {
-    photoUrl = await uploadPhoto(input.photoFile, STORAGE_PLACE_PHOTOS, id);
+    photoUrl = await uploadPhoto(input.photoFile, "place");
   }
   const payload: Record<string, unknown> = {
     title: input.title,
@@ -338,11 +319,9 @@ export async function removePlace(id: string, uid: string): Promise<void> {
   if (!ownerUid) throw dataError("place/owner-missing", "Bu eski izin sahiplik bilgisi eksik.");
   if (ownerUid !== uid) throw dataError("place/not-owner", "Bu iz başka bir hesaba ait.");
 
-  const photo = snap.data().photo as string | undefined;
-  // Önce Firestore kaydını sil. Yetki/ağ hatasında pin korunurken fotoğrafın
-  // tek başına kaybolmasını böylece önleriz. Storage temizliği ikincildir.
+  // Fotoğraf aynı Firestore dokümanında bulunduğundan kayıt ve medya tek,
+  // atomik silme işlemiyle birlikte kaldırılır.
   await deleteDoc(placeRef);
-  if (photo) await deletePhoto(photo);
 }
 
 /* ─────────────────────────── Postlar ─────────────────────────── */
@@ -367,40 +346,39 @@ export interface NewPostInput {
   placeLabel?: string;
   lng?: number;
   lat?: number;
+  photoUrl?: string;
   photoFile?: File;
 }
 
 export async function addPost(input: NewPostInput): Promise<string> {
   if (!db) throw new Error("Firestore hazır değil.");
   const id = newId("fp");
-  let photoUrl: string | undefined;
+  let photoUrl = input.photoUrl;
   if (input.photoFile) {
-    photoUrl = await uploadPhoto(input.photoFile, STORAGE_POST_PHOTOS, id);
+    photoUrl = await uploadPhoto(input.photoFile, "post");
   }
-  const payload = {
+  const payload: Record<string, unknown> = {
     author: input.author,
     authorUid: input.uid,
     text: input.text,
     createdAt: serverTimestamp(),
     likes: 0,
     likedBy: [],
-    placeLabel: input.placeLabel,
-    lng: input.lng,
-    lat: input.lat,
-    photo: photoUrl,
     replies: [],
     kind: "user",
   };
+  if (input.placeLabel) payload.placeLabel = input.placeLabel;
+  if (input.lng !== undefined) payload.lng = input.lng;
+  if (input.lat !== undefined) payload.lat = input.lat;
+  if (photoUrl) payload.photo = photoUrl;
   await setDoc(doc(db, COL_POSTS, id), payload);
   return id;
 }
 
 export async function removePost(id: string): Promise<void> {
   if (!db) return;
-  const snap = await getDoc(doc(db, COL_POSTS, id));
-  const photo = snap.data()?.photo as string | undefined;
-  if (photo) await deletePhoto(photo);
-  await deleteDoc(doc(db, COL_POSTS, id));
+  const postRef = doc(db, COL_POSTS, id);
+  await deleteDoc(postRef);
 }
 
 export async function togglePostLike(postId: string, uid: string): Promise<void> {
@@ -455,38 +433,38 @@ export interface NewStoryInput {
   placeLabel?: string;
   lng?: number;
   lat?: number;
+  photoUrl?: string;
   photoFile?: File;
 }
 
 export async function addStory(input: NewStoryInput): Promise<string> {
   if (!db) throw new Error("Firestore hazır değil.");
   const id = newId("st");
-  let photoUrl: string | undefined;
+  let photoUrl = input.photoUrl;
   if (input.photoFile) {
-    photoUrl = await uploadPhoto(input.photoFile, STORAGE_STORY_PHOTOS, id);
+    photoUrl = await uploadPhoto(input.photoFile, "story");
   }
-  await setDoc(doc(db, COL_STORIES, id), {
+  const payload: Record<string, unknown> = {
     author: input.author,
     authorUid: input.uid,
     text: input.text,
     accent: input.accent,
-    placeLabel: input.placeLabel,
-    lng: input.lng,
-    lat: input.lat,
-    photo: photoUrl,
     createdAt: serverTimestamp(),
     seen: false,
     kind: "user",
-  });
+  };
+  if (input.placeLabel) payload.placeLabel = input.placeLabel;
+  if (input.lng !== undefined) payload.lng = input.lng;
+  if (input.lat !== undefined) payload.lat = input.lat;
+  if (photoUrl) payload.photo = photoUrl;
+  await setDoc(doc(db, COL_STORIES, id), payload);
   return id;
 }
 
 export async function removeStory(id: string): Promise<void> {
   if (!db) return;
-  const snap = await getDoc(doc(db, COL_STORIES, id));
-  const photo = snap.data()?.photo as string | undefined;
-  if (photo) await deletePhoto(photo);
-  await deleteDoc(doc(db, COL_STORIES, id));
+  const storyRef = doc(db, COL_STORIES, id);
+  await deleteDoc(storyRef);
 }
 
 export async function markStorySeen(id: string): Promise<void> {

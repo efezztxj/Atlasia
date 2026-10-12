@@ -26,7 +26,7 @@ import {
   type NewPostInput,
   type NewStoryInput,
 } from "../lib/firestoreData";
-import type { FeedPost, Place, Story } from "../types";
+import type { FeedPost, Place, Story, UploadPhotoKind } from "../types";
 import { storageGet, storageSet } from "../utils/storage";
 
 function clientId() {
@@ -99,9 +99,9 @@ export function useFirestoreAtlasData({ uid, enabled = true }: UseFirestoreAtlas
     };
   }, [uid, enabled]);
 
-  const uploadPhoto = async (file: File): Promise<string> => {
-    if (!isCloudReady) throw new Error("Bulut bağlantısı yok, fotoğraf yüklenemez.");
-    return uploadPhotoFs(file, "uploads", uid);
+  const uploadPhoto = async (file: File, kind: UploadPhotoKind): Promise<string> => {
+    if (!isCloudReady) throw new Error("Bulut bağlantısı yok, fotoğraf hazırlanamaz.");
+    return uploadPhotoFs(file, kind);
   };
 
   const addPlace = async (p: Omit<Place, "id" | "kind" | "createdAt">): Promise<Place> => {
@@ -134,6 +134,7 @@ export function useFirestoreAtlasData({ uid, enabled = true }: UseFirestoreAtlas
       placeLabel: p.placeLabel,
       lng: p.lng,
       lat: p.lat,
+      photoUrl: p.photo,
     };
     await addPostFs(input);
   };
@@ -163,6 +164,7 @@ export function useFirestoreAtlasData({ uid, enabled = true }: UseFirestoreAtlas
       placeLabel: s.placeLabel,
       lng: s.lng,
       lat: s.lat,
+      photoUrl: s.photo,
     };
     await addStoryFs(input);
   };

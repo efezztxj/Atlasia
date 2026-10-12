@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 
 import { formatAccuracy } from "../hooks/useGeolocation";
-import type { FeedPost, Story, StoryAccent, ViewState } from "../types";
+import type { FeedPost, Story, StoryAccent, UploadPhotoKind, ViewState } from "../types";
 import { mediaUrl } from "../utils/api";
 import { cn } from "../utils/cn";
 import { haversineKm } from "../utils/geo";
@@ -45,7 +45,7 @@ interface Props {
   stories: Story[];
   clientId: string;
   currentUid: string;
-  uploadPhoto: (file: File) => Promise<string>;
+  uploadPhoto: (file: File, kind: UploadPhotoKind) => Promise<string>;
   onAddPost: (p: Partial<FeedPost>) => Promise<unknown> | unknown;
   onRemovePost: (id: string) => Promise<unknown> | unknown;
   onAddReply: (postId: string, author: string, text: string) => Promise<unknown> | unknown;
@@ -165,7 +165,7 @@ export default function SocialPanel({
     setUploading(true);
     setActionError(null);
     try {
-      setPhoto(await uploadPhoto(file));
+      setPhoto(await uploadPhoto(file, "post"));
     } catch (failure) {
       console.error("[Atlasia] Topluluk fotoğrafı yüklenemedi:", failure);
       setActionError("Fotoğraf yüklenemedi. Bağlantını kontrol edip tekrar deneyebilirsin.");

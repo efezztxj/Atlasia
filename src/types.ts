@@ -72,6 +72,7 @@ export interface FeedPost {
 }
 
 export type StoryAccent = "sun" | "leaf" | "sea" | "dusk";
+export type UploadPhotoKind = "place" | "post" | "story";
 
 /** 24 saat yaşayan kısa keşif notu */
 export interface Story {

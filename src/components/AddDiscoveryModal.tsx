@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, ImagePlus, Loader2, MapPin, X } from "lucide-react";
 import { CATEGORIES } from "../data/categories";
-import type { CategoryId } from "../types";
+import type { CategoryId, UploadPhotoKind } from "../types";
 import { mediaUrl } from "../utils/api";
 import { cn } from "../utils/cn";
 import { formatCoords, reverseName } from "../utils/geo";
@@ -9,7 +9,7 @@ import { storageGet, storageSet } from "../utils/storage";
 
 interface Props {
   draft: { lng: number; lat: number };
-  uploadPhoto: (file: File) => Promise<string>;
+  uploadPhoto: (file: File, kind: UploadPhotoKind) => Promise<string>;
   onClose: () => void;
   onSave: (data: {
     title: string;
@@ -82,7 +82,7 @@ export default function AddDiscoveryModal({ draft, uploadPhoto, onClose, onSave 
     setUploading(true);
     setError(null);
     try {
-      setPhoto(await uploadPhoto(file));
+      setPhoto(await uploadPhoto(file, "place"));
     } catch (failure) {
       console.error("[Atlasia] Fotoğraf yüklenemedi:", failure);
       setError("Fotoğraf yüklenemedi. İstersen fotoğrafsız devam edebilirsin.");

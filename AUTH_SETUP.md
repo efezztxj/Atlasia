@@ -26,7 +26,8 @@ Google/Apple/SMS düğmeleri yapılandırılmadan etkin gösterilmez. Cihaz hesa
 4. Authentication > Settings > Authorized domains listesine yayın alanını ekle. Geliştirme için Google girişinde localhost'u ayrıca eklemek gerekebilir.
 5. Telefon için SMS bölge politikasında kullanacağın ülkeleri etkinleştir; SMS kota/ücret ve güncel faturalandırma gereksinimlerini kontrol et. Gerçek SMS'i yetkilendirilmiş HTTPS alanında test et.
 6. Apple için Apple Developer üyeliği, Services ID, Team ID ve private key Firebase Console'da yapılandırılmalı. Apple private key'i hiçbir VITE_ değişkenine veya frontend dosyasına koyma.
-7. Vite geliştirme sunucusunu yeniden başlat veya projeyi yeniden derle.
+7. Depodaki Firestore kurallarını Firebase CLI ile dağıt: `firebase deploy --only firestore:rules`. Kurallar fotoğrafları yalnız giriş yapan içerik sahibinin oluşturmasına ve en fazla 180.000 karakterlik güvenli JPEG veri URL'lerine izin verir.
+8. Vite geliştirme sunucusunu yeniden başlat veya projeyi yeniden derle.
 
 Yapılandırma verilirse e-posta/şifre de Firebase üzerinden çalışır. Yeni e-posta hesapları doğrulama ekranına alınır; doğrulama tamamlanmadan harita açılmaz.
 Bu ortamda proje kimlik bilgileri verilmediği için Google/Apple sağlayıcıları ve SMS uçtan uca test edilemez.
@@ -34,9 +35,9 @@ Bu ortamda proje kimlik bilgileri verilmediği için Google/Apple sağlayıcıla
 ## Oturum ve Veri
 
 Firebase etkinse kullanıcı oturumunu Firebase yönetir. Harita ancak e-postası doğrulanmış desteklenen hesap veya telefon oturumu ile açılır. Bekleyen e-posta hesapları otomatik olarak çıkışa zorlanmaz; doğrulamayı tekrar gönderebilir ve kontrol edebilir.
-Rotalar, kaydedilen yerler ve izler bu sürümde kullanıcı kimliğine göre ayrı localStorage alanlarında tutulur.
-Bu veriler başka cihazlarla senkronize değildir. İçerik depolama sunucusu yeniden eklenmedi.
-Frontend kapısı tek başına sunucu verisi için güvenlik kuralı değildir; daha sonra uzaktan veri eklersen Firebase Rules/ID token doğrulaması gerekir.
+Rotalar ve kaydedilen yerler bu sürümde kullanıcı kimliğine göre ayrı localStorage alanlarında tutulur ve başka cihazlarla senkronize değildir. Firebase etkin hesaplarda kullanıcı izleri, topluluk gönderileri ve story'ler Firestore'a kaydedilir.
+Fotoğraflar tarayıcıda en fazla 180.000 karakterlik JPEG veri URL'ine sıkıştırılıp ilgili içerikle aynı Firestore dokümanında tutulur. Böylece prototip aşamasında ücretli Firebase Storage planı gerekmez; kayıt silinince fotoğraf da atomik olarak silinir. Trafik büyüdüğünde ayrı bir nesne depolama/CDN katmanına geçilmelidir.
+Frontend kapısı tek başına sunucu verisi için güvenlik kuralı değildir. Depodaki `firestore.rules` dosyası production'a ayrıca dağıtılmalıdır.
 
 ## Harita ve Fotoğraflar
 
@@ -51,6 +52,8 @@ Kaynaklar:
 - https://firebase.google.com/docs/auth/web/password-auth
 - https://firebase.google.com/docs/auth/web/apple
 - https://firebase.google.com/docs/auth/web/phone-auth
+- https://firebase.google.com/docs/firestore/quotas
+- https://firebase.google.com/docs/rules/manage-deploy
 - https://github.com/komoot/photon
 - https://developers.google.com/maps/documentation/urls/get-started
 
@@ -62,5 +65,6 @@ Kaynaklar:
 - Şifremi unuttum ekranında doğru anahtarla şifreyi yenile. Eski şifre çalışmamalı ve mevcut oturumlar iptal edilmeli.
 - Firebase etkinse yeni e-posta hesabında doğrulama ekranı görünmeli. E-posta bağlantısını açtıktan sonra Doğrulamayı kontrol et ile devam et.
 - Google, Apple ve gerçek SMS'i yetkilendirilmiş yayın alanında ayrıca test et.
+- Bir iz, gönderi ve story fotoğrafı ekle; sayfayı yenilediğinde sıkıştırılmış görsellerin kaldığını, başka hesabın içeriği silemediğini ve içerik sahibi silince kayıtla fotoğrafın birlikte kalktığını kontrol et.
 
 Bu kontrol listesindeki tarayıcı ve canlı sağlayıcı senaryoları burada çalıştırılmamıştır.

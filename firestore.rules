@@ -7,6 +7,25 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Fotoğraflar ücretli dosya depolaması gerektirmemesi için istemcide
+    // JPEG'e sıkıştırılıp veri URL'i olarak içerik dokümanına yazılır.
+    function hasValidPhoto(data) {
+      return ('photo' in data)
+             && data.photo is string
+             && data.photo.size() <= 180000
+             && data.photo.matches('data:image/jpeg;base64,[A-Za-z0-9+/=]+');
+    }
+
+    function hasValidOptionalPhoto(data) {
+      return !('photo' in data) || hasValidPhoto(data);
+    }
+
+    function hasTextOrPhoto(data, maxTextSize) {
+      return data.text is string
+             && data.text.size() < maxTextSize
+             && (data.text.size() > 0 || hasValidPhoto(data));
+    }
+
     // Kullanıcı profilleri: herkes herkesin public bilgilerini (isim, xp, rozet)
     // görebilir ama sadece kendi dokümanını yazabilir.
     match /users/{uid} {
@@ -31,9 +50,12 @@ service cloud.firestore {
                     && request.resource.data.title.size() > 0
                     && request.resource.data.title.size() < 200
                     && request.resource.data.lng is number
-                    && request.resource.data.lat is number;
+                    && request.resource.data.lat is number
+                    && hasValidOptionalPhoto(request.resource.data);
       allow update: if request.auth != null
-                    && resource.data.authorUid == request.auth.uid;
+                    && resource.data.authorUid == request.auth.uid
+                    && request.resource.data.authorUid == resource.data.authorUid
+                    && hasValidOptionalPhoto(request.resource.data);
       allow delete: if request.auth != null
                     && resource.data.authorUid == request.auth.uid;
     }
@@ -43,14 +65,13 @@ service cloud.firestore {
       allow read: if true;
       allow create: if request.auth != null
                     && request.resource.data.authorUid == request.auth.uid
-                    && request.resource.data.text is string
-                    && request.resource.data.text.size() > 0
-                    && request.resource.data.text.size() < 5000;
-      // Beğeni ve yanıtlar için update serbest (giriş yapmış kullanıcılar).
-      // Sahiplik kontrolü olan alanlar (author, authorUid) değiştirilemez.
+                    && hasTextOrPhoto(request.resource.data, 5000)
+                    && hasValidOptionalPhoto(request.resource.data);
+      // Diğer kullanıcılar yalnız beğeni ve yanıt alanlarını değiştirebilir;
+      // gönderinin metni, fotoğrafı, yazarı ve konumu sabit kalır.
       allow update: if request.auth != null
-                    && request.resource.data.authorUid == resource.data.authorUid
-                    && request.resource.data.author == resource.data.author;
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['likes', 'likedBy', 'replies']);
       allow delete: if request.auth != null
                     && resource.data.authorUid == request.auth.uid;
 
@@ -62,11 +83,12 @@ service cloud.firestore {
       allow read: if true;
       allow create: if request.auth != null
                     && request.resource.data.authorUid == request.auth.uid
-                    && request.resource.data.text is string
-                    && request.resource.data.text.size() > 0
-                    && request.resource.data.text.size() < 500;
+                    && hasTextOrPhoto(request.resource.data, 500)
+                    && hasValidOptionalPhoto(request.resource.data);
       allow update: if request.auth != null
-                    && resource.data.authorUid == request.auth.uid;
+                    && resource.data.authorUid == request.auth.uid
+                    && request.resource.data.authorUid == resource.data.authorUid
+                    && hasValidOptionalPhoto(request.resource.data);
       allow delete: if request.auth != null
                     && resource.data.authorUid == request.auth.uid;
     }
