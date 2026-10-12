@@ -3,15 +3,23 @@
  * Firestore ve Auth instance'larını tek yerden dışa aktarır.
  */
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
 import { getFirestore, type Firestore } from "firebase/firestore";
 import { getAuth, type Auth } from "firebase/auth";
+
+// Firebase web kimlikleri gizli değildir. Proje yönetim API'sinden doğrulanan
+// değerleri burada sabitlemek, eski Cloudflare ortam değişkenlerinin App Check'i
+// yanlış uygulama kimliğiyle başlatmasını engeller.
+const ATLASIA_MESSAGING_SENDER_ID = "21255827476";
+const ATLASIA_FIREBASE_APP_ID = "1:21255827476:web:318093fd0d09738b3b7701";
+const ATLASIA_APP_CHECK_SITE_KEY = "6LeGMuwtAAAAACwVaaPrm8KzCa7Sw0nFdl-TMcQr";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY as string | undefined,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN as string | undefined,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID as string | undefined,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID as string | undefined,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID as string | undefined,
+  messagingSenderId: ATLASIA_MESSAGING_SENDER_ID,
+  appId: ATLASIA_FIREBASE_APP_ID,
 };
 
 /** Auth ve Firestore alanları doluysa Firebase hazır; Storage zorunlu değildir. */
@@ -41,6 +49,18 @@ let _auth: Auth | null = null;
 if (firebaseConfigured) {
   try {
     app = getApps()[0] ?? initializeApp(firebaseConfig);
+    if (typeof window !== "undefined") {
+      try {
+        initializeAppCheck(app, {
+          provider: new ReCaptchaEnterpriseProvider(ATLASIA_APP_CHECK_SITE_KEY),
+          isTokenAutoRefreshEnabled: true,
+        });
+      } catch (appCheckError) {
+        // App Check henüz zorunlu tutulmadığı için doğrulama başlatılamasa bile
+        // kullanıcı girişi ve Firestore güvenlik kuralları çalışmaya devam eder.
+        console.error("[Atlasia] App Check başlatılamadı:", appCheckError);
+      }
+    }
     _db = getFirestore(app);
     _auth = getAuth(app);
     _auth.languageCode = "tr";

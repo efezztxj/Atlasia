@@ -30,7 +30,17 @@ Google/Apple/SMS düğmeleri yapılandırılmadan etkin gösterilmez. Cihaz hesa
 8. Vite geliştirme sunucusunu yeniden başlat veya projeyi yeniden derle.
 
 Yapılandırma verilirse e-posta/şifre de Firebase üzerinden çalışır. Yeni e-posta hesapları doğrulama ekranına alınır; doğrulama tamamlanmadan harita açılmaz.
-Bu ortamda proje kimlik bilgileri verilmediği için Google/Apple sağlayıcıları ve SMS uçtan uca test edilemez.
+Bu ortamda Google/Apple sağlayıcıları ve SMS uçtan uca test edilemez.
+
+## App Check
+
+Atlasia Web uygulaması yalnız **reCAPTCHA Enterprise / Fraud Defense** sağlayıcısıyla App Check'e kayıtlıdır. Ekranda kullanımdan kaldırıldığı belirtilen klasik reCAPTCHA ayrıca bağlanmamalıdır.
+
+- Production anahtarı yalnız `atlasia.pages.dev` ve onun alt alan adlarına izin verir; checkbox göstermez, görünmez skor tabanlı çalışır.
+- İstemci App Check'i Firebase servislerinden önce başlatır ve tokenı otomatik yeniler.
+- İlk yayından sonra Firebase Console > App Check > APIs metriklerinde doğrulanmış istekler izlenmelidir.
+- Eski PWA sürümlerini kilitlememek için doğrulama görülmeden Firestore veya Authentication enforcement açılmamalıdır. Enforcement açıldığında doğrulanmamış bütün istekler reddedilir.
+- Faturalandırmasız Fraud Defense Essentials kotası aşılırsa değerlendirmeler ay sonuna kadar `429` dönebilir; kullanım kotası ayrıca izlenmelidir.
 
 ## Oturum ve Veri
 
@@ -54,6 +64,9 @@ Kaynaklar:
 - https://firebase.google.com/docs/auth/web/phone-auth
 - https://firebase.google.com/docs/firestore/quotas
 - https://firebase.google.com/docs/rules/manage-deploy
+- https://firebase.google.com/docs/app-check/web/recaptcha-enterprise-provider
+- https://firebase.google.com/docs/app-check/enable-enforcement
+- https://cloud.google.com/recaptcha/docs/billing-information
 - https://github.com/komoot/photon
 - https://developers.google.com/maps/documentation/urls/get-started
 
