@@ -1,5 +1,5 @@
 /* The app shell can be cached; authentication and live map data need internet. */
-const CACHE = "atlasia-app-v3";
+const CACHE = "atlasia-app-v4";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
