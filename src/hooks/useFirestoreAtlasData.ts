@@ -4,7 +4,8 @@
  * Mevcut App.tsx'in beklediği API'yi korur.
  *
  * Hata yönetimi: Firestore hata verirse, App.tsx'e hazır olmadığını
- * `ready=false` ve `error` ile bildirir; App.tsx yerel useAtlasData'ya düşer.
+ * `ready=false` ve `error` ile bildirir. App yalnız görünür listelerde yerel
+ * içeriği kullanır; bulut hesaplarının yazma/silme işlemleri yerelde taklit edilmez.
  */
 import { useEffect, useState } from "react";
 import {
@@ -42,50 +43,51 @@ export interface UseFirestoreAtlasDataArgs {
 }
 
 export function useFirestoreAtlasData({ uid, enabled = true }: UseFirestoreAtlasDataArgs) {
-  const [ready, setReady] = useState(false);
+  const [loaded, setLoaded] = useState({ places: false, posts: false, stories: false });
   const [places, setPlaces] = useState<Place[]>([]);
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [stories, setStories] = useState<Story[]>([]);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    if (!enabled || !isCloudReady || !uid) {
-      setReady(false);
-      return;
-    }
+    setLoaded({ places: false, posts: false, stories: false });
+    setError(null);
+    if (!enabled || !isCloudReady || !uid) return;
 
+    // Üç koleksiyonun da ilk snapshot'ı gelmeden bulut görünümüne geçme.
+    // Böylece biri önce geldiğinde diğer listeler kısa süreli boş görünmez.
     // Canlı abone ol (real-time updates)
     const unsubPlaces = subscribePlaces(
       (p) => {
         setPlaces(p);
-        setReady(true);
+        setLoaded((current) => ({ ...current, places: true }));
       },
       (e) => {
         console.error("[Atlasia] Places subscribe hatası:", e);
         setError(e);
-        setReady(false);
+        setLoaded((current) => ({ ...current, places: false }));
       },
     );
     const unsubPosts = subscribePosts(
       (p) => {
         setPosts(p);
-        setReady(true);
+        setLoaded((current) => ({ ...current, posts: true }));
       },
       (e) => {
         console.error("[Atlasia] Posts subscribe hatası:", e);
         setError(e);
-        setReady(false);
+        setLoaded((current) => ({ ...current, posts: false }));
       },
     );
     const unsubStories = subscribeStories(
       (s) => {
         setStories(s);
-        setReady(true);
+        setLoaded((current) => ({ ...current, stories: true }));
       },
       (e) => {
         console.error("[Atlasia] Stories subscribe hatası:", e);
         setError(e);
-        setReady(false);
+        setLoaded((current) => ({ ...current, stories: false }));
       },
     );
 
@@ -168,6 +170,8 @@ export function useFirestoreAtlasData({ uid, enabled = true }: UseFirestoreAtlas
     if (!isCloudReady) return;
     return removeStoryFs(id);
   };
+
+  const ready = loaded.places && loaded.posts && loaded.stories && !error;
 
   return {
     ready,

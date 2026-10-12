@@ -56,16 +56,25 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   const { user } = useAuth();
   const { theme, setTheme } = useTheme();
 
-  // Bulut hazırsa Firestore'dan, değilse localStorage'dan çalış.
+  // Yerel veri yalnız yapılandırmasız mod ve ilk canlı liste görünümü için yedektir.
   const local = useAtlasData(user!.uid);
   const remote = useFirestoreAtlasData({ uid: user!.uid, enabled: isCloudReady });
-  // remote hazır olmuşsa Firestore kullan; hazır değilse (hata var) localStorage'ya düş
-  const cloud = remote.ready ? remote : local;
+  // Bulut yapılandırılmışsa yazma/silme işlemleri her zaman Firestore'a gider.
+  // İlk canlı snapshot gelene kadar yalnız görünür liste için yerel içerik kullanılır;
+  // böylece açılış anındaki hızlı bir işlem cihazda mahsur kalmaz.
+  const cloud = isCloudReady
+    ? {
+        ...remote,
+        places: remote.ready ? remote.places : local.places,
+        posts: remote.ready ? remote.posts : local.posts,
+        stories: remote.ready ? remote.stories : local.stories,
+      }
+    : local;
 
   // Kullanıcıya bulut bağlantısı durumunu bildir
   useEffect(() => {
     if (isCloudReady && !remote.ready && remote.error) {
-      setToast("Bulut bağlantısı kurulamadı, yerel veri kullanılıyor.");
+      setToast("Canlı veriler yüklenemedi. Yeni işlemler için bağlantını kontrol et.");
       console.warn("[Atlasia] Config özeti:", firebaseConfigSummary);
     } else if (!isCloudReady) {
       setToast("Firebase yapılandırması eksik, yerel veri kullanılıyor.");
@@ -384,7 +393,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
     setCategory(null);
     setPanelOpen(true);
     focusPlace(created, Math.max(view.zoom, 8));
-    setToast("İzin bu cihazdaki haritana eklendi.");
+    setToast(isCloudReady ? "İzin Atlasia haritasına eklendi." : "İzin bu cihazdaki haritana eklendi.");
   };
 
   const handleDelete = async (p: Place): Promise<boolean> => {
