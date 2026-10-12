@@ -31,16 +31,13 @@ import { useInstallApp, type InstallAppController } from "./hooks/useInstallApp"
 import { isCloudReady, firebaseConfigSummary } from "./lib/firebase";
 import type { AtlasRoute, CategoryId, Place, ViewState } from "./types";
 import { haversineKm, reverseName, type SearchResult } from "./utils/geo";
+import { storageGet, storageSet } from "./utils/storage";
 
 const MAP_STYLE_KEY = "atlasia.mapStyle.v1";
 
 function initialMapStyle(): BaseMapStyle {
-  try {
-    const saved = localStorage.getItem(MAP_STYLE_KEY);
-    return saved === "dark" || saved === "street" || saved === "topographic" ? saved : "satellite";
-  } catch {
-    return "satellite";
-  }
+  const saved = storageGet(MAP_STYLE_KEY);
+  return saved === "dark" || saved === "street" || saved === "topographic" ? saved : "satellite";
 }
 
 function placeDeleteErrorMessage(error: unknown) {
@@ -126,10 +123,8 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
     return () => { screen.removeEventListener("change", syncScreen); motion.removeEventListener("change", syncMotion); };
   }, []);
 
-  useEffect(() => { if (user?.displayName) localStorage.setItem("atlasia.author", user.displayName); }, [user?.displayName]);
-  useEffect(() => {
-    try { localStorage.setItem(MAP_STYLE_KEY, baseMap); } catch { /* Tercih bu oturumda kalır. */ }
-  }, [baseMap]);
+  useEffect(() => { if (user?.displayName) storageSet("atlasia.author", user.displayName); }, [user?.displayName]);
+  useEffect(() => { storageSet(MAP_STYLE_KEY, baseMap); }, [baseMap]);
 
   const closePanels = () => {
     setDrawerOpen(false);
@@ -222,9 +217,9 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   }, [geo.status]);
 
   // Onboarding: ilk girişte üç seçenekli sade karşılama
-  const [onboarding, setOnboarding] = useState(() => !localStorage.getItem("atlasia.onboardingSeen"));
+  const [onboarding, setOnboarding] = useState(() => !storageGet("atlasia.onboardingSeen"));
   const dismissOnboarding = useCallback(() => {
-    localStorage.setItem("atlasia.onboardingSeen", "1");
+    storageSet("atlasia.onboardingSeen", "1");
     setOnboarding(false);
   }, []);
 
@@ -661,6 +656,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         posts={cloud.posts}
         stories={cloud.stories}
         clientId={cloud.clientId}
+        currentUid={user!.uid}
         uploadPhoto={cloud.uploadPhoto}
         onAddPost={cloud.addPost}
         onRemovePost={cloud.removePost}

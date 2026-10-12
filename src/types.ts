@@ -53,6 +53,8 @@ export interface FeedReply {
 export interface FeedPost {
   id: string;
   author: string;
+  /** Kullanıcı gönderilerinde Firebase hesap sahibi. */
+  authorUid?: string;
   text: string;
   createdAt: number;
   /** Örnek içerikten gelen temel beğeni sayısı */
@@ -75,6 +77,8 @@ export type StoryAccent = "sun" | "leaf" | "sea" | "dusk";
 export interface Story {
   id: string;
   author: string;
+  /** Kullanıcı story'sinde Firebase hesap sahibi. */
+  authorUid?: string;
   text: string;
   accent: StoryAccent;
   createdAt: number;

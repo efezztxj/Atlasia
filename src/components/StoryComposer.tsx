@@ -64,14 +64,21 @@ export default function StoryComposer({
     e.preventDefault();
     if (!canPost) return;
     setSending(true);
-    await onPublish({
-      text: text.trim(),
-      accent,
-      author: author.trim() || "Gezgin",
-      attachPlace,
-      photo,
-    });
-    setSending(false);
+    setError(null);
+    try {
+      await onPublish({
+        text: text.trim(),
+        accent,
+        author: author.trim() || "Gezgin",
+        attachPlace,
+        photo,
+      });
+    } catch (failure) {
+      console.error("[Atlasia] Story kaydedilemedi:", failure);
+      setError("İz kaydedilemedi. Bağlantını kontrol edip tekrar dene.");
+    } finally {
+      setSending(false);
+    }
   };
 
   const preview = mediaUrl(photo ?? undefined);

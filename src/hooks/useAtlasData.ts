@@ -3,6 +3,7 @@ import { SEED_POSTS, SEED_STORIES } from "../data/feed";
 import type { FeedPost, Place, Story } from "../types";
 import { compressImage } from "../utils/image";
 import { isStoryAlive } from "../utils/time";
+import { storageGet, storageSet } from "../utils/storage";
 
 const PLACES_KEY = "atlasia.places.v2";
 const POSTS_KEY = "atlasia.posts.v2";
@@ -11,7 +12,7 @@ const CLIENT_KEY = "atlasia.clientId";
 
 function load<T>(key: string, fallback: T): T {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = storageGet(key);
     return raw ? (JSON.parse(raw) as T) : fallback;
   } catch {
     return fallback;
@@ -19,20 +20,16 @@ function load<T>(key: string, fallback: T): T {
 }
 
 function save(key: string, value: unknown) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    /* kota dolduysa sessizce geç */
-  }
+  storageSet(key, JSON.stringify(value));
 }
 
 function clientId() {
-  let v = localStorage.getItem(CLIENT_KEY);
-  if (!v) {
-    v = `c-${Math.random().toString(36).slice(2)}`;
-    localStorage.setItem(CLIENT_KEY, v);
+  let value = storageGet(CLIENT_KEY);
+  if (!value) {
+    value = `c-${Math.random().toString(36).slice(2)}`;
+    storageSet(CLIENT_KEY, value);
   }
-  return v;
+  return value;
 }
 
 const newId = (p: string) => `${p}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
@@ -71,6 +68,7 @@ export function useAtlasData(uid: string) {
     const created: FeedPost = {
       id: newId("fp"),
       author: p.author ?? "Gezgin",
+      authorUid: uid,
       text: p.text ?? "",
       createdAt: Date.now(),
       likes: 0,
@@ -83,7 +81,7 @@ export function useAtlasData(uid: string) {
       photo: p.photo,
     };
     setPosts((prev) => [created, ...prev]);
-  }, []);
+  }, [uid]);
 
   const removePost = useCallback(async (id: string) => {
     setPosts((prev) => prev.filter((p) => p.id !== id));
@@ -121,6 +119,7 @@ export function useAtlasData(uid: string) {
     const created: Story = {
       id: newId("st"),
       author: s.author ?? "Gezgin",
+      authorUid: uid,
       text: s.text ?? "",
       accent: s.accent ?? "leaf",
       createdAt: Date.now(),
@@ -131,7 +130,7 @@ export function useAtlasData(uid: string) {
       photo: s.photo,
     };
     setStories((prev) => [created, ...prev]);
-  }, []);
+  }, [uid]);
 
   const removeStory = useCallback(async (id: string) => {
     setStories((prev) => prev.filter((s) => s.id !== id));

@@ -5,6 +5,7 @@ import type { CategoryId } from "../types";
 import { mediaUrl } from "../utils/api";
 import { cn } from "../utils/cn";
 import { formatCoords, reverseName } from "../utils/geo";
+import { storageGet, storageSet } from "../utils/storage";
 
 interface Props {
   draft: { lng: number; lat: number };
@@ -29,7 +30,7 @@ export default function AddDiscoveryModal({ draft, uploadPhoto, onClose, onSave 
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState<CategoryId>("nature");
   const [note, setNote] = useState("");
-  const [author, setAuthor] = useState(() => localStorage.getItem("atlasia.author") ?? "");
+  const [author, setAuthor] = useState(() => storageGet("atlasia.author") ?? "");
   const [region, setRegion] = useState<string | null>(null);
   const [loadingName, setLoadingName] = useState(true);
 
@@ -56,7 +57,7 @@ export default function AddDiscoveryModal({ draft, uploadPhoto, onClose, onSave 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSave) return;
-    if (author.trim()) localStorage.setItem("atlasia.author", author.trim());
+    if (author.trim()) storageSet("atlasia.author", author.trim());
     setSaving(true);
     setError(null);
     try {

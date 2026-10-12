@@ -3,6 +3,7 @@ import { BookOpen, MapPin, Pause, Play, RotateCcw, Volume2, X } from "lucide-rea
 import type { Place } from "../types";
 import { STORIES } from "../data/galleries";
 import { haversineKm } from "../utils/geo";
+import { storageGet, storageSet } from "../utils/storage";
 
 interface Props {
   location: { lat: number; lng: number; accuracy: number } | null;
@@ -14,7 +15,7 @@ const DISMISSED_KEY = "atlasia.audioGuide.dismissed.v1";
 
 function readDismissed() {
   try {
-    return JSON.parse(sessionStorage.getItem(DISMISSED_KEY) ?? "[]") as string[];
+    return JSON.parse(storageGet(DISMISSED_KEY, "session") ?? "[]") as string[];
   } catch {
     return [];
   }
@@ -61,7 +62,7 @@ export default function NearbyAudioGuide({ location, places, onOpenPlace }: Prop
     if (supported) window.speechSynthesis.cancel();
     const next = [...new Set([...dismissed, nearby.place.id])].slice(-30);
     setDismissed(next);
-    sessionStorage.setItem(DISMISSED_KEY, JSON.stringify(next));
+    storageSet(DISMISSED_KEY, JSON.stringify(next), "session");
     setSpeaking(false);
     setPaused(false);
   };

@@ -79,6 +79,7 @@ function normalizePost(id: string, raw: DocumentData): FeedPost {
   return {
     id,
     author: raw.author ?? "Gezgin",
+    authorUid: typeof raw.authorUid === "string" ? raw.authorUid : undefined,
     text: raw.text ?? "",
     createdAt: toMillis(raw.createdAt),
     likes: typeof raw.likes === "number" ? raw.likes : 0,
@@ -106,6 +107,7 @@ function normalizeStory(id: string, raw: DocumentData): Story {
   return {
     id,
     author: raw.author ?? "Gezgin",
+    authorUid: typeof raw.authorUid === "string" ? raw.authorUid : undefined,
     text: raw.text ?? "",
     accent: (raw.accent as StoryAccent) ?? "leaf",
     createdAt: toMillis(raw.createdAt),

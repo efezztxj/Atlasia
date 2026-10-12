@@ -22,6 +22,7 @@ import { mediaUrl } from "../utils/api";
 import { cn } from "../utils/cn";
 import { haversineKm } from "../utils/geo";
 import { isStoryAlive, relativeTime } from "../utils/time";
+import { storageGet, storageSet } from "../utils/storage";
 import Avatar from "./Avatar";
 import StoryComposer from "./StoryComposer";
 import StoryViewer from "./StoryViewer";
@@ -43,13 +44,14 @@ interface Props {
   posts: FeedPost[];
   stories: Story[];
   clientId: string;
+  currentUid: string;
   uploadPhoto: (file: File) => Promise<string>;
-  onAddPost: (p: Partial<FeedPost>) => Promise<void>;
-  onRemovePost: (id: string) => void;
-  onAddReply: (postId: string, author: string, text: string) => void;
-  onToggleLike: (postId: string) => void;
-  onAddStory: (s: Partial<Story>) => Promise<void>;
-  onRemoveStory: (id: string) => void;
+  onAddPost: (p: Partial<FeedPost>) => Promise<unknown> | unknown;
+  onRemovePost: (id: string) => Promise<unknown> | unknown;
+  onAddReply: (postId: string, author: string, text: string) => Promise<unknown> | unknown;
+  onToggleLike: (postId: string) => Promise<unknown> | unknown;
+  onAddStory: (s: Partial<Story>) => Promise<unknown> | unknown;
+  onRemoveStory: (id: string) => Promise<unknown> | unknown;
 }
 
 export default function SocialPanel({
@@ -64,6 +66,7 @@ export default function SocialPanel({
   posts,
   stories: allStories,
   clientId,
+  currentUid,
   uploadPhoto,
   onAddPost,
   onRemovePost,
@@ -74,7 +77,7 @@ export default function SocialPanel({
 }: Props) {
   const [seen, setSeen] = useState<string[]>(() => {
     try {
-      return JSON.parse(localStorage.getItem(SEEN_KEY) ?? "[]") as string[];
+      return JSON.parse(storageGet(SEEN_KEY) ?? "[]") as string[];
     } catch {
       return [];
     }
@@ -87,6 +90,7 @@ export default function SocialPanel({
   const [photo, setPhoto] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [sending, setSending] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [replyFor, setReplyFor] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [expanded, setExpanded] = useState<string[]>([]);
@@ -98,10 +102,10 @@ export default function SocialPanel({
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    localStorage.setItem(SEEN_KEY, JSON.stringify(seen.slice(-200)));
+    storageSet(SEEN_KEY, JSON.stringify(seen.slice(-200)));
   }, [seen]);
 
-  const author = () => localStorage.getItem("atlasia.author")?.trim() || "Gezgin";
+  const author = () => storageGet("atlasia.author")?.trim() || "Gezgin";
 
   const placeForPost = useMemo(() => {
     if (usePrecise && precise) {
@@ -140,6 +144,18 @@ export default function SocialPanel({
 
   const unseenCount = stories.filter((s) => !seen.includes(s.id)).length;
 
+  const runCloudAction = async (action: () => Promise<unknown> | unknown, message: string) => {
+    setActionError(null);
+    try {
+      await action();
+      return true;
+    } catch (failure) {
+      console.error("[Atlasia] Topluluk işlemi tamamlanamadı:", failure);
+      setActionError(message);
+      return false;
+    }
+  };
+
   const markSeen = useCallback((id: string) => {
     setSeen((prev) => (prev.includes(id) ? prev : [...prev, id]));
   }, []);
@@ -147,10 +163,12 @@ export default function SocialPanel({
   const pickPhoto = async (file?: File) => {
     if (!file) return;
     setUploading(true);
+    setActionError(null);
     try {
       setPhoto(await uploadPhoto(file));
-    } catch {
-      /* sessizce geç */
+    } catch (failure) {
+      console.error("[Atlasia] Topluluk fotoğrafı yüklenemedi:", failure);
+      setActionError("Fotoğraf yüklenemedi. Bağlantını kontrol edip tekrar deneyebilirsin.");
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -162,25 +180,30 @@ export default function SocialPanel({
     const text = draft.trim();
     if ((text.length < 2 && !photo) || sending) return;
     setSending(true);
-    await onAddPost({
+    const saved = await runCloudAction(() => onAddPost({
       author: author(),
       text,
       photo: photo ?? undefined,
       ...(attachPlace
         ? { placeLabel: placeForPost.label, lng: placeForPost.lng, lat: placeForPost.lat }
         : {}),
-    });
+    }), "Gönderi kaydedilemedi. Bağlantını kontrol edip tekrar dene.");
     setSending(false);
+    if (!saved) return;
     setDraft("");
     setPhoto(null);
     setTab("all");
     requestAnimationFrame(() => listRef.current?.scrollTo({ top: 0, behavior: "smooth" }));
   };
 
-  const publishReply = (postId: string) => {
+  const publishReply = async (postId: string) => {
     const text = replyText.trim();
     if (text.length < 2) return;
-    onAddReply(postId, author(), text);
+    const saved = await runCloudAction(
+      () => onAddReply(postId, author(), text),
+      "Yanıt kaydedilemedi. Bağlantını kontrol edip tekrar dene.",
+    );
+    if (!saved) return;
     setReplyText("");
     setReplyFor(null);
     setExpanded((prev) => (prev.includes(postId) ? prev : [...prev, postId]));
@@ -193,7 +216,7 @@ export default function SocialPanel({
     attachPlace: boolean;
     photo: string | null;
   }) => {
-    localStorage.setItem("atlasia.author", data.author);
+    storageSet("atlasia.author", data.author);
     await onAddStory({
       author: data.author,
       text: data.text,
@@ -334,6 +357,13 @@ export default function SocialPanel({
           </span>
         </div>
 
+        {actionError && (
+          <div role="alert" className="mx-3 mt-2 flex items-start gap-2 rounded-xl border border-red-300/20 bg-red-400/[0.08] px-3 py-2 text-[11.5px] leading-relaxed text-red-200">
+            <span className="min-w-0 flex-1">{actionError}</span>
+            <button type="button" onClick={() => setActionError(null)} aria-label="Hata mesajını kapat" className="grid size-6 shrink-0 place-items-center rounded-full hover:bg-white/10"><X className="size-3.5" /></button>
+          </div>
+        )}
+
         {/* Gönderiler */}
         <div ref={listRef} className="thin-scroll flex-1 overflow-y-auto px-3 py-2">
           {visiblePosts.length === 0 && (
@@ -360,11 +390,14 @@ export default function SocialPanel({
                       <span className="shrink-0 text-[11px] text-mint/40">
                         · {relativeTime(p.createdAt)}
                       </span>
-                      {p.kind === "user" && (
+                      {p.kind === "user" && p.authorUid === currentUid && (
                         <button
-                          onClick={() => onRemovePost(p.id)}
+                          onClick={() => void runCloudAction(
+                            () => onRemovePost(p.id),
+                            "Gönderi silinemedi. Bağlantını kontrol edip tekrar dene.",
+                          )}
                           aria-label="Gönderiyi sil"
-                          className="ml-auto shrink-0 text-mint/30 opacity-0 transition group-hover:opacity-100 hover:text-red-300"
+                          className="ml-auto shrink-0 text-mint/50 opacity-70 transition hover:text-red-300 md:opacity-0 md:group-hover:opacity-100"
                         >
                           <Trash2 className="size-3.5" />
                         </button>
@@ -398,7 +431,10 @@ export default function SocialPanel({
 
                     <div className="mt-2 flex items-center gap-4">
                       <button
-                        onClick={() => onToggleLike(p.id)}
+                        onClick={() => void runCloudAction(
+                          () => onToggleLike(p.id),
+                          "Beğeni kaydedilemedi. Bağlantını kontrol edip tekrar dene.",
+                        )}
                         aria-pressed={liked(p)}
                         className={cn(
                           "flex items-center gap-1.5 text-[11.5px] transition",
@@ -458,7 +494,7 @@ export default function SocialPanel({
                       <form
                         onSubmit={(e) => {
                           e.preventDefault();
-                          publishReply(p.id);
+                          void publishReply(p.id);
                         }}
                         className="mt-2.5 flex items-center gap-2 rounded-full border border-leaf/25 bg-ink/70 py-1 pr-1 pl-3"
                       >
@@ -610,14 +646,20 @@ export default function SocialPanel({
           onClose={() => setStoryIndex(null)}
           onSeen={markSeen}
           onGoTo={goToStory}
-          onDelete={onRemoveStory}
+          canDelete={(story) => story.authorUid === currentUid}
+          onDelete={(id) => {
+            void runCloudAction(
+              () => onRemoveStory(id),
+              "Story silinemedi. Bağlantını kontrol edip tekrar dene.",
+            );
+          }}
         />
       )}
 
       {composerOpen && (
         <StoryComposer
           place={placeForPost}
-          defaultAuthor={localStorage.getItem("atlasia.author") ?? ""}
+          defaultAuthor={storageGet("atlasia.author") ?? ""}
           uploadPhoto={uploadPhoto}
           onClose={() => setComposerOpen(false)}
           onPublish={publishStory}

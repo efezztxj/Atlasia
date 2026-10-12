@@ -15,6 +15,7 @@ interface Props {
   onClose: () => void;
   onSeen: (id: string) => void;
   onGoTo: (s: Story) => void;
+  canDelete: (story: Story) => boolean;
   onDelete: (id: string) => void;
 }
 
@@ -24,6 +25,7 @@ export default function StoryViewer({
   onClose,
   onSeen,
   onGoTo,
+  canDelete,
   onDelete,
 }: Props) {
   const [index, setIndex] = useState(startIndex);
@@ -134,7 +136,7 @@ export default function StoryViewer({
               {remaining ? ` · ${remaining}` : ""}
             </p>
           </div>
-          {story.kind === "user" && (
+          {story.kind === "user" && canDelete(story) && (
             <button
               onClick={() => {
                 onDelete(story.id);

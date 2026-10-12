@@ -27,14 +27,15 @@ import {
   type NewStoryInput,
 } from "../lib/firestoreData";
 import type { FeedPost, Place, Story } from "../types";
+import { storageGet, storageSet } from "../utils/storage";
 
 function clientId() {
-  let v = localStorage.getItem("atlasia.clientId");
-  if (!v) {
-    v = `c-${Math.random().toString(36).slice(2)}`;
-    localStorage.setItem("atlasia.clientId", v);
+  let value = storageGet("atlasia.clientId");
+  if (!value) {
+    value = `c-${Math.random().toString(36).slice(2)}`;
+    storageSet("atlasia.clientId", value);
   }
-  return v;
+  return value;
 }
 
 export interface UseFirestoreAtlasDataArgs {
