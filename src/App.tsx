@@ -17,6 +17,7 @@ import StreetPeek from "./components/StreetPeek";
 import AccountAccess, { EmailVerification, ProfileSetup } from "./components/AccountAccess";
 import ProfilePanel from "./components/ProfilePanel";
 import MyPlacesPanel from "./components/MyPlacesPanel";
+import NearbyAudioGuide from "./components/NearbyAudioGuide";
 import RecordsDock from "./components/RecordsDock";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { CollectionsProvider } from "./hooks/useCollections";
@@ -490,6 +491,16 @@ function Explorer() {
         onToggleTerrain={() => setTerrain((v) => !v)}
         labels={labels}
         terrain={terrain}
+      />
+
+      <NearbyAudioGuide
+        location={precise}
+        places={GUIDE_PLACES}
+        onOpenPlace={(place) => {
+          closePanels();
+          focusPlace(place, 15);
+          setStoryPlace(place);
+        }}
       />
 
       {/* İpucu + atıf */}
