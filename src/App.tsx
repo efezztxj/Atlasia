@@ -487,7 +487,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         <div className="mx-auto flex max-w-[1340px] flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-5">
           <Hero hidden={heroHidden} />
           {/* SearchBox sadece masaüstünde */}
-          <div className="hidden md:order-1 md:block">
+          <div className="hidden md:order-2 md:block">
             <SearchBox
               places={allPlaces}
               onPick={handleSearchPick}
