@@ -30,7 +30,8 @@ interface Props {
   total: number;
   onShow: (p: Place) => void;
   onCycle: (dir: 1 | -1) => void;
-  onDelete: (p: Place) => void;
+  canDelete: (p: Place) => boolean;
+  onDelete: (p: Place) => void | Promise<boolean>;
   onAdd: () => void;
   /** Sol alttaki akış penceresi açıkken panel sağa kayar */
   shifted: boolean;
@@ -56,6 +57,7 @@ export default function BottomPanel({
   total,
   onShow,
   onCycle,
+  canDelete,
   onDelete,
   onAdd,
   shifted,
@@ -114,6 +116,11 @@ export default function BottomPanel({
                       <span className="block truncate text-[13px] font-semibold text-mint">{current.title} <span className="font-normal text-sun">· {current.kind === "user" ? current.author : "Atlasia rehberi"}</span></span>
                       <span className="mt-0.5 block line-clamp-2 text-[11px] leading-[1.25] text-mint/75">{current.note}</span>
                     </button>
+                    {canDelete(current) && (
+                      <button type="button" onClick={() => void onDelete(current)} aria-label="Bu izimi sil" className="grid size-10 shrink-0 place-items-center rounded-full border border-red-300/25 text-red-200/80 transition hover:bg-red-400/10 hover:text-red-200">
+                        <Trash2 className="size-4" />
+                      </button>
+                    )}
                     <button type="button" onClick={() => onCycle(1)} aria-label="Sonraki keşif yerini göster" className="grid size-10 shrink-0 place-items-center rounded-full border border-leaf/35 text-mint transition hover:bg-white/5">
                       <ChevronRight className="size-4" />
                     </button>
@@ -256,9 +263,9 @@ export default function BottomPanel({
                     >
                       <ChevronRight className="size-4" />
                     </button>
-                    {current.kind === "user" && (
+                    {canDelete(current) && (
                       <button
-                        onClick={() => onDelete(current)}
+                        onClick={() => void onDelete(current)}
                         aria-label="Keşfimi sil"
                         title="Keşfimi sil"
                         className="grid size-8 place-items-center rounded-full border border-red-400/20 text-red-300/70 transition hover:bg-red-400/10 hover:text-red-300"

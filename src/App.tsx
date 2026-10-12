@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Bell, Bookmark, Compass, Crosshair, MousePointerClick, Plus, UserRound, UsersRound, X } from "lucide-react";
+import { Bell, Bookmark, Compass, Crosshair, MapPin, MousePointerClick, Plus, UserRound, UsersRound, X } from "lucide-react";
 import MapView, { type MapViewHandle } from "./components/MapView";
 import Header from "./components/Header";
 import Hero from "./components/Hero";
@@ -16,6 +16,7 @@ import PlaceDetails from "./components/PlaceDetails";
 import StreetPeek from "./components/StreetPeek";
 import AccountAccess, { EmailVerification, ProfileSetup } from "./components/AccountAccess";
 import ProfilePanel from "./components/ProfilePanel";
+import MyPlacesPanel from "./components/MyPlacesPanel";
 import RecordsDock from "./components/RecordsDock";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { CollectionsProvider } from "./hooks/useCollections";
@@ -64,6 +65,7 @@ function Explorer() {
   const [atlasOpen, setAtlasOpen] = useState(false);
   const [recordsOpen, setRecordsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [myPlacesOpen, setMyPlacesOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [resumeRoute, setResumeRoute] = useState<AtlasRoute | null>(null);
@@ -98,6 +100,7 @@ function Explorer() {
     setAtlasOpen(false);
     setRecordsOpen(false);
     setProfileOpen(false);
+    setMyPlacesOpen(false);
     setSettingsOpen(false);
     setStoryPlace(null);
     setStreetPlace(null);
@@ -114,6 +117,7 @@ function Explorer() {
     setAtlasOpen(false);
     setRecordsOpen(false);
     setProfileOpen(false);
+    setMyPlacesOpen(false);
     setStoryPlace(null);
     setStreetPlace(null);
     setNotificationsOpen(false);
@@ -203,6 +207,11 @@ function Explorer() {
   }, [addMode]);
 
   const allPlaces = useMemo(() => [...discoveries, ...GUIDE_PLACES], [discoveries]);
+  const canManagePlace = useCallback(
+    (place: Place) => place.kind === "user" && (place.authorUid ? place.authorUid === user!.uid : !remote.ready),
+    [remote.ready, user],
+  );
+  const myPlaces = useMemo(() => discoveries.filter(canManagePlace), [discoveries, canManagePlace]);
   const visiblePlaces = useMemo(
     () => (category ? allPlaces.filter((p) => p.category === category) : allPlaces),
     [allPlaces, category],
@@ -350,11 +359,25 @@ function Explorer() {
     setToast("İzin bu cihazdaki haritana eklendi.");
   };
 
-  const handleDelete = (p: Place) => {
-    void cloud.removePlace(p.id);
-    if (activeId === p.id) setActiveId(null);
-    setFeaturedIdx(0);
-    setToast("Keşif silindi.");
+  const handleDelete = async (p: Place): Promise<boolean> => {
+    if (!canManagePlace(p)) {
+      setToast("Yalnızca kendi izlerini silebilirsin.");
+      return false;
+    }
+    if (!window.confirm(`“${p.title}” izini kalıcı olarak silmek istiyor musun?`)) return false;
+    try {
+      await cloud.removePlace(p.id);
+      if (activeId === p.id) setActiveId(null);
+      setStoryPlace((currentPlace) => currentPlace?.id === p.id ? null : currentPlace);
+      setStreetPlace((currentPlace) => currentPlace?.id === p.id ? null : currentPlace);
+      setFeaturedIdx(0);
+      setToast("İzin haritadan silindi.");
+      return true;
+    } catch (error) {
+      console.error("[Atlasia] Pin silinemedi:", error);
+      setToast("İz silinemedi. Bağlantını ve hesap oturumunu kontrol edip tekrar dene.");
+      return false;
+    }
   };
 
   const handleDrawerPick = (p: Place) => {
@@ -377,10 +400,11 @@ function Explorer() {
   }, []);
 
   const heroHidden = view.zoom > 3.4;
-  const dockVisible = !recordsOpen && !profileOpen && !storyPlace && !atlasOpen && !settingsOpen && !drawerOpen && !feedOpen;
+  const dockVisible = !recordsOpen && !profileOpen && !myPlacesOpen && !storyPlace && !atlasOpen && !settingsOpen && !drawerOpen && !feedOpen;
   const mobilePanelOpen = panelOpen && dockVisible;
   const mobileExplore = () => { closePanels(); setPanelOpen(true); };
-  const mobileTab = recordsOpen ? "Kaydet" : feedOpen ? "Topluluk" : profileOpen ? "Profil" : "Keşfet";
+  const openMyPlaces = () => { closePanels(); setMyPlacesOpen(true); };
+  const mobileTab = myPlacesOpen ? "İzlerim" : recordsOpen ? "Kaydet" : feedOpen ? "Topluluk" : profileOpen ? "Profil" : "Keşfet";
 
   return (
     <div className="space-bg relative h-screen w-full overflow-hidden">
@@ -544,6 +568,7 @@ function Explorer() {
           }
         }}
         onCycle={handleCycle}
+        canDelete={canManagePlace}
         onDelete={handleDelete}
         onAdd={startAdd}
         shifted={feedOpen}
@@ -599,6 +624,19 @@ function Explorer() {
 
       {recordsOpen && <RecordsDock onClose={() => setRecordsOpen(false)} onPlace={(place) => { closePanels(); focusPlace(place); setStoryPlace(place); }} onRoute={(route) => { closePanels(); setResumeRoute(route); setAtlasOpen(true); }} />}
       {profileOpen && <ProfilePanel onClose={() => setProfileOpen(false)} onRecords={openRecords} />}
+      {myPlacesOpen && (
+        <MyPlacesPanel
+          places={myPlaces}
+          onClose={() => setMyPlacesOpen(false)}
+          onPlace={(place) => {
+            closePanels();
+            setPanelOpen(true);
+            focusPlace(place);
+            setStoryPlace(place);
+          }}
+          onDelete={handleDelete}
+        />
+      )}
 
       <Drawer
         open={drawerOpen}
@@ -671,7 +709,25 @@ function Explorer() {
         />
       )}
 
-      {storyPlace && <PlaceDetails place={storyPlace} onClose={() => setStoryPlace(null)} onStreet={() => { const place = storyPlace; if (smallScreen) setStoryPlace(null); setStreetPlace(place); }} onPlan={() => { const place = storyPlace; closePanels(); focusPlace(place); setAtlasOpen(true); }} />}
+      {storyPlace && (
+        <PlaceDetails
+          place={storyPlace}
+          onClose={() => setStoryPlace(null)}
+          onStreet={() => {
+            const place = storyPlace;
+            if (smallScreen) setStoryPlace(null);
+            setStreetPlace(place);
+          }}
+          onPlan={() => {
+            const place = storyPlace;
+            closePanels();
+            focusPlace(place);
+            setAtlasOpen(true);
+          }}
+          canDelete={canManagePlace(storyPlace)}
+          onDelete={() => handleDelete(storyPlace)}
+        />
+      )}
       {streetPlace && !atlasOpen && (
         <StreetPeek
           place={streetPlace}
@@ -686,6 +742,7 @@ function Explorer() {
           { label: "Kaydet", icon: Bookmark, action: openRecords },
           { label: "Topluluk", icon: UsersRound, action: () => { closePanels(); setFeedOpen(true); } },
           { label: "Profil", icon: UserRound, action: openProfile },
+          { label: "İzlerim", icon: MapPin, action: openMyPlaces },
         ].map(({ label, icon: Icon, action }) => (
           <button key={label} type="button" onClick={action} aria-current={mobileTab === label ? "page" : undefined} className="mobile-tab-item flex min-h-[52px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 text-[10px] text-mint">
             <Icon size={16} strokeWidth={1.8} />{label}
