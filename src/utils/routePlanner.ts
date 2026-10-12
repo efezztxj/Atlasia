@@ -25,9 +25,12 @@ export function nearbyPlaces(places: Place[], center: { lat: number; lng: number
   return places.filter(validPlace).map((place) => ({ place, distance: haversineKm(center.lat, center.lng, place.lat, place.lng) })).filter((item) => item.distance <= radius).sort((a, b) => (a.place.kind === "user" ? 0 : 1) - (b.place.kind === "user" ? 0 : 1) || a.distance - b.distance).map((item) => item.place);
 }
 
-const time = (minutes: number) => `${String(Math.floor(minutes / 60) % 24).padStart(2, "0")}:${String(Math.round(minutes) % 60).padStart(2, "0")}`;
-const minuteOf = (clock: string) => { const [hours, minutes] = clock.split(":").map(Number); return hours * 60 + minutes; };
+const time = (minutes: number) => {
+  const rounded = Math.round(minutes);
+  return `${String(Math.floor(rounded / 60) % 24).padStart(2, "0")}:${String(rounded % 60).padStart(2, "0")}`;
+};
 const distanceBetween = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => haversineKm(a.lat, a.lng, b.lat, b.lng) * 1.25;
+const sourceOf = (place: Place): RouteStop["source"] => place.kind === "user" ? "community" : place.id.startsWith("osm-route-") ? "openstreetmap" : "atlasia";
 
 export function planRoute(places: Place[], origin: { lat: number; lng: number }, brief: RouteBrief, weatherNote: string | null): AtlasRoute {
   const hours = briefHours(brief);
@@ -35,8 +38,24 @@ export function planRoute(places: Place[], origin: { lat: number; lng: number },
   const perDayMinutes = hours * 60 / daysCount;
   const radius = brief.transport === "walking" ? Math.min(12, hours * 1.7 / daysCount) : brief.transport === "cycling" ? Math.min(45, hours * 5 / daysCount) : brief.transport === "driving" ? Math.min(150, hours * 17 / daysCount) : Math.min(60, hours * 8 / daysCount);
   const interests = brief.interests.flatMap((value) => CATEGORY_INTERESTS[value] ?? []);
+  const rainy = weatherNote?.includes("mevcut yağış görünüyor") ?? false;
+  const preferredByVibe = brief.vibe === "Huzurlu" || brief.vibe === "Yalnızlık"
+    ? ["nature", "photo", "community"]
+    : brief.vibe === "Macera"
+      ? ["nature", "camp", "routes"]
+      : brief.vibe === "Enerjik"
+        ? ["cities", "food", "community"]
+        : [];
+  const preference = (place: Place) => {
+    const interest = !interests.length ? 1 : interests.includes(place.category) ? 2.2 : .65;
+    const community = place.kind === "user" ? 1.4 : 1;
+    const vibe = preferredByVibe.includes(place.category) ? 1.2 : 1;
+    const lowBudget = brief.budget === "Düşük" && ["nature", "photo", "routes", "community", "beaches"].includes(place.category) ? 1.15 : 1;
+    const weather = rainy ? (["history", "food", "cities"].includes(place.category) ? 1.25 : .7) : 1;
+    return interest * community * vibe * lowBudget * weather;
+  };
   const pool = nearbyPlaces(places, origin, radius).sort((a, b) => {
-    const utility = (place: Place) => (place.kind === "user" ? 4 : 1) * (interests.length && !interests.includes(place.category) ? .4 : 1) / Math.max(.3, haversineKm(origin.lat, origin.lng, place.lat, place.lng));
+    const utility = (place: Place) => preference(place) / Math.max(.3, haversineKm(origin.lat, origin.lng, place.lat, place.lng));
     return utility(b) - utility(a);
   });
   const maxStops = Math.min(7, Math.max(1, Math.floor(hours / (brief.tempo === "Rahat" ? 1.1 : .85))));
@@ -54,23 +73,50 @@ export function planRoute(places: Place[], origin: { lat: number; lng: number },
     const start = previous;
     while (used.size < maxStops) {
       const options = pool.filter((place) => !used.has(place.id)).sort((a, b) => {
-        const score = (place: Place) => distanceBetween(previous, place) / (place.kind === "user" ? 1.3 : 1) / (interests.includes(place.category) ? 1.2 : 1);
+        const score = (place: Place) => distanceBetween(previous, place) / preference(place);
         return score(a) - score(b);
       });
+      const breakTime = stops.length > 0 && stops.length % 2 === 0 ? 15 : 0;
       const place = options.find((candidate) => {
-        const travel = distanceBetween(previous, candidate) / SPEED[brief.transport] * 60;
-        return elapsed + travel + STAY[candidate.category] * tempoFactor <= perDayMinutes;
+        const distance = distanceBetween(previous, candidate);
+        const travel = distance < .08 ? 0 : Math.max(3, Math.round(distance / SPEED[brief.transport] * 60));
+        const stay = Math.round(STAY[candidate.category] * tempoFactor);
+        return elapsed + travel + stay + breakTime <= perDayMinutes;
       });
       if (!place) break;
       const distance = distanceBetween(previous, place);
       const travel = distance < .08 ? 0 : Math.max(3, Math.round(distance / SPEED[brief.transport] * 60));
       const stay = Math.round(STAY[place.category] * tempoFactor);
-      const breakTime = stops.length > 0 && stops.length % 2 === 0 ? 15 : 0;
-      if (elapsed + travel + stay + breakTime > perDayMinutes) break;
+      const source = sourceOf(place);
+      const matchedInterest = brief.interests.find((value) => (CATEGORY_INTERESTS[value] ?? []).includes(place.category));
+      const preferenceReason = matchedInterest ? `${matchedInterest} tercihinle eşleşiyor. ` : "";
       clock += travel + breakTime;
       elapsed += travel + stay + breakTime;
       totalDistance += distance;
-      stops.push({ order: stops.length + 1, name: place.title, type: TYPES[place.category], lat: place.lat, lng: place.lng, startTime: time(clock), endTime: time(clock + stay), durationMinutes: stay, description: place.note, aiReason: place.kind === "user" ? "Topluluk izi olduğu ve önceki durağa yakın olduğu için bu sırada. Kalabalık ölçümü yapılmadı." : stops.length === 0 ? "Başlangıca yakın bir rehber noktası. Topluluk verisi az olduğu için rehberden seçildi." : `Önceki noktadan yaklaşık ${distance.toFixed(1)} km; geri dönüşü azaltmak için sıraya alındı.`, tips: [place.note, "Saat, ücret ve erişimi gitmeden doğrula."], isCommunityPin: place.kind === "user", pinId: place.id, category: place.category, imageUrl: place.photo ?? place.image ?? null });
+      stops.push({
+        order: stops.length + 1,
+        name: place.title,
+        type: TYPES[place.category],
+        lat: place.lat,
+        lng: place.lng,
+        startTime: time(clock),
+        endTime: time(clock + stay),
+        durationMinutes: stay,
+        description: place.note,
+        aiReason: source === "community"
+          ? `${preferenceReason}Topluluk izi olduğu ve önceki durağa yakın olduğu için bu sırada. Kalabalık ölçümü yapılmadı.`
+          : source === "openstreetmap"
+            ? `${preferenceReason}Açık harita verisindeki yakın bir nokta; önceki duraktan tahmini ${distance.toFixed(1)} km.`
+            : stops.length === 0
+              ? `${preferenceReason}Başlangıca yakın bir Atlasia rehber noktası.`
+              : `${preferenceReason}Önceki noktadan yaklaşık ${distance.toFixed(1)} km; geri dönüşü azaltmak için sıraya alındı.`,
+        tips: [place.note, "Saat, ücret ve erişimi gitmeden doğrula."],
+        isCommunityPin: place.kind === "user",
+        pinId: place.id,
+        category: place.category,
+        imageUrl: place.photo ?? place.image ?? null,
+        source,
+      });
       clock += stay;
       used.add(place.id);
       previous = place;
@@ -81,7 +127,8 @@ export function planRoute(places: Place[], origin: { lat: number; lng: number },
     }
   }
 
-  return { id: `rt-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`, routeTitle: brief.interests.includes("Fotoğraf") ? "Işığın peşinde" : brief.vibe === "Huzurlu" ? "Yavaş bir keşif" : "Merakının kısa rotası", routeSummary: used.size ? `${used.size} yakın durak seçtim. Süre ve mesafe tahminidir; çizgi durakları bağlar, yol navigasyonu değildir.${hours > totalMinutes / 60 + 2 ? " Bölgede tüm süreyi dolduracak kadar iz yok; kalan zamanı mola için bırakıyorum." : ""}` : "Bu başlangıcın yakınında seçtiğin süreye ve ulaşıma uygun yeterli iz yok. Başlangıcı seçili bir yere taşıyabilir veya ulaşımı değiştirebilirsin.", totalDurationHours: Math.round(totalMinutes / 60 * 10) / 10, totalDistanceKm: Math.round(totalDistance * 10) / 10, transport: brief.transport, vibe: brief.vibe || "Keşifçi", days, weatherNote, alternatives: ROUTE_ALTERNATIVES, createdAt: Date.now(), origin };
+  const usesOpenMap = days.some((item) => item.stops.some((stop) => stop.source === "openstreetmap"));
+  return { id: `rt-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`, routeTitle: brief.interests.includes("Fotoğraf") ? "Işığın peşinde" : brief.vibe === "Huzurlu" ? "Yavaş bir keşif" : "Merakının kısa rotası", routeSummary: used.size ? `${used.size} yakın durak seçtim. Süre ve mesafe tahminidir; çizgi durakları bağlar, yol navigasyonu değildir.${hours > totalMinutes / 60 + 2 ? " Bölgede tüm süreyi dolduracak kadar iz yok; kalan zamanı mola için bırakıyorum." : ""}` : "Bu başlangıcın yakınında seçtiğin süreye ve ulaşıma uygun yeterli iz yok. Başlangıcı seçili bir yere taşıyabilir veya ulaşımı değiştirebilirsin.", totalDurationHours: Math.round(totalMinutes / 60 * 10) / 10, totalDistanceKm: Math.round(totalDistance * 10) / 10, transport: brief.transport, vibe: brief.vibe || "Keşifçi", days, weatherNote, alternatives: ROUTE_ALTERNATIVES, dataSources: usesOpenMap ? ["OpenStreetMap contributors"] : undefined, createdAt: Date.now(), origin };
 }
 
 export function reorderRoute(route: AtlasRoute, dayIndex: number, from: number, to: number) {
@@ -93,21 +140,33 @@ export function reorderRoute(route: AtlasRoute, dayIndex: number, from: number, 
   let distance = 0;
   let duration = 0;
   let previous = route.origin ?? day.stops[0];
-  days.forEach((item) => {
-    let clock = item.stops.length ? minuteOf(item.stops[0].startTime) : 540;
+  days.forEach((item, currentDayIndex) => {
+    let clock = 9 * 60;
+    let dayMinutes = 0;
     const coords: [number, number][] = [[previous.lng, previous.lat]];
     item.stops = item.stops.map((entry, i) => {
       const hop = distanceBetween(previous, entry);
-      const travel = Math.round(hop / SPEED[route.transport] * 60);
-      clock += travel;
+      const travel = hop < .08 ? 0 : Math.max(3, Math.round(hop / SPEED[route.transport] * 60));
+      const breakTime = i > 0 && i % 2 === 0 ? 15 : 0;
+      clock += travel + breakTime;
       distance += hop;
-      duration += travel + entry.durationMinutes;
-      const next = { ...entry, order: i + 1, startTime: time(clock), endTime: time(clock + entry.durationMinutes), aiReason: "Sıralamayı sen düzenledin. Mesafe, zaman ve bağlantı çizgisi yeniden hesaplandı." };
+      dayMinutes += travel + breakTime + entry.durationMinutes;
+      duration += travel + breakTime + entry.durationMinutes;
+      const next = {
+        ...entry,
+        order: i + 1,
+        startTime: time(clock),
+        endTime: time(clock + entry.durationMinutes),
+        aiReason: currentDayIndex === dayIndex
+          ? "Sıralamayı sen düzenledin. Mesafe, zaman ve bağlantı çizgisi yeniden hesaplandı."
+          : entry.aiReason,
+      };
       clock += entry.durationMinutes;
       previous = entry;
       coords.push([entry.lng, entry.lat]);
       return next;
     });
+    item.summary = `${item.stops.length} durak, ${Math.round(dayMinutes)} dakika.`;
     item.polyline = encodePolyline(coords);
   });
   return { ...route, days, totalDistanceKm: Math.round(distance * 10) / 10, totalDurationHours: Math.round(duration / 60 * 10) / 10 };

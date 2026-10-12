@@ -118,6 +118,7 @@ export interface RouteStop {
   pinId: string | null;
   category: string;
   imageUrl: string | null;
+  source?: "atlasia" | "community" | "openstreetmap";
 }
 
 export interface RouteDay {
@@ -139,6 +140,7 @@ export interface AtlasRoute {
   days: RouteDay[];
   weatherNote: string | null;
   alternatives: { label: string; prompt: string }[];
+  dataSources?: string[];
   createdAt: number;
   origin?: { lat: number; lng: number };
 }
