@@ -1,13 +1,15 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ArrowRight,
   CheckCircle2,
   Crosshair,
+  Download,
   Eye,
   Loader2,
   MapPin,
   Moon,
   ShieldCheck,
+  Smartphone,
   Sun,
   TriangleAlert,
   X,
@@ -15,6 +17,7 @@ import {
 } from "lucide-react";
 import { formatAccuracy, type GeoFix, type GeoStatus } from "../hooks/useGeolocation";
 import type { AppTheme } from "../hooks/useTheme";
+import type { InstallAppController } from "../hooks/useInstallApp";
 import { cn } from "../utils/cn";
 import { formatCoords } from "../utils/geo";
 
@@ -24,6 +27,7 @@ interface Props {
   onClose: () => void;
   theme: AppTheme;
   onTheme: (theme: AppTheme) => void;
+  installApp: InstallAppController;
   location: {
     supported: boolean;
     secure: boolean;
@@ -64,6 +68,7 @@ export default function SettingsPanel({
   onClose,
   theme,
   onTheme,
+  installApp,
   location: geo,
   onAllowLocation,
   onClearLocation,
@@ -71,6 +76,16 @@ export default function SettingsPanel({
 }: Props) {
   const panelRef = useRef<HTMLElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+  const [installNotice, setInstallNotice] = useState<string | null>(null);
+
+  const requestInstall = async () => {
+    try {
+      const accepted = await installApp.install();
+      setInstallNotice(accepted ? "Atlasia cihazına eklendi." : "Yükleme şimdilik iptal edildi.");
+    } catch {
+      setInstallNotice("Yükleme başlatılamadı. Tarayıcı menüsündeki uygulama yükleme seçeneğini deneyebilirsin.");
+    }
+  };
 
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
@@ -171,6 +186,28 @@ export default function SettingsPanel({
           </section>
 
           <div className="my-6 h-px bg-leaf/15" />
+          <section aria-labelledby="install-title">
+            <p id="install-title" className="text-[12px] font-bold tracking-[0.16em] text-mint/55 uppercase">Uygulama</p>
+            <div className="mt-3 flex items-start gap-3 rounded-2xl border border-leaf/20 bg-white/[0.04] p-4">
+              <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-leaf/10 text-leaf"><Smartphone className="size-5" /></span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[15px] font-semibold text-mint">Atlasia’yı cihazına ekle</p>
+                <p className="mt-1 text-[12px] leading-relaxed text-mint/55">Tam ekran açılır ve ana ekranından hızlıca ulaşabilirsin.</p>
+                {installApp.installed ? (
+                  <p className="mt-3 flex items-center gap-2 text-[13px] font-semibold text-leaf"><CheckCircle2 className="size-4" />Bu cihazda yüklü</p>
+                ) : installApp.canPrompt ? (
+                  <button type="button" onClick={() => void requestInstall()} disabled={installApp.busy} className="mt-3 flex min-h-11 items-center gap-2 rounded-full border border-leaf/35 px-4 text-[13px] font-semibold text-leaf disabled:opacity-50">
+                    {installApp.busy ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}Uygulamayı yükle
+                  </button>
+                ) : (
+                  <p className="mt-3 text-[12px] leading-relaxed text-mint/65">{installApp.ios ? "Safari’de Paylaş menüsünü açıp ‘Ana Ekrana Ekle’ seçeneğini kullan." : "Tarayıcı menüsündeki ‘Uygulamayı yükle’ veya ‘Ana ekrana ekle’ seçeneğini kullanabilirsin."}</p>
+                )}
+                {installNotice && <p role="status" className="mt-2 text-[12px] text-sun">{installNotice}</p>}
+              </div>
+            </div>
+          </section>
+
+          <div className="my-6 h-px bg-leaf/15" />
           <p className="mb-3 text-[12px] font-bold tracking-[0.16em] text-mint/55 uppercase">Konum ve gizlilik</p>
           <div className="flex items-center gap-3 rounded-2xl border border-leaf/20 bg-white/[0.05] p-4">
             <span className={cn("grid size-11 shrink-0 place-items-center rounded-xl", geo.fix ? "bg-leaf/15 text-leaf" : "bg-sun/15 text-sun")}>
@@ -192,8 +229,8 @@ export default function SettingsPanel({
             <InfoRow icon={Eye} title="Yakınındakileri gör">
               Çevrendeki gezgin ipuçlarını ve harita izlerini bul.
             </InfoRow>
-            <InfoRow icon={ShieldCheck} title="Cihazından çıkmaz">
-              Otomatik konum paylaşımı yapılmaz. Bu sürümde izlerin ve konumun bu cihazda tutulur.
+            <InfoRow icon={ShieldCheck} title="Kontrol sende">
+              Canlı konumun hesabına kaydedilmez ve otomatik paylaşılmaz. Yalnızca açıkça bıraktığın izler hesabında saklanır.
             </InfoRow>
           </ul>
 

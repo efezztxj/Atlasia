@@ -27,6 +27,7 @@ import { formatAccuracy, useGeolocation } from "./hooks/useGeolocation";
 import { useAtlasData } from "./hooks/useAtlasData";
 import { useFirestoreAtlasData } from "./hooks/useFirestoreAtlasData";
 import { useTheme } from "./hooks/useTheme";
+import { useInstallApp, type InstallAppController } from "./hooks/useInstallApp";
 import { isCloudReady, firebaseConfigSummary } from "./lib/firebase";
 import type { AtlasRoute, CategoryId, Place, ViewState } from "./types";
 import { haversineKm, reverseName, type SearchResult } from "./utils/geo";
@@ -39,7 +40,7 @@ function placeDeleteErrorMessage(error: unknown) {
   return "İz silinemedi. Kayıt korunuyor; biraz sonra tekrar deneyebilirsin.";
 }
 
-function Explorer() {
+function Explorer({ installApp }: { installApp: InstallAppController }) {
   const mapRef = useRef<MapViewHandle>(null);
   const { user } = useAuth();
   const { theme, setTheme } = useTheme();
@@ -702,6 +703,7 @@ function Explorer() {
           onClose={closeSettings}
           theme={theme}
           onTheme={setTheme}
+          installApp={installApp}
           location={{
             supported: geo.supported,
             secure: geo.secure,
@@ -797,7 +799,7 @@ function Explorer() {
   );
 }
 
-function AuthGate() {
+function AuthGate({ installApp }: { installApp: InstallAppController }) {
   const { user, checking } = useAuth();
   const [accessOpen, setAccessOpen] = useState(false);
   const previousUser = useRef(user);
@@ -813,9 +815,10 @@ function AuthGate() {
   if (!user) return accessOpen ? <AccountAccess /> : <LandingPage onStart={() => setAccessOpen(true)} />;
   if (user.requiresEmailVerification) return <EmailVerification />;
   if (!user.displayName?.trim()) return <ProfileSetup />;
-  return <CollectionsProvider key={user.uid}><Explorer /></CollectionsProvider>;
+  return <CollectionsProvider key={user.uid}><Explorer installApp={installApp} /></CollectionsProvider>;
 }
 
 export default function App() {
-  return <AuthProvider><AuthGate /></AuthProvider>;
+  const installApp = useInstallApp();
+  return <AuthProvider><AuthGate installApp={installApp} /></AuthProvider>;
 }

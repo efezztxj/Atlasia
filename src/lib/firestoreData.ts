@@ -337,8 +337,10 @@ export async function removePlace(id: string, uid: string): Promise<void> {
   if (ownerUid !== uid) throw dataError("place/not-owner", "Bu iz başka bir hesaba ait.");
 
   const photo = snap.data().photo as string | undefined;
-  if (photo) await deletePhoto(photo);
+  // Önce Firestore kaydını sil. Yetki/ağ hatasında pin korunurken fotoğrafın
+  // tek başına kaybolmasını böylece önleriz. Storage temizliği ikincildir.
   await deleteDoc(placeRef);
+  if (photo) await deletePhoto(photo);
 }
 
 /* ─────────────────────────── Postlar ─────────────────────────── */

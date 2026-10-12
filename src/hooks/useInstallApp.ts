@@ -70,3 +70,5 @@ export function useInstallApp() {
 
   return { installed, canPrompt, busy, ios, install, downloadHtml };
 }
+
+export type InstallAppController = ReturnType<typeof useInstallApp>;
