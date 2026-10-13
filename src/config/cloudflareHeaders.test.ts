@@ -96,6 +96,7 @@ describe("Cloudflare Pages security headers", () => {
     const policy = block("/*").get("content-security-policy") ?? "";
     const frameSources = policy.match(/frame-src ([^;]+)/)?.[1] ?? "";
 
+    expect(frameSources).toContain("'self'");
     expect(frameSources).toContain("https://*.firebaseapp.com");
     expect(frameSources).toContain("https://accounts.google.com");
     expect(frameSources).toContain("https://appleid.apple.com");
