@@ -450,7 +450,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
 
   const heroHidden = view.zoom > 3.4;
   const dockVisible = !recordsOpen && !profileOpen && !myPlacesOpen && !storyPlace && !atlasOpen && !settingsOpen && !drawerOpen && !feedOpen;
-  const mobilePanelOpen = panelOpen && dockVisible;
+  const discoveryPanelVisible = dockVisible;
   const mobileExplore = () => { closePanels(); setPanelOpen(true); };
   const openMyPlaces = () => { closePanels(); setMyPlacesOpen(true); };
   const mobileTab = myPlacesOpen ? "İzlerim" : recordsOpen ? "Kaydet" : feedOpen ? "Topluluk" : profileOpen ? "Profil" : "Keşfet";
@@ -608,7 +608,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         </div>
       )}
 
-      {mobilePanelOpen && <BottomPanel
+      {discoveryPanelVisible && <BottomPanel
         open={panelOpen}
         onToggle={() => setPanelOpen((v) => !v)}
         category={category}
