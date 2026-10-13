@@ -5,16 +5,14 @@ const knownPackages = new Set([
   "@firebase/firestore-compat",
   "@grpc/grpc-js",
   "firebase",
-  "maplibre-gl",
 ]);
 
 const knownAdvisories = new Set([
-  "https://github.com/advisories/GHSA-jrc7-96c5-q579",
   "https://github.com/advisories/GHSA-m9gg-hp2v-232j",
   "https://github.com/advisories/GHSA-f596-whhp-79r4",
 ]);
 
-const maximumKnown = { critical: 1, high: 4, moderate: 0, low: 0 };
+const maximumKnown = { critical: 0, high: 4, moderate: 0, low: 0 };
 const result = spawnSync("npm", ["audit", "--omit=dev", "--json"], {
   encoding: "utf8",
   shell: process.platform === "win32",

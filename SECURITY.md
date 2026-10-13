@@ -19,15 +19,15 @@ Bir açık bulursan hassas ayrıntıları herkese açık issue veya pull request
 npm run audit:prod
 ```
 
-13 Ekim 2026 mühendislik tabanı sırasında `npm audit --omit=dev` çıktısı **1 kritik ve 4 yüksek** bulgu bildirmiştir. Bunlar gizlenmemiştir:
+13 Ekim 2026 başlangıç tabanında `npm audit --omit=dev` **1 kritik ve 4 yüksek** bulgu bildirmişti. MapLibre düzeltmesinden sonra production sonucu **0 kritik ve 4 yüksek** oldu:
 
 | Paket | Seviye | Durum ve sonraki işlem |
 | --- | --- | --- |
-| `maplibre-gl@5.24.0` | Kritik — `GHSA-jrc7-96c5-q579` | npm düzeltme olarak davranış ve API doğrulaması gerektiren `6.14.0` major yükseltmesini öneriyor. Harita bileşeni bu görevde kilitli olduğundan yükseltme; marker, kaynak, terrain, olay ve mobil testleriyle ayrı güvenlik görevinde yapılmalıdır. Mevcut marker etiketi kullanıcı metnini `textContent` ile yazar; geliştirme sırasında doğrulanmamış HTML eklenmemelidir. |
-| `firebase@12.19.0` üzerinden `@grpc/grpc-js@1.9.16` | Yüksek — `GHSA-m9gg-hp2v-232j`, `GHSA-f596-whhp-79r4` | Advisories gRPC sunucu davranışını etkiliyor; Atlasia tarayıcı istemcisidir. Buna rağmen etkilenen paket lockfile'da bulunduğu için risk açık kalır. npm'in önerdiği Firebase 9.14 downgrade'i uygulanmamalı; Firebase'in uyumlu düzeltmesi takip edilmelidir. |
+| `maplibre-gl@6.4.1` | `GHSA-jrc7-96c5-q579` kapatıldı | Advisory'nin ilk yamalı sürümüne tam sabitlendi. ESM namespace import kullanılıyor; Vite worker'ı hash'li aynı-origin asset olarak yayımlayıp `setWorkerUrl` ile bağlıyor. v6 WebGL2 gerektirir. Otomatik kapılar geçmeden ve Cloudflare preview harita duman testi yapılmadan yayınlanmamalıdır. |
+| `firebase@12.19.0` üzerinden `@grpc/grpc-js@1.9.16` | Yüksek — `GHSA-m9gg-hp2v-232j`, `GHSA-f596-whhp-79r4` | Advisories gRPC sunucu davranışını etkiliyor; Atlasia tarayıcı istemcisidir. Buna rağmen etkilenen paket lockfile'da bulunduğu için risk açık kalır. Firebase `13.0.0` da `@grpc/grpc-js ~1.9.0` ister; npm'in önerdiği Firebase `9.14.0` downgrade'i uygulanmamalıdır. Güvenli `@grpc/grpc-js@1.13.6` override adayı ayrı committe tüm kapılarla doğrulanmalıdır. |
 
 Tam denetimde ayrıca Vite 7'nin sabitlediği `esbuild@0.27.7` için Windows geliştirme sunucusuna özgü düşük seviye `GHSA-g7r4-m6w7-qqqr` bulunur. Geliştirme sunucusu internete açılmamalı; Vite uyumlu sürüme geçtiğinde esbuild düzeltmesi alınmalıdır.
 
-Firestore Rules testleri için kullanılan `@firebase/rules-unit-testing@5.0.2`, aynı Firebase/`@grpc/grpc-js` advisories zincirini geliştirme bağımlılığı olarak bir kez daha raporlar. Bu nedenle tam bağımlılık ağacı 1 kritik, 5 yüksek ve 1 düşük paket bulgusu gösterirken production denetimi değişmeden 1 kritik ve 4 yüksektir. Test paketi tarayıcı build'ine girmez. Geniş ve ek advisories getiren `firebase-tools` proje bağımlılığı yapılmamıştır; test çalıştırıcısı Google'ın Firestore Emulator 1.22.0 JAR'ını sabit URL'den indirir ve çalıştırmadan önce kayıtlı SHA-256 değerini doğrular.
+Firestore Rules testleri için kullanılan `@firebase/rules-unit-testing@5.0.2`, aynı Firebase/`@grpc/grpc-js` advisories zincirini geliştirme bağımlılığı olarak bir kez daha raporlar. MapLibre düzeltmesinden sonra tam bağımlılık ağacı 5 yüksek ve 1 düşük paket bulgusu, production denetimi ise 4 yüksek bulgu gösterir. Test paketi tarayıcı build'ine girmez. Geniş ve ek advisories getiren `firebase-tools` proje bağımlılığı yapılmamıştır; test çalıştırıcısı Google'ın Firestore Emulator 1.22.0 JAR'ını sabit URL'den indirir ve çalıştırmadan önce kayıtlı SHA-256 değerini doğrular.
 
-Bu kayıt risk kabulü değil, kontrollü devir kaydıdır. İlgili major yükseltmeler doğrulama testleri olmadan otomatik uygulanmamalıdır.
+Ayrıntılı sürüm ve uyumluluk kararı `docs/dependency-security-matrix.md` içindedir. Bu kayıt risk kabulü değil, kontrollü devir kaydıdır; ilgili yükseltmeler doğrulama testleri olmadan otomatik uygulanmamalıdır.
