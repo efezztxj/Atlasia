@@ -80,7 +80,7 @@ describe("Cloudflare Pages security headers", () => {
       "wss://*.firebaseio.com",
       "https://www.google.com/recaptcha/",
       "https://server.arcgisonline.com",
-      "https://demotiles.maplibre.org",
+      "https://tiles.openfreemap.org",
       "https://photon.komoot.io",
       "https://api.open-meteo.com",
       "https://commons.wikimedia.org",
@@ -89,6 +89,8 @@ describe("Cloudflare Pages security headers", () => {
     }
 
     expect(policy).not.toContain("'unsafe-eval'");
+    expect(policy).not.toContain("cartocdn.com");
+    expect(policy).not.toContain("demotiles.maplibre.org");
     expect(policy).not.toMatch(/(?:default|connect|frame|script)-src[^;]*\s\*/);
   });
 

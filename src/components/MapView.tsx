@@ -2,11 +2,12 @@ import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "reac
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import maplibreWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
-
-maplibregl.setWorkerUrl(maplibreWorkerUrl);
+import openFreeMapDarkStyle from "../data/openFreeMapDarkStyle.json";
 import { KKTC_GEOMETRY, KKTC_NAME } from "../data/regions";
 import type { PlaceViewport } from "../lib/firestoreData";
 import type { Place, ViewState } from "../types";
+
+maplibregl.setWorkerUrl(maplibreWorkerUrl);
 
 export type BaseMapStyle = "satellite" | "dark" | "street" | "topographic";
 
@@ -46,6 +47,77 @@ const SPIN_DEG_PER_SEC = 4;
 const SPIN_MAX_ZOOM = 3.2;
 
 const ESRI = "https://server.arcgisonline.com/ArcGIS/rest/services";
+// Snapshot of https://tiles.openfreemap.org/styles/dark fetched on 2026-10-14.
+// OpenFreeMap's public instance requires no account or API key; attribution is mandatory.
+const OPEN_FREE_MAP_SOURCE_PREFIX = "openfreemap-";
+const OPEN_FREE_MAP_LAYER_PREFIX = "openfreemap-dark-";
+const OPEN_FREE_MAP_ATTRIBUTION = "OpenFreeMap © OpenMapTiles · OpenStreetMap contributors";
+
+const openFreeMapLayerIds = openFreeMapDarkStyle.layers.map((layer) => `${OPEN_FREE_MAP_LAYER_PREFIX}${layer.id}`);
+const openFreeMapSymbolLayerIds = new Set(
+  openFreeMapDarkStyle.layers
+    .filter((layer) => layer.type === "symbol")
+    .map((layer) => `${OPEN_FREE_MAP_LAYER_PREFIX}${layer.id}`),
+);
+
+function openFreeMapSources(): Record<string, maplibregl.SourceSpecification> {
+  return Object.fromEntries(
+    Object.entries(openFreeMapDarkStyle.sources).map(([id, rawSource]) => {
+      const source = { ...rawSource } as Record<string, unknown>;
+      if (id === "openmaptiles") source.attribution = OPEN_FREE_MAP_ATTRIBUTION;
+      return [`${OPEN_FREE_MAP_SOURCE_PREFIX}${id}`, source as unknown as maplibregl.SourceSpecification];
+    }),
+  );
+}
+
+function openFreeMapLayerVisible(layerId: string, labels: boolean, baseMap: BaseMapStyle) {
+  if (openFreeMapSymbolLayerIds.has(layerId)) {
+    return labels && (baseMap === "dark" || baseMap === "satellite");
+  }
+  return baseMap === "dark";
+}
+
+function openFreeMapLayers(labels: boolean, baseMap: BaseMapStyle): maplibregl.LayerSpecification[] {
+  return openFreeMapDarkStyle.layers.map((rawLayer) => {
+    const raw = rawLayer as Record<string, unknown>;
+    const id = `${OPEN_FREE_MAP_LAYER_PREFIX}${rawLayer.id}`;
+    const layer: Record<string, unknown> = {
+      ...raw,
+      id,
+      layout: {
+        ...((raw.layout as Record<string, unknown> | undefined) ?? {}),
+        visibility: openFreeMapLayerVisible(id, labels, baseMap) ? "visible" : "none",
+      },
+    };
+    if (typeof raw.source === "string") layer.source = `${OPEN_FREE_MAP_SOURCE_PREFIX}${raw.source}`;
+
+    // OpenFreeMap'in koyu etiketlerini uydu görünümünde de okunaklı tut.
+    // Yerel + Latin adları üst üste yazmak yerine önce Türkçe adı seçmek,
+    // küçük küre görünümündeki etiket kalabalığını da azaltır.
+    if (rawLayer.type === "symbol" && !rawLayer.id.includes("oneway")) {
+      if (rawLayer.id.startsWith("place_") || rawLayer.id === "water_name" || rawLayer.id === "highway_name_other") {
+        layer.layout = {
+          ...(layer.layout as Record<string, unknown>),
+          "text-field": [
+            "coalesce",
+            ["get", "name:tr"],
+            ["get", "name:latin"],
+            ["get", "name_en"],
+            ["get", "name"],
+          ],
+        };
+      }
+      layer.paint = {
+        ...((raw.paint as Record<string, unknown> | undefined) ?? {}),
+        "text-color": rawLayer.id === "water_name" ? "#a9dce5" : "#d6e7e1",
+        "text-halo-color": "rgba(1, 15, 12, 0.9)",
+        "text-halo-width": rawLayer.id.startsWith("place_country") ? 1.6 : 1.25,
+        "text-halo-blur": 0.35,
+      };
+    }
+    return layer as unknown as maplibregl.LayerSpecification;
+  });
+}
 
 const PIN_COLORS = { guide: "#eab54f", user: "#5be0a6" } as const;
 
@@ -58,7 +130,8 @@ function buildStyle(labels: boolean, terrainEnabled: boolean, baseMap: BaseMapSt
   return {
     version: 8,
     projection: { type: "globe" },
-    glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+    glyphs: openFreeMapDarkStyle.glyphs,
+    sprite: openFreeMapDarkStyle.sprite,
     sky: {
       "sky-color": "#1e7d62",
       "sky-horizon-blend": 0.55,
@@ -76,13 +149,6 @@ function buildStyle(labels: boolean, terrainEnabled: boolean, baseMap: BaseMapSt
         maxzoom: 18,
         attribution: "Esri, Maxar, Earthstar Geographics, USGS",
       },
-      dark: {
-        type: "raster",
-        tiles: ["https://a.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png"],
-        tileSize: 256,
-        maxzoom: 20,
-        attribution: "CARTO, OpenStreetMap contributors",
-      },
       street: {
         type: "raster",
         tiles: [`${ESRI}/World_Street_Map/MapServer/tile/{z}/{y}/{x}`],
@@ -97,12 +163,7 @@ function buildStyle(labels: boolean, terrainEnabled: boolean, baseMap: BaseMapSt
         maxzoom: 19,
         attribution: "Esri",
       },
-      labels: {
-        type: "raster",
-        tiles: [`${ESRI}/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}`],
-        tileSize: 256,
-        maxzoom: 18,
-      },
+      ...openFreeMapSources(),
       terrain: {
         type: "raster-dem",
         tiles: ["https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"],
@@ -142,13 +203,6 @@ function buildStyle(labels: boolean, terrainEnabled: boolean, baseMap: BaseMapSt
         },
       },
       {
-        id: "dark",
-        type: "raster",
-        source: "dark",
-        layout: { visibility: baseMap === "dark" ? "visible" : "none" },
-        paint: { "raster-fade-duration": 250, "raster-opacity": 0.96 },
-      },
-      {
         id: "street",
         type: "raster",
         source: "street",
@@ -175,16 +229,7 @@ function buildStyle(labels: boolean, terrainEnabled: boolean, baseMap: BaseMapSt
           "hillshade-accent-color": "#0a7b60",
         },
       },
-      {
-        id: "labels",
-        type: "raster",
-        source: "labels",
-        layout: { visibility: labels && (baseMap === "satellite" || baseMap === "dark") ? "visible" : "none" },
-        paint: {
-          "raster-opacity": ["interpolate", ["linear"], ["zoom"], 1.6, 0, 3.2, 0.95],
-          "raster-fade-duration": 250,
-        },
-      },
+      ...openFreeMapLayers(labels, baseMap),
       {
         id: "kktc-outline",
         type: "line",
@@ -562,22 +607,22 @@ export default function MapView({
     };
   }, []);
 
-  // Altlık haritayı kaynakları yeniden yüklemeden değiştir; pin ve rota katmanları korunur.
+  // Altlık ve etiketleri kaynakları yeniden yüklemeden değiştir; pin ve rota
+  // katmanları korunur. Uydu üstündeki etiketler de anahtarsız OpenFreeMap
+  // vektörlerinden gelir; böylece raster servis filigranı oluşmaz.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
-    for (const layer of ["satellite", "dark", "street", "topographic"] as const) {
+    for (const layer of ["satellite", "street", "topographic"] as const) {
       map.setLayoutProperty(layer, "visibility", layer === baseMap ? "visible" : "none");
     }
-  }, [baseMap, ready]);
-
-  // Etiket katmanı aç/kapat. Sokak ve topoğrafik altlıklarda temel etiketler
-  // görüntünün parçasıdır; ayrı Esri etiketi yalnızca uydu/karanlıkta kullanılır.
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !ready) return;
-    const overlayLabels = showLabels && (baseMap === "satellite" || baseMap === "dark");
-    map.setLayoutProperty("labels", "visibility", overlayLabels ? "visible" : "none");
+    for (const layerId of openFreeMapLayerIds) {
+      map.setLayoutProperty(
+        layerId,
+        "visibility",
+        openFreeMapLayerVisible(layerId, showLabels, baseMap) ? "visible" : "none",
+      );
+    }
     for (const layer of ["kktc-outline", "kktc-label"]) {
       map.setLayoutProperty(layer, "visibility", showLabels ? "visible" : "none");
     }

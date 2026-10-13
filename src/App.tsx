@@ -576,7 +576,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         )}
       </div>
       <p role="contentinfo" className="pointer-events-none absolute inset-x-0 bottom-[2px] z-20 hidden px-2 text-center text-[11px] leading-none text-mint/45 md:block">
-        Harita © Esri, CARTO ve OpenStreetMap katkıcıları · Yükseklik verisi: AWS Terrain Tiles
+        Harita © Esri, OpenFreeMap, OpenMapTiles ve OpenStreetMap katkıcıları · Yükseklik verisi: AWS Terrain Tiles
       </p>
 
       {/* Ekleme modu bandı */}
