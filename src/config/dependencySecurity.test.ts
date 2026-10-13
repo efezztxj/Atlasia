@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 interface PackageManifest {
   dependencies?: Record<string, string>;
+  overrides?: Record<string, string>;
   engines?: Record<string, string>;
 }
 
@@ -34,5 +35,12 @@ describe("üretim bağımlılığı güvenlik sabitlemeleri", () => {
     expect(manifest.engines?.node).toBe("^22.13.0 || >=24.0.0");
     expect(workflow).toContain("name: Use Node.js 22");
     expect(workflow).toMatch(/node-version:\s*22/);
+  });
+
+  it("Firebase'in dar gRPC aralığını ilk güvenli 1.x sürümüne override eder", () => {
+    expect(manifest.dependencies?.firebase).toBe("^12.19.0");
+    expect(manifest.overrides?.["@grpc/grpc-js"]).toBe("1.13.6");
+    expect(lock.packages?.["node_modules/@grpc/grpc-js"]?.version).toBe("1.13.6");
+    expect(lock.packages?.["node_modules/@firebase/firestore/node_modules/@grpc/grpc-js"]).toBeUndefined();
   });
 });
