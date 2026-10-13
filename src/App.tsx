@@ -29,6 +29,7 @@ import { useFirestoreAtlasData } from "./hooks/useFirestoreAtlasData";
 import { useTheme } from "./hooks/useTheme";
 import { useInstallApp, type InstallAppController } from "./hooks/useInstallApp";
 import { isCloudReady, firebaseConfigSummary } from "./lib/firebase";
+import type { PlaceViewport } from "./lib/firestoreData";
 import type { AtlasRoute, CategoryId, Place, ViewState } from "./types";
 import { haversineKm, reverseName, type SearchResult } from "./utils/geo";
 import { storageGet, storageSet } from "./utils/storage";
@@ -53,9 +54,15 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   const { user } = useAuth();
   const { theme, setTheme } = useTheme();
 
+  const [mapViewport, setMapViewport] = useState<PlaceViewport | null>(null);
+
   // Yerel veri yalnız yapılandırmasız mod ve ilk canlı liste görünümü için yedektir.
   const local = useAtlasData(user!.uid);
-  const remote = useFirestoreAtlasData({ uid: user!.uid, enabled: isCloudReady });
+  const remote = useFirestoreAtlasData({
+    uid: user!.uid,
+    enabled: isCloudReady,
+    viewport: mapViewport,
+  });
   // Bulut yapılandırılmışsa yazma/silme işlemleri her zaman Firestore'a gider.
   // İlk canlı snapshot gelene kadar yalnız görünür liste için yerel içerik kullanılır;
   // böylece açılış anındaki hızlı bir işlem cihazda mahsur kalmaz.
@@ -66,7 +73,17 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         posts: remote.ready ? remote.posts : local.posts,
         stories: remote.ready ? remote.stories : local.stories,
       }
-    : local;
+    : {
+        ...local,
+        ready: true,
+        error: null,
+        hasMorePosts: false,
+        hasMoreStories: false,
+        loadingMorePosts: false,
+        loadingMoreStories: false,
+        loadMorePosts: async () => {},
+        loadMoreStories: async () => {},
+      };
 
   // Kullanıcıya bulut bağlantısı durumunu bildir
   useEffect(() => {
@@ -457,6 +474,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         spin={spin && !reducedMotion && !addMode && !draft}
         onUserInteract={() => setSpin(false)}
         onViewChange={setView}
+        onViewportChange={setMapViewport}
       />
       </main>
 
@@ -655,6 +673,12 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         onRequestPrecise={handleLocate}
         posts={cloud.posts}
         stories={cloud.stories}
+        hasMorePosts={cloud.hasMorePosts}
+        hasMoreStories={cloud.hasMoreStories}
+        loadingMorePosts={cloud.loadingMorePosts}
+        loadingMoreStories={cloud.loadingMoreStories}
+        onLoadMorePosts={cloud.loadMorePosts}
+        onLoadMoreStories={cloud.loadMoreStories}
         clientId={cloud.clientId}
         currentUid={user!.uid}
         uploadPhoto={cloud.uploadPhoto}

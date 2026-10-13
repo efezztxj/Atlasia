@@ -43,6 +43,12 @@ interface Props {
   /* Paylaşımlı veri */
   posts: FeedPost[];
   stories: Story[];
+  hasMorePosts: boolean;
+  hasMoreStories: boolean;
+  loadingMorePosts: boolean;
+  loadingMoreStories: boolean;
+  onLoadMorePosts: () => Promise<void>;
+  onLoadMoreStories: () => Promise<void>;
   clientId: string;
   currentUid: string;
   uploadPhoto: (file: File, kind: UploadPhotoKind) => Promise<string>;
@@ -65,6 +71,12 @@ export default function SocialPanel({
   onRequestPrecise,
   posts,
   stories: allStories,
+  hasMorePosts,
+  hasMoreStories,
+  loadingMorePosts,
+  loadingMoreStories,
+  onLoadMorePosts,
+  onLoadMoreStories,
   clientId,
   currentUid,
   uploadPhoto,
@@ -331,6 +343,21 @@ export default function SocialPanel({
               </button>
             );
           })}
+
+          {hasMoreStories && (
+            <button
+              type="button"
+              onClick={() => void onLoadMoreStories()}
+              disabled={loadingMoreStories}
+              className="flex w-[58px] shrink-0 flex-col items-center gap-1.5 text-mint/65 disabled:opacity-45"
+              aria-label="Daha eski story'leri yükle"
+            >
+              <span className="grid size-[52px] place-items-center rounded-full border border-white/15 bg-white/[0.04]">
+                {loadingMoreStories ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
+              </span>
+              <span className="w-full truncate text-center text-[10.5px]">Daha eski</span>
+            </button>
+          )}
         </div>
 
         {/* Sekmeler */}
@@ -522,6 +549,18 @@ export default function SocialPanel({
               </article>
             );
           })}
+
+          {hasMorePosts && (
+            <button
+              type="button"
+              onClick={() => void onLoadMorePosts()}
+              disabled={loadingMorePosts}
+              className="mx-auto my-3 flex min-h-11 items-center justify-center gap-2 rounded-full border border-white/15 px-4 text-[12px] font-semibold text-mint/75 transition hover:border-leaf/45 hover:text-white disabled:opacity-45"
+            >
+              {loadingMorePosts && <Loader2 className="size-3.5 animate-spin" />}
+              Daha eski gönderileri yükle
+            </button>
+          )}
         </div>
 
         {/* Yazma alanı */}

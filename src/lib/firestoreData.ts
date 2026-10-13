@@ -15,6 +15,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  documentId,
   getDoc,
   getDocs,
   limit,
@@ -23,12 +24,16 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  startAfter,
   Timestamp,
   updateDoc,
   where,
   writeBatch,
   type DocumentData,
   type Firestore,
+  type Query,
+  type QueryDocumentSnapshot,
+  type QuerySnapshot,
 } from "firebase/firestore";
 import { db, firebaseConfigured } from "./firebase";
 import { compressImageWithinLimit } from "../utils/image";
@@ -40,15 +45,122 @@ const COL_STORIES = "stories";
 const COL_USERS = "users";
 
 export const FIRESTORE_LIMITS = {
-  places: 250,
-  posts: 100,
-  stories: 100,
   likesPerPost: 500,
   repliesPerPost: 100,
 } as const;
 
+/**
+ * Bunlar toplam içerik tavanları değil, tek bir Firestore isteğinin üst sınırlarıdır.
+ * Daha eski kayıtlar cursor ile; keşif pinleri ise dar viewport ve sahip sorgularıyla
+ * ayrı, sınırlı sayfalarda okunur.
+ */
+export const FIRESTORE_QUERY_LIMITS = {
+  placeOverview: 40,
+  placeViewportPage: 50,
+  ownedPlacesPage: 50,
+  postsPage: 25,
+  storiesPage: 25,
+} as const;
+
 export const STORY_TTL_MS = 24 * 60 * 60 * 1000;
 const STORY_EXPIRY_REFRESH_MS = 60 * 1000;
+export const PLACE_VIEWPORT_MIN_ZOOM = 5;
+const PLACE_VIEWPORT_MAX_LAT_SPAN = 50;
+const PLACE_VIEWPORT_MAX_LNG_SPAN = 100;
+
+export interface MapBounds {
+  west: number;
+  south: number;
+  east: number;
+  north: number;
+}
+
+export interface PlaceViewport {
+  zoom: number;
+  bounds: MapBounds;
+}
+
+export type FirestoreCursor = QueryDocumentSnapshot<DocumentData>;
+
+export interface FirestorePage<T> {
+  items: T[];
+  cursor: FirestoreCursor | null;
+  hasMore: boolean;
+}
+
+export interface StoryPage extends FirestorePage<Story> {
+  cutoffMs: number;
+}
+
+type LongitudeWindow = MapBounds;
+
+const emptyPage = <T>(): FirestorePage<T> => ({ items: [], cursor: null, hasMore: false });
+
+function finiteBounds(bounds: MapBounds): boolean {
+  return Object.values(bounds).every(Number.isFinite);
+}
+
+function wrapLongitude(value: number): number {
+  return ((((value + 180) % 360) + 360) % 360) - 180;
+}
+
+/**
+ * Firestore'a yalnız dar ve sonlu harita pencereleri gönderilir. Tarih çizgisini
+ * geçen bir pencere iki ayrı boylam aralığına ayrılır. Geniş/düşük zoom görünümü
+ * null döndürür ve istemci küçük overview sayfasına geri düşer.
+ */
+export function viewportQueryWindows(viewport: PlaceViewport): LongitudeWindow[] | null {
+  const { bounds, zoom } = viewport;
+  if (!finiteBounds(bounds) || !Number.isFinite(zoom) || zoom < PLACE_VIEWPORT_MIN_ZOOM) return null;
+
+  const south = Math.max(-90, Math.min(90, bounds.south));
+  const north = Math.max(-90, Math.min(90, bounds.north));
+  const rawLngSpan = bounds.east - bounds.west;
+  if (south >= north || rawLngSpan <= 0 || rawLngSpan > PLACE_VIEWPORT_MAX_LNG_SPAN) return null;
+  if (north - south > PLACE_VIEWPORT_MAX_LAT_SPAN) return null;
+
+  const west = wrapLongitude(bounds.west);
+  const east = wrapLongitude(bounds.east);
+  if (west <= east) return [{ west, south, east, north }];
+  return [
+    { west, south, east: 180, north },
+    { west: -180, south, east, north },
+  ];
+}
+
+export function mergeRecordsById<T extends { id: string }>(...groups: T[][]): T[] {
+  const merged = new Map<string, T>();
+  groups.flat().forEach((item) => merged.set(item.id, item));
+  return [...merged.values()];
+}
+
+/** Canlı ilk sayfa kayınca daha önce yüklenmiş sınır kaydını kaybetmez. */
+export function preserveDisplacedPageItems<T extends { id: string }>(
+  previousHead: T[],
+  nextHead: T[],
+  loadedTail: T[],
+): T[] {
+  if (loadedTail.length === 0) return loadedTail;
+  const nextIds = new Set(nextHead.map((item) => item.id));
+  return mergeRecordsById(
+    loadedTail,
+    previousHead.filter((item) => !nextIds.has(item.id)),
+  );
+}
+
+function pageFromSnapshot<T>(
+  snap: QuerySnapshot<DocumentData>,
+  pageSize: number,
+  normalize: (id: string, raw: DocumentData) => T,
+): FirestorePage<T> {
+  return {
+    items: snap.docs.map((item) => normalize(item.id, item.data())),
+    cursor: snap.docs.at(-1) ?? null,
+    // Tam dolu son sayfada bir sonraki istek boş gelebilir; bu güvenli bir
+    // false-positive'dir ve toplam görünürlük için sert bir tavan oluşturmaz.
+    hasMore: snap.size === pageSize,
+  };
+}
 
 const newId = (prefix: string) =>
   `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
@@ -284,33 +396,156 @@ export async function unfollowUser(me: string, target: string): Promise<void> {
 
 /* ─────────────────────────── Pinler (places) ─────────────────────────── */
 
-export async function listPlaces(_uid?: string): Promise<Place[]> {
-  if (!db) return [];
-  // uid parametresi ileride özel pinler için kullanılacak (şu an tüm pinler herkese açık)
-  const q = query(
-    collection(db, COL_PLACES),
-    orderBy("createdAt", "desc"),
-    limit(FIRESTORE_LIMITS.places),
+/**
+ * İlk sayfayı canlı tutar, kalan kayıtları cursor ile küçük sayfalarda tamamlar.
+ * Her yeni ilk-sayfa snapshot'ı eski arka plan okumasını geçersiz kılar.
+ */
+function subscribeFullyPaged<T extends { id: string }>(
+  firstQuery: Query<DocumentData>,
+  nextQuery: (cursor: FirestoreCursor) => Query<DocumentData>,
+  pageSize: number,
+  normalize: (id: string, raw: DocumentData) => T,
+  onChange: (items: T[]) => void,
+  onError?: (error: Error) => void,
+): () => void {
+  let generation = 0;
+  let closed = false;
+
+  const unsubscribe = onSnapshot(
+    firstQuery,
+    (firstSnapshot) => {
+      const currentGeneration = ++generation;
+      void (async () => {
+        try {
+          let snapshot = firstSnapshot;
+          let items = snapshot.docs.map((item) => normalize(item.id, item.data()));
+          let previousCursorPath = "";
+
+          while (snapshot.size === pageSize) {
+            const cursor = snapshot.docs.at(-1);
+            if (!cursor || cursor.ref.path === previousCursorPath) {
+              throw dataError("data/cursor-stalled", "Firestore sayfalama imleci ilerlemedi.");
+            }
+            previousCursorPath = cursor.ref.path;
+            snapshot = await getDocs(nextQuery(cursor));
+            items = mergeRecordsById(items, snapshot.docs.map((item) => normalize(item.id, item.data())));
+          }
+
+          if (!closed && generation === currentGeneration) onChange(items);
+        } catch (failure) {
+          if (!closed && generation === currentGeneration) {
+            onError?.(failure instanceof Error ? failure : new Error("Firestore sorgusu tamamlanamadı."));
+          }
+        }
+      })();
+    },
+    (failure) => onError?.(failure),
   );
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => normalizePlace(d.id, d.data()));
+
+  return () => {
+    closed = true;
+    generation += 1;
+    unsubscribe();
+  };
 }
 
-export function subscribePlaces(
+function overviewPlacesQuery(store: Firestore, cursor?: FirestoreCursor) {
+  return query(
+    collection(store, COL_PLACES),
+    orderBy("createdAt", "desc"),
+    orderBy(documentId(), "desc"),
+    ...(cursor ? [startAfter(cursor)] : []),
+    limit(FIRESTORE_QUERY_LIMITS.placeOverview),
+  );
+}
+
+export function subscribePlaceOverview(
   onChange: (places: Place[]) => void,
-  onError?: (e: Error) => void,
+  onError?: (error: Error) => void,
 ): () => void {
   if (!db) return () => {};
-  const q = query(
-    collection(db, COL_PLACES),
-    orderBy("createdAt", "desc"),
-    limit(FIRESTORE_LIMITS.places),
-  );
+  // Dünya görünümü kasıtlı olarak yalnız küçük bir canlı örnek gösterir. Bu bir
+  // toplam görünürlük tavanı değildir: yakınlaşınca viewport sorgusu devralır.
   return onSnapshot(
-    q,
-    (snap) => onChange(snap.docs.map((d) => normalizePlace(d.id, d.data()))),
+    overviewPlacesQuery(db),
+    (snap) => onChange(snap.docs.map((item) => normalizePlace(item.id, item.data()))),
     onError,
   );
+}
+
+function ownedPlacesQuery(store: Firestore, uid: string, cursor?: FirestoreCursor) {
+  return query(
+    collection(store, COL_PLACES),
+    where("authorUid", "==", uid),
+    orderBy("createdAt", "desc"),
+    orderBy(documentId(), "desc"),
+    ...(cursor ? [startAfter(cursor)] : []),
+    limit(FIRESTORE_QUERY_LIMITS.ownedPlacesPage),
+  );
+}
+
+export function subscribeOwnedPlaces(
+  uid: string,
+  onChange: (places: Place[]) => void,
+  onError?: (error: Error) => void,
+): () => void {
+  if (!db || !uid.trim()) return () => {};
+  const store = db;
+  return subscribeFullyPaged(
+    ownedPlacesQuery(store, uid),
+    (cursor) => ownedPlacesQuery(store, uid, cursor),
+    FIRESTORE_QUERY_LIMITS.ownedPlacesPage,
+    normalizePlace,
+    onChange,
+    onError,
+  );
+}
+
+function viewportPlacesQuery(store: Firestore, bounds: LongitudeWindow, cursor?: FirestoreCursor) {
+  return query(
+    collection(store, COL_PLACES),
+    where("lat", ">=", bounds.south),
+    where("lat", "<=", bounds.north),
+    where("lng", ">=", bounds.west),
+    where("lng", "<=", bounds.east),
+    orderBy("lat", "asc"),
+    orderBy("lng", "asc"),
+    orderBy(documentId(), "asc"),
+    ...(cursor ? [startAfter(cursor)] : []),
+    limit(FIRESTORE_QUERY_LIMITS.placeViewportPage),
+  );
+}
+
+export function subscribePlacesInViewport(
+  viewport: PlaceViewport,
+  onChange: (places: Place[]) => void,
+  onError?: (error: Error) => void,
+): () => void {
+  if (!db) return () => {};
+  const store = db;
+  const windows = viewportQueryWindows(viewport);
+  if (!windows) {
+    onError?.(dataError("places/viewport-too-wide", "Harita penceresi bölgesel sorgu için fazla geniş."));
+    return () => {};
+  }
+
+  const results = windows.map(() => [] as Place[]);
+  const ready = windows.map(() => false);
+  const subscriptions = windows.map((bounds, index) =>
+    subscribeFullyPaged(
+      viewportPlacesQuery(store, bounds),
+      (cursor) => viewportPlacesQuery(store, bounds, cursor),
+      FIRESTORE_QUERY_LIMITS.placeViewportPage,
+      normalizePlace,
+      (places) => {
+        results[index] = places;
+        ready[index] = true;
+        if (ready.every(Boolean)) onChange(mergeRecordsById(...results));
+      },
+      onError,
+    ),
+  );
+  return () => subscriptions.forEach((unsubscribe) => unsubscribe());
 }
 
 export interface NewPlaceInput {
@@ -381,19 +616,30 @@ export async function removePlace(id: string, uid: string): Promise<void> {
 
 /* ─────────────────────────── Postlar ─────────────────────────── */
 
+function postsPageQuery(store: Firestore, cursor?: FirestoreCursor) {
+  return query(
+    collection(store, COL_POSTS),
+    orderBy("createdAt", "desc"),
+    orderBy(documentId(), "desc"),
+    ...(cursor ? [startAfter(cursor)] : []),
+    limit(FIRESTORE_QUERY_LIMITS.postsPage),
+  );
+}
+
+export async function listPostsPage(cursor?: FirestoreCursor): Promise<FirestorePage<FeedPost>> {
+  if (!db) return emptyPage();
+  const snap = await getDocs(postsPageQuery(db, cursor));
+  return pageFromSnapshot(snap, FIRESTORE_QUERY_LIMITS.postsPage, normalizePost);
+}
+
 export function subscribePosts(
-  onChange: (posts: FeedPost[]) => void,
-  onError?: (e: Error) => void,
+  onChange: (page: FirestorePage<FeedPost>) => void,
+  onError?: (error: Error) => void,
 ): () => void {
   if (!db) return () => {};
-  const q = query(
-    collection(db, COL_POSTS),
-    orderBy("createdAt", "desc"),
-    limit(FIRESTORE_LIMITS.posts),
-  );
   return onSnapshot(
-    q,
-    (snap) => onChange(snap.docs.map((d) => normalizePost(d.id, d.data()))),
+    postsPageQuery(db),
+    (snap) => onChange(pageFromSnapshot(snap, FIRESTORE_QUERY_LIMITS.postsPage, normalizePost)),
     onError,
   );
 }
@@ -523,25 +769,48 @@ export async function addReply(
 
 /* ─────────────────────────── Story'ler ─────────────────────────── */
 
+function storiesPageQuery(store: Firestore, cutoffMs: number, cursor?: FirestoreCursor) {
+  return query(
+    collection(store, COL_STORIES),
+    where("createdAt", ">=", Timestamp.fromMillis(cutoffMs)),
+    orderBy("createdAt", "desc"),
+    orderBy(documentId(), "desc"),
+    ...(cursor ? [startAfter(cursor)] : []),
+    limit(FIRESTORE_QUERY_LIMITS.storiesPage),
+  );
+}
+
+export async function listStoriesPage(
+  cursor: FirestoreCursor,
+  cutoffMs: number,
+): Promise<StoryPage> {
+  if (!db) return { ...emptyPage<Story>(), cutoffMs };
+  const snap = await getDocs(storiesPageQuery(db, cutoffMs, cursor));
+  return {
+    ...pageFromSnapshot(snap, FIRESTORE_QUERY_LIMITS.storiesPage, normalizeStory),
+    cutoffMs,
+  };
+}
+
 export function subscribeStories(
-  onChange: (stories: Story[]) => void,
-  onError?: (e: Error) => void,
+  onChange: (page: StoryPage) => void,
+  onError?: (error: Error) => void,
 ): () => void {
   if (!db) return () => {};
 
-  const initialCutoff = Timestamp.fromMillis(Date.now() - STORY_TTL_MS);
-  const q = query(
-    collection(db, COL_STORIES),
-    where("createdAt", ">=", initialCutoff),
-    orderBy("createdAt", "desc"),
-    limit(FIRESTORE_LIMITS.stories),
-  );
-  let latestStories: Story[] = [];
-  const emitActiveStories = () => onChange(activeStories(latestStories));
+  const cutoffMs = Date.now() - STORY_TTL_MS;
+  let latestPage: StoryPage = { ...emptyPage<Story>(), cutoffMs };
+  const emitActiveStories = () => onChange({
+    ...latestPage,
+    items: activeStories(latestPage.items),
+  });
   const unsubscribe = onSnapshot(
-    q,
+    storiesPageQuery(db, cutoffMs),
     (snap) => {
-      latestStories = snap.docs.map((d) => normalizeStory(d.id, d.data()));
+      latestPage = {
+        ...pageFromSnapshot(snap, FIRESTORE_QUERY_LIMITS.storiesPage, normalizeStory),
+        cutoffMs,
+      };
       emitActiveStories();
     },
     onError,

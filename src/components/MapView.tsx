@@ -2,6 +2,7 @@ import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "reac
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { KKTC_GEOMETRY, KKTC_NAME } from "../data/regions";
+import type { PlaceViewport } from "../lib/firestoreData";
 import type { Place, ViewState } from "../types";
 
 export type BaseMapStyle = "satellite" | "dark" | "street" | "topographic";
@@ -34,6 +35,7 @@ interface Props {
   spin: boolean;
   onUserInteract: () => void;
   onViewChange: (v: ViewState) => void;
+  onViewportChange?: (viewport: PlaceViewport) => void;
 }
 
 const HOME_CENTER: [number, number] = [30, 30];
@@ -285,6 +287,7 @@ export default function MapView({
   spin,
   onUserInteract,
   onViewChange,
+  onViewportChange,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -294,8 +297,8 @@ export default function MapView({
   const [ready, setReady] = useState(false);
 
   // En güncel değerleri harita olaylarında kullanmak için
-  const live = useRef({ onSelect, onMapClick, onUserInteract, onViewChange, addMode, spin });
-  live.current = { onSelect, onMapClick, onUserInteract, onViewChange, addMode, spin };
+  const live = useRef({ onSelect, onMapClick, onUserInteract, onViewChange, onViewportChange, addMode, spin });
+  live.current = { onSelect, onMapClick, onUserInteract, onViewChange, onViewportChange, addMode, spin };
   const internalMove = useRef(false);
 
   useImperativeHandle(ref, () => ({
@@ -488,7 +491,18 @@ export default function MapView({
 
     const report = () => {
       const c = map.getCenter();
-      live.current.onViewChange({ zoom: map.getZoom(), lng: c.lng, lat: c.lat });
+      const zoom = map.getZoom();
+      live.current.onViewChange({ zoom, lng: c.lng, lat: c.lat });
+      const bounds = map.getBounds();
+      live.current.onViewportChange?.({
+        zoom,
+        bounds: {
+          west: bounds.getWest(),
+          south: bounds.getSouth(),
+          east: bounds.getEast(),
+          north: bounds.getNorth(),
+        },
+      });
     };
     map.on("moveend", () => {
       if (internalMove.current) return;

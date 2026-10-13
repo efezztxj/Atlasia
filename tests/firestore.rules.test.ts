@@ -9,15 +9,19 @@ import {
   collection,
   deleteDoc,
   doc,
+  documentId,
   getDoc,
   getDocs,
   limit,
+  orderBy,
   query,
   serverTimestamp,
   setDoc,
   setLogLevel,
+  startAfter,
   Timestamp,
   updateDoc,
+  where,
 } from "firebase/firestore";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -126,8 +130,89 @@ describe("Firestore güvenlik kuralları", () => {
 
     await assertSucceeds(getDoc(doc(guestDb, "places/place-1")));
     await assertFails(getDocs(collection(guestDb, "places")));
-    await assertSucceeds(getDocs(query(collection(guestDb, "places"), limit(250))));
-    await assertFails(getDocs(query(collection(guestDb, "places"), limit(251))));
+    await assertSucceeds(getDocs(query(collection(guestDb, "places"), limit(50))));
+    await assertFails(getDocs(query(collection(guestDb, "places"), limit(51))));
+  });
+
+  it("viewport ve authorUid sorgularını küçük sayfalarda kabul eder", async () => {
+    await seed("places/owner-in-view", {
+      ...validPlace("owner"),
+      lat: 38.43,
+      lng: 27.13,
+      createdAt: Timestamp.fromMillis(3_000),
+    });
+    await seed("places/other-in-view", {
+      ...validPlace("other"),
+      lat: 38.5,
+      lng: 27.2,
+      createdAt: Timestamp.fromMillis(2_000),
+    });
+    await seed("places/owner-outside", {
+      ...validPlace("owner"),
+      lat: 41.01,
+      lng: 29.0,
+      createdAt: Timestamp.fromMillis(1_000),
+    });
+    const guestDb = testEnv.unauthenticatedContext().firestore();
+
+    const viewport = query(
+      collection(guestDb, "places"),
+      where("lat", ">=", 38),
+      where("lat", "<=", 39),
+      where("lng", ">=", 26),
+      where("lng", "<=", 28),
+      orderBy("lat", "asc"),
+      orderBy("lng", "asc"),
+      orderBy(documentId(), "asc"),
+      limit(50),
+    );
+    const viewportSnapshot = await assertSucceeds(getDocs(viewport));
+    expect(viewportSnapshot.docs.map((item) => item.id)).toEqual([
+      "owner-in-view",
+      "other-in-view",
+    ]);
+
+    const owned = query(
+      collection(guestDb, "places"),
+      where("authorUid", "==", "owner"),
+      orderBy("createdAt", "desc"),
+      orderBy(documentId(), "desc"),
+      limit(50),
+    );
+    const ownedSnapshot = await assertSucceeds(getDocs(owned));
+    expect(ownedSnapshot.docs.map((item) => item.id)).toEqual([
+      "owner-in-view",
+      "owner-outside",
+    ]);
+  });
+
+  it("cursor sonraki sosyal sayfayı açar ama aşırı büyük isteği reddeder", async () => {
+    for (let index = 0; index < 3; index += 1) {
+      await seed(`posts/post-${index}`, {
+        ...validPost(`owner-${index}`),
+        createdAt: Timestamp.fromMillis(3_000 - index),
+      });
+    }
+    const guestDb = testEnv.unauthenticatedContext().firestore();
+    const firstQuery = query(
+      collection(guestDb, "posts"),
+      orderBy("createdAt", "desc"),
+      orderBy(documentId(), "desc"),
+      limit(2),
+    );
+    const first = await assertSucceeds(getDocs(firstQuery));
+    expect(first.docs.map((item) => item.id)).toEqual(["post-0", "post-1"]);
+
+    const second = await assertSucceeds(getDocs(query(
+      collection(guestDb, "posts"),
+      orderBy("createdAt", "desc"),
+      orderBy(documentId(), "desc"),
+      startAfter(first.docs.at(-1)!),
+      limit(2),
+    )));
+    expect(second.docs.map((item) => item.id)).toEqual(["post-2"]);
+    await assertSucceeds(getDocs(query(collection(guestDb, "posts"), limit(25))));
+    await assertFails(getDocs(query(collection(guestDb, "posts"), limit(26))));
   });
 
   it("yalnız sahibi geçerli ve alanları sınırlı keşif pini yazabilir", async () => {
@@ -310,7 +395,8 @@ describe("Firestore güvenlik kuralları", () => {
     await assertSucceeds(setDoc(storyRef, validStory("owner")));
     await assertFails(updateDoc(storyRef, { seen: true }));
     await assertFails(getDocs(collection(guestDb, "stories")));
-    await assertSucceeds(getDocs(query(collection(guestDb, "stories"), limit(100))));
+    await assertSucceeds(getDocs(query(collection(guestDb, "stories"), limit(25))));
+    await assertFails(getDocs(query(collection(guestDb, "stories"), limit(26))));
     await assertFails(deleteDoc(doc(otherDb, "stories/story-1")));
     await assertSucceeds(deleteDoc(storyRef));
   });
