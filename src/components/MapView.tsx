@@ -292,6 +292,7 @@ export default function MapView({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<Map<string, { marker: maplibregl.Marker; el: HTMLElement }>>(new Map());
+  const initialStyleOptions = useRef({ showLabels, terrainEnabled, baseMap });
   const meMarkerRef = useRef<maplibregl.Marker | null>(null);
   const pulseRef = useRef<maplibregl.Marker | null>(null);
   const [ready, setReady] = useState(false);
@@ -470,9 +471,11 @@ export default function MapView({
     const el = containerRef.current;
     if (!el) return;
 
+    const initialStyle = initialStyleOptions.current;
+    const markers = markersRef.current;
     const map = new maplibregl.Map({
       container: el,
-      style: buildStyle(showLabels, terrainEnabled, baseMap),
+      style: buildStyle(initialStyle.showLabels, initialStyle.terrainEnabled, initialStyle.baseMap),
       center: HOME_CENTER,
       zoom: baseZoom(el),
       minZoom: 1,
@@ -547,8 +550,8 @@ export default function MapView({
 
     return () => {
       cancelAnimationFrame(raf);
-      markersRef.current.forEach((v) => v.marker.remove());
-      markersRef.current.clear();
+      markers.forEach((value) => value.marker.remove());
+      markers.clear();
       meMarkerRef.current?.remove();
       map.remove();
       mapRef.current = null;

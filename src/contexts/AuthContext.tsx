@@ -168,8 +168,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await sendAtlasVerificationEmail(current);
   };
 
+  const deviceSessionUid = user?.backend === "device" ? user.uid : null;
+
   useEffect(() => {
-    if (!user || user.backend !== "device") return;
+    if (!deviceSessionUid) return;
     let active = true;
     const check = () => {
       void restoreDeviceSession().then((current) => { if (active && !current) setUser(null); }).catch(() => { if (active) setUser(null); });
@@ -177,7 +179,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const timer = setInterval(check, 60_000);
     window.addEventListener("focus", check);
     return () => { active = false; clearInterval(timer); window.removeEventListener("focus", check); };
-  }, [user?.uid, user?.backend]);
+  }, [deviceSessionUid]);
 
   return <Context.Provider value={{ user, backend: authBackend, checking, error, logout, setName, login, signup, refreshSession, resendVerification }}>{children}</Context.Provider>;
 }

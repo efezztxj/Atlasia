@@ -138,6 +138,12 @@ export function useFirestoreAtlasData({
     );
   }, [uid, enabled, markError, markLoaded]);
 
+  const viewportZoom = viewport?.zoom;
+  const viewportWest = viewport?.bounds.west;
+  const viewportSouth = viewport?.bounds.south;
+  const viewportEast = viewport?.bounds.east;
+  const viewportNorth = viewport?.bounds.north;
+
   // Harita hareketleri sırasında sorgu fırtınasını önlemek için kısa debounce.
   // Düşük zoom / aşırı geniş sınırlar güvenli overview sayfasına geri düşer.
   useEffect(() => {
@@ -149,8 +155,23 @@ export function useFirestoreAtlasData({
         markLoaded("viewportPlaces");
       };
       const onError = (error: Error) => markError("viewportPlaces", error);
-      unsubscribe = viewport && viewportQueryWindows(viewport)
-        ? subscribePlacesInViewport(viewport, onChange, onError)
+      const scopedViewport = viewportZoom !== undefined
+        && viewportWest !== undefined
+        && viewportSouth !== undefined
+        && viewportEast !== undefined
+        && viewportNorth !== undefined
+        ? {
+            zoom: viewportZoom,
+            bounds: {
+              west: viewportWest,
+              south: viewportSouth,
+              east: viewportEast,
+              north: viewportNorth,
+            },
+          }
+        : null;
+      unsubscribe = scopedViewport && viewportQueryWindows(scopedViewport)
+        ? subscribePlacesInViewport(scopedViewport, onChange, onError)
         : subscribePlaceOverview(onChange, onError);
     }, 300);
 
@@ -161,11 +182,11 @@ export function useFirestoreAtlasData({
   }, [
     uid,
     enabled,
-    viewport?.zoom,
-    viewport?.bounds.west,
-    viewport?.bounds.south,
-    viewport?.bounds.east,
-    viewport?.bounds.north,
+    viewportZoom,
+    viewportWest,
+    viewportSouth,
+    viewportEast,
+    viewportNorth,
     markError,
     markLoaded,
   ]);

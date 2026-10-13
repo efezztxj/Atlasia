@@ -145,7 +145,7 @@ export default function SocialPanel({
   const visiblePosts = useMemo(() => {
     const sorted = [...posts].sort((a, b) => b.createdAt - a.createdAt);
     if (tab === "all") return sorted;
-    const center = precise ?? view;
+    const center = precise ?? { lat: view.lat, lng: view.lng };
     return sorted.filter(
       (p) =>
         p.lat !== undefined &&
