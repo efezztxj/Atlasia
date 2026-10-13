@@ -16,6 +16,7 @@ Netlify Atlasia yayın hattının parçası değildir.
 
 - Node.js 20.19+, 22.13+ veya 24+
 - npm 10 veya üzeri
+- Firestore güvenlik kuralı testleri için Java 21
 
 ## Doğrulama komutları
 
@@ -24,6 +25,7 @@ npm ci
 npm run typecheck
 npm run lint
 npm run test:run
+npm run test:rules:emulator
 npm run build
 npm run audit:check
 ```
@@ -33,6 +35,8 @@ Tüm yerel doğrulamaları sırayla çalıştırmak için:
 ```bash
 npm run check
 ```
+
+Firestore Rules testi Google'ın Firestore Emulator 1.22.0 JAR'ını kullanıcı cache dizinine indirir ve sabit SHA-256 özetiyle doğrular. Emulator veya `firebase-tools` production paketine dahil edilmez.
 
 ## Ortam değişkenleri
 

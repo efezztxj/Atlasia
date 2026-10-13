@@ -14,7 +14,13 @@ export default tseslint.config(
     ],
   },
   {
-    files: ["src/**/*.{ts,tsx}", "vite.config.ts", "vitest.config.ts"],
+    files: [
+      "src/**/*.{ts,tsx}",
+      "tests/**/*.ts",
+      "vite.config.ts",
+      "vitest.config.ts",
+      "vitest.rules.config.ts",
+    ],
     extends: [
       js.configs.recommended,
       ...tseslint.configs.recommended,
@@ -43,6 +49,14 @@ export default tseslint.config(
       "react-hooks/exhaustive-deps": "off",
       "react-refresh/only-export-components": "off",
       "no-useless-assignment": "off",
+    },
+  },
+  {
+    files: ["scripts/**/*.mjs"],
+    extends: [js.configs.recommended],
+    languageOptions: {
+      ecmaVersion: 2022,
+      globals: globals.node,
     },
   },
 );

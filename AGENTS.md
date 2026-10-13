@@ -32,7 +32,7 @@ Bu dosya, aynı repo üzerinde çalışan agentların çakışmasını önleyen 
 
 - API anahtarı, PAT, şifre, servis hesabı veya özel kullanıcı verisini koda, commit'e ya da ortak göreve yazma.
 - Vite değişkenlerinin tarayıcı paketinde görünür olduğunu varsay; yönetici sırrını `VITE_` değişkenine koyma.
-- Teslimden önce temiz kurulumda `npm ci`, `npm run typecheck`, `npm run lint`, `npm run test:run`, `npm run build` ve `npm run audit:check` çalıştır.
+- Teslimden önce temiz kurulumda `npm ci`, `npm run typecheck`, `npm run lint`, `npm run test:run`, `npm run test:rules:emulator`, `npm run build` ve `npm run audit:check` çalıştır.
 - Derlenmeyen, test edilmemiş veya bilinen durumu saklayan kodu push/merge/deploy etme.
 - Bilinmeyen repo, deployment veya ürün durumunu kesin bilgi gibi sunma.
 

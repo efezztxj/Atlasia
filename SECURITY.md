@@ -28,4 +28,6 @@ npm run audit:prod
 
 Tam denetimde ayrıca Vite 7'nin sabitlediği `esbuild@0.27.7` için Windows geliştirme sunucusuna özgü düşük seviye `GHSA-g7r4-m6w7-qqqr` bulunur. Geliştirme sunucusu internete açılmamalı; Vite uyumlu sürüme geçtiğinde esbuild düzeltmesi alınmalıdır.
 
+Firestore Rules testleri için kullanılan `@firebase/rules-unit-testing@5.0.2`, aynı Firebase/`@grpc/grpc-js` advisories zincirini geliştirme bağımlılığı olarak bir kez daha raporlar. Bu nedenle tam bağımlılık ağacı 1 kritik, 5 yüksek ve 1 düşük paket bulgusu gösterirken production denetimi değişmeden 1 kritik ve 4 yüksektir. Test paketi tarayıcı build'ine girmez. Geniş ve ek advisories getiren `firebase-tools` proje bağımlılığı yapılmamıştır; test çalıştırıcısı Google'ın Firestore Emulator 1.22.0 JAR'ını sabit URL'den indirir ve çalıştırmadan önce kayıtlı SHA-256 değerini doğrular.
+
 Bu kayıt risk kabulü değil, kontrollü devir kaydıdır. İlgili major yükseltmeler doğrulama testleri olmadan otomatik uygulanmamalıdır.

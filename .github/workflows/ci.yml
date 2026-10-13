@@ -28,6 +28,18 @@ jobs:
           node-version: 20
           cache: npm
 
+      - name: Use Java 21 for the Firestore emulator
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Cache the pinned Firestore emulator
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/atlasia/firebase-emulators
+          key: firestore-emulator-${{ runner.os }}-1.22.0
+
       - name: Install exact dependencies
         run: npm ci
 
@@ -42,6 +54,9 @@ jobs:
 
       - name: Unit tests
         run: npm run test:run
+
+      - name: Firestore security rules tests
+        run: npm run test:rules:emulator
 
       - name: Production build
         run: npm run build
