@@ -5,25 +5,30 @@
  * Veri modeli:
  *   places/{placeId}                  — keşif pinleri (kullanıcı üretimi)
  *   posts/{postId}                    — sosyal akış gönderileri
- *   posts/{postId}/replies/{replyId}   — gönderi yanıtları
+ *   posts/{postId}.replies[]           — gönderi yanıtları (sınırlı gömülü liste)
  *   stories/{storyId}                 — 24 saat ömürlü hikâyeler
  *   users/{uid}/profile               — kullanıcı profili (XP, badges, takip)
  */
 import {
+  arrayRemove,
+  arrayUnion,
   collection,
   deleteDoc,
   doc,
   getDoc,
   getDocs,
+  limit,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
   setDoc,
+  Timestamp,
   updateDoc,
+  where,
   writeBatch,
   type DocumentData,
-  type QueryConstraint,
+  type Firestore,
 } from "firebase/firestore";
 import { db, firebaseConfigured } from "./firebase";
 import { compressImageWithinLimit } from "../utils/image";
@@ -33,6 +38,17 @@ const COL_PLACES = "places";
 const COL_POSTS = "posts";
 const COL_STORIES = "stories";
 const COL_USERS = "users";
+
+export const FIRESTORE_LIMITS = {
+  places: 250,
+  posts: 100,
+  stories: 100,
+  likesPerPost: 500,
+  repliesPerPost: 100,
+} as const;
+
+export const STORY_TTL_MS = 24 * 60 * 60 * 1000;
+const STORY_EXPIRY_REFRESH_MS = 60 * 1000;
 
 const newId = (prefix: string) =>
   `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
@@ -87,6 +103,7 @@ function normalizePost(id: string, raw: DocumentData): FeedPost {
       ? (raw.replies as FeedReply[]).map((r) => ({
           id: r.id ?? newId("fr"),
           author: r.author ?? "Gezgin",
+          authorUid: typeof r.authorUid === "string" ? r.authorUid : undefined,
           text: r.text ?? "",
           createdAt: typeof r.createdAt === "number" ? r.createdAt : toMillis(r.createdAt),
           likes: typeof r.likes === "number" ? r.likes : 0,
@@ -113,6 +130,37 @@ function normalizeStory(id: string, raw: DocumentData): Story {
     seen: raw.seen === true,
     kind: raw.kind === "user" ? "user" : "seed",
   };
+}
+
+/** Açık oturumda süresi dolan story'lerin de görünümden düşmesini sağlar. */
+export function activeStories(stories: Story[], now = Date.now()): Story[] {
+  const cutoff = now - STORY_TTL_MS;
+  return stories.filter((story) => story.createdAt >= cutoff && story.createdAt <= now);
+}
+
+/** Tek bir kullanıcının üyeliğini değiştirir; bozuk/tekrarlı veriyi büyütmez. */
+export function nextLikedBy(rawLikedBy: unknown, uid: string): string[] {
+  const cleanUid = uid.trim();
+  if (!cleanUid) throw dataError("auth/required", "Beğeni için geçerli hesap gerekli.");
+  if (rawLikedBy !== undefined && !Array.isArray(rawLikedBy)) {
+    throw dataError("post/likes-invalid", "Gönderinin beğeni verisi tutarsız.");
+  }
+
+  const likedBy = (rawLikedBy ?? []) as unknown[];
+  if (!likedBy.every((value): value is string => typeof value === "string")) {
+    throw dataError("post/likes-invalid", "Gönderinin beğeni verisi tutarsız.");
+  }
+  if (likedBy.length !== new Set(likedBy).size) {
+    throw dataError("post/likes-invalid", "Gönderinin beğeni verisi tutarsız.");
+  }
+
+  const hasLiked = likedBy.includes(cleanUid);
+  if (!hasLiked && likedBy.length >= FIRESTORE_LIMITS.likesPerPost) {
+    throw dataError("post/likes-limit", "Bu gönderinin beğeni sınırına ulaşıldı.");
+  }
+  return hasLiked
+    ? likedBy.filter((value) => value !== cleanUid)
+    : [...likedBy, cleanUid];
 }
 
 /* ─────────────────────────── Fotoğraf hazırlama ─────────────────────────── */
@@ -239,8 +287,11 @@ export async function unfollowUser(me: string, target: string): Promise<void> {
 export async function listPlaces(_uid?: string): Promise<Place[]> {
   if (!db) return [];
   // uid parametresi ileride özel pinler için kullanılacak (şu an tüm pinler herkese açık)
-  const constraints: QueryConstraint[] = [orderBy("createdAt", "desc")];
-  const q = query(collection(db, COL_PLACES), ...constraints);
+  const q = query(
+    collection(db, COL_PLACES),
+    orderBy("createdAt", "desc"),
+    limit(FIRESTORE_LIMITS.places),
+  );
   const snap = await getDocs(q);
   return snap.docs.map((d) => normalizePlace(d.id, d.data()));
 }
@@ -250,7 +301,11 @@ export function subscribePlaces(
   onError?: (e: Error) => void,
 ): () => void {
   if (!db) return () => {};
-  const q = query(collection(db, COL_PLACES), orderBy("createdAt", "desc"));
+  const q = query(
+    collection(db, COL_PLACES),
+    orderBy("createdAt", "desc"),
+    limit(FIRESTORE_LIMITS.places),
+  );
   return onSnapshot(
     q,
     (snap) => onChange(snap.docs.map((d) => normalizePlace(d.id, d.data()))),
@@ -331,7 +386,11 @@ export function subscribePosts(
   onError?: (e: Error) => void,
 ): () => void {
   if (!db) return () => {};
-  const q = query(collection(db, COL_POSTS), orderBy("createdAt", "desc"));
+  const q = query(
+    collection(db, COL_POSTS),
+    orderBy("createdAt", "desc"),
+    limit(FIRESTORE_LIMITS.posts),
+  );
   return onSnapshot(
     q,
     (snap) => onChange(snap.docs.map((d) => normalizePost(d.id, d.data()))),
@@ -381,33 +440,85 @@ export async function removePost(id: string): Promise<void> {
   await deleteDoc(postRef);
 }
 
-export async function togglePostLike(postId: string, uid: string): Promise<void> {
-  if (!db) return;
-  const ref = doc(db, COL_POSTS, postId);
+export async function togglePostLikeInFirestore(
+  store: Firestore,
+  postId: string,
+  uid: string,
+): Promise<void> {
+  if (!uid.trim()) throw dataError("auth/required", "Beğeni için geçerli hesap gerekli.");
+
+  const ref = doc(store, COL_POSTS, postId);
   const snap = await getDoc(ref);
-  const data = snap.data();
-  const likedBy = (data?.likedBy as string[]) ?? [];
-  const has = likedBy.includes(uid);
+  if (!snap.exists()) throw dataError("post/not-found", "Gönderi bulunamadı.");
+
+  const cleanUid = uid.trim();
+  const current = snap.data().likedBy;
+  const next = nextLikedBy(current, cleanUid);
+  const isRemoval = Array.isArray(current) && next.length < current.length;
   await updateDoc(ref, {
-    likedBy: has ? likedBy.filter((u) => u !== uid) : [...likedBy, uid],
-    likes: (data?.likes as number) ?? 0 + (has ? -1 : 1),
+    // Array transformu farklı kullanıcıların eşzamanlı değişikliklerini birleştirir.
+    // `likes` örnek içeriğin sabit taban sayısı olarak değişmeden kalır.
+    likedBy: isRemoval ? arrayRemove(cleanUid) : arrayUnion(cleanUid),
   });
 }
 
-export async function addReply(postId: string, author: string, text: string): Promise<void> {
-  if (!db) return;
-  const ref = doc(db, COL_POSTS, postId);
+export async function togglePostLike(postId: string, uid: string): Promise<void> {
+  if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
+  return togglePostLikeInFirestore(db, postId, uid);
+}
+
+export async function addReplyInFirestore(
+  store: Firestore,
+  postId: string,
+  uid: string,
+  author: string,
+  text: string,
+): Promise<void> {
+  const cleanUid = uid.trim();
+  const cleanAuthor = author.trim();
+  const cleanText = text.trim();
+  if (!cleanUid) throw dataError("auth/required", "Yanıt için geçerli hesap gerekli.");
+  if (!cleanAuthor || cleanAuthor.length > 100) {
+    throw dataError("reply/author-invalid", "Yanıt yazarı geçersiz.");
+  }
+  if (!cleanText || cleanText.length > 1000) {
+    throw dataError("reply/text-invalid", "Yanıt 1–1000 karakter olmalı.");
+  }
+
+  const ref = doc(store, COL_POSTS, postId);
   const snap = await getDoc(ref);
-  const replies = (snap.data()?.replies as FeedReply[]) ?? [];
+  if (!snap.exists()) throw dataError("post/not-found", "Gönderi bulunamadı.");
+
+  const rawReplies = snap.data().replies;
+  if (rawReplies !== undefined && !Array.isArray(rawReplies)) {
+    throw dataError("reply/data-invalid", "Gönderinin yanıt verisi tutarsız.");
+  }
+  const replies = (rawReplies ?? []) as FeedReply[];
+  if (replies.length >= FIRESTORE_LIMITS.repliesPerPost) {
+    throw dataError("reply/limit", "Bu gönderinin yanıt sınırına ulaşıldı.");
+  }
+
   const next: FeedReply = {
     id: newId("fr"),
-    author,
-    text,
+    author: cleanAuthor,
+    authorUid: cleanUid,
+    text: cleanText,
     createdAt: Date.now(),
     likes: 0,
     kind: "user",
   };
-  await updateDoc(ref, { replies: [...replies, next] });
+  // Array transformu, başka bir kullanıcının aynı anda eklediği yanıtı ezmez.
+  await updateDoc(ref, { replies: arrayUnion(next) });
+}
+
+export async function addReply(
+  postId: string,
+  uid: string,
+  author: string,
+  text: string,
+): Promise<void> {
+  if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
+  return addReplyInFirestore(db, postId, uid, author, text);
 }
 
 /* ─────────────────────────── Story'ler ─────────────────────────── */
@@ -417,12 +528,30 @@ export function subscribeStories(
   onError?: (e: Error) => void,
 ): () => void {
   if (!db) return () => {};
-  const q = query(collection(db, COL_STORIES), orderBy("createdAt", "desc"));
-  return onSnapshot(
+
+  const initialCutoff = Timestamp.fromMillis(Date.now() - STORY_TTL_MS);
+  const q = query(
+    collection(db, COL_STORIES),
+    where("createdAt", ">=", initialCutoff),
+    orderBy("createdAt", "desc"),
+    limit(FIRESTORE_LIMITS.stories),
+  );
+  let latestStories: Story[] = [];
+  const emitActiveStories = () => onChange(activeStories(latestStories));
+  const unsubscribe = onSnapshot(
     q,
-    (snap) => onChange(snap.docs.map((d) => normalizeStory(d.id, d.data()))),
+    (snap) => {
+      latestStories = snap.docs.map((d) => normalizeStory(d.id, d.data()));
+      emitActiveStories();
+    },
     onError,
   );
+  const expiryTimer = globalThis.setInterval(emitActiveStories, STORY_EXPIRY_REFRESH_MS);
+
+  return () => {
+    globalThis.clearInterval(expiryTimer);
+    unsubscribe();
+  };
 }
 
 export interface NewStoryInput {
@@ -465,11 +594,6 @@ export async function removeStory(id: string): Promise<void> {
   if (!db) return;
   const storyRef = doc(db, COL_STORIES, id);
   await deleteDoc(storyRef);
-}
-
-export async function markStorySeen(id: string): Promise<void> {
-  if (!db) return;
-  await updateDoc(doc(db, COL_STORIES, id), { seen: true });
 }
 
 /* ─────────────────────────── Genel yardımcılar ─────────────────────────── */

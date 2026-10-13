@@ -42,6 +42,8 @@ export interface ViewState {
 export interface FeedReply {
   id: string;
   author: string;
+  /** Bulut yanıtlarında Firebase hesap sahibi. */
+  authorUid?: string;
   text: string;
   createdAt: number;
   likes: number;

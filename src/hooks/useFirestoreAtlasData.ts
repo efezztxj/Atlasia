@@ -136,7 +136,7 @@ export function useFirestoreAtlasData({ uid, enabled = true }: UseFirestoreAtlas
 
   const addReply = async (postId: string, author: string, text: string) => {
     if (!isCloudReady) throw new Error("Bulut bağlantısı yok, yanıt eklenemez.");
-    await addReplyFs(postId, author, text);
+    await addReplyFs(postId, uid, author, text);
   };
 
   const toggleLike = async (postId: string) => {
