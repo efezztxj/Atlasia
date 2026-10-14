@@ -17,12 +17,6 @@
     "build:mac": "node scripts/build.mjs mac",
     "build:linux": "node scripts/build.mjs linux"
   },
-  "pkg": {
-    "assets": [
-      "public/**/*",
-      "relay.config.json"
-    ]
-  },
   "devDependencies": {
     "@yao-pkg/pkg": "^6.6.0",
     "esbuild": "^0.25.0"

@@ -28,7 +28,7 @@ jobs:
         run: npm install --no-audit --no-fund
 
       - name: Paketleri derle
-        run: node scripts/build.mjs all
+        run: node scripts/build.mjs all 2>&1 | tee /tmp/build.log
 
       - name: Linux paketini uçtan uca dene (gerçek çalıştırma)
         run: |
@@ -80,6 +80,10 @@ jobs:
             echo "- run: $GITHUB_RUN_ID ($GITHUB_REF)"
             echo "- commit: $GITHUB_SHA"
             echo
+            echo "## build.log (son 80 satır)"
+            echo '```'
+            tail -80 /tmp/build.log 2>/dev/null || echo "(yok)"
+            echo '```'
             echo "## diag.log"
             echo '```'
             cat /tmp/diag.log 2>/dev/null || echo "(yok)"

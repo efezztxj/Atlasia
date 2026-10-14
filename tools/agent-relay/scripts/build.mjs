@@ -66,7 +66,7 @@ run("npx", [
 for (const { target, out } of selected) {
   run(
     "npx",
-    ["pkg", BUNDLE, "--targets", target, "--output", path.join(DIST, out), "--no-bytecode"],
+    ["pkg", BUNDLE, "--targets", target, "--output", path.join(DIST, out), "--public", "--public-packages", "*", "--no-bytecode"],
     { env: { ...process.env, PKG_CACHE_PATH: process.env.PKG_CACHE_PATH || path.join(ROOT, ".pkg-cache") } },
   );
   console.log(`✓ ${out}`);
