@@ -15,7 +15,7 @@ denetçi onaylayana kadar döner.
 **En kolay: derlenmiş program (exe) — Node bile gerekmez. Panel ve varsayılan ayar
 programın içine gömülüdür; tek dosya indirip çalıştırman yeterli.**
 
-1. GitHub → **Releases** sayfası → `agent-relay-v0.1.3` → platformuna uygun dosyayı indir:
+1. GitHub → **Releases** sayfası → `agent-relay-v0.1.4` → platformuna uygun dosyayı indir:
    - Windows: `agent-relay-win-x64.exe` → **çift tıkla**
    - macOS: `agent-relay-macos` → `chmod +x agent-relay-macos && ./agent-relay-macos`
    - Linux: `agent-relay-linux-x64` → `chmod +x agent-relay-linux-x64 && ./agent-relay-linux-x64`
@@ -28,9 +28,13 @@ programın içine gömülüdür; tek dosya indirip çalıştırman yeterli.**
 > **Sürüm notu (windows exe):**
 > - v0.1.1 → açılıp kapanıyordu (pkg + ESM uyuşmazlığı)
 > - v0.1.2 → açıldı ama "relay.config.json pakete dahil edilmemiş" hatası veriyordu
-> - **v0.1.3 → panel ve varsayılan ayar artık exe'nin İÇİNE gömülü; hiçbir dış dosya gerekmiyor.**
->   Bu sürümde CI, paketlenmiş ikiliyi gerçekten çalıştırıp (ayarsız ilk açılış dahil) paneli,
->   sağlık kontrolünü ve 4 turlu bir işi doğruluyor.
+> - v0.1.3 → derleme zinciri düzeltildi (--public/--no-bytecode uyumu)
+> - **v0.1.4 → panel ve varsayılan ayar exe'nin İÇİNE gömülü; hiçbir dış dosya gerekmiyor.**
+>   CI, paketlenmiş ikiliyi gerçekten çalıştırıp (ayarsız ilk açılış = senin yaşadığın senaryo)
+>   paneli, sağlık kontrolünü ve 4 turlu bir işi doğruluyor.
+>
+> exe ilk çalıştığında yanında `relay.config.json` (düzenlenebilir ayar) ve `data/` oluşur.
+> Yazılamayan bir klasördeyse (Program Files gibi) bunlar `~/.agent-relay` altına yazılır.
 >
 > Yine sorun olursa:
 > 1. PowerShell aç, indirdiğin klasöre gir ve programı elle çalıştır:
