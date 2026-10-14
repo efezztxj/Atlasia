@@ -82,6 +82,24 @@ jobs:
           Ayarlar: relay.config.json (ajanlar, roller, sıra, promptlar)
           Kayıtlar: data/state.json  ·  Yazılamayan klasörde: ~/.agent-relay
           TXT
+          cat > dist/NOTLAR.md <<'MD'
+          Kurulumsuz çalıştırma: platformuna uygun dosyayı indir, çift tıkla, panel
+          http://localhost:8787'de açılır. Node.js gerekmez.
+
+          | Platform | Dosya |
+          |---|---|
+          | Windows | `agent-relay-win-x64.exe` |
+          | macOS (M-serisi) | `agent-relay-macos-arm64` |
+          | macOS (Intel) | `agent-relay-macos-x64` |
+          | Linux | `agent-relay-linux-x64` |
+
+          Çalışmazsa:
+          1. PowerShell'de elle çalıştır (`cd <klasör>` → `.\agent-relay-win-x64.exe`) — hata ekranda kalır.
+          2. Aynı klasördeki `agent-relay-error.log` dosyasına bak (yoksa `C:\Users\<kullanıcı>\.agent-relay\`).
+          3. Yedek yol: `agent-relay-kaynak.zip` indir → çıkar → `run-windows.bat` (Node'u kendi indirir).
+
+          İmzasız program: Windows'ta "Ek bilgi → Yine de çalıştır", macOS'ta sağ tık → Aç.
+          MD
           ls -la dist
 
       - uses: actions/upload-artifact@v4
@@ -99,9 +117,5 @@ jobs:
           TAG="${GITHUB_REF_NAME}"
           gh release view "$TAG" >/dev/null 2>&1 || \
             gh release create "$TAG" --title "Agent Relay $TAG" --prerelease \
-              --notes "Kurulumsuz çalıştırma: platformuna uygun dosyayı indir, çift tıkla, panel http://localhost:8787'de açılır. Node.js gerekmez.
-
-Windows: agent-relay-win-x64.exe · macOS: agent-relay-macos-arm64 / -x64 · Linux: agent-relay-linux-x64
-
-Çalışmazsa: agent-relay-kaynak.zip indir → çıkar → run-windows.bat (Node'u kendi indirir). Hata kaydı: agent-relay-error.log"
+              --notes-file tools/agent-relay/dist/NOTLAR.md
           gh release upload "$TAG" tools/agent-relay/dist/* --clobber
