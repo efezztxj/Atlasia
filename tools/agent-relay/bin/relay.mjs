@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import path from "node:path";
+import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { createRelay } from "../server.mjs";
 
@@ -9,19 +10,49 @@ const [cmd, ...rest] = process.argv.slice(2);
 const BASE = process.env.RELAY_URL || "http://127.0.0.1:8787";
 
 const help = `
-Agent Relay — tek yerden iki agent, sıralı devir teslim
+Agent Relay — tek yerden yaz, ekibin sırayla çalışsın
 
 Kullanım:
-  relay.mjs up                 Panel + motoru başlat (http://localhost:8787)
-  relay.mjs send "<istek>"     Çalışan relay'e istek gönder ve bitmesini bekle
-  relay.mjs add  "<istek>"     İsteği kuyruğa ekle, beklemeden çık
-  relay.mjs status             Kuyruğu ve ajan sağlığını göster
-  relay.mjs watch <jobId>      Bir işi bitene kadar izle
-  relay.mjs ctl <jobId> <komut> <komut>: pause|resume|stop|skip|takeover|approve|retry|start|delete
-  relay.mjs health             Ajan bağlantılarını kontrol et
+  agent-relay                  Panel + motoru başlat (http://localhost:8787)
+  agent-relay up               Yukarıdakinin aynısı
+  agent-relay send "<istek>"   Çalışan relay'e istek gönder ve bitmesini bekle
+  agent-relay add  "<istek>"   İsteği kuyruğa ekle, beklemeden çık
+  agent-relay status           Kuyruğu ve ajan sağlığını göster
+  agent-relay watch <jobId>    Bir işi bitene kadar izle
+  agent-relay ctl <jobId> <komut>   pause|resume|stop|skip|takeover|approve|retry|start|delete
+  agent-relay health           Ajan bağlantılarını kontrol et
 
 Ortam: RELAY_URL (varsayılan http://127.0.0.1:8787), RELAY_CONFIG (ayar dosyası)
 `;
+
+function openBrowser(url) {
+  const platform = process.platform;
+  const [bin, args] =
+    platform === "darwin" ? ["open", [url]] : platform === "win32" ? ["cmd", ["/c", "start", "", url]] : ["xdg-open", [url]];
+  try {
+    const child = spawn(bin, args, { detached: true, stdio: "ignore" });
+    // Tarayıcı açıcı yoksa (örn. sunucuda xdg-open) süreç çökmesin.
+    child.on("error", () => {});
+    child.unref();
+  } catch {
+    /* tarayıcı açılamadıysa kullanıcı adresi elle açar */
+  }
+}
+
+async function up({ open = true } = {}) {
+  const relay = await createRelay({ configPath: process.env.RELAY_CONFIG });
+  const address = await relay.listen();
+  const url = `http://localhost:${address.port}`;
+  console.log(`\n  Agent Relay → ${url}`);
+  console.log(`  Sıra: ${relay.config.agents.map((a) => `${a.name} (${a.role || "implementer"})`).join("  →  ")}`);
+  console.log(`  Mod: ${relay.config.requireApproval ? "her devirde onay" : "tam otomatik"}`);
+  console.log(`  Ayar: ${relay.configPath}`);
+  console.log(`  Kayıtlar: ${relay.dataDir}`);
+  console.log(`\n  Kapatmak için bu pencereyi kapat ya da Ctrl+C.\n`);
+  if (open) openBrowser(url);
+  return relay;
+}
+
 
 const statusTr = {
   queued: "sırada", running: "çalışıyor", waiting_approval: "onay bekliyor", paused: "duraklatıldı",
@@ -64,20 +95,21 @@ async function ensureServer() {
 
 switch (cmd) {
   case undefined:
+  case "up":
+    await up();
+    break;
+
   case "help":
   case "-h":
   case "--help":
     console.log(help);
     break;
 
-  case "up": {
-    const relay = await createRelay({ configPath: process.env.RELAY_CONFIG });
-    const address = await relay.listen();
-    console.log(`\n  Agent Relay → http://localhost:${address.port}`);
-    console.log(`  Sıra: ${relay.config.agents.map((a) => a.name).join("  →  ")}`);
-    console.log(`  Mod: ${relay.config.requireApproval ? "her devirde onay" : "tam otomatik"}\n`);
+  case "version":
+  case "-v":
+  case "--version":
+    console.log("agent-relay 0.1.0");
     break;
-  }
 
   case "send":
   case "add": {

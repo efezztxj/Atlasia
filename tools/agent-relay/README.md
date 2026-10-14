@@ -12,27 +12,36 @@ denetçi onaylayana kadar döner.
 
 ## 0. Hızlı kurulum (kendi bilgisayarında)
 
+**En kolay: derlenmiş program (exe) — Node bile gerekmez**
+
+1. GitHub → **Releases** sayfası → `agent-relay-v0.1.0` → platformuna uygun dosyayı indir:
+   - Windows: `agent-relay-win-x64.exe` → **çift tıkla**
+   - macOS: `agent-relay-macos` → `chmod +x agent-relay-macos && ./agent-relay-macos`
+   - Linux: `agent-relay-linux-x64` → `chmod +x agent-relay-linux-x64 && ./agent-relay-linux-x64`
+2. Program çalıştığı klasörde `relay.config.json` ve `data/` oluşturur — taşınabilir (portable), kurulum yazmaz.
+3. Panel tarayıcıda açılır: <http://localhost:8787>
+
+> İlk açılışta işletim sistemi uyarır (program imzasız): Windows'ta **Ek bilgi → Yine de çalıştır**,
+> macOS'ta **sağ tık → Aç**. Bu normaldir; kod açık, ağa hiçbir şey göndermiyor.
+
+Nerede bulurum / nasıl üretirim:
+- **Releases** (hazır dosyalar): `https://github.com/efezztxj/Atlasia/releases`
+- **Kendim üreteyim**: `cd tools/agent-relay && npm install && npm run build:win` (macOS: `build:mac`, Linux: `build:linux`)
+- **GitHub kendi üretsin**: Actions → *Agent Relay derleme (exe)* → **Run workflow** (veya `agent-relay-v*` etiketi push'la) → dosyalar hem artifact hem Release'e düşer.
+
+**Alternatif: Node'lu yol (exe istemiyorsan)**
+
 ```bash
-# 1) Repoyu al (bir kez)
-git clone https://github.com/efezztxj/Atlasia.git        # ya da GitHub → Code → Download ZIP
-#    zaten klonun varsa:  git pull origin main
-
-# 2) Bu klasöre gir
+git clone https://github.com/efezztxj/Atlasia.git
 cd Atlasia/tools/agent-relay
-
-# 3) Başlat  (npm install YOK — bağımlılık yok)
-node server.mjs            # → http://localhost:8787
+node bin/relay.mjs up        # (eski kısayol: node server.mjs)
 ```
 
-Tek tuşla başlatmak istersen bu klasördeki dosyalara çift tıkla:
+Çift tıkla başlatmak istersen: `start-windows.bat` · `start-mac.command` · `start-linux.sh`
+Node hiç yoksa ve kurmak istemiyorsan: `run-windows.bat` / `run-mac-linux.sh` — bunlar taşınabilir
+Node'u otomatik indirir (~30 MB, bir kerelik) ve paneli açar.
 
-| Sistem | Dosya |
-|---|---|
-| Windows | `start-windows.bat` |
-| macOS | `start-mac.command` (ilk sefer: sağ tık → Aç, ya da `chmod +x start-mac.command`) |
-| Linux | `start-linux.sh` (`chmod +x start-linux.sh && ./start-linux.sh`) |
-
-Gereksinim: **Node.js 22+** ([nodejs.org](https://nodejs.org) → LTS). Kontrol: `node -v`.
+Gereksinim (yalnızca Node'lu yolda): **Node.js 22+** ([nodejs.org](https://nodejs.org) → LTS). Kontrol: `node -v`.
 
 Nerede çalışır: **senin makinende**. Panel ve motor tamamen yereldir, dışarıya veri gitmez,
 API anahtarı istemez. Agent'lar kendi tarayıcı sekmelerinde/pencerelerinde açık olmalıdır —

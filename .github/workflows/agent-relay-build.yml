@@ -1,0 +1,70 @@
+name: Agent Relay derleme (exe)
+
+# Elle: GitHub → Actions → "Agent Relay derleme (exe)" → Run workflow
+# Etiketle: git tag agent-relay-v0.1.0 && git push origin agent-relay-v0.1.0  (Release'e ekler)
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "agent-relay-v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tools/agent-relay
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Bağımlılıkları kur (yalnızca paketleyici)
+        run: npm install --no-audit --no-fund
+
+      - name: Windows + macOS + Linux paketlerini derle
+        run: |
+          npx pkg . --targets node22-win-x64      --output dist/agent-relay-win-x64.exe
+          npx pkg . --targets node22-macos-arm64,node22-macos-x64 --output dist/agent-relay-macos
+          npx pkg . --targets node22-linux-x64    --output dist/agent-relay-linux-x64
+
+      - name: Sürüm bilgisi dosyası
+        run: |
+          cat > dist/OKUYUN.txt <<'TXT'
+          Agent Relay — kurulumsuz çalıştırma
+          ===================================
+          Windows : agent-relay-win-x64.exe   (çift tıkla → panel http://localhost:8787)
+          macOS   : agent-relay-macos         (chmod +x agent-relay-macos && ./agent-relay-macos)
+          Linux   : agent-relay-linux-x64     (chmod +x agent-relay-linux-x64 && ./agent-relay-linux-x64)
+
+          Çalıştırma dosyasının yanında oluşan dosyalar:
+            relay.config.json  → ajanlar, roller, sıra, promptlar
+            data/state.json    → kuyruk ve iş kayıtları
+
+          macOS'ta ilk açılış: sağ tık → Aç (imzasız olduğu için Gatekeeper uyarır).
+          Windows'ta ilk açılış: "Windows korumalı bilgisayarınızı korudu" → Ek bilgi → Yine de çalıştır.
+          TXT
+          ls -la dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agent-relay-paketleri
+          path: tools/agent-relay/dist/*
+          if-no-files-found: error
+
+      - name: Release'e ekle (yalnızca etiketle çalıştırıldıysa)
+        if: startsWith(github.ref, 'refs/tags/')
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          gh release view "$TAG" >/dev/null 2>&1 || \
+            gh release create "$TAG" --title "Agent Relay $TAG" --prerelease \
+              --notes "Kurulumsuz çalıştırma: aşağıdaki dosyayı indir, çift tıkla, panel http://localhost:8787'de açılır. Node.js gerekmez."
+          gh release upload "$TAG" tools/agent-relay/dist/* --clobber

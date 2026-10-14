@@ -10,10 +10,27 @@ import { listTabs } from "./lib/adapters/cdp.mjs";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export async function createRelay({ configPath, rootDir = __dirname } = {}) {
-  const resolvedConfigPath = configPath || path.join(rootDir, "relay.config.json");
+  // Paketlenmiş (exe) modda yazılabilir alan exe'nin yanıdır; geliştirmede kaynak klasör.
+  const packaged = Boolean(process.pkg);
+  const assetsDir = __dirname; // pkg: /snapshot/.../tools/agent-relay
+  const writableDir = packaged ? path.dirname(process.execPath) : __dirname;
+
+  const bundledConfig = path.join(assetsDir, "relay.config.json");
+  const localConfig = path.join(writableDir, "relay.config.json");
+  const resolvedConfigPath = configPath || process.env.RELAY_CONFIG || (packaged && fs.existsSync(localConfig) ? localConfig : bundledConfig);
+  const canWriteConfig = !packaged || path.dirname(resolvedConfigPath) === writableDir;
+
   const config = JSON.parse(fs.readFileSync(resolvedConfigPath, "utf8"));
-  const saveConfig = () => fs.writeFileSync(resolvedConfigPath, `${JSON.stringify(config, null, 2)}\n`);
-  const dataDir = path.isAbsolute(config.dataDir) ? config.dataDir : path.join(rootDir, config.dataDir);
+  const saveConfig = () => {
+    const target = canWriteConfig ? resolvedConfigPath : localConfig;
+    try {
+      fs.writeFileSync(target, `${JSON.stringify(config, null, 2)}\n`);
+    } catch (err) {
+      store.log("error", `Ayar dosyası yazılamadı (${target}): ${err.message}`);
+    }
+  };
+
+  const dataDir = path.isAbsolute(config.dataDir) ? config.dataDir : path.join(writableDir, config.dataDir);
   fs.mkdirSync(dataDir, { recursive: true });
 
   const store = new Store(path.join(dataDir, "state.json"));
@@ -218,7 +235,7 @@ export async function createRelay({ configPath, rootDir = __dirname } = {}) {
   }
 
   function serveStatic(req, res, url) {
-    const publicDir = path.join(__dirname, "public");
+    const publicDir = path.join(assetsDir, "public");
     let rel = decodeURIComponent(url.pathname);
     if (rel === "/" || rel === "") rel = "/index.html";
     const filePath = path.normalize(path.join(publicDir, rel));
@@ -241,6 +258,9 @@ export async function createRelay({ configPath, rootDir = __dirname } = {}) {
     store,
     orchestrator,
     config,
+    configPath: resolvedConfigPath,
+    dataDir,
+    packaged,
     listen(port = config.port, host = config.host || "0.0.0.0") {
       return new Promise((resolve) => server.listen(port, host, () => resolve(server.address())));
     },

@@ -3,13 +3,24 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Tek yerden yaz, iki agent sırayla çalışsın: kuyruk + devir teslim + onay paneli.",
-  "bin": { "relay": "./bin/relay.mjs" },
+  "description": "Tek yerden yaz, ekibin sırayla çalışsın: kuyruk + devir teslim + onay paneli.",
+  "bin": { "agent-relay": "./bin/relay.mjs" },
   "scripts": {
-    "start": "node server.mjs",
+    "start": "node bin/relay.mjs up",
     "dev": "node --watch server.mjs",
     "send": "node bin/relay.mjs send",
-    "status": "node bin/relay.mjs status"
+    "status": "node bin/relay.mjs status",
+    "build:win": "pkg . --targets node22-win-x64 --output dist/agent-relay-win.exe",
+    "build:mac": "pkg . --targets node22-macos-arm64,node22-macos-x64 --output dist/agent-relay-macos",
+    "build:linux": "pkg . --targets node22-linux-x64 --output dist/agent-relay-linux",
+    "build:all": "npm run build:win && npm run build:mac && npm run build:linux"
+  },
+  "pkg": {
+    "assets": ["public/**/*", "relay.config.json"],
+    "scripts": ["lib/**/*.mjs", "server.mjs", "bin/relay.mjs"]
+  },
+  "devDependencies": {
+    "@yao-pkg/pkg": "^6.6.0"
   },
   "engines": { "node": ">=22" },
   "license": "MIT"
