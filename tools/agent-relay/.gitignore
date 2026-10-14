@@ -3,3 +3,4 @@ node_modules/
 dist/
 runtime/
 .pkg-cache/
+lib/panel-assets.generated.mjs

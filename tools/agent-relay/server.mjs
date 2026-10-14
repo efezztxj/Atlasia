@@ -7,6 +7,9 @@ import { Store } from "./lib/store.mjs";
 import { Orchestrator } from "./lib/orchestrator.mjs";
 import { adapterFor } from "./lib/adapters/index.mjs";
 import { listTabs } from "./lib/adapters/cdp.mjs";
+// Varsayılan ayar derleme anında paketin İÇİNE gömülür (esbuild JSON'u inline eder),
+// böylece ayar dosyası bulunamasa bile program çalışır.
+import BUNDLED_DEFAULT_CONFIG from "./relay.config.json" with { type: "json" };
 
 // Hem ESM (geliştirme) hem CommonJS (paketlenmiş exe) altında çalışır.
 const HERE = (() => {
@@ -18,22 +21,73 @@ const HERE = (() => {
   }
 })();
 
+/**
+ * Ayar dosyasını bulur ve okur. Hiçbir durumda hata fırlatmaz:
+ * bulunamaz/okunamazsa gömülü varsayılanla devam eder (exe artık ölmez).
+ */
+export function loadConfig(...candidates) {
+  const tried = [];
+  let lastError = null;
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    tried.push(candidate);
+    try {
+      if (!fs.existsSync(candidate)) continue;
+      const parsed = JSON.parse(fs.readFileSync(candidate, "utf8"));
+      if (!parsed || typeof parsed !== "object") throw new Error("içerik nesne değil");
+      return { config: parsed, path: candidate, tried, error: null, usedDefault: false };
+    } catch (err) {
+      lastError = `${candidate}: ${err.message}`;
+    }
+  }
+  return {
+    config: structuredClone(BUNDLED_DEFAULT_CONFIG),
+    path: null,
+    tried,
+    error: lastError || "ayar dosyası bulunamadı",
+    usedDefault: true,
+  };
+}
+
+/** Derleme anında gömülen panel (varsa). Yoksa diskten servis edilir. */
+async function loadEmbeddedPanel() {
+  try {
+    const mod = await import("./lib/panel-assets.generated.mjs");
+    return mod.default || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function createRelay({ configPath, rootDir } = {}) {
   // Paketlenmiş (exe) modda yazılabilir alan exe'nin yanıdır; geliştirmede kaynak klasör.
   const packaged = Boolean(process.pkg);
   const located = locateAssets(rootDir || HERE); // panel + varsayılan ayar buradan okunur
   const assetsDir = located.dir;
-  const panelFound = located.found;
+  const embeddedPanel = located.found ? null : await loadEmbeddedPanel(); // gömülü panel (exe)
+  const panelFound = located.found || Boolean(embeddedPanel);
   const writableDir = packaged ? resolveWritableDir(path.dirname(process.execPath)) : HERE;
 
   const bundledConfig = fs.existsSync(path.join(assetsDir, "relay.config.json"))
     ? path.join(assetsDir, "relay.config.json")
     : path.join(assetsDir, "..", "relay.config.json");
   const localConfig = path.join(writableDir, "relay.config.json");
-  const resolvedConfigPath = configPath || process.env.RELAY_CONFIG || (packaged && fs.existsSync(localConfig) ? localConfig : bundledConfig);
+  const explicitConfig = configPath || process.env.RELAY_CONFIG;
+  // Sıra: elle verilen yol → exe yanındaki dosya → pakete gömülü dosya → gömülü varsayılan
+  const loaded = loadConfig(explicitConfig, packaged ? localConfig : null, bundledConfig);
+  const config = loaded.config;
+  const resolvedConfigPath = loaded.path || explicitConfig || localConfig;
   const canWriteConfig = !packaged || path.dirname(resolvedConfigPath) === writableDir;
 
-  const config = JSON.parse(fs.readFileSync(resolvedConfigPath, "utf8"));
+  // İlk açılışta düzenlenebilir bir ayar dosyası bırak (kullanıcı elle de düzenleyebilsin).
+  if (!fs.existsSync(localConfig)) {
+    try {
+      fs.writeFileSync(localConfig, `${JSON.stringify(config, null, 2)}\n`);
+    } catch {
+      /* yazılamayan klasör: sorun değil */
+    }
+  }
+
   const saveConfig = () => {
     const target = canWriteConfig ? resolvedConfigPath : localConfig;
     try {
@@ -249,13 +303,27 @@ export async function createRelay({ configPath, rootDir } = {}) {
 
   function serveStatic(req, res, url) {
     const publicDir = path.join(assetsDir, "public");
+    const rel = url.pathname === "/" ? "/index.html" : decodeURIComponent(url.pathname);
+
+    // Gömülü panel (paketlenmiş exe): dış dosya gerekmez.
+    if (!located.found && embeddedPanel) {
+      const file = embeddedPanel[rel];
+      if (file) {
+        const body = file.text != null ? file.text : Buffer.from(file.base64, "base64");
+        res.writeHead(200, { "Content-Type": file.type, "Cache-Control": "no-store" });
+        return res.end(body);
+      }
+      if (rel === "/index.html") {
+        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
+        return res.end("<h1>Agent Relay</h1><p>Panel yüklenemedi; API çalışıyor. <a href='/api/health'>/api/health</a></p>");
+      }
+    }
+
     if (!panelFound && (url.pathname === "/" || !url.pathname.startsWith("/api/"))) {
       const html = FALLBACK_PAGE.replace("{{PROBED}}", located.probed.join("\n"));
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
       return res.end(html);
     }
-    let rel = decodeURIComponent(url.pathname);
-    if (rel === "/" || rel === "") rel = "/index.html";
     const filePath = path.normalize(path.join(publicDir, rel));
     if (!filePath.startsWith(publicDir)) return json(res, 403, { ok: false, error: "Yasak" });
     if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) return json(res, 404, { ok: false, error: "Bulunamadı" });
@@ -277,10 +345,14 @@ export async function createRelay({ configPath, rootDir } = {}) {
     orchestrator,
     config,
     configPath: resolvedConfigPath,
+    configSource: loaded.usedDefault ? "gömülü varsayılan" : resolvedConfigPath,
+    configError: loaded.error,
+    configTried: loaded.tried,
     dataDir,
     packaged,
     assetsDir,
     panelFound,
+    panelSource: located.found ? "disk (public/)" : embeddedPanel ? "gömülü panel" : "yok",
     probed: located.probed,
     /**
      * Port doluysa (örn. program iki kez açıldıysa) sıradaki boş portu dener,

@@ -32,27 +32,39 @@ jobs:
 
       - name: Linux paketini uçtan uca dene (gerçek çalıştırma)
         run: |
-          cp relay.config.json /tmp/smoke-config.json
-          node -e "const f='/tmp/smoke-config.json',fs=require('fs'),c=JSON.parse(fs.readFileSync(f,'utf8'));c.port=8899;c.dataDir='/tmp/smoke-data';fs.writeFileSync(f,JSON.stringify(c))"
+          set -x
           ./dist/agent-relay-linux-x64 diag > /tmp/diag.log 2>&1 || true
           cat /tmp/diag.log
-          RELAY_CONFIG=/tmp/smoke-config.json RELAY_NO_BROWSER=1 ./dist/agent-relay-linux-x64 up > /tmp/smoke.log 2>&1 &
+
+          # 1) Kullanıcının yaşadığı senaryo: hiç ayar dosyası yok, hiçbir env değişkeni yok.
+          cp dist/agent-relay-linux-x64 /tmp/solo-binary
+          cd /tmp
+          ./solo-binary up > /tmp/smoke.log 2>&1 &
           SERVER=$!
-          for i in $(seq 1 20); do
-            sleep 1
-            curl -sf http://127.0.0.1:8899/api/health >/dev/null && break
-          done
+          for i in $(seq 1 25); do sleep 1; curl -sf http://127.0.0.1:8787/api/health >/dev/null && break; done
           echo "--- çıktı ---"; cat /tmp/smoke.log
-          curl -sf http://127.0.0.1:8899/ | grep -q "Agent Relay" || { echo "PANEL SERVİS EDİLEMEDİ"; kill $SERVER; exit 1; }
-          curl -s http://127.0.0.1:8899/api/health | tee /tmp/health.json
+          curl -sf http://127.0.0.1:8787/api/health | tee /tmp/health.json
           grep -q '"ok":true' /tmp/health.json || { echo "SAĞLIK KONTROLÜ DÜŞTÜ"; kill $SERVER; exit 1; }
+          curl -sf http://127.0.0.1:8787/ | grep -q "Agent Relay" || { echo "PANEL SERVİS EDİLEMEDİ"; kill $SERVER; exit 1; }
+          curl -sf -o /dev/null http://127.0.0.1:8787/app.js || { echo "GÖMÜLÜ PANEL EKSİK (app.js)"; kill $SERVER; exit 1; }
+          test -f /tmp/relay.config.json || { echo "AYAR DOSYASI OLUŞMADI"; kill $SERVER; exit 1; }
+          echo "✓ İlk çalıştırma: gömülü panel + varsayılan ayar çalışıyor"
+          kill $SERVER
+          sleep 1
+
+          # 2) Ayar dosyası verilerek çalıştırma (özel port + veri klasörü)
+          node -e "const fs=require('fs');const c=JSON.parse(fs.readFileSync('/tmp/relay.config.json','utf8'));c.port=8899;c.dataDir='/tmp/smoke-data';fs.writeFileSync('/tmp/smoke-config.json',JSON.stringify(c))"
+          RELAY_CONFIG=/tmp/smoke-config.json RELAY_NO_BROWSER=1 ./solo-binary up > /tmp/smoke2.log 2>&1 &
+          SERVER2=$!
+          for i in $(seq 1 25); do sleep 1; curl -sf http://127.0.0.1:8899/api/health >/dev/null && break; done
+          curl -sf http://127.0.0.1:8899/api/health >/dev/null || { echo "İKİNCİ ÇALIŞTIRMA BAŞARISIZ"; cat /tmp/smoke2.log; kill $SERVER2; exit 1; }
           curl -sf -X POST http://127.0.0.1:8899/api/jobs -H 'content-type: application/json' \
             -d '{"request":"paket testi","turns":["coder","auditor","coder","auditor"],"requireApproval":false}' >/dev/null
           sleep 30
           curl -s http://127.0.0.1:8899/api/state | tee /tmp/state.json
-          grep -q '"status":"done"' /tmp/state.json || { echo "İŞ TAMAMLANMADI"; kill $SERVER; exit 1; }
-          echo "✓ Paketli ikili uçtan uca çalıştı"
-          kill $SERVER
+          grep -q '"status":"done"' /tmp/state.json || { echo "İŞ TAMAMLANMADI"; kill $SERVER2; exit 1; }
+          echo "✓ Paketli ikili uçtan uca çalıştı (panel + ayar + iş akışı)"
+          kill $SERVER2
 
       - name: Başarısızlık halinde kaydı yayınla (okunabilir olsun)
         if: failure()

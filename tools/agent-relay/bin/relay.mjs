@@ -105,7 +105,8 @@ async function up() {
   console.log(`\n  Agent Relay → ${url}`);
   console.log(`  Sıra: ${relay.config.agents.map((a) => `${a.name} (${a.role || "implementer"})`).join("  →  ")}`);
   console.log(`  Mod: ${relay.config.requireApproval ? "her devirde onay" : "tam otomatik"}`);
-  console.log(`  Ayar: ${relay.configPath}`);
+  console.log(`  Ayar: ${relay.configSource}`);
+  if (relay.configError && !relay.configPath) console.log(`  (ayar dosyası okunamadı: ${relay.configError})`);
   console.log(`  Kayıtlar: ${relay.dataDir}`);
   console.log(`\n  Kapatmak için bu pencereyi kapat ya da Ctrl+C.\n`);
   openBrowser(url);
@@ -167,7 +168,7 @@ async function main() {
     case "version":
     case "-v":
     case "--version":
-      console.log("agent-relay 0.1.2");
+      console.log("agent-relay 0.1.3");
       break;
 
     case "send":
@@ -254,7 +255,7 @@ async function main() {
       console.log("HERE/.. içeriği:", listing(path.join(HERE, "..")));
       if (process.pkg) console.log("/snapshot     :", listing("/snapshot"));
       const located = locateAssets(HERE);
-      console.log("panel klasörü :", located.dir, located.found ? "(bulundu)" : "(BULUNAMADI)");
+      console.log("panel klasörü :", located.dir, located.found ? "(disk)" : "(disk yok — gömülü panel kullanılır)");
       console.log("aranan yerler :");
       for (const candidate of located.probed) {
         console.log(`   - ${candidate}${fs.existsSync(path.join(candidate, "public", "index.html")) ? "  ✔" : ""}`);
