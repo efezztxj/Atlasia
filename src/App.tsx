@@ -488,6 +488,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
             showLabels={labels}
             terrainEnabled={terrain}
             baseMap={baseMap}
+            theme={theme}
             spin={spin && !reducedMotion && !addMode && !draft}
             onUserInteract={() => setSpin(false)}
             onViewChange={setView}

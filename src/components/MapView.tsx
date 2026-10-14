@@ -2,6 +2,12 @@ import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "reac
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import maplibreWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
+import {
+  calibrateMapLabelLayers,
+  mapLabelPaint,
+  type MapLabelTheme,
+  type MapStyleLayer,
+} from "../config/mapLabelCalibration";
 import openFreeMapDarkStyle from "../data/openFreeMapDarkStyle.json";
 import { KKTC_GEOMETRY, KKTC_NAME } from "../data/regions";
 import type { PlaceViewport } from "../lib/firestoreData";
@@ -36,6 +42,7 @@ interface Props {
   showLabels: boolean;
   terrainEnabled: boolean;
   baseMap: BaseMapStyle;
+  theme: MapLabelTheme;
   spin: boolean;
   onUserInteract: () => void;
   onViewChange: (v: ViewState) => void;
@@ -77,8 +84,17 @@ function openFreeMapLayerVisible(layerId: string, labels: boolean, baseMap: Base
   return baseMap === "dark";
 }
 
-function openFreeMapLayers(labels: boolean, baseMap: BaseMapStyle): maplibregl.LayerSpecification[] {
-  return openFreeMapDarkStyle.layers.map((rawLayer) => {
+function openFreeMapLayers(
+  labels: boolean,
+  baseMap: BaseMapStyle,
+  theme: MapLabelTheme,
+): maplibregl.LayerSpecification[] {
+  const calibratedLayers = calibrateMapLabelLayers(
+    openFreeMapDarkStyle.layers as unknown as readonly MapStyleLayer[],
+    { theme, baseMap },
+  );
+
+  return calibratedLayers.map((rawLayer) => {
     const raw = rawLayer as Record<string, unknown>;
     const id = `${OPEN_FREE_MAP_LAYER_PREFIX}${rawLayer.id}`;
     const layer: Record<string, unknown> = {
@@ -90,31 +106,6 @@ function openFreeMapLayers(labels: boolean, baseMap: BaseMapStyle): maplibregl.L
       },
     };
     if (typeof raw.source === "string") layer.source = `${OPEN_FREE_MAP_SOURCE_PREFIX}${raw.source}`;
-
-    // OpenFreeMap'in koyu etiketlerini uydu görünümünde de okunaklı tut.
-    // Yerel + Latin adları üst üste yazmak yerine önce Türkçe adı seçmek,
-    // küçük küre görünümündeki etiket kalabalığını da azaltır.
-    if (rawLayer.type === "symbol" && !rawLayer.id.includes("oneway")) {
-      if (rawLayer.id.startsWith("place_") || rawLayer.id === "water_name" || rawLayer.id === "highway_name_other") {
-        layer.layout = {
-          ...(layer.layout as Record<string, unknown>),
-          "text-field": [
-            "coalesce",
-            ["get", "name:tr"],
-            ["get", "name:latin"],
-            ["get", "name_en"],
-            ["get", "name"],
-          ],
-        };
-      }
-      layer.paint = {
-        ...((raw.paint as Record<string, unknown> | undefined) ?? {}),
-        "text-color": rawLayer.id === "water_name" ? "#a9dce5" : "#d6e7e1",
-        "text-halo-color": "rgba(1, 15, 12, 0.9)",
-        "text-halo-width": rawLayer.id.startsWith("place_country") ? 1.6 : 1.25,
-        "text-halo-blur": 0.35,
-      };
-    }
     return layer as unknown as maplibregl.LayerSpecification;
   });
 }
@@ -126,7 +117,12 @@ function baseZoom(el: HTMLElement) {
   return Math.max(1.1, Math.log2((d * Math.PI) / 512));
 }
 
-function buildStyle(labels: boolean, terrainEnabled: boolean, baseMap: BaseMapStyle): maplibregl.StyleSpecification {
+function buildStyle(
+  labels: boolean,
+  terrainEnabled: boolean,
+  baseMap: BaseMapStyle,
+  theme: MapLabelTheme,
+): maplibregl.StyleSpecification {
   return {
     version: 8,
     projection: { type: "globe" },
@@ -229,7 +225,7 @@ function buildStyle(labels: boolean, terrainEnabled: boolean, baseMap: BaseMapSt
           "hillshade-accent-color": "#0a7b60",
         },
       },
-      ...openFreeMapLayers(labels, baseMap),
+      ...openFreeMapLayers(labels, baseMap, theme),
       {
         id: "kktc-outline",
         type: "line",
@@ -332,6 +328,7 @@ export default function MapView({
   showLabels,
   terrainEnabled,
   baseMap,
+  theme,
   spin,
   onUserInteract,
   onViewChange,
@@ -340,7 +337,7 @@ export default function MapView({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<Map<string, { marker: maplibregl.Marker; el: HTMLElement }>>(new Map());
-  const initialStyleOptions = useRef({ showLabels, terrainEnabled, baseMap });
+  const initialStyleOptions = useRef({ showLabels, terrainEnabled, baseMap, theme });
   const meMarkerRef = useRef<maplibregl.Marker | null>(null);
   const pulseRef = useRef<maplibregl.Marker | null>(null);
   const [ready, setReady] = useState(false);
@@ -523,7 +520,12 @@ export default function MapView({
     const markers = markersRef.current;
     const map = new maplibregl.Map({
       container: el,
-      style: buildStyle(initialStyle.showLabels, initialStyle.terrainEnabled, initialStyle.baseMap),
+      style: buildStyle(
+        initialStyle.showLabels,
+        initialStyle.terrainEnabled,
+        initialStyle.baseMap,
+        initialStyle.theme,
+      ),
       center: HOME_CENTER,
       zoom: baseZoom(el),
       minZoom: 1,
@@ -623,10 +625,20 @@ export default function MapView({
         openFreeMapLayerVisible(layerId, showLabels, baseMap) ? "visible" : "none",
       );
     }
+    for (const rawLayer of openFreeMapDarkStyle.layers) {
+      if (rawLayer.type !== "symbol") continue;
+      const paint = mapLabelPaint(rawLayer.id, { theme, baseMap });
+      if (!paint) continue;
+      const layerId = `${OPEN_FREE_MAP_LAYER_PREFIX}${rawLayer.id}`;
+      map.setPaintProperty(layerId, "text-color", paint["text-color"]);
+      map.setPaintProperty(layerId, "text-halo-color", paint["text-halo-color"]);
+      map.setPaintProperty(layerId, "text-halo-width", paint["text-halo-width"]);
+      map.setPaintProperty(layerId, "text-halo-blur", paint["text-halo-blur"]);
+    }
     for (const layer of ["kktc-outline", "kktc-label"]) {
       map.setLayoutProperty(layer, "visibility", showLabels ? "visible" : "none");
     }
-  }, [baseMap, showLabels, ready]);
+  }, [baseMap, showLabels, ready, theme]);
 
   // Yakınlaşınca gerçek yükseklik verisini ister; düşük güçlü cihazlarda kapatılabilir.
   useEffect(() => {
