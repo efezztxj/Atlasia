@@ -56,8 +56,8 @@ export const FIRESTORE_QUERY_LIMITS = {
   placeOverview: 40,
   placeViewportPage: 50,
   ownedPlacesPage: 50,
-  postsPage: 25,
-  storiesPage: 25,
+  postsPage: 50,
+  storiesPage: 50,
 } as const;
 
 export const STORY_TTL_MS = 24 * 60 * 60 * 1000;

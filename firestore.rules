@@ -270,8 +270,8 @@ service cloud.firestore {
 
     match /posts/{postId} {
       allow get: if true;
-      // Akış cursor sayfaları küçük tutulur; eski kayıtlar sonraki sayfalardadır.
-      allow list: if boundedList(25);
+      // Akış cursor sayfaları 50 kayıtla sınırlıdır; eski kayıtlar sonraki sayfalardadır.
+      allow list: if boundedList(50);
       allow create: if signedIn()
                     && validPostShape(request.resource.data)
                     && request.resource.data.authorUid == request.auth.uid
@@ -286,8 +286,8 @@ service cloud.firestore {
 
     match /stories/{storyId} {
       allow get: if true;
-      // 24 saatlik pencere de cursor ile 25 kayıtlık sayfalara ayrılır.
-      allow list: if boundedList(25);
+      // 24 saatlik pencere de cursor ile 50 kayıtlık sayfalara ayrılır.
+      allow list: if boundedList(50);
       allow create: if signedIn()
                     && validStoryShape(request.resource.data)
                     && request.resource.data.authorUid == request.auth.uid

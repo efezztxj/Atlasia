@@ -211,8 +211,8 @@ describe("Firestore güvenlik kuralları", () => {
       limit(2),
     )));
     expect(second.docs.map((item) => item.id)).toEqual(["post-2"]);
-    await assertSucceeds(getDocs(query(collection(guestDb, "posts"), limit(25))));
-    await assertFails(getDocs(query(collection(guestDb, "posts"), limit(26))));
+    await assertSucceeds(getDocs(query(collection(guestDb, "posts"), limit(50))));
+    await assertFails(getDocs(query(collection(guestDb, "posts"), limit(51))));
   });
 
   it("yalnız sahibi geçerli ve alanları sınırlı keşif pini yazabilir", async () => {
@@ -395,8 +395,8 @@ describe("Firestore güvenlik kuralları", () => {
     await assertSucceeds(setDoc(storyRef, validStory("owner")));
     await assertFails(updateDoc(storyRef, { seen: true }));
     await assertFails(getDocs(collection(guestDb, "stories")));
-    await assertSucceeds(getDocs(query(collection(guestDb, "stories"), limit(25))));
-    await assertFails(getDocs(query(collection(guestDb, "stories"), limit(26))));
+    await assertSucceeds(getDocs(query(collection(guestDb, "stories"), limit(50))));
+    await assertFails(getDocs(query(collection(guestDb, "stories"), limit(51))));
     await assertFails(deleteDoc(doc(otherDb, "stories/story-1")));
     await assertSucceeds(deleteDoc(storyRef));
   });

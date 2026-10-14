@@ -75,8 +75,8 @@ describe("Firestore veri bütünlüğü yardımcıları", () => {
       placeOverview: 40,
       placeViewportPage: 50,
       ownedPlacesPage: 50,
-      postsPage: 25,
-      storiesPage: 25,
+      postsPage: 50,
+      storiesPage: 50,
     });
     expect(FIRESTORE_LIMITS).not.toHaveProperty("places");
     expect(FIRESTORE_LIMITS).not.toHaveProperty("posts");
