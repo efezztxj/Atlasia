@@ -1,9 +1,10 @@
 const $ = (sel) => document.querySelector(sel);
 
-/** @type {{jobs:any[], logs:any[], stats:any, currentJobId:string|null}} */
-const state = { jobs: [], logs: [], stats: { created: 0, finished: 0 }, currentJobId: null };
+const state = { jobs: [], logs: [], stats: {}, currentJobId: null };
 let config = { turns: [], agents: [], requireApproval: true };
-let openJobId = null;
+let picked = new Set(); // istek gönderirken seçili ajanlar
+let modalAgentId = null;
+let modalIsNew = false;
 
 const STATUS_TR = {
   queued: "sırada",
@@ -20,9 +21,13 @@ const STATUS_TR = {
   retry: "yeniden",
 };
 
+const ROLE_TR = { implementer: "kodcu", reviewer: "denetçi", custom: "özel" };
+const ADAPTER_TR = { mock: "demo", cdp: "tarayıcı sekmesi", os: "masaüstü penceresi" };
+
 const esc = (s = "") => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const time = (ms) => new Date(ms).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 const secs = (ms) => (ms == null ? "" : `${(ms / 1000).toFixed(1)} sn`);
+const agentById = (id) => config.agents.find((a) => a.id === id);
 
 async function api(path, options = {}) {
   const res = await fetch(path, {
@@ -35,19 +40,44 @@ async function api(path, options = {}) {
   return data;
 }
 
-function control(id, action, payload) {
-  return api(`/api/jobs/${id}/${action}`, { method: "POST", body: payload || {} }).catch((err) => alert(err.message));
+const control = (id, action, payload) =>
+  api(`/api/jobs/${id}/${action}`, { method: "POST", body: payload || {} }).catch((err) => alert(err.message));
+
+// ---------------- istek gönderme ----------------
+
+function selectedAgents() {
+  const list = config.agents.filter((a) => picked.has(a.id));
+  return list.length ? list : config.agents;
 }
 
-// ---------------- gönderim ----------------
-
 function buildTurns() {
-  const rounds = Number($("#rounds")?.value || 1);
-  const order = config.agents.map((a) => a.id);
-  if (!order.length) return undefined;
+  const chosen = selectedAgents();
+  const mode = $("#loop").value;
+  if (mode === "loop") {
+    const [first, second] = chosen;
+    const seq = second ? [first.id, second.id, first.id, second.id] : [first.id, first.id];
+    return seq;
+  }
+  const rounds = Number(mode) || 1;
   const turns = [];
-  for (let i = 0; i < rounds; i++) for (const id of order) turns.push(id);
+  for (let i = 0; i < rounds; i++) for (const a of chosen) turns.push(a.id);
   return turns;
+}
+
+function renderPreview() {
+  const names = buildTurns().map((id) => agentById(id)?.name.replace(/^Agent \d+ · /, "") || id);
+  $("#preview").innerHTML = `Sıra: ${names.map((n) => `<b>${esc(n)}</b>`).join(' <span class="muted">→</span> ')}`;
+}
+
+function renderPick() {
+  $("#pick").innerHTML = config.agents
+    .map(
+      (a) => `<button class="chip ${picked.has(a.id) ? "on" : ""}" data-pick="${a.id}">
+        <i class="role-${a.role || "implementer"}"></i>${esc(a.name.replace(/^Agent \d+ · /, ""))}
+      </button>`,
+    )
+    .join("");
+  renderPreview();
 }
 
 async function send() {
@@ -65,24 +95,23 @@ async function send() {
   }
 }
 
-// ---------------- iş kartları ----------------
+// ---------------- kuyruk ----------------
 
 function stageChips(job) {
   return job.turns
     .map((agentId, index) => {
       const stage = job.stages[index];
-      const agent = config.agents.find((a) => a.id === agentId);
-      const status = stage?.status || (job.status === "queued" ? "queued" : "queued");
-      const label = `${index + 1}. ${agent?.name || agentId}`;
+      const agent = agentById(agentId);
+      const status = stage?.status || "queued";
       const suffix = status === "done" && stage?.ms ? ` · ${secs(stage.ms)}` : "";
-      return `<span class="stage-chip ${status}"><i></i>${esc(label)}${esc(suffix)}</span>`;
+      const mark = stage?.approved ? " ✔" : "";
+      return `<span class="stage-chip ${status}"><i></i>${esc(agent?.name.replace(/^Agent \d+ · /, "") || agentId)}${esc(suffix)}${mark}</span>`;
     })
     .join('<span class="muted" style="align-self:center">→</span>');
 }
 
 function jobActions(job) {
-  const btn = (action, label, cls = "small", payload) =>
-    `<button class="btn ${cls}" data-job="${job.id}" data-action="${action}"${payload ? ` data-payload='${esc(JSON.stringify(payload))}'` : ""}>${label}</button>`;
+  const btn = (action, label, cls = "small") => `<button class="btn ${cls}" data-job="${job.id}" data-action="${action}">${label}</button>`;
   const out = [];
   if (job.status === "waiting_approval") {
     out.push(btn("approve", "✔ Onayla ve gönder", "primary small"));
@@ -99,13 +128,23 @@ function jobActions(job) {
   return out.join("");
 }
 
+function approvalBox(job) {
+  const stage = job.stages[job.turn - 1];
+  const nextAgent = agentById(job.turns[job.turn]);
+  return `<details class="out" open>
+    <summary>Devir onayı — birazdan ${esc(nextAgent?.name || "sıradaki ajan")} tarafından okunacak metin</summary>
+    <textarea data-output-for="${job.id}" rows="5">${esc(stage.output || "")}</textarea>
+    <div style="margin-top:7px"><button class="btn primary small" data-job="${job.id}" data-action="approve-edited">✔ Bu metinle gönder</button></div>
+  </details>`;
+}
+
 function jobCard(job) {
   const active = job.id === state.currentJobId ? " active" : "";
-  const stages = job.stages.filter((s) => s.output);
-  const details = stages
+  const details = job.stages
+    .filter((s) => s.output || s.error)
     .map(
-      (s) => `<details class="out"><summary>${esc(s.agentName)} · çıktı (${secs(s.ms) || "—"})${s.captured === false ? " · yakalanamadı" : ""}</summary>
-        <pre>${esc(s.output || "")}</pre></details>`,
+      (s) => `<details class="out"><summary>${esc(s.agentName)} · çıktı (${secs(s.ms) || "—"})${s.captured === false ? " · yakalanamadı" : ""}${s.approved ? " · ✔ onay" : ""}</summary>
+        <pre>${esc(s.output || s.error || "")}</pre></details>`,
     )
     .join("");
   return `<div class="job${active}" data-job-id="${job.id}">
@@ -124,66 +163,62 @@ function jobCard(job) {
   </div>`;
 }
 
-function approvalBox(job) {
-  const stage = job.stages[job.turn - 1];
-  const nextTurn = job.turn;
-  const nextAgent = config.agents.find((a) => a.id === job.turns[nextTurn]);
-  return `<details class="out" ${openJobId === job.id ? "open" : ""}>
-    <summary>Devir onayı — birazdan ${esc(nextAgent?.name || "sıradaki ajan")} tarafından okunacak metin</summary>
-    <textarea data-output-for="${job.id}" rows="5">${esc(stage.output || "")}</textarea>
-    <div style="margin-top:7px;display:flex;gap:7px;flex-wrap:wrap">
-      <button class="btn primary small" data-job="${job.id}" data-action="approve-edited">✔ Bu metinle gönder</button>
-    </div>
-  </details>`;
+// ---------------- şu an / ekip ----------------
+
+function activeJob() {
+  return state.jobs.find((j) => j.id === state.currentJobId) || state.jobs.find((j) => ["running", "waiting_approval", "paused"].includes(j.status));
 }
 
-// ---------------- şu an + canlı ekran ----------------
-
 function renderNow() {
-  const job = state.jobs.find((j) => j.id === state.currentJobId) || state.jobs.find((j) => ["running", "waiting_approval", "paused"].includes(j.status));
+  const job = activeJob();
   if (!job) {
     $("#now-sub").textContent = "boşta";
-    $("#now-body").innerHTML = `<p class="muted">Kuyruk boş. Bir istek yaz, sıra Agent 1'e gelsin.</p>`;
+    $("#now-body").innerHTML = `<p class="muted">Kuyruk boş. Bir istek yaz, sıra ilk ajana gelsin.</p>`;
     return;
   }
   $("#now-sub").textContent = `${STATUS_TR[job.status] || job.status} · ${job.request.slice(0, 60)}`;
-  const stages = job.stages.map((s) => {
-    const agent = config.agents.find((a) => a.id === s.agentId);
-    const status = s.status;
-    return `<div class="stage">
-      <div class="stage-head">
-        <span class="who">${esc(agent?.name || s.agentName)}</span>
-        <span class="pill ${status}">${STATUS_TR[status] || status}</span>
-        ${s.ms ? `<span class="muted">${secs(s.ms)}${s.captured === false ? " · cevap yakalanamadı" : ""}</span>` : ""}
-      </div>
-      ${s.liveTyped ? `<div class="agent-label">yazdığı metin</div><pre class="live-typed">${esc(s.liveTyped)}</pre>` : ""}
-      ${s.liveReply ? `<div class="agent-label">gelen cevap</div><pre class="live-reply">${esc(s.liveReply)}</pre>` : ""}
-      ${s.error ? `<div class="job-note">${esc(s.error)}</div>` : ""}
-    </div>`;
-  }).join("");
-  $("#now-body").innerHTML = stages || `<p class="muted">Sıra bekleniyor…</p>`;
+  $("#now-body").innerHTML =
+    job.stages
+      .map((s) => {
+        const agent = agentById(s.agentId);
+        return `<div class="stage">
+        <div class="stage-head">
+          <span class="who">${esc(agent?.name || s.agentName)}</span>
+          <span class="pill ${s.status}">${STATUS_TR[s.status] || s.status}</span>
+          ${agent?.role === "reviewer" ? '<span class="pill">denetçi</span>' : ""}
+          ${s.ms ? `<span class="muted">${secs(s.ms)}${s.captured === false ? " · cevap yakalanamadı" : ""}${s.approved ? " · ✔ onay" : ""}</span>` : ""}
+        </div>
+        ${s.liveTyped ? `<div class="agent-label">yazdığı metin</div><pre class="live-typed">${esc(s.liveTyped)}</pre>` : ""}
+        ${s.liveReply ? `<div class="agent-label">gelen cevap</div><pre class="live-reply">${esc(s.liveReply)}</pre>` : ""}
+        ${s.error ? `<div class="job-note">${esc(s.error)}</div>` : ""}
+      </div>`;
+      })
+      .join("") || `<p class="muted">Sıra bekleniyor…</p>`;
 }
 
 function renderAgents() {
-  const job = state.jobs.find((j) => ["running", "waiting_approval", "paused"].includes(j.status));
+  const job = activeJob();
   const box = $("#agents");
   box.innerHTML = "";
-  for (const agent of config.agents) {
+  config.agents.forEach((agent, index) => {
     const stage = job?.stages.filter((s) => s.agentId === agent.id).pop();
-    const node = document.importNode($("#tpl-agent").content, true);
-    node.querySelector(".name").textContent = `${agent.name}`;
-    const setupBtn = node.querySelector(".setup-agent");
-    setupBtn.dataset.agent = agent.id;
-    setupBtn.addEventListener("click", () => openSetup(agent.id));
-    node.querySelector(".agent-label").textContent = `yazdığı metin · ${agent.adapter === "mock" ? "demo" : agent.adapter === "cdp" ? "tarayıcı sekmesi" : "masaüstü penceresi"}`;
-    const pill = node.querySelector(".pill");
     const status = stage?.status || "queued";
+    const node = document.importNode($("#tpl-agent").content, true);
+    node.querySelector(".name").textContent = agent.name;
+    const pill = node.querySelector(".pill");
     pill.className = `pill ${status}`;
-    pill.textContent = `${STATUS_TR[status] || status}${stage?.ms ? ` · ${secs(stage.ms)}` : ""}`;
+    pill.textContent = STATUS_TR[status] || status;
+    node.querySelector(".agent-sub").textContent =
+      `${ROLE_TR[agent.role || "implementer"]} · ${ADAPTER_TR[agent.adapter] || agent.adapter}${agent.stopPattern ? " · onayda erken bitirir" : ""}`;
     node.querySelector(".typed").textContent = stage?.liveTyped || stage?.prompt?.slice(0, 400) || "—";
     node.querySelector(".reply").textContent = stage?.liveReply || stage?.output || "—";
+    node.querySelectorAll(".act").forEach((btn) => {
+      btn.dataset.agent = agent.id;
+      if (btn.dataset.act === "up") btn.disabled = index === 0;
+      if (btn.dataset.act === "down") btn.disabled = index === config.agents.length - 1;
+    });
     box.appendChild(node);
-  }
+  });
 }
 
 function renderLogs() {
@@ -196,23 +231,128 @@ function renderLogs() {
   if (atBottom) box.scrollTop = box.scrollHeight;
 }
 
+function renderHeader() {
+  $("#order").textContent = config.agents.length
+    ? `Ekip: ${config.agents.map((a) => `${a.name.replace(/^Agent \d+ · /, "")} (${ROLE_TR[a.role || "implementer"]})`).join("  →  ")}  ·  ${config.requireApproval ? "her devirde onay" : "tam otomatik"}`
+    : "Ajan yok — ekle.";
+}
+
 function render() {
+  renderHeader();
+  renderPick();
   $("#queue").innerHTML = state.jobs.map(jobCard).join("") || `<p class="muted">Henüz istek yok.</p>`;
   renderNow();
   renderAgents();
   renderLogs();
-  $("#order").textContent = `Sıra: ${config.agents.map((a) => a.name).join("  →  ")}  ·  ${config.requireApproval ? "her devirde onay" : "tam otomatik"}`;
 }
 
 async function loadHealth() {
   try {
     const health = await api("/api/health");
     $("#health").innerHTML = health.checks
-      .map((c) => `<span class="chip ${c.ok ? "ok" : "bad"}" title="${esc(c.detail || "")}"><i></i>${esc(c.name)}</span>`)
+      .map((c) => `<span class="chip ${c.ok ? "ok" : "bad"}" title="${esc(c.detail || "")}"><i></i>${esc(c.name.replace(/^Agent \d+ · /, ""))}</span>`)
       .join("");
   } catch {
     $("#health").innerHTML = `<span class="chip bad"><i></i>sunucu yok</span>`;
   }
+}
+
+// ---------------- ajan düzenleme ----------------
+
+function syncAdapterFields() {
+  const adapter = $("#m-adapter").value;
+  $("#m-browser").style.display = adapter === "cdp" ? "" : "none";
+  $("#m-desktop").style.display = adapter === "os" ? "" : "none";
+}
+
+function openModal(agentId) {
+  const isNew = !agentId;
+  modalIsNew = isNew;
+  modalAgentId = agentId || null;
+  const agent = isNew ? { adapter: "mock", role: "implementer" } : agentById(agentId) || {};
+  const cdp = agent.cdp || {};
+  const os = agent.os || {};
+  $("#modal-title").textContent = isNew ? "Yeni ajan" : `${agent.name} · düzenle`;
+  $("#modal-delete").style.display = isNew ? "none" : "";
+  $("#m-name").value = agent.name || "";
+  $("#m-role").value = agent.role || "implementer";
+  $("#m-context").value = agent.context || "";
+  $("#m-stop").value = agent.stopPattern || "";
+  $("#m-adapter").value = agent.adapter || "mock";
+  $("#m-endpoint").value = cdp.endpoint || "http://127.0.0.1:9222";
+  $("#m-input").value = cdp.input || "";
+  $("#m-reply").value = cdp.reply || "";
+  $("#m-busy").value = cdp.busy || "";
+  $("#m-submit").value = cdp.submit || "enter";
+  $("#m-send").value = cdp.send || "";
+  $("#m-idle").value = cdp.idleMs || 3000;
+  $("#m-index").value = cdp.match?.index ?? "";
+  $("#m-window").value = os.window || "";
+  $("#m-tabs").innerHTML = "";
+  $("#m-tabs-note").textContent = "Chrome --remote-debugging-port=9222 ile açık olmalı";
+  syncAdapterFields();
+  $("#modal").classList.remove("hidden");
+}
+
+async function refreshTabs() {
+  $("#m-tabs-note").textContent = "aranıyor…";
+  const endpoint = $("#m-endpoint").value.trim();
+  const data = await api(`/api/tabs?endpoint=${encodeURIComponent(endpoint)}`).catch((err) => ({ ok: false, error: err.message, tabs: [] }));
+  $("#m-tabs-note").textContent = data.ok ? `${data.tabs.length} sekme bulundu` : data.error || "sekme bulunamadı";
+  $("#m-tabs").innerHTML = (data.tabs || [])
+    .map(
+      (t, i) => `<label><input type="radio" name="tab" value="${esc(t.id)}" data-url="${esc(t.url)}" data-title="${esc(t.title)}" ${i === 0 ? "checked" : ""} />
+        <span><strong>${esc(t.title || "(başlıksız)")}</strong><small>${esc(t.url)}</small></span></label>`,
+    )
+    .join("");
+}
+
+async function saveAgent() {
+  const adapter = $("#m-adapter").value;
+  const body = {
+    name: $("#m-name").value.trim(),
+    role: $("#m-role").value,
+    context: $("#m-context").value.trim(),
+    stopPattern: $("#m-stop").value.trim(),
+    adapter,
+  };
+  if (!body.name) return alert("Ajan adı gerekli.");
+  if (adapter === "cdp") {
+    const cdp = {
+      endpoint: $("#m-endpoint").value.trim() || "http://127.0.0.1:9222",
+      input: $("#m-input").value.trim() || undefined,
+      reply: $("#m-reply").value.trim() || undefined,
+      busy: $("#m-busy").value.trim() || undefined,
+      submit: $("#m-submit").value,
+      send: $("#m-send").value.trim() || undefined,
+      idleMs: Number($("#m-idle").value || 3000),
+    };
+    const index = $("#m-index").value;
+    const tab = document.querySelector('input[name="tab"]:checked');
+    if (index !== "") cdp.match = { index: Number(index) };
+    else if (tab) cdp.match = { id: tab.value, url: tab.dataset.url, title: tab.dataset.title };
+    else if (agentById(modalAgentId)?.cdp?.match) cdp.match = agentById(modalAgentId).cdp.match;
+    body.cdp = cdp;
+  }
+  if (adapter === "os") body.os = { window: $("#m-window").value.trim(), submit: "enter" };
+
+  try {
+    if (modalIsNew) await api("/api/agents", { method: "POST", body });
+    else await api(`/api/agents/${modalAgentId}/setup`, { method: "POST", body });
+  } catch (err) {
+    return alert(err.message);
+  }
+  $("#modal").classList.add("hidden");
+  await bootstrap();
+}
+
+async function deleteAgent(id) {
+  const agent = agentById(id);
+  if (!confirm(`${agent?.name || id} silinsin mi?`)) return;
+  await api(`/api/agents/${id}/delete`, { method: "POST" }).catch((err) => alert(err.message));
+  $("#modal").classList.add("hidden");
+  picked.delete(id);
+  await bootstrap();
 }
 
 // ---------------- olaylar ----------------
@@ -252,22 +392,49 @@ function connect() {
 }
 
 document.addEventListener("click", async (event) => {
-  const btn = event.target.closest("[data-action]");
-  if (!btn) return;
-  const id = btn.dataset.job;
-  const action = btn.dataset.action;
-  if (action === "clipboard") {
-    const res = await api(`/api/jobs/${id}/clipboard`, { method: "POST" }).catch((err) => ({ error: err.message }));
-    if (res.error) alert(res.error);
+  const pick = event.target.closest("[data-pick]");
+  if (pick) {
+    const id = pick.dataset.pick;
+    if (picked.has(id)) picked.delete(id);
+    else picked.add(id);
+    renderPick();
     return;
   }
-  if (action === "approve-edited") {
-    const textarea = document.querySelector(`[data-output-for="${id}"]`);
-    openJobId = id;
-    return control(id, "approve", { output: textarea?.value || "" });
+
+  const actBtn = event.target.closest(".act");
+  if (actBtn) {
+    const id = actBtn.dataset.agent;
+    if (actBtn.dataset.act === "edit") return openModal(id);
+    await api(`/api/agents/${id}/move`, { method: "POST", body: { dir: actBtn.dataset.act === "up" ? -1 : 1 } }).catch((err) => alert(err.message));
+    return bootstrap();
   }
-  if (action === "delete") openJobId = null;
-  return control(id, action);
+
+  const btn = event.target.closest("[data-action]");
+  if (btn) {
+    const id = btn.dataset.job;
+    const action = btn.dataset.action;
+    if (action === "clipboard") {
+      const res = await api(`/api/jobs/${id}/clipboard`, { method: "POST" }).catch((err) => ({ error: err.message }));
+      if (res.error) alert(res.error);
+      return;
+    }
+    if (action === "approve-edited") {
+      const textarea = document.querySelector(`[data-output-for="${id}"]`);
+      return control(id, "approve", { output: textarea?.value || "" });
+    }
+    return control(id, action);
+  }
+
+  if (event.target.closest("#add-agent")) return openModal(null);
+  if (event.target.closest("#modal-close") || event.target.closest("#modal-cancel") || event.target === $("#modal")) return $("#modal").classList.add("hidden");
+  if (event.target.closest("#modal-save")) return saveAgent();
+  if (event.target.closest("#modal-delete")) return deleteAgent(modalAgentId);
+  if (event.target.closest("#m-refresh")) return refreshTabs();
+});
+
+document.addEventListener("change", (event) => {
+  if (event.target.id === "m-adapter") syncAdapterFields();
+  if (event.target.id === "loop") renderPreview();
 });
 
 $("#send").addEventListener("click", send);
@@ -284,101 +451,13 @@ $("#approval").addEventListener("change", async (e) => {
 
 async function bootstrap() {
   config = await api("/api/config").catch(() => config);
+  const ids = new Set(config.agents.map((a) => a.id));
+  picked = new Set([...picked].filter((id) => ids.has(id)));
+  if (!picked.size) config.agents.forEach((a) => picked.add(a.id));
   $("#approval").checked = Boolean(config.requireApproval);
   applyState(await api("/api/state").catch(() => ({})));
   await loadHealth();
 }
-
-// ---------------- agent bağlama ----------------
-
-let setupAgentId = null;
-
-function shelfKey(id) {
-  return `relay.agent.${id}`;
-}
-
-function openSetup(agentId) {
-  setupAgentId = agentId;
-  const agent = config.agents.find((a) => a.id === agentId) || {};
-  const memory = JSON.parse(localStorage.getItem(shelfKey(agentId)) || "{}");
-  const cdp = agent.cdp || memory.cdp || {};
-  const os = agent.os || memory.os || {};
-  $("#modal-title").textContent = `${agent.name} · bağla`;
-  $("#m-adapter").value = agent.adapter || "mock";
-  $("#m-endpoint").value = cdp.endpoint || memory.endpoint || "http://127.0.0.1:9222";
-  $("#m-input").value = cdp.input || "";
-  $("#m-reply").value = cdp.reply || "";
-  $("#m-busy").value = cdp.busy || "";
-  $("#m-submit").value = cdp.submit || "enter";
-  $("#m-send").value = cdp.send || "";
-  $("#m-idle").value = cdp.idleMs || 3000;
-  $("#m-index").value = cdp.match?.index ?? "";
-  $("#m-window").value = os.window || "";
-  $("#m-tabs").innerHTML = "";
-  $("#m-tabs-note").textContent = "Chrome --remote-debugging-port=9222 ile açık olmalı";
-  syncAdapterFields();
-  $("#modal").classList.remove("hidden");
-}
-
-function syncAdapterFields() {
-  const adapter = $("#m-adapter").value;
-  $("#m-browser").style.display = adapter === "cdp" ? "" : "none";
-  $("#m-desktop").style.display = adapter === "os" ? "" : "none";
-}
-
-async function refreshTabs() {
-  $("#m-tabs-note").textContent = "aranıyor…";
-  const endpoint = $("#m-endpoint").value.trim();
-  const data = await api(`/api/tabs?endpoint=${encodeURIComponent(endpoint)}`).catch((err) => ({ ok: false, error: err.message, tabs: [] }));
-  $("#m-tabs-note").textContent = data.ok ? `${data.tabs.length} sekme bulundu` : data.error || "sekme bulunamadı";
-  $("#m-tabs").innerHTML = (data.tabs || [])
-    .map(
-      (t, i) => `<label><input type="radio" name="tab" value="${esc(t.id)}" data-url="${esc(t.url)}" data-title="${esc(t.title)}" ${i === 0 ? "checked" : ""} />
-        <span><strong>${esc(t.title || "(başlıksız)")}</strong><small>${esc(t.url)}</small></span></label>`,
-    )
-    .join("");
-}
-
-async function saveSetup() {
-  const adapter = $("#m-adapter").value;
-  const endpoint = $("#m-endpoint").value.trim() || "http://127.0.0.1:9222";
-  const picked = document.querySelector('input[name="tab"]:checked');
-  const body = { adapter };
-  if (adapter === "cdp") {
-    const cdp = {
-      endpoint,
-      input: $("#m-input").value.trim() || undefined,
-      reply: $("#m-reply").value.trim() || undefined,
-      busy: $("#m-busy").value.trim() || undefined,
-      submit: $("#m-submit").value,
-      send: $("#m-send").value.trim() || undefined,
-      idleMs: Number($("#m-idle").value || 3000),
-    };
-    const index = $("#m-index").value;
-    if (index !== "") cdp.match = { index: Number(index) };
-    else if (picked) cdp.match = { id: picked.value, url: picked.dataset.url, title: picked.dataset.title };
-    body.cdp = cdp;
-  }
-  if (adapter === "os") body.os = { window: $("#m-window").value.trim(), submit: "enter" };
-  if (adapter === "mock") body.os = {};
-  await api(`/api/agents/${setupAgentId}/setup`, { method: "POST", body }).catch((err) => alert(err.message));
-  // Seçilenleri tarayıcıda da hatırla (sunucu config'i ezilirse diye)
-  localStorage.setItem(shelfKey(setupAgentId), JSON.stringify({ cdp: body.cdp, os: body.os, endpoint }));
-  config = await api("/api/config").catch(() => config);
-  $("#modal").classList.add("hidden");
-  render();
-  loadHealth();
-}
-
-document.addEventListener("click", (event) => {
-  if (event.target.closest("#setup")) openSetup(config.agents[0]?.id);
-  if (event.target.closest("#modal-close") || event.target.closest("#modal-cancel") || event.target === $("#modal")) $("#modal").classList.add("hidden");
-  if (event.target.closest("#modal-save")) saveSetup();
-  if (event.target.closest("#m-refresh")) refreshTabs();
-});
-document.addEventListener("change", (event) => {
-  if (event.target.id === "m-adapter") syncAdapterFields();
-});
 
 bootstrap();
 connect();

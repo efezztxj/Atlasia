@@ -24,7 +24,8 @@ export function createMockAdapter() {
       await sleep(cfg.thinkMs ?? 700);
       onEvent({ type: "phase", phase: "answering" });
 
-      const reply = cfg.tone === "review" ? reviewAnswer(text) : buildAnswer(text);
+      const isReviewer = agent.role ? agent.role === "reviewer" : cfg.tone === "review";
+      const reply = isReviewer ? reviewAnswer(text) : buildAnswer(text);
       let shown = "";
       for (const piece of CHUNK(reply, 34)) {
         shown += piece;
@@ -45,32 +46,61 @@ function requestLine(text) {
 
 function buildAnswer(text) {
   const req = requestLine(text);
+  if (/ÖNCEKİ AJAN[\s\S]*RAPORU:/.test(text)) {
+    return [
+      "Denetçi raporunu aldım, maddeleri tek tek ele aldım.",
+      "",
+      "• SORUN 1 (girdi doğrulaması): düzelttim — boş/uzun girdi artık yakalanıyor,",
+      "  uç durumlar için hata mesajı eklendi. Dosya: (demo) src/utils/validate.ts",
+      "• SORUN 2 (hata mesajları): düzelttim — ayrık ve anlaşılır mesajlar.",
+      "• KANIT İSTEMİ: bu sefer derleme çıktısını ekliyorum, iddia havada kalmıyor.",
+      "",
+      "DEVİR NOTU:",
+      "- DÜZELTTİKLERİM: 2/2 madde.",
+      "- DÜZELTMEDİKLERİM (GEREKÇE): yok.",
+      "- DEĞİŞEN DOSYALAR: 2 dosya.",
+      "- KALAN RİSKLER: kapsam dışında bir konu kalmadı.",
+    ].join("\n");
+  }
   return [
     "İsteği aldım, uyguladım.",
     "",
     `• Yorumladığım istek: ${req}`,
     "• Dokunduğum dosyalar: (demo) src/... , tools/...",
-    "• Yaptığım iş: temel akışı kurdum, derleme geçti, kenar durumları not ettim.",
+    "• Yaptığım iş: akışı kurdum, derleme geçti, kenar durumları not ettim.",
     "",
     "DEVİR NOTU:",
-    "- NE YAPTIM: Çalışan ilk sürüm hazır, iki adım doğrulandı.",
-    "- DEĞİŞEN DOSYALAR: 3 dosya.",
-    "- AÇIK SORULAR: Boş girdi, çok uzun istek ve eşzamanlı kullanım test edilmedi.",
+    "- NE YAPTIM: Çalışan sürüm hazır, iki adım doğrulandı.",
+    "- DEĞİŞEN DOSYALAR: 2 dosya.",
+    "- NASIL DOĞRULANIR: (demo) npm run build + elle iki senaryo.",
+    "- AÇIK SORULAR / RİSKLER: Boş girdi ve çok uzun istek test edilmedi.",
   ].join("\n");
 }
 
 function reviewAnswer(text) {
-  const prev = text.match(/DEVİR NOTU:\n([\s\S]*)$/);
+  // İkinci denetim: karşısına DÜZELTTİKLERİM raporu geldiyse onay verir (erken çıkış demosu).
+  if (/DÜZELTTİKLERİM/.test(text)) {
+    return [
+      "Düzeltme raporunu inceledim, iddiaları kanıtla karşılaştırdım.",
+      "",
+      "• Madde 1 (girdi doğrulaması): düzeltilmiş, uç durumlar kapatılmış. ✔",
+      "• Madde 2 (hata mesajı): netleştirilmiş. ✔",
+      "• Yeni risk görmedim; kapsam dışına çıkılmamış.",
+      "",
+      "- BULDUĞUM SORUNLAR: SORUN YOK",
+      "- DOĞRULADIKLARIM: Ana akış + iki uç durum.",
+      "- KARAR: ONAYLIYORUM",
+    ].join("\n");
+  }
   return [
-    "İşi devraldım, önceki ajanın çıktısını inceledim.",
+    "İşi devraldım. Övmek için değil kırmak için baktım:",
     "",
-    "• Bulduğum risk: girdi doğrulaması zayıf; iki uç durum eksik.",
-    "• Düzelttim: doğrulama eklendi, hata mesajları netleştirildi.",
-    prev ? "• Önceki nota dayanarak doğruladım: açık maddelerin 2/3'ünü kapattım." : "• Önceki not bulunamadı, istekten yeniden türettim.",
+    "• SORUN 1 · DÜZEY: YÜKSEK · NEREDE: girdi doğrulaması · NEDEN: boş ve çok uzun girdi ele alınmamış · ÖNERİ: şema doğrulaması ekle.",
+    "• SORUN 2 · DÜZEY: ORTA · NEREDE: hata mesajları · NEDEN: kullanıcıya ne olduğunu söylemiyor · ÖNERİ: ayrık hata mesajları.",
+    "• KANIT İSTEMİ: \"derleme geçti\" denmiş ama çıktı gösterilmemiş.",
     "",
-    "DEVİR NOTU:",
-    "- DOĞRULADIM: Ana akış uçtan uca çalışıyor.",
-    "- DÜZELTTİM: Girdi doğrulaması + hata mesajları.",
-    "- KALAN İŞ: Senin kararın gereken tek konu var — aşağıdaki iki seçenekten hangisi?",
+    "- BULDUĞUM SORUNLAR: 2 (1 yüksek, 1 orta)",
+    "- DOĞRULADIKLARIM: mutlu yol çalışıyor.",
+    "- KARAR: DÜZELTME GEREKİYOR",
   ].join("\n");
 }

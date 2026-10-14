@@ -1,59 +1,85 @@
-# Agent Relay — tek yerden yaz, iki agent sırayla çalışsın
+# Agent Relay — tek yerden yaz, ekibin sırayla çalışsın
 
 Kanka senin istediğin şey tam olarak bu: **tek bir kutuya isteğini yazıyorsun**, sistem isteği
-sırayla agent'ların kendi yazı kutusuna kendisi yazıp gönderiyor, birinin işi bitince
-diğerinin sırası geliyor ve **sen baştan sona izleyip istediğin an müdahale ediyorsun**.
+sırayla agent'ların kendi yazı kutusuna kendisi yazıp gönderiyor. Birinin işi bitince diğerinin
+sırası geliyor ve **sen baştan sona izleyip istediğin an müdahale ediyorsun**.
 
-Ne yapar:
-- Kuyruk: birden fazla istek yazarsın, tek tek işlenir.
-- Sıra: `Agent 1 → Agent 2` (`turns` ile istediğin kadar uzatabilirsin: A→B→A→B…).
-- Devir teslim: 1. agent bitince çıktısı otomatik olarak 2. agent'ın prompt'una gömülür
-  (isteğin + "önceki ajan şunu yaptı, doğrula/düzelt" talimatı).
-- Kontrol: duraklat / devam / bu sırayı atla / **devral** (ben yapıyorum, relay bekle) / durdur /
-  yeniden dene / devirde onay.
-- Canlı ekran: agent'ın yazı kutusuna harf harf yazılan metni ve gelen cevabı panelde canlı görürsün.
+Klasik kurulum: **bir kodcu** (işi yapan, projeyi/durumu en iyi bilen) + **bir sert denetçi**
+(sadece hata, eksik ve kanıtsız iddia arayan). Kodcu yapar → denetçi kırar → kodcu düzeltir →
+denetçi onaylayana kadar döner.
 
 ---
 
-## 1. Demo (10 saniye)
+## 1. Roller
 
-Repo kökünde:
+Her ajanın bir rolü var, prompt'u rolüne göre kurulur:
+
+| Rol | Ne alır | Ne ister |
+|---|---|---|
+| `implementer` (Kodcu) | İstek + **proje bağlamı** + (varsa) denetçi raporu | "Uygula, varsayım yapma, DEVİR NOTU bırak" / sonra "denetçinin maddelerini tek tek ele al: ya düzelt ya gerekçelendir" |
+| `reviewer` (Denetçi) | İstek + önceki ajanın çıktısı | "Sert denetle: iddiaları kanıtla karşılaştır, her sorun için NE·NEREDE·NEDEN·ÖNERİ, sonunda KARAR: ONAYLIYORUM / DÜZELTME GEREKİYOR" |
+| `custom` (Özel) | Devir şablonu | Kendi şablonunu `prompts.handoff` içinde yazarsın |
+
+**Proje bağlamı** (`context`): her prompt'un başına eklenir. "Kod yazan her şeyi biliyor" kısmı
+bu alanla sağlanır — proje, stack, klasörler, dokunulmaz dosyalar, mevcut durum…
+
+**Durdurma kalıbı** (`stopPattern`, denetçiye koy): denetçinin cevabı bu regex'e uyarsa kalan
+turlar boşuna dönmez. Örn. `KARAR:\s*ONAYLIYORUM|SORUN YOK`.
+
+---
+
+## 2. Kaç ajan, hangi sıra?
+
+- **İstediğin kadar ajan ekleyebilirsin** (panelde `+ Ajan ekle`, ya da `relay.config.json`).
+  Silme ve sıralama (▲▼) da panelden.
+- Her istek için **kimlerin çalışacağını sen seçersin**: istek kutusunun altındaki ajan
+  çipleri (tıklayarak aç/kapat).
+- **Tur seçimi**:
+  - `1 tur` → seçili ajanlar birer kez
+  - `2 tur` → seçili ajanlar ikişer kez
+  - `Denetim döngüsü` → **yap → denetle → düzelt → doğrula** (ilk iki ajan), denetçi onay verirse erken biter
+- Gönderirken tam sıra önizlemesi görünür: `Kodcu → Denetçi → Kodcu → Denetçi`.
+- Pratikte 2–4 ajan en verimlisi: kodcu + denetçi, gerekirse "testçi" ya da "güvenlik" uzmanı.
+  4'ten fazlası her isteği çok uzatır (her tur ayrı bir bekleme ve daha çok token).
+
+İstek `turns` alanıyla gönderilir, örn: `["coder","auditor","coder","auditor"]`.
+
+---
+
+## 3. Demo (10 saniye)
 
 ```bash
 cd tools/agent-relay
 node server.mjs
 ```
 
-Panel: <http://localhost:8787>
+Panel: <http://localhost:8787> — iki ajan demo modunda, denetim döngüsünü baştan sona gösterir
+(denetçi 2 sorun bulur, kodcu düzeltir, denetçi onaylar, döngü erken biter).
 
-Şu an iki agent da **demo modunda** (sahte ama gerçekçi cevaplar üretir). Bu modda akışın
-tamamını görebilirsin: istek yaz → Agent 1 yazar → biter → devir onayı → Agent 2 yazar → biter.
-Hiçbir şeyi bozmaz, kurulum gerektirmez.
-
-Komut satırından da kullanılır:
+Komut satırı:
 
 ```bash
-node bin/relay.mjs send "harita ekranında ölçek çubuğu ekle"   # gönder + bitmesini bekle
-node bin/relay.mjs add  "başka bir istek"                       # sadece kuyruğa ekle
-node bin/relay.mjs status                                       # kuyruk + ajan sağlığı
+node bin/relay.mjs send "harita ekranındaki ölçek çubuğunu düzelt"   # gönder + bitmesini bekle
+node bin/relay.mjs add  "başka bir istek"                            # kuyruğa ekle
+node bin/relay.mjs status                                            # kuyruk + ajan sağlığı
 node bin/relay.mjs ctl <jobId> pause|resume|skip|takeover|approve|stop
 ```
 
 ---
 
-## 2. Gerçek agent'a bağlama
+## 4. Gerçek agent'lara bağlama
 
-Panelde **⚙ bağla** butonu var. Üç mod:
+Panelde ajanın **Düzenle**'sine bas. Üç mod:
 
-| Mod | Ne yapar | Ne zaman kullan |
+| Mod | Ne yapar | Ne zaman |
 |---|---|---|
 | `mock` | Simülasyon | Deneme, panel testi |
-| `cdp` | **Tarayıcı sekmesi**: yazı kutusunu bulur, gerçekten yazar, Enter'a basar, cevabı okur | Agent'lar tarayıcı sekmesinde çalışıyorsa (web chat arayüzleri) |
-| `os` | **Masaüstü penceresi**: panoya kopyalar, pencereyi öne alır, yapıştırır, Enter'a basar | Agent'lar masaüstü uygulamasında çalışıyorsa |
+| `cdp` | **Tarayıcı sekmesi**: yazı kutusuna gerçekten yazar, Enter'lar, cevabı okur | Ajanlar tarayıcı sekmesinde (web arayüzleri) |
+| `os` | **Masaüstü penceresi**: panoya kopyalar, pencereyi öne alır, yapıştırır, Enter'lar | Ajanlar masaüstü uygulamasında |
 
 ### A) Tarayıcı sekmesi (önerilen)
 
-1. Chrome/Edge/Brave'i hata ayıklama portuyla aç (normal tarayıcını kapatmana gerek yok):
+1. Tarayıcıyı hata ayıklama portuyla aç:
 
    ```bash
    # macOS
@@ -67,87 +93,78 @@ Panelde **⚙ bağla** butonu var. Üç mod:
    google-chrome --remote-debugging-port=9222 --user-data-dir="$HOME/.chrome-relay"
    ```
 
-2. Bu pencerede agent'ların **iki ayrı sekmesini** aç.
-3. Panelde ⚙ → mod: *Tarayıcı sekmesi* → **Sekmeleri getir** → hangi sekme hangi agent, seç → Kaydet.
-4. Gerekirse gelişmiş seçiciler: yazı kutusu, cevap alanı, "yükleniyor" göstergesi.
+2. Bu pencerede agent'ların **iki ayrı sekmesini** aç (örn. bir kodcu sekmesi, bir denetçi sekmesi).
+3. Panelde ajanı düzenle → mod: *Tarayıcı sekmesi* → **Sekmeleri getir** → doğru sekmeyi seç → Kaydet.
+4. Gerekirse gelişmiş seçiciler (yazı kutusu / cevap alanı / yükleniyor göstergesi).
 
 Notlar:
-- Aynı başlıkta birden fazla sekme varsa "sekmeleri getir" listesinden doğru olanı seç —
-  seçim sekme kimliğiyle kaydedilir.
-- Cevap okunamazsa relay bunu dürüstçe söyler (`cevap yakalanamadı`) ve devirde senden onay ister.
-- Bu mod sekmeyi **gerçekten** kullanır: siz o sekmede yazarken relay yazmaya kalkarsa
-  çakışır, o yüzden relay yazarken o sekmeye dokunma.
+- Aynı başlıkta birden fazla sekme varsa listeden doğru olanı seç; seçim sekme kimliğiyle kaydedilir.
+- Cevap okunamazsa relay dürüstçe söyler (`cevap yakalanamadı`) ve devirde senden onay ister.
+- Relay yazarken o sekmeye elle dokunma; önce **Duraklat**.
 
 ### B) Masaüstü penceresi
 
-1. Panelde ⚙ → mod: *Masaüstü penceresi* → pencere adının bir parçasını yaz (örn. `Claude`) → Kaydet.
-2. Relay metni panoya koyar, pencereyi öne alır, yapıştırır ve Enter'a basar.
+1. Ajanı düzenle → mod: *Masaüstü penceresi* → pencere adının bir parçası (örn. `Claude`) → Kaydet.
+2. Gerekli araçlar: macOS'ta ekstra yok (Erişilebilirlik izni gerekir) · Windows'ta ekstra yok ·
+   Linux/X11: `xdotool` + `xclip`, Wayland: `ydotool` + `wl-clipboard`.
 
-Gerekli araçlar:
-- macOS: yok (Erişilebilirlik izni gerekir: Sistem Ayarları → Gizlilik → Erişilebilirlik)
-- Windows: yok
-- Linux/X11: `xdotool` + `xclip` · Wayland: `ydotool` + `wl-clipboard`
-
-Bu modda cevap otomatik okunamaz. Relay her devirde onay bekler; panelde
-**📋 Panodan cevabı al** ile cevabı agent'tan kopyalayıp devir notuna koyabilir ya da elle yazabilirsin.
+Bu modda cevap otomatik okunamaz → relay her devirde onay ister; panelde
+**📋 Panodan cevabı al** ile cevabı agent'tan kopyalayıp devir notuna koyabilirsin.
 
 ---
 
-## 3. Panel
+## 5. Panel
 
-- **Kuyruk**: her istek bir kart. Karttan: duraklat / devam / atla / devral / durdur / yeniden dene.
-- **Devir onayı**: sıradaki ajana gidecek metni görür, gerekirse **düzenler**, sonra gönderirsin.
-  Üstteki *"Devirde onay"* kapalıysa iş tam otomatik ilerler (en az yorucu mod).
-- **Şu an**: aktif işin adım adım durumu, agent'ın yazdığı metin ve gelen cevap.
-- **Canlı ekran**: her agent için ayrı kutu, adapter tipi (demo/tarayıcı/pencere) ve sağlık durumu.
+- **Kuyruk**: her istek bir kart; karttan duraklat / devam / atla / devral / durdur / yeniden dene.
+- **Devir onayı**: sıradaki ajana gidecek metni görür, gerekirse **düzenler**, öyle gönderirsin.
+  Üstteki *Devirde onay* kapalıysa iş tam otomatik ilerler.
+- **Şu an**: aktif işin adım adım durumu, yazılan metin, gelen cevap, "✔ onay" işareti.
+- **Ekip**: ajan kartları; rol + mod + sağlık durumu, yazdığı metin/cevabı canlı, Düzenle/▲/▼.
 - **Günlük**: ne olduysa zaman damgasıyla.
 
-`1 tur (A→B)` / `2 tur (A→B→A→B)` seçicisiyle tek istekte kaç tur dönüleceğini belirlersin.
-
 ---
 
-## 4. Ayar dosyası
-
-`relay.config.json` (ya da `RELAY_CONFIG=/yol/dosya.json`):
+## 6. Ayar dosyası (`relay.config.json`)
 
 | Alan | Anlamı |
 |---|---|
 | `port` / `host` | Panel adresi (varsayılan 8787) |
-| `turns` | Sıra: `["builder","reviewer"]`, istediğin kadar uzatılabilir |
-| `requireApproval` | `true`: her devirde onay ister · `false`: tam otomatik |
+| `turns` | Varsayılan sıra (panelden gelen `turns` bunu ezer) |
+| `requireApproval` | `true`: her devirde onay · `false`: tam otomatik |
 | `handoffNeedsOutput` | Cevap yakalanamadıysa devirde mutlaka onay ister |
-| `prompts.build` / `prompts.handoff` | Prompt şablonları: `{{request}}`, `{{agent}}`, `{{prevAgent}}`, `{{output}}`, `{{turn}}` |
-| `typing.chunk` / `typing.delayMs` | Yazma temposu |
-| `agents[].adapter` | `mock` / `cdp` / `os` |
-| `agents[].cdp` | `endpoint`, `match`, `input`, `reply`, `busy`, `submit`, `send`, `idleMs`, `timeoutMs` |
-| `agents[].os` | `window`, `submit` |
+| `prompts.build` / `handoff` / `review` / `reviewFirst` | Rol bazlı şablonlar: `{{request}} {{agent}} {{role}} {{prevAgent}} {{output}} {{turn}}` |
+| `agents[].role` | `implementer` / `reviewer` / `custom` |
+| `agents[].context` | Her prompt'un başına eklenen proje bağlamı |
+| `agents[].stopPattern` | Cevapta bu regex çıkarsa kalan turlar atlanır |
+| `agents[].cdp` / `os` | Bağlantı ayarları (`endpoint`, `match`, `input`, `reply`, `busy`, `submit`, `idleMs` / `window`) |
 
 Hazır örnekler: `examples/browser-tabs.json`, `examples/desktop-windows.json`
 
 ---
 
-## 5. Dürüst sınırlar
+## 7. Dürüst sınırlar
 
-- **Tarayıcı/panel arayüzü değişirse seçiciler kayabilir.** Yanlış yazma riskine karşı relay,
-  göndermeden önce yazı kutusunun içeriğini doğrular; tutmuyorsa göndermez, hata verir.
-- **`os` modunda cevap okunamaz** — bu yüzden varsayılan olarak onaylı çalışır.
-- **Aynı sekmeye/pencereye elle müdahale** ederken relay yazıyorsa çakışabilir: önce *Duraklat*.
-- Panel ve motor **senin makinende** çalışır; dışarıya veri göndermez. Ama `host: 0.0.0.0`
-  olduğu için aynı ağdaki makinelerden erişilebilir — ortak Wi-Fi'deysen `host`'u `127.0.0.1` yap.
-- `--remote-debugging-port` açık bir tarayıcı, o portu bulabilen her yerel programa kontrol verir.
-  Ayrı bir profil klasörü (`--user-data-dir`) kullanmak daha güvenli.
+- **Arayüz değişirse seçiciler kayabilir.** Relay göndermeden önce yazı kutusunun içeriğini
+  doğrular; tutmuyorsa göndermez, hata verir.
+- **`os` modunda cevap okunamaz** — bu yüzden onaylı çalışır.
+- **Denetçi gerçekten sert olur ancak sen söylersen**: `prompts.review` içindeki talimatı
+  sertleştirip yumuşatabilirsin; "kanıt iste" kısmını silersen denetçi de yumuşar.
+- Panel ve motor **senin makinende** çalışır; dışarıya veri göndermez. `host: 0.0.0.0` aynı
+  ağdaki makinelere açıktır — ortak Wi-Fi'de `host`'u `127.0.0.1` yap.
+- `--remote-debugging-port` açık tarayıcı, o portu bulan her yerel programa kontrol verir;
+  ayrı profil (`--user-data-dir`) kullan.
 
-## 6. Geliştirme
+## 8. Geliştirme
 
 ```
 tools/agent-relay/
-├── server.mjs              HTTP + SSE + statik panel
+├── server.mjs              HTTP + SSE + statik panel + ajan CRUD
 ├── bin/relay.mjs           CLI (up / send / add / status / watch / ctl / health)
-├── lib/orchestrator.mjs    kuyruk + sıra + devir + onay mantığı
+├── lib/orchestrator.mjs    kuyruk + sıra + roller + devir + onay + erken çıkış
 ├── lib/store.mjs           durum deposu (data/state.json, oturumlar arası kalıcı)
 ├── lib/adapters/{mock,cdp,os}.mjs
-├── public/                 panel (bağımlılıksız, sıfır npm paketi)
+├── public/                 panel (bağımlılıksız)
 └── examples/               hazır ayar örnekleri
 ```
 
-Bağımlılık yok — Node 22+ yeterli (`node --version`).
+Bağımlılık yok — Node 22+ yeterli.

@@ -108,25 +108,63 @@ export async function createRelay({ configPath, rootDir = __dirname } = {}) {
       }
     }
 
-    // Agent'ı gerçek bir sekmeye/pencereye bağla (ayar dosyasına yazılır)
+    // Agent ayarlarını kaydet (bağlantı + isim + rol + bağlam + durdurma kalıbı)
     if (parts[1] === "agents" && parts[2] && parts[3] === "setup" && method === "POST") {
       const payload = await readJson(req);
       const agent = config.agents.find((a) => a.id === parts[2]);
       if (!agent) return json(res, 404, { ok: false, error: "Ajan bulunamadı" });
-      agent.adapter = payload.adapter || agent.adapter;
-      if (payload.name) agent.name = payload.name;
-      if (payload.cdp) agent.cdp = { ...(agent.cdp || {}), ...payload.cdp };
-      if (payload.os) agent.os = { ...(agent.os || {}), ...payload.os };
+      applyAgentPayload(agent, payload);
       saveConfig();
-      store.log("info", `${agent.name} → ${agent.adapter} moduna bağlandı`);
-      return json(res, 200, { ok: true, agent: { id: agent.id, name: agent.name, adapter: agent.adapter } });
+      store.log("info", `${agent.name} ayarları kaydedildi (${agent.adapter}, rol: ${agent.role || "implementer"})`);
+      return json(res, 200, { ok: true, agent: publicAgent(agent) });
+    }
+
+    // Yeni ajan ekle
+    if (parts[1] === "agents" && !parts[2] && method === "POST") {
+      const payload = await readJson(req);
+      if (!payload.name || !String(payload.name).trim()) return json(res, 400, { ok: false, error: "Ajan adı gerekli" });
+      const agent = { id: uniqueAgentId(payload.name, config.agents), name: String(payload.name).trim(), role: "implementer", adapter: "mock", mock: { tone: "build" } };
+      applyAgentPayload(agent, payload);
+      if (agent.role === "reviewer") agent.mock = { tone: "review" };
+      config.agents.push(agent);
+      config.turns = config.agents.map((a) => a.id);
+      saveConfig();
+      store.log("info", `Yeni ajan eklendi: ${agent.name} (${agent.role})`);
+      return json(res, 200, { ok: true, agent: publicAgent(agent) });
+    }
+
+    // Agent sil
+    if (parts[1] === "agents" && parts[2] && parts[3] === "delete" && method === "POST") {
+      if (config.agents.length <= 1) return json(res, 400, { ok: false, error: "En az bir ajan kalmalı" });
+      const agent = config.agents.find((a) => a.id === parts[2]);
+      if (!agent) return json(res, 404, { ok: false, error: "Ajan bulunamadı" });
+      config.agents = config.agents.filter((a) => a.id !== agent.id);
+      config.turns = config.agents.map((a) => a.id);
+      saveConfig();
+      store.log("warn", `Ajan silindi: ${agent.name}`);
+      return json(res, 200, { ok: true });
+    }
+
+    // Agent sırasını değiştir (yukarı/aşağı)
+    if (parts[1] === "agents" && parts[2] && parts[3] === "move" && method === "POST") {
+      const payload = await readJson(req);
+      const dir = payload.dir === -1 ? -1 : 1;
+      const index = config.agents.findIndex((a) => a.id === parts[2]);
+      if (index < 0) return json(res, 404, { ok: false, error: "Ajan bulunamadı" });
+      const target = index + dir;
+      if (target < 0 || target >= config.agents.length) return json(res, 200, { ok: true, agent: publicAgent(config.agents[index]) });
+      const [moved] = config.agents.splice(index, 1);
+      config.agents.splice(target, 0, moved);
+      config.turns = config.agents.map((a) => a.id);
+      saveConfig();
+      return json(res, 200, { ok: true });
     }
 
     if (parts[1] === "config" && method === "GET") {
       return json(res, 200, {
         turns: config.turns,
         requireApproval: config.requireApproval,
-        agents: config.agents.map((a) => ({ id: a.id, name: a.name, adapter: a.adapter, cdp: a.cdp, os: a.os })),
+        agents: config.agents.map(publicAgent),
       });
     }
 
@@ -211,6 +249,42 @@ export async function createRelay({ configPath, rootDir = __dirname } = {}) {
       server.close();
     },
   };
+}
+
+function publicAgent(agent) {
+  return { id: agent.id, name: agent.name, role: agent.role || "implementer", adapter: agent.adapter, context: agent.context, stopPattern: agent.stopPattern, cdp: agent.cdp, os: agent.os };
+}
+
+function slug(text) {
+  const map = { ç: "c", Ç: "c", ğ: "g", Ğ: "g", ı: "i", İ: "i", ö: "o", Ö: "o", ş: "s", Ş: "s", ü: "u", Ü: "u" };
+  return (
+    String(text)
+      .replace(/^\s*agent\s*\d+\s*[·:.\-–]*\s*/i, "") // "Agent 3 · Testçi" → "Testçi"
+      .replace(/[çÇğĞıİöÖşŞüÜ]/g, (ch) => map[ch])
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 24) || "agent"
+  );
+}
+
+function applyAgentPayload(agent, payload) {
+  if (payload.name) agent.name = String(payload.name).trim();
+  if (payload.role) agent.role = payload.role === "reviewer" ? "reviewer" : payload.role === "custom" ? "custom" : "implementer";
+  if ("context" in payload) agent.context = payload.context ? String(payload.context) : undefined;
+  if ("stopPattern" in payload) agent.stopPattern = payload.stopPattern ? String(payload.stopPattern) : undefined;
+  if (payload.adapter) agent.adapter = payload.adapter;
+  if (payload.cdp) agent.cdp = { ...(agent.cdp || {}), ...payload.cdp };
+  if (payload.os) agent.os = { ...(agent.os || {}), ...payload.os };
+  if (agent.adapter === "os" && !agent.os?.window) agent.os = { ...(agent.os || {}), submit: "enter" };
+}
+
+function uniqueAgentId(name, agents = []) {
+  const base = slug(name);
+  let id = base;
+  let counter = 2;
+  while (agents.some((a) => a.id === id)) id = `${base}-${counter++}`;
+  return id;
 }
 
 function json(res, code, body) {

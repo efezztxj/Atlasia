@@ -23,6 +23,13 @@ export class Orchestrator {
     return this.config.agents.find((a) => a.id === id);
   }
 
+  /** Silinmiş/yanlış ajan kimliklerini eler; sıra boş kalırsa ilk ajanı kullanır. */
+  validTurns(turns = []) {
+    const known = new Set(this.config.agents.map((a) => a.id));
+    const wanted = turns.filter((id) => known.has(id));
+    return wanted.length ? wanted : this.config.agents.slice(0, 1).map((a) => a.id);
+  }
+
   // ---------- kuyruk yönetimi ----------
 
   addJob(request, opts = {}) {
@@ -33,7 +40,7 @@ export class Orchestrator {
       updatedAt: Date.now(),
       status: "queued",
       turn: 0,
-      turns: opts.turns || this.config.turns,
+      turns: this.validTurns(opts.turns || this.config.turns),
       requireApproval: opts.requireApproval ?? this.config.requireApproval,
       stages: [],
       control: "run",
@@ -278,6 +285,17 @@ export class Orchestrator {
       stage.captured = result.captured && Boolean(stage.output);
       job.updatedAt = Date.now();
       this.store.log("info", `${agent.name} → bitti (${(stage.ms / 1000).toFixed(1)} sn${stage.captured ? "" : ", cevap yakalanamadı"})`);
+
+      // Denetçi onayı: kalan turlar atlanır.
+      if (this.matchesStop(agent, stage.output)) {
+        stage.approved = true;
+        job.turn++;
+        job.earlyStop = `${agent.name} onay verdi`;
+        this.store.log("info", `${agent.name} onay verdi → kalan turlar atlandı`);
+        this.emitState();
+        break;
+      }
+
       this.emitState();
 
       job.turn++;
@@ -285,24 +303,53 @@ export class Orchestrator {
 
     if (job.status !== "stopped" && job.status !== "error") {
       job.status = "done";
-      job.note = "Tüm sıralar tamamlandı";
+      job.note = job.earlyStop ? `${job.earlyStop} — kalan turlar atlandı` : "Tüm sıralar tamamlandı";
       this.store.state.stats.finished++;
       this.store.log("info", `İş bitti: ${job.request.slice(0, 60)}`);
     }
     this.emitState();
   }
 
+  /** Ajana göre prompt: ilk turda "yap", devirde role göre "düzelt" ya da "sert denetle". */
   buildPrompt(job, agent, prevStage) {
     const isFirst = job.turn === 0;
-    const template = isFirst ? this.config.prompts.build : this.config.prompts.handoff;
+    const role = agent.role || "implementer";
+    const prompts = this.config.prompts || {};
+    const template = isFirst
+      ? role === "reviewer"
+        ? prompts.reviewFirst || prompts.review || prompts.build
+        : prompts.build
+      : role === "reviewer"
+        ? prompts.review || prompts.handoff
+        : prompts.handoff;
+
     const prevAgent = prevStage?.agentName || "Önceki ajan";
-    return template
+    let text = (template || "İSTEK:\n{{request}}")
       .replaceAll("{{request}}", job.request)
       .replaceAll("{{agent}}", agent.name)
+      .replaceAll("{{role}}", role === "reviewer" ? "denetçi" : "uygulayıcı")
       .replaceAll("{{prevAgent}}", prevAgent)
       .replaceAll("{{output}}", (prevStage?.output || "").trim() || "(önceki ajanın cevabı yakalanamadı)")
       .replaceAll("{{turn}}", String(job.turn + 1))
       .trim();
+
+    // Agent'a özel proje bağlamı her prompt'un başında gider: "durumu bilen" ajan böyle olur.
+    if (agent.context) {
+      const context = agent.context.replaceAll("{{request}}", job.request).trim();
+      text = `PROJE BAĞLAMI:\n${context}\n\n${text}`;
+    }
+    return text;
+  }
+
+  /** Denetçi "onaylıyorum" derse kalan turlar boşuna dönmesin. */
+  matchesStop(agent, output) {
+    if (!agent.stopPattern || !output) return false;
+    try {
+      return new RegExp(agent.stopPattern, "i").test(output);
+    } catch (err) {
+      this.store.log("warn", `${agent.name}: stopPattern hatalı (${err.message}), yok sayıldı`);
+      return false;
+    }
   }
 
   onAgentEvent(job, stage, agent, event) {
