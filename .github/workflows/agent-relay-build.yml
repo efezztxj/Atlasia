@@ -1,7 +1,7 @@
 name: Agent Relay derleme (exe)
 
 # Elle: GitHub → Actions → "Agent Relay derleme (exe)" → Run workflow
-# Etiketle: git tag agent-relay-v0.1.0 && git push origin agent-relay-v0.1.0  (Release'e ekler)
+# Etiketle: git tag agent-relay-v0.1.2 && git push origin agent-relay-v0.1.2  (Release'e ekler)
 on:
   workflow_dispatch:
   push:
@@ -24,30 +24,63 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Bağımlılıkları kur (yalnızca paketleyici)
+      - name: Bağımlılıkları kur (esbuild + pkg)
         run: npm install --no-audit --no-fund
 
-      - name: Windows + macOS + Linux paketlerini derle
-        run: |
-          npx pkg . --targets node22-win-x64      --output dist/agent-relay-win-x64.exe
-          npx pkg . --targets node22-macos-arm64,node22-macos-x64 --output dist/agent-relay-macos
-          npx pkg . --targets node22-linux-x64    --output dist/agent-relay-linux-x64
+      - name: Paketleri derle
+        run: node scripts/build.mjs all
 
-      - name: Sürüm bilgisi dosyası
+      - name: Linux paketini uçtan uca dene (gerçek çalıştırma)
+        run: |
+          cp relay.config.json /tmp/smoke-config.json
+          node -e "const f='/tmp/smoke-config.json',fs=require('fs'),c=JSON.parse(fs.readFileSync(f,'utf8'));c.port=8899;c.dataDir='/tmp/smoke-data';fs.writeFileSync(f,JSON.stringify(c))"
+          RELAY_CONFIG=/tmp/smoke-config.json RELAY_NO_BROWSER=1 ./dist/agent-relay-linux-x64 up > /tmp/smoke.log 2>&1 &
+          SERVER=$!
+          for i in $(seq 1 20); do
+            sleep 1
+            curl -sf http://127.0.0.1:8899/api/health >/dev/null && break
+          done
+          echo "--- çıktı ---"; cat /tmp/smoke.log
+          curl -sf http://127.0.0.1:8899/ | grep -q "Agent Relay" || { echo "PANEL SERVİS EDİLEMEDİ"; kill $SERVER; exit 1; }
+          curl -s http://127.0.0.1:8899/api/health | tee /tmp/health.json
+          grep -q '"ok":true' /tmp/health.json || { echo "SAĞLIK KONTROLÜ DÜŞTÜ"; kill $SERVER; exit 1; }
+          curl -sf -X POST http://127.0.0.1:8899/api/jobs -H 'content-type: application/json' \
+            -d '{"request":"paket testi","turns":["coder","auditor","coder","auditor"],"requireApproval":false}' >/dev/null
+          sleep 30
+          curl -s http://127.0.0.1:8899/api/state | tee /tmp/state.json
+          grep -q '"status":"done"' /tmp/state.json || { echo "İŞ TAMAMLANMADI"; kill $SERVER; exit 1; }
+          echo "✓ Paketli ikili uçtan uca çalıştı"
+          kill $SERVER
+
+      - name: Kaynak ZIP (exe çalışmazsa yedek yol)
+        run: |
+          cd ..
+          zip -r "$GITHUB_WORKSPACE/tools/agent-relay/dist/agent-relay-kaynak.zip" agent-relay \
+            -x "agent-relay/node_modules/*" -x "agent-relay/dist/*" -x "agent-relay/data/*" \
+            -x "agent-relay/.pkg-cache/*" -x "agent-relay/runtime/*"
+
+      - name: Sürüm bilgisi
         run: |
           cat > dist/OKUYUN.txt <<'TXT'
           Agent Relay — kurulumsuz çalıştırma
           ===================================
-          Windows : agent-relay-win-x64.exe   (çift tıkla → panel http://localhost:8787)
-          macOS   : agent-relay-macos         (chmod +x agent-relay-macos && ./agent-relay-macos)
-          Linux   : agent-relay-linux-x64     (chmod +x agent-relay-linux-x64 && ./agent-relay-linux-x64)
+          Windows : agent-relay-win-x64.exe    (çift tıkla → panel http://localhost:8787)
+          macOS   : agent-relay-macos-arm64 / -x64  (chmod +x DOSYA && ./DOSYA)
+          Linux   : agent-relay-linux-x64      (chmod +x DOSYA && ./DOSYA)
 
-          Çalıştırma dosyasının yanında oluşan dosyalar:
-            relay.config.json  → ajanlar, roller, sıra, promptlar
-            data/state.json    → kuyruk ve iş kayıtları
+          Çalışmazsa ilk adım: aynı klasörde oluşan agent-relay-error.log dosyasına bak
+          (bulamazsan: C:\Users\<kullanıcı>\.agent-relay\agent-relay-error.log).
 
-          macOS'ta ilk açılış: sağ tık → Aç (imzasız olduğu için Gatekeeper uyarır).
-          Windows'ta ilk açılış: "Windows korumalı bilgisayarınızı korudu" → Ek bilgi → Yine de çalıştır.
+          Windows'ta komut penceresi açılıp kapanıyorsa: PowerShell'de
+            cd <indirdiğin klasör>
+            .\agent-relay-win-x64.exe
+          yaz — hata mesajı ekranda kalır ve Enter ile kapanır.
+
+          exe hiç çalışmazsa yedek yol: agent-relay-kaynak.zip → çıkar → run-windows.bat
+          (Node kurulu değilse taşınabilir Node'u kendi indirir).
+
+          Ayarlar: relay.config.json (ajanlar, roller, sıra, promptlar)
+          Kayıtlar: data/state.json  ·  Yazılamayan klasörde: ~/.agent-relay
           TXT
           ls -la dist
 
@@ -66,5 +99,9 @@ jobs:
           TAG="${GITHUB_REF_NAME}"
           gh release view "$TAG" >/dev/null 2>&1 || \
             gh release create "$TAG" --title "Agent Relay $TAG" --prerelease \
-              --notes "Kurulumsuz çalıştırma: aşağıdaki dosyayı indir, çift tıkla, panel http://localhost:8787'de açılır. Node.js gerekmez."
+              --notes "Kurulumsuz çalıştırma: platformuna uygun dosyayı indir, çift tıkla, panel http://localhost:8787'de açılır. Node.js gerekmez.
+
+Windows: agent-relay-win-x64.exe · macOS: agent-relay-macos-arm64 / -x64 · Linux: agent-relay-linux-x64
+
+Çalışmazsa: agent-relay-kaynak.zip indir → çıkar → run-windows.bat (Node'u kendi indirir). Hata kaydı: agent-relay-error.log"
           gh release upload "$TAG" tools/agent-relay/dist/* --clobber

@@ -8,13 +8,21 @@ import { Orchestrator } from "./lib/orchestrator.mjs";
 import { adapterFor } from "./lib/adapters/index.mjs";
 import { listTabs } from "./lib/adapters/cdp.mjs";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// Hem ESM (geliştirme) hem CommonJS (paketlenmiş exe) altında çalışır.
+const HERE = (() => {
+  if (typeof __dirname !== "undefined") return __dirname;
+  try {
+    return path.dirname(fileURLToPath(import.meta.url));
+  } catch {
+    return process.cwd();
+  }
+})();
 
-export async function createRelay({ configPath, rootDir = __dirname } = {}) {
+export async function createRelay({ configPath, rootDir } = {}) {
   // Paketlenmiş (exe) modda yazılabilir alan exe'nin yanıdır; geliştirmede kaynak klasör.
   const packaged = Boolean(process.pkg);
-  const assetsDir = __dirname; // pkg: /snapshot/.../tools/agent-relay
-  const writableDir = packaged ? resolveWritableDir(path.dirname(process.execPath)) : __dirname;
+  const assetsDir = findAssetsRoot(rootDir || HERE); // panel + varsayılan ayar buradan okunur
+  const writableDir = packaged ? resolveWritableDir(path.dirname(process.execPath)) : HERE;
 
   const bundledConfig = path.join(assetsDir, "relay.config.json");
   const localConfig = path.join(writableDir, "relay.config.json");
@@ -309,6 +317,22 @@ function uniqueAgentId(name, agents = []) {
 }
 
 /**
+ * Panel dosyalarının (public/) ve gömülü varsayılan ayarın bulunduğu klasör.
+ * Paketlenmiş exe'de bundle dist/ altında durur, dosyalar ise paket kökünde —
+ * bu yüzden yukarı doğru "public/index.html" aranır.
+ */
+export function findAssetsRoot(start) {
+  let dir = start;
+  for (let i = 0; i < 6; i++) {
+    if (fs.existsSync(path.join(dir, "public", "index.html"))) return dir;
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return start;
+}
+
+/**
  * Paketli (exe) modda yazılabilir klasör: önce exe'nin yanı (taşınabilir kullanım),
  * yazılamıyorsa (örn. Program Files) kullanıcı ev dizinindeki .agent-relay.
  */
@@ -356,12 +380,28 @@ async function waitForTerminal(orchestrator, jobId, timeoutMs) {
   return job;
 }
 
-// Doğrudan çalıştırıldığında sunucuyu kaldır.
-if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
+/** Doğrudan çalıştırıldığında sunucuyu kaldırır (top-level await yok: pkg/CJS uyumu). */
+export async function boot() {
   const relay = await createRelay();
   const address = await relay.listen();
   const host = address.address === "::" || address.address === "0.0.0.0" ? "localhost" : address.address;
   console.log(`\n  Agent Relay çalışıyor → http://${host}:${address.port}\n`);
   console.log(`  Sıra: ${relay.config.agents.map((a) => a.name).join("  →  ")}`);
   console.log(`  Mod: ${relay.config.requireApproval ? "her devirde onay" : "tam otomatik"}\n`);
+  return relay;
+}
+
+const invoked = process.argv[1] && (() => {
+  try {
+    return fs.realpathSync(process.argv[1]) === fs.realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+})();
+
+if (invoked || process.pkg) {
+  boot().catch((err) => {
+    console.error("\n  Başlatılamadı:", err?.stack || err?.message || err);
+    process.exitCode = 1;
+  });
 }

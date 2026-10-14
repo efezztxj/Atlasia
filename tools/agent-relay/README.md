@@ -24,6 +24,18 @@ denetçi onaylayana kadar döner.
 > İlk açılışta işletim sistemi uyarır (program imzasız): Windows'ta **Ek bilgi → Yine de çalıştır**,
 > macOS'ta **sağ tık → Aç**. Bu normaldir; kod açık, ağa hiçbir şey göndermiyor.
 >
+> **Windows'ta komut penceresi açılıp hemen kapanıyorsa** (v0.1.1'de oluyordu, v0.1.2'de giderildi):
+> 1. PowerShell aç, indirdiğin klasöre gir ve programı elle çalıştır:
+>    ```powershell
+>    cd $env:USERPROFILE\Downloads
+>    .\agent-relay-win-x64.exe
+>    ```
+>    Böylece hata mesajı ekranda kalır (Enter'a basınca kapanır).
+> 2. Aynı klasörde oluşan **`agent-relay-error.log`** dosyasını aç — sebep orada yazar.
+>    (Yazamadıysa: `C:\Users\<kullanıcı>\.agent-relay\agent-relay-error.log`)
+> 3. Hiç olmazsa yedek yol: Releases'tan **`agent-relay-kaynak.zip`** indir → çıkar → **`run-windows.bat`**
+>    (Node kurulu değilse taşınabilir Node'u kendi indirir, sonra paneli açar).
+>
 > Programı **yazılamayan** bir klasöre koyarsan (örn. `C:\Program Files`), ayar ve kayıtlar
 > otomatik olarak `~/.agent-relay` altına yazılır. Yazılabilir bir klasörde (Masaüstü, Downloads,
 > USB bellek) her şey exe'nin yanında kalır — hiçbir şey sisteme kurulmaz.
@@ -31,6 +43,9 @@ denetçi onaylayana kadar döner.
 Nerede bulurum / nasıl üretirim:
 - **Releases** (hazır dosyalar): `https://github.com/efezztxj/Atlasia/releases`
 - **Kendim üreteyim**: `cd tools/agent-relay && npm install && npm run build:win` (macOS: `build:mac`, Linux: `build:linux`)
+  Derleme iki aşamalıdır: esbuild ile tek CJS dosyası, sonra `pkg` ile platform ikilisi
+  (`scripts/build.mjs`). GitHub Actions her sürümde **Linux paketini gerçekten çalıştırıp**
+  panel+iş akışını test eder.
 - **GitHub kendi üretsin**: Actions → *Agent Relay derleme (exe)* → **Run workflow** (veya `agent-relay-v*` etiketi push'la) → dosyalar hem artifact hem Release'e düşer.
 
 **Alternatif: Node'lu yol (exe istemiyorsan)**
