@@ -7,7 +7,6 @@
  *   posts/{postId}                    — sosyal akış gönderileri
  *   posts/{postId}.replies[]           — gönderi yanıtları (sınırlı gömülü liste)
  *   stories/{storyId}                 — 24 saat ömürlü hikâyeler
- *   users/{uid}/profile               — kullanıcı profili (XP, badges, takip)
  */
 import {
   arrayRemove,
@@ -28,7 +27,6 @@ import {
   Timestamp,
   updateDoc,
   where,
-  writeBatch,
   type DocumentData,
   type Firestore,
   type Query,
@@ -43,7 +41,6 @@ import type { FeedPost, FeedReply, Place, Story, StoryAccent, UploadPhotoKind } 
 const COL_PLACES = "places";
 const COL_POSTS = "posts";
 const COL_STORIES = "stories";
-const COL_USERS = "users";
 
 export const FIRESTORE_LIMITS = {
   likesPerPost: 500,
@@ -286,113 +283,6 @@ export function nextLikedBy(rawLikedBy: unknown, uid: string): string[] {
 export async function uploadPhoto(file: File, _kind: UploadPhotoKind): Promise<string> {
   const { dataUrl } = await compressImageWithinLimit(file);
   return dataUrl;
-}
-
-/* ─────────────────────────── Kullanıcı profili ─────────────────────────── */
-
-export interface UserProfile {
-  uid: string;
-  displayName: string;
-  bio?: string;
-  photoURL?: string;
-  xp: number;
-  level: number;
-  badges: string[];
-  following: string[];
-  followers: string[];
-  createdAt: number;
-}
-
-export async function getUserProfile(uid: string): Promise<UserProfile | null> {
-  if (!db) return null;
-  const snap = await getDoc(doc(db, COL_USERS, uid));
-  if (!snap.exists()) return null;
-  const data = snap.data();
-  return {
-    uid,
-    displayName: data.displayName ?? "Gezgin",
-    bio: data.bio,
-    photoURL: data.photoURL,
-    xp: typeof data.xp === "number" ? data.xp : 0,
-    level: typeof data.level === "number" ? data.level : 1,
-    badges: Array.isArray(data.badges) ? (data.badges as string[]) : [],
-    following: Array.isArray(data.following) ? (data.following as string[]) : [],
-    followers: Array.isArray(data.followers) ? (data.followers as string[]) : [],
-    createdAt: toMillis(data.createdAt),
-  };
-}
-
-export async function ensureUserProfile(uid: string, displayName: string): Promise<void> {
-  if (!db) return;
-  const ref = doc(db, COL_USERS, uid);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) {
-    await setDoc(ref, {
-      displayName,
-      createdAt: serverTimestamp(),
-      xp: 0,
-      level: 1,
-      badges: [],
-      following: [],
-      followers: [],
-    });
-  }
-}
-
-export async function awardXp(uid: string, amount: number): Promise<{ xp: number; level: number; leveledUp: boolean }> {
-  if (!db) return { xp: 0, level: 1, leveledUp: false };
-  const ref = doc(db, COL_USERS, uid);
-  const snap = await getDoc(ref);
-  const current = (snap.data()?.xp as number) ?? 0;
-  const newXp = current + amount;
-  const newLevel = Math.floor(Math.sqrt(newXp / 50)) + 1;
-  const oldLevel = Math.floor(Math.sqrt(current / 50)) + 1;
-  await updateDoc(ref, { xp: newXp, level: newLevel });
-  return { xp: newXp, level: newLevel, leveledUp: newLevel > oldLevel };
-}
-
-export async function addBadge(uid: string, badge: string): Promise<boolean> {
-  if (!db) return false;
-  const ref = doc(db, COL_USERS, uid);
-  const snap = await getDoc(ref);
-  const existing = (snap.data()?.badges as string[]) ?? [];
-  if (existing.includes(badge)) return false;
-  await updateDoc(ref, { badges: [...existing, badge] });
-  return true;
-}
-
-/* ─────────────────────────── Takip sistemi ─────────────────────────── */
-
-export async function followUser(me: string, target: string): Promise<void> {
-  if (!db || me === target) return;
-  const meRef = doc(db, COL_USERS, me);
-  const targetRef = doc(db, COL_USERS, target);
-  const batch = writeBatch(db);
-  const meSnap = await getDoc(meRef);
-  const targetSnap = await getDoc(targetRef);
-  const myFollowing = (meSnap.data()?.following as string[]) ?? [];
-  const theirFollowers = (targetSnap.data()?.followers as string[]) ?? [];
-  if (!myFollowing.includes(target)) {
-    batch.update(meRef, { following: [...myFollowing, target] });
-  }
-  if (!theirFollowers.includes(me)) {
-    batch.update(targetRef, { followers: [...theirFollowers, me] });
-  }
-  await batch.commit();
-}
-
-export async function unfollowUser(me: string, target: string): Promise<void> {
-  if (!db || me === target) return;
-  const meRef = doc(db, COL_USERS, me);
-  const targetRef = doc(db, COL_USERS, target);
-  const batch = writeBatch(db);
-  const meSnap = await getDoc(meRef);
-  const targetSnap = await getDoc(targetRef);
-  const myFollowing = (meSnap.data()?.following as string[]) ?? [];
-  const theirFollowers = (targetSnap.data()?.followers as string[]) ?? [];
-  batch.update(meRef, { following: myFollowing.filter((u) => u !== target) });
-  batch.update(targetRef, { followers: theirFollowers.filter((u) => u !== me) });
-  await batch.commit();
 }
 
 /* ─────────────────────────── Pinler (places) ─────────────────────────── */
