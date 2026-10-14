@@ -23,6 +23,10 @@ denetçi onaylayana kadar döner.
 
 > İlk açılışta işletim sistemi uyarır (program imzasız): Windows'ta **Ek bilgi → Yine de çalıştır**,
 > macOS'ta **sağ tık → Aç**. Bu normaldir; kod açık, ağa hiçbir şey göndermiyor.
+>
+> Programı **yazılamayan** bir klasöre koyarsan (örn. `C:\Program Files`), ayar ve kayıtlar
+> otomatik olarak `~/.agent-relay` altına yazılır. Yazılabilir bir klasörde (Masaüstü, Downloads,
+> USB bellek) her şey exe'nin yanında kalır — hiçbir şey sisteme kurulmaz.
 
 Nerede bulurum / nasıl üretirim:
 - **Releases** (hazır dosyalar): `https://github.com/efezztxj/Atlasia/releases`

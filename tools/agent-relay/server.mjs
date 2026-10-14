@@ -1,6 +1,7 @@
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
 import { fileURLToPath } from "node:url";
 import { Store } from "./lib/store.mjs";
 import { Orchestrator } from "./lib/orchestrator.mjs";
@@ -13,7 +14,7 @@ export async function createRelay({ configPath, rootDir = __dirname } = {}) {
   // Paketlenmiş (exe) modda yazılabilir alan exe'nin yanıdır; geliştirmede kaynak klasör.
   const packaged = Boolean(process.pkg);
   const assetsDir = __dirname; // pkg: /snapshot/.../tools/agent-relay
-  const writableDir = packaged ? path.dirname(process.execPath) : __dirname;
+  const writableDir = packaged ? resolveWritableDir(path.dirname(process.execPath)) : __dirname;
 
   const bundledConfig = path.join(assetsDir, "relay.config.json");
   const localConfig = path.join(writableDir, "relay.config.json");
@@ -305,6 +306,23 @@ function uniqueAgentId(name, agents = []) {
   let counter = 2;
   while (agents.some((a) => a.id === id)) id = `${base}-${counter++}`;
   return id;
+}
+
+/**
+ * Paketli (exe) modda yazılabilir klasör: önce exe'nin yanı (taşınabilir kullanım),
+ * yazılamıyorsa (örn. Program Files) kullanıcı ev dizinindeki .agent-relay.
+ */
+export function resolveWritableDir(preferred) {
+  for (const candidate of [preferred, path.join(os.homedir(), ".agent-relay")]) {
+    try {
+      fs.mkdirSync(candidate, { recursive: true });
+      fs.accessSync(candidate, fs.constants.W_OK);
+      return candidate;
+    } catch {
+      /* sonrakini dene */
+    }
+  }
+  return os.tmpdir();
 }
 
 function json(res, code, body) {
