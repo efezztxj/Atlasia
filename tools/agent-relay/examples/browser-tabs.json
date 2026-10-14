@@ -1,0 +1,46 @@
+{
+  "port": 8787,
+  "host": "0.0.0.0",
+  "dataDir": "./data",
+  "turns": ["builder", "reviewer"],
+  "requireApproval": true,
+  "handoffNeedsOutput": true,
+
+  "prompts": {
+    "build": "İSTEK:\n{{request}}\n\nSen {{agent}} adlı ajansın. İsteği doğrudan uygula.\nSonunda DEVİR NOTU bırak:\n- NE YAPTIM:\n- DEĞİŞEN DOSYALAR:\n- AÇIK SORULAR / RİSKLER:",
+    "handoff": "İSTEK:\n{{request}}\n\nÖNCEKİ AJAN ({{prevAgent}}) DEVİR NOTU:\n{{output}}\n\nSen {{agent}} adlı ajansın. İşi devral: doğrula, eksik/hatalı olanı düzelt, bitir.\nSonunda DEVİR NOTU bırak:\n- DOĞRULADIM:\n- DÜZELTTİM:\n- KALAN İŞ:"
+  },
+
+  "agents": [
+    {
+      "id": "builder",
+      "name": "Agent 1 · İnşa",
+      "adapter": "cdp",
+      "cdp": {
+        "endpoint": "http://127.0.0.1:9222",
+        "match": { "url": "chatgpt.com" },
+        "input": "textarea, [contenteditable=\"true\"], div[role=\"textbox\"]",
+        "reply": ".markdown, article, [data-message-author-role=\"assistant\"]",
+        "busy": "button[data-testid=\"stop-button\"], .result-streaming",
+        "submit": "enter",
+        "idleMs": 3500,
+        "timeoutMs": 900000
+      }
+    },
+    {
+      "id": "reviewer",
+      "name": "Agent 2 · Kontrol",
+      "adapter": "cdp",
+      "cdp": {
+        "endpoint": "http://127.0.0.1:9222",
+        "match": { "url": "claude.ai" },
+        "input": "div[contenteditable=\"true\"], textarea",
+        "reply": ".font-claude-message, .prose",
+        "busy": "[data-is-streaming=\"true\"]",
+        "submit": "enter",
+        "idleMs": 3500,
+        "timeoutMs": 900000
+      }
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "name": "@atlasia/agent-relay",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Tek yerden yaz, iki agent sırayla çalışsın: kuyruk + devir teslim + onay paneli.",
+  "bin": { "relay": "./bin/relay.mjs" },
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node --watch server.mjs",
+    "send": "node bin/relay.mjs send",
+    "status": "node bin/relay.mjs status"
+  },
+  "engines": { "node": ">=22" },
+  "license": "MIT"
+}

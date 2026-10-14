@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Agent Relay · Tek Yerden İki Agent</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="top">
+        <div class="brand">
+          <span class="dot-live"></span>
+          <div>
+            <h1>Agent Relay</h1>
+            <p id="order">Sıra yükleniyor…</p>
+          </div>
+        </div>
+        <div class="top-right">
+          <div id="health" class="health"></div>
+          <label class="switch" title="Kapalıyken tüm devirler otomatik ilerler">
+            <input type="checkbox" id="approval" checked />
+            <span>Devirde onay</span>
+          </label>
+        </div>
+      </header>
+
+      <main class="grid">
+        <section class="col-main">
+          <div class="card composer">
+            <textarea id="request" rows="3" placeholder="İsteğini buraya yaz kanka… (örn: harita ekranında ölçek çubuğu ekle ve mobilde boşluğu düzelt)"></textarea>
+            <div class="composer-row">
+              <span class="hint">Ctrl/⌘ + Enter ile gönder</span>
+              <span class="composer-controls">
+                <label class="switch" title="Kaç tur devir teslim yapılsın">
+                  <select id="rounds">
+                    <option value="1">1 tur (A → B)</option>
+                    <option value="2">2 tur (A → B → A → B)</option>
+                    <option value="3">3 tur</option>
+                  </select>
+                </label>
+                <button id="send" class="btn primary">Kuyruğa ekle</button>
+              </span>
+            </div>
+          </div>
+
+          <div class="card now">
+            <div class="card-head">
+              <h2>Şu an</h2>
+              <span id="now-sub" class="muted">boşta</span>
+            </div>
+            <div id="now-body" class="now-body">
+              <p class="muted">Kuyruk boş. Bir istek yaz, sıra Agent 1'e gelsin.</p>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h2>Kuyruk</h2>
+              <button id="clear" class="btn ghost small">Bitenleri temizle</button>
+            </div>
+            <div id="queue" class="queue"></div>
+          </div>
+        </section>
+
+        <aside class="col-side">
+          <div class="card">
+            <div class="card-head"><h2>Canlı ekran</h2><button id="setup" class="btn ghost small">⚙ bağla</button></div>
+            <div id="agents" class="agents"></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h2>Günlük</h2></div>
+            <div id="logs" class="logs"></div>
+          </div>
+        </aside>
+      </main>
+    </div>
+
+    <div id="modal" class="modal hidden">
+      <div class="modal-card">
+        <div class="card-head">
+          <h2 id="modal-title">Agent bağla</h2>
+          <button class="btn ghost small" id="modal-close">✕</button>
+        </div>
+        <div class="modal-body">
+          <label class="field">
+            <span>Nasıl çalışsın?</span>
+            <select id="m-adapter">
+              <option value="mock">Demo (simülasyon)</option>
+              <option value="cdp">Tarayıcı sekmesi (yazı kutusuna gerçekten yazar)</option>
+              <option value="os">Masaüstü penceresi (pencereye yapıştırır + Enter)</option>
+            </select>
+          </label>
+
+          <div id="m-browser" class="group">
+            <label class="field"><span>Chrome hata ayıklama adresi</span><input id="m-endpoint" value="http://127.0.0.1:9222" /></label>
+            <div class="row"><button class="btn small" id="m-refresh">Sekmeleri getir</button><span id="m-tabs-note" class="muted">Chrome --remote-debugging-port=9222 ile açık olmalı</span></div>
+            <div id="m-tabs" class="tabs-list"></div>
+            <details>
+              <summary>Gelişmiş seçiciler (gerekirse)</summary>
+              <label class="field"><span>Yazı kutusu seçicisi</span><input id="m-input" placeholder='textarea, [contenteditable="true"], div[role="textbox"]' /></label>
+              <label class="field"><span>Cevap seçicisi (son mesaj)</span><input id="m-reply" placeholder="örn: .markdown, article" /></label>
+              <label class="field"><span>Yükleniyor göstergesi (opsiyonel)</span><input id="m-busy" placeholder="örn: .loading, [data-streaming]" /></label>
+              <label class="field"><span>Gönderme</span>
+                <select id="m-submit"><option value="enter">Enter</option><option value="button">Gönder butonuna tıkla</option></select>
+              </label>
+              <label class="field"><span>Gönder butonu seçicisi (buton modunda)</span><input id="m-send" placeholder="button[type=submit]" /></label>
+              <label class="field"><span>Cevap bitince bekleme (ms)</span><input id="m-idle" type="number" value="3000" /></label>
+              <label class="field"><span>Sekme seçimi (aynı başlıkta birden fazla sekme varsa)</span><input id="m-index" type="number" placeholder="0" /></label>
+            </details>
+          </div>
+
+          <div id="m-desktop" class="group">
+            <label class="field"><span>Pencere adı (başlığın bir parçası)</span><input id="m-window" placeholder="örn: Claude" /></label>
+            <p class="muted">Bu modda cevap otomatik okunamaz: relay her devirde senden onay ister, cevabı panodan alabilir ya da elle yapıştırabilirsin.</p>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button class="btn ghost" id="modal-cancel">Vazgeç</button>
+          <button class="btn primary" id="modal-save">Kaydet</button>
+        </div>
+      </div>
+    </div>
+
+    <template id="tpl-agent">
+      <div class="agent">
+        <div class="agent-top">
+          <span class="name"></span>
+          <span style="display:flex;gap:6px;align-items:center">
+            <span class="pill"></span>
+            <button class="btn ghost small setup-agent" title="Bu agent'ı gerçek bir sekmeye/pencereye bağla">⚙</button>
+          </span>
+        </div>
+        <div class="agent-box">
+          <div class="agent-label">yazdığı metin</div>
+          <pre class="typed"></pre>
+          <div class="agent-label">gelen cevap</div>
+          <pre class="reply"></pre>
+        </div>
+      </div>
+    </template>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>

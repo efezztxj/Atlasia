@@ -1,0 +1,28 @@
+{
+  "port": 8787,
+  "host": "0.0.0.0",
+  "dataDir": "./data",
+  "turns": ["builder", "reviewer"],
+  "requireApproval": true,
+  "handoffNeedsOutput": true,
+
+  "prompts": {
+    "build": "İSTEK:\n{{request}}\n\nSen {{agent}} adlı ajansın. İsteği doğrudan uygula.\nSonunda DEVİR NOTU bırak:\n- NE YAPTIM:\n- DEĞİŞEN DOSYALAR:\n- AÇIK SORULAR / RİSKLER:",
+    "handoff": "İSTEK:\n{{request}}\n\nÖNCEKİ AJAN ({{prevAgent}}) DEVİR NOTU:\n{{output}}\n\nSen {{agent}} adlı ajansın. İşi devral: doğrula, eksik/hatalı olanı düzelt, bitir."
+  },
+
+  "agents": [
+    {
+      "id": "builder",
+      "name": "Agent 1 · Masaüstü",
+      "adapter": "os",
+      "os": { "window": "Claude", "submit": "enter" }
+    },
+    {
+      "id": "reviewer",
+      "name": "Agent 2 · Masaüstü",
+      "adapter": "os",
+      "os": { "window": "Cursor", "submit": "enter" }
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "port": 8787,
+  "host": "0.0.0.0",
+  "dataDir": "./data",
+  "turns": [
+    "builder",
+    "reviewer"
+  ],
+  "requireApproval": true,
+  "handoffNeedsOutput": true,
+  "typing": {
+    "chunk": 48,
+    "delayMs": 18
+  },
+  "idleMs": 2500,
+  "timeoutMs": 600000,
+  "prompts": {
+    "build": "İSTEK:\n{{request}}\n\nSen {{agent}} adlı ajansın. Bu isteği doğrudan uygula (kod/dosya değişikliği gerekiyorsa yap).\nSonunda kısa bir DEVİR NOTU bırak:\n- NE YAPTIM:\n- DEĞİŞEN DOSYALAR:\n- AÇIK SORULAR / RİSKLER:",
+    "handoff": "İSTEK:\n{{request}}\n\nÖNCEKİ AJAN ({{prevAgent}}) DEVİR NOTU:\n{{output}}\n\nSen {{agent}} adlı ajansın. İşi devral: önceki ajanın yaptığını doğrula, eksik/hatalı olanı düzelt, isteği tamamla.\nSonunda kısa bir DEVİR NOTU bırak:\n- DOĞRULADIM:\n- DÜZELTTİM:\n- KALAN İŞ:"
+  },
+  "agents": [
+    {
+      "id": "builder",
+      "name": "Agent 1 · İnşa",
+      "adapter": "mock",
+      "mock": {
+        "name": "Agent 1",
+        "tone": "build",
+        "thinkMs": 900,
+        "answerMs": 1400
+      }
+    },
+    {
+      "id": "reviewer",
+      "name": "Agent 2 · Kontrol",
+      "adapter": "mock",
+      "mock": {
+        "name": "Agent 2",
+        "tone": "review",
+        "thinkMs": 900,
+        "answerMs": 1400
+      }
+    }
+  ]
+}
