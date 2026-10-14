@@ -34,6 +34,8 @@ jobs:
         run: |
           cp relay.config.json /tmp/smoke-config.json
           node -e "const f='/tmp/smoke-config.json',fs=require('fs'),c=JSON.parse(fs.readFileSync(f,'utf8'));c.port=8899;c.dataDir='/tmp/smoke-data';fs.writeFileSync(f,JSON.stringify(c))"
+          ./dist/agent-relay-linux-x64 diag > /tmp/diag.log 2>&1 || true
+          cat /tmp/diag.log
           RELAY_CONFIG=/tmp/smoke-config.json RELAY_NO_BROWSER=1 ./dist/agent-relay-linux-x64 up > /tmp/smoke.log 2>&1 &
           SERVER=$!
           for i in $(seq 1 20); do
@@ -66,6 +68,10 @@ jobs:
             echo "- run: $GITHUB_RUN_ID ($GITHUB_REF)"
             echo "- commit: $GITHUB_SHA"
             echo
+            echo "## diag.log"
+            echo '```'
+            cat /tmp/diag.log 2>/dev/null || echo "(yok)"
+            echo '```'
             echo "## smoke.log"
             echo '```'
             cat /tmp/smoke.log 2>/dev/null || echo "(smoke.log yok - paket hiç başlamadı)"

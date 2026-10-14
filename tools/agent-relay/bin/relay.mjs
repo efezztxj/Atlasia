@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { createRelay } from "../server.mjs";
+import { createRelay, locateAssets } from "../server.mjs";
 
 const HERE = (() => {
   if (typeof __dirname !== "undefined") return __dirname;
@@ -32,6 +32,7 @@ Kullanım:
   agent-relay watch <jobId>    Bir işi bitene kadar izle
   agent-relay ctl <jobId> <komut>   pause|resume|stop|skip|takeover|approve|retry|start|delete
   agent-relay health           Ajan bağlantılarını kontrol et
+  agent-relay diag             Kurulum teşhisi (panel yolu, sürüm, klasörler)
   agent-relay version          Sürüm
 
 Seçenekler:
@@ -231,6 +232,35 @@ async function main() {
       if (action === "approve" && text.length) payload.output = text.join(" ");
       const res = await http(`/api/jobs/${id}/${action}`, { method: "POST", body: payload });
       console.log(res.ok ? "tamam" : res.error || "olmadı");
+      break;
+    }
+
+    case "diag":
+    case "diagnose": {
+      const listing = (dir) => {
+        try {
+          return fs.readdirSync(dir).join(", ") || "(boş)";
+        } catch (err) {
+          return `(${err.code || err.message})`;
+        }
+      };
+      console.log("platform      :", `${process.platform} ${process.arch}`);
+      console.log("node          :", process.version);
+      console.log("paketli (pkg) :", Boolean(process.pkg));
+      console.log("execPath      :", process.execPath);
+      console.log("cwd           :", process.cwd());
+      console.log("HERE          :", HERE);
+      console.log("HERE içeriği  :", listing(HERE));
+      console.log("HERE/.. içeriği:", listing(path.join(HERE, "..")));
+      if (process.pkg) console.log("/snapshot     :", listing("/snapshot"));
+      const located = locateAssets(HERE);
+      console.log("panel klasörü :", located.dir, located.found ? "(bulundu)" : "(BULUNAMADI)");
+      console.log("aranan yerler :");
+      for (const candidate of located.probed) {
+        console.log(`   - ${candidate}${fs.existsSync(path.join(candidate, "public", "index.html")) ? "  ✔" : ""}`);
+      }
+      console.log("home          :", os.homedir());
+      console.log("log dosyası   :", path.join(path.dirname(process.execPath), "agent-relay-error.log"));
       break;
     }
 

@@ -21,10 +21,14 @@ const HERE = (() => {
 export async function createRelay({ configPath, rootDir } = {}) {
   // Paketlenmiş (exe) modda yazılabilir alan exe'nin yanıdır; geliştirmede kaynak klasör.
   const packaged = Boolean(process.pkg);
-  const assetsDir = findAssetsRoot(rootDir || HERE); // panel + varsayılan ayar buradan okunur
+  const located = locateAssets(rootDir || HERE); // panel + varsayılan ayar buradan okunur
+  const assetsDir = located.dir;
+  const panelFound = located.found;
   const writableDir = packaged ? resolveWritableDir(path.dirname(process.execPath)) : HERE;
 
-  const bundledConfig = path.join(assetsDir, "relay.config.json");
+  const bundledConfig = fs.existsSync(path.join(assetsDir, "relay.config.json"))
+    ? path.join(assetsDir, "relay.config.json")
+    : path.join(assetsDir, "..", "relay.config.json");
   const localConfig = path.join(writableDir, "relay.config.json");
   const resolvedConfigPath = configPath || process.env.RELAY_CONFIG || (packaged && fs.existsSync(localConfig) ? localConfig : bundledConfig);
   const canWriteConfig = !packaged || path.dirname(resolvedConfigPath) === writableDir;
@@ -245,6 +249,11 @@ export async function createRelay({ configPath, rootDir } = {}) {
 
   function serveStatic(req, res, url) {
     const publicDir = path.join(assetsDir, "public");
+    if (!panelFound && (url.pathname === "/" || !url.pathname.startsWith("/api/"))) {
+      const html = FALLBACK_PAGE.replace("{{PROBED}}", located.probed.join("\n"));
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
+      return res.end(html);
+    }
     let rel = decodeURIComponent(url.pathname);
     if (rel === "/" || rel === "") rel = "/index.html";
     const filePath = path.normalize(path.join(publicDir, rel));
@@ -270,6 +279,9 @@ export async function createRelay({ configPath, rootDir } = {}) {
     configPath: resolvedConfigPath,
     dataDir,
     packaged,
+    assetsDir,
+    panelFound,
+    probed: located.probed,
     /**
      * Port doluysa (örn. program iki kez açıldıysa) sıradaki boş portu dener,
      * hiçbiri olmazsa anlaşılır bir hatayla döner.
@@ -340,19 +352,62 @@ function uniqueAgentId(name, agents = []) {
 
 /**
  * Panel dosyalarının (public/) ve gömülü varsayılan ayarın bulunduğu klasör.
- * Paketlenmiş exe'de bundle dist/ altında durur, dosyalar ise paket kökünde —
- * bu yüzden yukarı doğru "public/index.html" aranır.
+ *
+ * Paketlenmiş exe'de bundle dist/ altında durur, dosyalar ise paket kökünde;
+ * ayrıca pkg sürüm/yerleşimine göre adaylar değişebildiği için birden fazla
+ * olası konum denenir (exe'nin yanı, üst klasörü, cwd, bundle klasörü…).
  */
-export function findAssetsRoot(start) {
-  let dir = start;
-  for (let i = 0; i < 6; i++) {
-    if (fs.existsSync(path.join(dir, "public", "index.html"))) return dir;
-    const parent = path.dirname(dir);
-    if (parent === dir) break;
-    dir = parent;
+export function locateAssets(rootDir) {
+  const probed = [];
+  const seen = new Set();
+  const consider = (start) => {
+    if (!start) return;
+    let dir = start;
+    for (let i = 0; i < 4; i++) {
+      if (!dir || seen.has(dir)) break;
+      seen.add(dir);
+      probed.push(dir);
+      if (fs.existsSync(path.join(dir, "public", "index.html"))) return dir;
+      const parent = path.dirname(dir);
+      if (parent === dir) break;
+      dir = parent;
+    }
+    return null;
+  };
+
+  const starts = [];
+  if (process.pkg) {
+    try {
+      starts.push(path.dirname(process.execPath));
+      starts.push(path.join(path.dirname(process.execPath), ".."));
+    } catch {
+      /* yok */
+    }
   }
-  return start;
+  starts.push(rootDir, HERE, process.cwd());
+
+  for (const start of starts) {
+    const found = consider(start);
+    if (found) return { dir: found, found: true, probed };
+  }
+  return { dir: rootDir || HERE, found: false, probed };
 }
+
+/** Panel bulunamazsa boş sayfa yerine anlaşılır bir ekran gösterilir. */
+const FALLBACK_PAGE = `<!doctype html><html lang="tr"><head><meta charset="utf-8">
+<title>Agent Relay — panel dosyaları bulunamadı</title>
+<style>body{background:#0b0f14;color:#e7eef6;font:15px/1.6 ui-sans-serif,system-ui,sans-serif;padding:40px;max-width:720px;margin:0 auto}
+code{background:#141c28;border:1px solid #22303f;border-radius:6px;padding:2px 6px;font-size:13px}
+pre{background:#101825;border:1px solid #22303f;border-radius:10px;padding:12px;overflow:auto;font-size:12.5px}
+h1{font-size:19px} .m{color:#8ba0b4}</style></head><body>
+<h1>Motor çalışıyor, panel dosyaları bulunamadı</h1>
+<p class="m">API tarafı sağlam (bu sayfa motorun kendisinden geliyor), ama <code>public/index.html</code> bulunamadı.
+Bu genelde programı arşivden tek başına çıkardığında olur.</p>
+<p><b>Çözüm:</b> sürüm paketini bütün olarak çıkar (önce <code>agent-relay-kaynak.zip</code> ya da
+platform paketini indir, sonra arşivi olduğu gibi çıkart) ve programı o klasörden çalıştır.</p>
+<pre>ARANAN YERLER:\n{{PROBED}}</pre>
+<p class="m">Bu ekranı görüyorsan uygulama çalışıyor demektir: <code>relay.config.json</code> ve <code>data/</code> aynı klasörde oluşur.</p>
+</body></html>`;
 
 /**
  * Paketli (exe) modda yazılabilir klasör: önce exe'nin yanı (taşınabilir kullanım),
