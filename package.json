@@ -1,7 +1,7 @@
 {
-  "name": "react-vite-tailwind",
+  "name": "atlasia-web",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -54,5 +54,7 @@
   },
   "engines": {
     "node": "^22.13.0 || >=24.0.0"
-  }
+  },
+  "description": "Atlasia keşif haritası ve konum tabanlı web/PWA uygulaması",
+  "packageManager": "npm@10.9.2"
 }

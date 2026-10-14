@@ -26,7 +26,7 @@ Google/Apple/SMS düğmeleri yapılandırılmadan etkin gösterilmez. Cihaz hesa
 4. Authentication > Settings > Authorized domains listesine yayın alanını ekle. Geliştirme için Google girişinde localhost'u ayrıca eklemek gerekebilir.
 5. Telefon için SMS bölge politikasında kullanacağın ülkeleri etkinleştir; SMS kota/ücret ve güncel faturalandırma gereksinimlerini kontrol et. Gerçek SMS'i yetkilendirilmiş HTTPS alanında test et.
 6. Apple için Apple Developer üyeliği, Services ID, Team ID ve private key Firebase Console'da yapılandırılmalı. Apple private key'i hiçbir VITE_ değişkenine veya frontend dosyasına koyma.
-7. Depodaki Firestore kurallarını Firebase CLI ile dağıt: `firebase deploy --only firestore:rules`. Kurallar fotoğrafları yalnız giriş yapan içerik sahibinin oluşturmasına ve en fazla 180.000 karakterlik güvenli JPEG veri URL'lerine izin verir.
+7. Denetim onayından sonra depodaki Firestore kuralları ve indekslerini açık proje kimliğiyle dağıt: `firebase deploy --only firestore:rules,firestore:indexes --project <onayli-proje-id>`. Bu komut web sitesini yayınlamaz; Atlasia web/PWA yayını yalnız GitHub → Cloudflare Pages hattından yapılır. Kurallar fotoğrafları yalnız giriş yapan içerik sahibinin oluşturmasına ve en fazla 180.000 karakterlik güvenli JPEG veri URL'lerine izin verir.
 8. Vite geliştirme sunucusunu yeniden başlat veya projeyi yeniden derle.
 
 Yapılandırma verilirse e-posta/şifre de Firebase üzerinden çalışır. Yeni e-posta hesapları doğrulama ekranına alınır; doğrulama tamamlanmadan harita açılmaz.
