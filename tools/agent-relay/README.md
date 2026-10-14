@@ -10,6 +10,39 @@ denetçi onaylayana kadar döner.
 
 ---
 
+## 0. Hızlı kurulum (kendi bilgisayarında)
+
+```bash
+# 1) Repoyu al (bir kez)
+git clone https://github.com/efezztxj/Atlasia.git        # ya da GitHub → Code → Download ZIP
+#    zaten klonun varsa:  git pull origin main
+
+# 2) Bu klasöre gir
+cd Atlasia/tools/agent-relay
+
+# 3) Başlat  (npm install YOK — bağımlılık yok)
+node server.mjs            # → http://localhost:8787
+```
+
+Tek tuşla başlatmak istersen bu klasördeki dosyalara çift tıkla:
+
+| Sistem | Dosya |
+|---|---|
+| Windows | `start-windows.bat` |
+| macOS | `start-mac.command` (ilk sefer: sağ tık → Aç, ya da `chmod +x start-mac.command`) |
+| Linux | `start-linux.sh` (`chmod +x start-linux.sh && ./start-linux.sh`) |
+
+Gereksinim: **Node.js 22+** ([nodejs.org](https://nodejs.org) → LTS). Kontrol: `node -v`.
+
+Nerede çalışır: **senin makinende**. Panel ve motor tamamen yereldir, dışarıya veri gitmez,
+API anahtarı istemez. Agent'lar kendi tarayıcı sekmelerinde/pencerelerinde açık olmalıdır —
+bu yüzden uzak bir sunucuda değil, agent'ların çalıştığı bilgisayarda çalıştır.
+
+**Ana beyin kim?** Relay'in içinde AI yok; o sadece kuyruk + sıra + aktarım yapar (orkestra şefi).
+"Düşünen" taraf, bağladığın agent'ların kendisi. Detay: [§9 Roller ve beyin](#9-roller-ve-beyin-kim-nerede).
+
+---
+
 ## 1. Roller
 
 Her ajanın bir rolü var, prompt'u rolüne göre kurulur:
@@ -142,7 +175,40 @@ Hazır örnekler: `examples/browser-tabs.json`, `examples/desktop-windows.json`
 
 ---
 
-## 7. Dürüst sınırlar
+## 9. Roller ve beyin: kim nerede
+
+```
+         sen (tek panel, tek yazı kutusu)
+                    │
+                    ▼
+   ┌────────────────────────────────┐
+   │  Agent Relay  (senin makinende)│   ← orkestra şefi: kuyruk, sıra,
+   │  içinde AI YOK, sadece aktarır  │     devir teslim, onay, günlük
+   └────────────────────────────────┘
+        │ yazar                        │ yazar
+        ▼                              ▼
+   ┌──────────┐                   ┌──────────┐
+   │ Agent 1  │  devir notu  →    │ Agent 2  │
+   │ (kodcu)  │  otomatik geçer   │ (denetçi)│
+   └──────────┘                   └──────────┘
+     ↑ beyin burada: bağladığın sekme/pencere (Claude, ChatGPT, Gemini, Arena, Cursor…)
+```
+
+- **Relay = şef, beyin değil.** İçinde model yok, API anahtarı yok, karar vermez. Sadece
+  "şimdi sıra Agent 2'de" der, metni yazar, cevabı okur, devreder. Bu yüzden aboneliği olmayan,
+  tamamen yerel bir parça.
+- **Beyin = bağladığın agent'lar.** Hangi sekmeye/pencerelere bağlarsan düşünen taraf onlar
+  olur. Farklı markaları karıştırabilirsin (kodcu ChatGPT, denetçi Claude gibi) — relay için
+  hepsi aynı tip "yazı kutusu".
+- **Arena.ai (bu sohbet)** = atölye. Aracı burada yazdık, demoyu burada gördün. Sandbox'taki
+  önizleme senin bilgisayarına erişemez; gerçek kullanım için yukarıdaki 3 adımı kendi
+  makinende çalıştırmalısın.
+- Arena sekmelerini de agent olarak bağlayabilirsin (tarayıcı sekmesi modu): o zaman "beyin"
+  Arena'nın modelleri olur, koordinasyon yine senin makinendeki relay'de kalır.
+
+---
+
+## 10. Dürüst sınırlar
 
 - **Arayüz değişirse seçiciler kayabilir.** Relay göndermeden önce yazı kutusunun içeriğini
   doğrular; tutmuyorsa göndermez, hata verir.
