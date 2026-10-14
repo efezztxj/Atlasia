@@ -81,18 +81,6 @@ function validStory(uid: string) {
   };
 }
 
-function validProfile() {
-  return {
-    displayName: "Atlas Gezgin",
-    createdAt: serverTimestamp(),
-    xp: 0,
-    level: 1,
-    badges: [],
-    following: [],
-    followers: [],
-  };
-}
-
 async function seed(path: string, data: Record<string, unknown>) {
   await testEnv.withSecurityRulesDisabled(async (context) => {
     await setDoc(doc(context.firestore(), path), data);
@@ -401,20 +389,15 @@ describe("Firestore güvenlik kuralları", () => {
     await assertSucceeds(deleteDoc(storyRef));
   });
 
-  it("profil alan yükseltmesini ve başka kullanıcı güncellemesini reddeder", async () => {
+  it("emekliye ayrılan kullanıcı profili koleksiyonunu tamamen kapalı tutar", async () => {
+    await seed("users/owner", { displayName: "Eski profil" });
     const ownerDb = testEnv.authenticatedContext("owner").firestore();
-    const otherDb = testEnv.authenticatedContext("other").firestore();
     const profileRef = doc(ownerDb, "users/owner");
 
-    await assertFails(setDoc(doc(ownerDb, "users/other"), validProfile()));
-    await assertFails(setDoc(profileRef, {
-      ...validProfile(),
-      role: "admin",
-    }));
-    await assertSucceeds(setDoc(profileRef, validProfile()));
-    await assertSucceeds(updateDoc(profileRef, { displayName: "Yeni Ad" }));
-    await assertFails(updateDoc(profileRef, { xp: 9000, level: 99 }));
-    await assertFails(updateDoc(doc(otherDb, "users/owner"), { displayName: "Ele geçirildi" }));
-    await assertFails(getDocs(collection(ownerDb, "users")));
+    await assertFails(getDoc(profileRef));
+    await assertFails(getDocs(query(collection(ownerDb, "users"), limit(1))));
+    await assertFails(setDoc(doc(ownerDb, "users/new"), { displayName: "Yeni profil" }));
+    await assertFails(updateDoc(profileRef, { displayName: "Değiştirilemez" }));
+    await assertFails(deleteDoc(profileRef));
   });
 });
