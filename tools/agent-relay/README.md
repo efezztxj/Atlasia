@@ -14,7 +14,7 @@ denetçi onaylayana kadar döner.
 
 **En kolay: derlenmiş program (exe) — Node bile gerekmez**
 
-1. GitHub → **Releases** sayfası → `agent-relay-v0.1.0` → platformuna uygun dosyayı indir:
+1. GitHub → **Releases** sayfası → `agent-relay-v0.1.2` → platformuna uygun dosyayı indir:
    - Windows: `agent-relay-win-x64.exe` → **çift tıkla**
    - macOS: `agent-relay-macos` → `chmod +x agent-relay-macos && ./agent-relay-macos`
    - Linux: `agent-relay-linux-x64` → `chmod +x agent-relay-linux-x64 && ./agent-relay-linux-x64`
@@ -24,7 +24,8 @@ denetçi onaylayana kadar döner.
 > İlk açılışta işletim sistemi uyarır (program imzasız): Windows'ta **Ek bilgi → Yine de çalıştır**,
 > macOS'ta **sağ tık → Aç**. Bu normaldir; kod açık, ağa hiçbir şey göndermiyor.
 >
-> **Windows'ta komut penceresi açılıp hemen kapanıyorsa** (v0.1.1'de oluyordu, v0.1.2'de giderildi):
+> **Windows'ta komut penceresi açılıp hemen kapanıyorsa** (v0.1.1'de oluyordu; v0.1.2'de kök neden
+> giderildi ve paketlenmiş ikili CI'da gerçekten çalıştırılarak test edildi):
 > 1. PowerShell aç, indirdiğin klasöre gir ve programı elle çalıştır:
 >    ```powershell
 >    cd $env:USERPROFILE\Downloads
