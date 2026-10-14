@@ -1,0 +1,180 @@
+name: Agent Relay derleme (exe)
+
+# Elle: GitHub → Actions → "Agent Relay derleme (exe)" → Run workflow
+# Etiketle: git tag agent-relay-v0.1.2 && git push origin agent-relay-v0.1.2  (Release'e ekler)
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "agent-relay-v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tools/agent-relay
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Bağımlılıkları kur (esbuild + pkg)
+        run: npm install --no-audit --no-fund
+
+      - name: Paketleri derle
+        run: node scripts/build.mjs all 2>&1 | tee /tmp/build.log
+
+      - name: Linux paketini uçtan uca dene (gerçek çalıştırma)
+        run: |
+          set -x
+          ./dist/agent-relay-linux-x64 diag > /tmp/diag.log 2>&1 || true
+          cat /tmp/diag.log
+
+          # 1) Kullanıcının yaşadığı senaryo: hiç ayar dosyası yok, hiçbir env değişkeni yok.
+          cp dist/agent-relay-linux-x64 /tmp/solo-binary
+          cd /tmp
+          ./solo-binary up > /tmp/smoke.log 2>&1 &
+          SERVER=$!
+          for i in $(seq 1 25); do sleep 1; curl -sf http://127.0.0.1:8787/api/health >/dev/null && break; done
+          echo "--- çıktı ---"; cat /tmp/smoke.log
+          curl -sf http://127.0.0.1:8787/api/health | tee /tmp/health.json
+          grep -q '"ok":true' /tmp/health.json || { echo "SAĞLIK KONTROLÜ DÜŞTÜ"; kill $SERVER; exit 1; }
+          curl -sf http://127.0.0.1:8787/ | grep -q "Agent Relay" || { echo "PANEL SERVİS EDİLEMEDİ"; kill $SERVER; exit 1; }
+          curl -sf -o /dev/null http://127.0.0.1:8787/app.js || { echo "GÖMÜLÜ PANEL EKSİK (app.js)"; kill $SERVER; exit 1; }
+          test -f /tmp/relay.config.json || { echo "AYAR DOSYASI OLUŞMADI"; kill $SERVER; exit 1; }
+          echo "✓ İlk çalıştırma: gömülü panel + varsayılan ayar çalışıyor"
+          kill $SERVER
+          sleep 1
+
+          # 2) Ayar dosyası verilerek çalıştırma (özel port + veri klasörü)
+          node -e "const fs=require('fs');const c=JSON.parse(fs.readFileSync('/tmp/relay.config.json','utf8'));c.port=8899;c.dataDir='/tmp/smoke-data';fs.writeFileSync('/tmp/smoke-config.json',JSON.stringify(c))"
+          RELAY_CONFIG=/tmp/smoke-config.json RELAY_NO_BROWSER=1 ./solo-binary up > /tmp/smoke2.log 2>&1 &
+          SERVER2=$!
+          for i in $(seq 1 25); do sleep 1; curl -sf http://127.0.0.1:8899/api/health >/dev/null && break; done
+          curl -sf http://127.0.0.1:8899/api/health >/dev/null || { echo "İKİNCİ ÇALIŞTIRMA BAŞARISIZ"; cat /tmp/smoke2.log; kill $SERVER2; exit 1; }
+          curl -sf -X POST http://127.0.0.1:8899/api/jobs -H 'content-type: application/json' \
+            -d '{"request":"paket testi","turns":["coder","auditor","coder","auditor"],"requireApproval":false}' >/dev/null
+          sleep 30
+          curl -s http://127.0.0.1:8899/api/state | tee /tmp/state.json
+          grep -q '"status":"done"' /tmp/state.json || { echo "İŞ TAMAMLANMADI"; kill $SERVER2; exit 1; }
+          echo "✓ Paketli ikili uçtan uca çalıştı (panel + ayar + iş akışı)"
+          kill $SERVER2
+
+      - name: Başarısızlık halinde kaydı yayınla (okunabilir olsun)
+        if: failure()
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set +e
+          mkdir -p /tmp/dump
+          {
+            echo "# CI smoke kaydı"
+            echo
+            echo "- run: $GITHUB_RUN_ID ($GITHUB_REF)"
+            echo "- commit: $GITHUB_SHA"
+            echo
+            echo "## build.log (son 80 satır)"
+            echo '```'
+            tail -80 /tmp/build.log 2>/dev/null || echo "(yok)"
+            echo '```'
+            echo "## diag.log"
+            echo '```'
+            cat /tmp/diag.log 2>/dev/null || echo "(yok)"
+            echo '```'
+            echo "## smoke.log"
+            echo '```'
+            cat /tmp/smoke.log 2>/dev/null || echo "(smoke.log yok - paket hiç başlamadı)"
+            echo '```'
+            echo "## health.json"
+            echo '```json'
+            cat /tmp/health.json 2>/dev/null || echo "(yok)"
+            echo '```'
+            echo "## state.json"
+            echo '```json'
+            cat /tmp/state.json 2>/dev/null || echo "(yok)"
+            echo '```'
+          } > smoke-log.md
+          git config user.name "ci-bot"
+          git config user.email "ci-bot@users.noreply.github.com"
+          git fetch origin ci-logs 2>/dev/null && git checkout -B ci-logs origin/ci-logs || git checkout -B ci-logs
+          cp smoke-log.md smoke-log.md
+          git add -f smoke-log.md
+          git commit -m "CI smoke log ($GITHUB_RUN_ID)" || true
+          git push -f origin ci-logs
+          echo "Kayıt ci-logs dalına yazıldı."
+
+      - name: Kaynak ZIP (exe çalışmazsa yedek yol)
+        run: |
+          cd ..
+          zip -r "$GITHUB_WORKSPACE/tools/agent-relay/dist/agent-relay-kaynak.zip" agent-relay \
+            -x "agent-relay/node_modules/*" -x "agent-relay/dist/*" -x "agent-relay/data/*" \
+            -x "agent-relay/.pkg-cache/*" -x "agent-relay/runtime/*"
+
+      - name: Sürüm bilgisi
+        run: |
+          cat > dist/OKUYUN.txt <<'TXT'
+          Agent Relay — kurulumsuz çalıştırma
+          ===================================
+          Windows : agent-relay-win-x64.exe    (çift tıkla → panel http://localhost:8787)
+          macOS   : agent-relay-macos-arm64 / -x64  (chmod +x DOSYA && ./DOSYA)
+          Linux   : agent-relay-linux-x64      (chmod +x DOSYA && ./DOSYA)
+
+          Çalışmazsa ilk adım: aynı klasörde oluşan agent-relay-error.log dosyasına bak
+          (bulamazsan: C:\Users\<kullanıcı>\.agent-relay\agent-relay-error.log).
+
+          Windows'ta komut penceresi açılıp kapanıyorsa: PowerShell'de
+            cd <indirdiğin klasör>
+            .\agent-relay-win-x64.exe
+          yaz — hata mesajı ekranda kalır ve Enter ile kapanır.
+
+          exe hiç çalışmazsa yedek yol: agent-relay-kaynak.zip → çıkar → run-windows.bat
+          (Node kurulu değilse taşınabilir Node'u kendi indirir).
+
+          Ayarlar: relay.config.json (ajanlar, roller, sıra, promptlar)
+          Kayıtlar: data/state.json  ·  Yazılamayan klasörde: ~/.agent-relay
+          TXT
+          cat > dist/NOTLAR.md <<'MD'
+          Kurulumsuz çalıştırma: platformuna uygun dosyayı indir, çift tıkla, panel
+          http://localhost:8787'de açılır. Node.js gerekmez.
+
+          | Platform | Dosya |
+          |---|---|
+          | Windows | `agent-relay-win-x64.exe` |
+          | macOS (M-serisi) | `agent-relay-macos-arm64` |
+          | macOS (Intel) | `agent-relay-macos-x64` |
+          | Linux | `agent-relay-linux-x64` |
+
+          Çalışmazsa:
+          1. PowerShell'de elle çalıştır (`cd <klasör>` → `.\agent-relay-win-x64.exe`) — hata ekranda kalır.
+          2. Aynı klasördeki `agent-relay-error.log` dosyasına bak (yoksa `C:\Users\<kullanıcı>\.agent-relay\`).
+          3. Yedek yol: `agent-relay-kaynak.zip` indir → çıkar → `run-windows.bat` (Node'u kendi indirir).
+
+          İmzasız program: Windows'ta "Ek bilgi → Yine de çalıştır", macOS'ta sağ tık → Aç.
+          MD
+          ls -la dist
+
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: agent-relay-paketleri
+          path: tools/agent-relay/dist/*
+          if-no-files-found: error
+
+      - name: Release'e ekle (yalnızca etiketle çalıştırıldıysa)
+        if: startsWith(github.ref, 'refs/tags/') && success()
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          gh release view "$TAG" >/dev/null 2>&1 || \
+            gh release create "$TAG" --title "Agent Relay $TAG" --prerelease \
+              --notes-file tools/agent-relay/dist/NOTLAR.md
+          gh release upload "$TAG" tools/agent-relay/dist/* --clobber

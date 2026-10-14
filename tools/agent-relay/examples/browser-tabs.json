@@ -1,0 +1,54 @@
+{
+  "port": 8787,
+  "host": "0.0.0.0",
+  "dataDir": "./data",
+  "turns": ["coder", "auditor"],
+  "requireApproval": true,
+  "handoffNeedsOutput": true,
+  "typing": { "chunk": 48, "delayMs": 18 },
+  "idleMs": 3000,
+  "timeoutMs": 900000,
+
+  "prompts": {
+    "build": "İSTEK:\n{{request}}\n\nSen {{agent}}'sın. İşi yapan taraftasın; projenin mevcut durumunu en iyi bilen ajan sensin.\n- İsteği doğrudan uygula (kod/dosya değişikliği gerekiyorsa yap).\n- Varsayım yapma; emin olmadığını açıkça yaz.\nSonunda DEVİR NOTU bırak:\n- NE YAPTIM:\n- DEĞİŞEN DOSYALAR:\n- NASIL DOĞRULANIR:\n- AÇIK SORULAR / RİSKLER:",
+    "handoff": "İSTEK:\n{{request}}\n\nÖNCEKİ AJAN ({{prevAgent}}) RAPORU:\n{{output}}\n\nSen {{agent}}'sın. Denetçinin bulduklarını tek tek ele al: ya düzelt ya gerekçelendir.\nSonunda DEVİR NOTU:\n- DÜZELTTİKLERİM:\n- DÜZELTMEDİKLERİM (GEREKÇE):\n- DEĞİŞEN DOSYALAR:",
+    "review": "İSTEK:\n{{request}}\n\nÖNCEKİ AJAN ({{prevAgent}}) NE YAPTI:\n{{output}}\n\nSen {{agent}}'sın; sert bir denetçisin. Görevin övmek değil kırmak.\n- İddiaları kanıtla karşılaştır.\n- Her sorun için: NE · NEREDE · NEDEN · ÖNERİ.\nSonunda rapor:\n- BULDUĞUM SORUNLAR: (yoksa \"SORUN YOK\")\n- KARAR: ONAYLIYORUM ya da DÜZELTME GEREKİYOR",
+    "reviewFirst": "İSTEK:\n{{request}}\n\nSen {{agent}}'sın; sert bir denetçisin. Mevcut durumu kanıtla denetle.\nSonunda rapor:\n- BULDUĞUM SORUNLAR: (yoksa \"SORUN YOK\")\n- KARAR: ONAYLIYORUM ya da DÜZELTME GEREKİYOR"
+  },
+
+  "agents": [
+    {
+      "id": "coder",
+      "name": "Agent 1 · Kodcu",
+      "role": "implementer",
+      "adapter": "cdp",
+      "context": "Proje: <proje adı> · Stack: <react/vite/...> · Ana klasörler: src/... · Kural: <dokunulmazlar>. Commit/derleme durumu: <...>.",
+      "cdp": {
+        "endpoint": "http://127.0.0.1:9222",
+        "match": { "url": "chatgpt.com" },
+        "input": "textarea, [contenteditable=\"true\"], div[role=\"textbox\"]",
+        "reply": ".markdown, article, [data-message-author-role=\"assistant\"]",
+        "busy": "button[data-testid=\"stop-button\"], .result-streaming",
+        "submit": "enter",
+        "idleMs": 3500
+      }
+    },
+    {
+      "id": "auditor",
+      "name": "Agent 2 · Denetçi",
+      "role": "reviewer",
+      "adapter": "cdp",
+      "stopPattern": "KARAR:\\s*ONAYLIYORUM|SORUN YOK",
+      "context": "Aynı projeyi denetliyorsun. Kanıtsız iddiayı kabul etme; derleme/test çıktısı göstermeyeni onaylama.",
+      "cdp": {
+        "endpoint": "http://127.0.0.1:9222",
+        "match": { "url": "claude.ai" },
+        "input": "div[contenteditable=\"true\"], textarea",
+        "reply": ".font-claude-message, .prose",
+        "busy": "[data-is-streaming=\"true\"]",
+        "submit": "enter",
+        "idleMs": 3500
+      }
+    }
+  ]
+}

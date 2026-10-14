@@ -1,0 +1,50 @@
+{
+  "port": 8787,
+  "host": "0.0.0.0",
+  "dataDir": "./data",
+  "turns": [
+    "coder",
+    "auditor"
+  ],
+  "requireApproval": true,
+  "handoffNeedsOutput": true,
+  "typing": {
+    "chunk": 48,
+    "delayMs": 18
+  },
+  "idleMs": 2500,
+  "timeoutMs": 900000,
+  "prompts": {
+    "build": "İSTEK:\n{{request}}\n\nSen {{agent}}'sın. İşi yapan taraftasın; projenin mevcut durumunu en iyi bilen ajan sensin, ona göre davran.\n- İsteği doğrudan uygula (kod/dosya değişikliği gerekiyorsa yap).\n- Varsayım yapma; emin olmadığını açıkça \"emin değilim\" diye yaz.\n- Kapsam dışına çıkma, istenmeyen refactor yapma.\n\nSonunda DEVİR NOTU bırak:\n- NE YAPTIM:\n- DEĞİŞEN DOSYALAR:\n- NASIL DOĞRULANIR:\n- AÇIK SORULAR / RİSKLER:",
+    "handoff": "İSTEK:\n{{request}}\n\nÖNCEKİ AJAN ({{prevAgent}}) RAPORU:\n{{output}}\n\nSen {{agent}}'sın. İşi yapan taraf sensin; denetçinin bulduklarını tek tek ele al:\n- Her madde için: düzelttim / düzeltmedim (gerekçesiyle).\n- Sadece gerçekten gerekli olanı değiştir. Denetçi yanıldıysa kanıtla ve açıkça söyle.\n- Madde atlamak yok: ya düzelt ya gerekçelendir.\n\nSonunda DEVİR NOTU bırak:\n- DÜZELTTİKLERİM:\n- DÜZELTMEDİKLERİM (GEREKÇE):\n- DEĞİŞEN DOSYALAR:\n- KALAN RİSKLER:",
+    "review": "İSTEK:\n{{request}}\n\nÖNCEKİ AJAN ({{prevAgent}}) NE YAPTI:\n{{output}}\n\nSen {{agent}}'sın; sert bir denetçisin. Görevin övmek değil kırmak: hata, eksik ve kanıtsız iddia ara.\n- Önceki ajanın iddialarını kanıtla karşılaştır: \"yaptım\" dediği gerçekten yapılmış mı?\n- İsteğin dışında kalan, yanlış veya riskli olan her şeyi madde madde yaz (dosya/davranış belirterek).\n- Emin olmadığını kesin gibi yazma; şüphe duyduğun yeri söyle.\n- Her sorun için: NE · NEREDE · NEDEN SORUN · ÖNERİLEN DÜZELTME.\n\nSonunda rapor ver:\n- BULDUĞUM SORUNLAR: (önem sırasına göre; hiç yoksa \"SORUN YOK\" yaz)\n- DOĞRULADIKLARIM:\n- KARAR: ONAYLIYORUM ya da DÜZELTME GEREKİYOR",
+    "reviewFirst": "İSTEK:\n{{request}}\n\nSen {{agent}}'sın; sert bir denetçisin. Aşağıdaki isteği ve mevcut durumu denetle.\n- Kanıtla konuş: dosya/davranış belirt, tahmin yürütme.\n- Her sorun için: NE · NEREDE · NEDEN SORUN · ÖNERİLEN DÜZELTME.\n\nSonunda rapor ver:\n- BULDUĞUM SORUNLAR: (hiç yoksa \"SORUN YOK\")\n- KARAR: ONAYLIYORUM ya da DÜZELTME GEREKİYOR"
+  },
+  "agents": [
+    {
+      "id": "coder",
+      "name": "Agent 1 · Kodcu",
+      "role": "implementer",
+      "adapter": "mock",
+      "context": "Proje: Atlasia (React 19 + Vite + Tailwind 4 + MapLibre). Ana kod: src/components, src/hooks, src/utils. Kural: MapView.tsx katman/marker mantığına dokunma, derleme (npm run build) yeşil kalmalı.",
+      "mock": {
+        "name": "Kodcu",
+        "tone": "build",
+        "thinkMs": 900
+      }
+    },
+    {
+      "id": "auditor",
+      "name": "Agent 2 · Denetçi",
+      "role": "reviewer",
+      "adapter": "mock",
+      "stopPattern": "KARAR:\\s*ONAYLIYORUM|SORUN YOK",
+      "context": "Aynı projeyi denetliyorsun. Kanıtsız iddiayı kabul etme; test/derleme çıktısı göstermeyeni onaylama.",
+      "mock": {
+        "name": "Denetçi",
+        "tone": "review",
+        "thinkMs": 900
+      }
+    }
+  ]
+}

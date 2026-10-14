@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Agent Relay · Tek Yerden Ekip</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="top">
+        <div class="brand">
+          <span class="dot-live"></span>
+          <div>
+            <h1>Agent Relay</h1>
+            <p id="order">Yükleniyor…</p>
+          </div>
+        </div>
+        <div class="top-right">
+          <div id="health" class="health"></div>
+          <label class="switch" title="Kapalıyken tüm devirler otomatik ilerler">
+            <input type="checkbox" id="approval" checked />
+            <span>Devirde onay</span>
+          </label>
+        </div>
+      </header>
+
+      <main class="grid">
+        <section class="col-main">
+          <div class="card composer">
+            <textarea id="request" rows="3" placeholder="İsteğini buraya yaz kanka… (örn: rota kartlarındaki saat dilimi hatasını bul ve düzelt)"></textarea>
+
+            <div class="who">
+              <div class="who-row">
+                <span class="who-label">Kimler çalışsın:</span>
+                <div id="pick" class="chips"></div>
+              </div>
+              <div class="who-row">
+                <span class="who-label">Kaç tur:</span>
+                <select id="loop">
+                  <option value="1">1 tur (her ajan bir kez)</option>
+                  <option value="2">2 tur (her ajan iki kez)</option>
+                  <option value="loop" selected>Denetim döngüsü: yap → denetle → düzelt → doğrula</option>
+                </select>
+              </div>
+              <div id="preview" class="preview"></div>
+            </div>
+
+            <div class="composer-row">
+              <span class="hint">Ctrl/⌘ + Enter ile gönder</span>
+              <button id="send" class="btn primary">Kuyruğa ekle</button>
+            </div>
+          </div>
+
+          <div class="card now">
+            <div class="card-head">
+              <h2>Şu an</h2>
+              <span id="now-sub" class="muted">boşta</span>
+            </div>
+            <div id="now-body" class="now-body">
+              <p class="muted">Kuyruk boş. Bir istek yaz, sıra ilk ajana gelsin.</p>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h2>Kuyruk</h2>
+              <button id="clear" class="btn ghost small">Bitenleri temizle</button>
+            </div>
+            <div id="queue" class="queue"></div>
+          </div>
+        </section>
+
+        <aside class="col-side">
+          <div class="card">
+            <div class="card-head">
+              <h2>Ekip</h2>
+              <button id="add-agent" class="btn primary small">+ Ajan ekle</button>
+            </div>
+            <div id="agents" class="agents"></div>
+            <p class="muted" style="margin: 10px 0 0">İstediğin kadar ajan ekleyebilirsin. Pratikte 2–4 ajan (bir kodcu + bir sert denetçi + gerekirse uzman) en verimlisi.</p>
+          </div>
+          <div class="card">
+            <div class="card-head"><h2>Günlük</h2></div>
+            <div id="logs" class="logs"></div>
+          </div>
+        </aside>
+      </main>
+    </div>
+
+    <div id="modal" class="modal hidden">
+      <div class="modal-card">
+        <div class="card-head">
+          <h2 id="modal-title">Ajan</h2>
+          <button class="btn ghost small" id="modal-close">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="two">
+            <label class="field"><span>Adı</span><input id="m-name" placeholder="örn: Denetçi" /></label>
+            <label class="field">
+              <span>Rolü</span>
+              <select id="m-role">
+                <option value="implementer">Kodcu (işi yapan, durumu bilen)</option>
+                <option value="reviewer">Denetçi (sert eleştiren, onaylayan)</option>
+                <option value="custom">Özel</option>
+              </select>
+            </label>
+          </div>
+
+          <label class="field">
+            <span>Proje bağlamı (her isteğin başında bu ajana verilir)</span>
+            <textarea id="m-context" rows="4" placeholder="örn: Proje: Atlasia (React+Vite+Tailwind). Dosyalar: src/components, src/hooks. Kural: MapView.tsx katman mantığına dokunma; derleme yeşil kalmalı."></textarea>
+          </label>
+
+          <label class="field">
+            <span>Durdurma kalıbı (denetçi bu ifadeyi yazarsa kalan turlar atlanır, regex)</span>
+            <input id="m-stop" placeholder="KARAR:\s*ONAYLIYORUM|SORUN YOK" />
+          </label>
+
+          <label class="field">
+            <span>Nasıl çalışsın?</span>
+            <select id="m-adapter">
+              <option value="mock">Demo (simülasyon)</option>
+              <option value="cdp">Tarayıcı sekmesi (yazı kutusuna gerçekten yazar)</option>
+              <option value="os">Masaüstü penceresi (pencereye yapıştırır + Enter)</option>
+            </select>
+          </label>
+
+          <div id="m-browser" class="group">
+            <label class="field"><span>Chrome hata ayıklama adresi</span><input id="m-endpoint" value="http://127.0.0.1:9222" /></label>
+            <div class="row"><button class="btn small" id="m-refresh">Sekmeleri getir</button><span id="m-tabs-note" class="muted">Chrome --remote-debugging-port=9222 ile açık olmalı</span></div>
+            <div id="m-tabs" class="tabs-list"></div>
+            <details>
+              <summary>Gelişmiş seçiciler (gerekirse)</summary>
+              <label class="field"><span>Yazı kutusu seçicisi</span><input id="m-input" placeholder='textarea, [contenteditable="true"], div[role="textbox"]' /></label>
+              <label class="field"><span>Cevap seçicisi (son mesaj)</span><input id="m-reply" placeholder="örn: .markdown, article" /></label>
+              <label class="field"><span>Yükleniyor göstergesi (opsiyonel)</span><input id="m-busy" placeholder="örn: .loading, [data-streaming]" /></label>
+              <label class="field"><span>Gönderme</span>
+                <select id="m-submit"><option value="enter">Enter</option><option value="button">Gönder butonuna tıkla</option></select>
+              </label>
+              <label class="field"><span>Gönder butonu seçicisi (buton modunda)</span><input id="m-send" placeholder="button[type=submit]" /></label>
+              <label class="field"><span>Cevap bitince bekleme (ms)</span><input id="m-idle" type="number" value="3000" /></label>
+              <label class="field"><span>Sekme seçimi (aynı başlıkta birden fazla sekme varsa)</span><input id="m-index" type="number" placeholder="0" /></label>
+            </details>
+          </div>
+
+          <div id="m-desktop" class="group">
+            <label class="field"><span>Pencere adı (başlığın bir parçası)</span><input id="m-window" placeholder="örn: Claude" /></label>
+            <p class="muted">Bu modda cevap otomatik okunamaz: relay her devirde senden onay ister, cevabı panodan alabilir ya da elle yapıştırabilirsin.</p>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button class="btn danger" id="modal-delete">Sil</button>
+          <span style="flex: 1"></span>
+          <button class="btn ghost" id="modal-cancel">Vazgeç</button>
+          <button class="btn primary" id="modal-save">Kaydet</button>
+        </div>
+      </div>
+    </div>
+
+    <template id="tpl-agent">
+      <div class="agent">
+        <div class="agent-top">
+          <span class="name"></span>
+          <span class="agent-tools">
+            <span class="pill"></span>
+            <button class="btn ghost small act" data-act="up" title="Yukarı al">▲</button>
+            <button class="btn ghost small act" data-act="down" title="Aşağı al">▼</button>
+            <button class="btn small act" data-act="edit">Düzenle</button>
+          </span>
+        </div>
+        <div class="agent-sub muted"></div>
+        <div class="agent-box">
+          <div class="agent-label">yazdığı metin</div>
+          <pre class="typed"></pre>
+          <div class="agent-label">gelen cevap</div>
+          <pre class="reply"></pre>
+        </div>
+      </div>
+    </template>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
