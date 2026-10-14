@@ -123,15 +123,22 @@ export class Orchestrator {
         this.store.state.jobs = this.store.state.jobs.filter((j) => j.id !== id);
         this.release(job.id);
         break;
-      case "clear":
-        this.store.state.jobs = this.store.state.jobs.filter((j) => !TERMINAL.has(j.status));
-        break;
       default:
         return { ok: false, error: `Bilinmeyen komut: ${action}` };
     }
     job.updatedAt = Date.now();
     this.emitState();
     return { ok: true, job };
+  }
+
+  /** Biten/durdurulan/hatalı işleri kuyruktan düşürür. */
+  clearFinished() {
+    const before = this.store.state.jobs.length;
+    this.store.state.jobs = this.store.state.jobs.filter((j) => !TERMINAL.has(j.status));
+    const removed = before - this.store.state.jobs.length;
+    if (removed) this.store.log("info", `${removed} bitmiş iş temizlendi`);
+    this.emitState();
+    return { ok: true, removed };
   }
 
   release(jobId, value) {

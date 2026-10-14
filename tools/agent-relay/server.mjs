@@ -131,8 +131,7 @@ export async function createRelay({ configPath, rootDir = __dirname } = {}) {
     }
 
     if (parts[1] === "jobs" && parts[2] === "clear" && method === "POST") {
-      orchestrator.control("clear", "clear");
-      return json(res, 200, { ok: true });
+      return json(res, 200, orchestrator.clearFinished());
     }
 
     // Kullanıcı cevabı panoya kopyaladıysa panele aktarır (os adapter modu)
