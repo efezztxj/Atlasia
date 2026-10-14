@@ -52,6 +52,42 @@ jobs:
           echo "✓ Paketli ikili uçtan uca çalıştı"
           kill $SERVER
 
+      - name: Başarısızlık halinde kaydı yayınla (okunabilir olsun)
+        if: failure()
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set +e
+          mkdir -p /tmp/dump
+          {
+            echo "# CI smoke kaydı"
+            echo
+            echo "- run: $GITHUB_RUN_ID ($GITHUB_REF)"
+            echo "- commit: $GITHUB_SHA"
+            echo
+            echo "## smoke.log"
+            echo '```'
+            cat /tmp/smoke.log 2>/dev/null || echo "(smoke.log yok - paket hiç başlamadı)"
+            echo '```'
+            echo "## health.json"
+            echo '```json'
+            cat /tmp/health.json 2>/dev/null || echo "(yok)"
+            echo '```'
+            echo "## state.json"
+            echo '```json'
+            cat /tmp/state.json 2>/dev/null || echo "(yok)"
+            echo '```'
+          } > smoke-log.md
+          git config user.name "ci-bot"
+          git config user.email "ci-bot@users.noreply.github.com"
+          git fetch origin ci-logs 2>/dev/null && git checkout -B ci-logs origin/ci-logs || git checkout -B ci-logs
+          cp smoke-log.md smoke-log.md
+          git add -f smoke-log.md
+          git commit -m "CI smoke log ($GITHUB_RUN_ID)" || true
+          git push -f origin ci-logs
+          echo "Kayıt ci-logs dalına yazıldı."
+
       - name: Kaynak ZIP (exe çalışmazsa yedek yol)
         run: |
           cd ..
@@ -103,13 +139,14 @@ jobs:
           ls -la dist
 
       - uses: actions/upload-artifact@v4
+        if: success()
         with:
           name: agent-relay-paketleri
           path: tools/agent-relay/dist/*
           if-no-files-found: error
 
       - name: Release'e ekle (yalnızca etiketle çalıştırıldıysa)
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') && success()
         working-directory: .
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

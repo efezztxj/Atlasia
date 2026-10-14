@@ -248,4 +248,8 @@ async function main() {
   }
 }
 
+// Ne olursa olsun pencere sessizce kapanmasın: hata loglanır ve görünür kalır.
+process.on("uncaughtException", (err) => reportCrash(err, { pause: true }));
+process.on("unhandledRejection", (err) => reportCrash(err, { pause: true }));
+
 main().catch((err) => reportCrash(err, { pause: true }));

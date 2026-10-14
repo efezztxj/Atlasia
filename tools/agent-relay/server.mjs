@@ -270,8 +270,30 @@ export async function createRelay({ configPath, rootDir } = {}) {
     configPath: resolvedConfigPath,
     dataDir,
     packaged,
+    /**
+     * Port doluysa (örn. program iki kez açıldıysa) sıradaki boş portu dener,
+     * hiçbiri olmazsa anlaşılır bir hatayla döner.
+     */
     listen(port = config.port, host = config.host || "0.0.0.0") {
-      return new Promise((resolve) => server.listen(port, host, () => resolve(server.address())));
+      return new Promise((resolve, reject) => {
+        const attempt = (candidate, left) => {
+          const onError = (err) => {
+            if (err.code === "EADDRINUSE" && left > 0) {
+              store.log("warn", `${candidate} numaralı port dolu, ${candidate + 1} deneniyor`);
+              attempt(candidate + 1, left - 1);
+              return;
+            }
+            reject(new Error(`${candidate} numaralı port kullanılamıyor: ${err.message}`));
+          };
+          server.once("error", onError);
+          server.listen(candidate, host, () => {
+            server.removeListener("error", onError);
+            server.once("error", (err) => store.log("error", `Sunucu hatası: ${err.message}`));
+            resolve(server.address());
+          });
+        };
+        attempt(port, 10);
+      });
     },
     close() {
       orchestrator.stopAll();
@@ -391,6 +413,9 @@ export async function boot() {
   return relay;
 }
 
+// Yalnızca "node server.mjs" ile doğrudan çalıştırıldığında kendi kendini başlatır.
+// Paketlenmiş exe'de giriş noktası bin/relay.mjs'tir; burada tekrar başlatmak
+// ikinci bir sunucu (ve "port dolu" hatası) yaratırdı.
 const invoked = process.argv[1] && (() => {
   try {
     return fs.realpathSync(process.argv[1]) === fs.realpathSync(fileURLToPath(import.meta.url));
@@ -399,7 +424,7 @@ const invoked = process.argv[1] && (() => {
   }
 })();
 
-if (invoked || process.pkg) {
+if (invoked) {
   boot().catch((err) => {
     console.error("\n  Başlatılamadı:", err?.stack || err?.message || err);
     process.exitCode = 1;
