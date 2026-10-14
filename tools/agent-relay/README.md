@@ -79,7 +79,7 @@ API anahtarı istemez. Agent'lar kendi tarayıcı sekmelerinde/pencerelerinde a�
 bu yüzden uzak bir sunucuda değil, agent'ların çalıştığı bilgisayarda çalıştır.
 
 **Ana beyin kim?** Relay'in içinde AI yok; o sadece kuyruk + sıra + aktarım yapar (orkestra şefi).
-"Düşünen" taraf, bağladığın agent'ların kendisi. Detay: [§9 Roller ve beyin](#9-roller-ve-beyin-kim-nerede).
+"Düşünen" taraf, bağladığın agent'ların kendisi. Detay: [§8 Roller ve beyin](#8-roller-ve-beyin-kim-nerede).
 
 ---
 
@@ -119,7 +119,14 @@ turlar boşuna dönmez. Örn. `KARAR:\s*ONAYLIYORUM|SORUN YOK`.
 
 ---
 
-## 3. Demo (10 saniye)
+## 3. Adım adım kullanım
+
+Ayrıntılı, sıfırdan kılavuz: **[KULLANIM.md](KULLANIM.md)** — programı aç → demo modunda izle →
+gerçek agent'ları bağla (Chrome sekmesi / masaüstü penceresi) → günlük akış, roller, kontroller, sorun giderme.
+
+---
+
+## 4. Demo (10 saniye)
 
 ```bash
 cd tools/agent-relay
@@ -140,7 +147,7 @@ node bin/relay.mjs ctl <jobId> pause|resume|skip|takeover|approve|stop
 
 ---
 
-## 4. Gerçek agent'lara bağlama
+## 5. Gerçek agent'lara bağlama
 
 Panelde ajanın **Düzenle**'sine bas. Üç mod:
 
@@ -186,7 +193,7 @@ Bu modda cevap otomatik okunamaz → relay her devirde onay ister; panelde
 
 ---
 
-## 5. Panel
+## 6. Panel
 
 - **Kuyruk**: her istek bir kart; karttan duraklat / devam / atla / devral / durdur / yeniden dene.
 - **Devir onayı**: sıradaki ajana gidecek metni görür, gerekirse **düzenler**, öyle gönderirsin.
@@ -197,7 +204,7 @@ Bu modda cevap otomatik okunamaz → relay her devirde onay ister; panelde
 
 ---
 
-## 6. Ayar dosyası (`relay.config.json`)
+## 7. Ayar dosyası (`relay.config.json`)
 
 | Alan | Anlamı |
 |---|---|
@@ -215,7 +222,7 @@ Hazır örnekler: `examples/browser-tabs.json`, `examples/desktop-windows.json`
 
 ---
 
-## 9. Roller ve beyin: kim nerede
+## 8. Roller ve beyin: kim nerede
 
 ```
          sen (tek panel, tek yazı kutusu)
@@ -248,7 +255,7 @@ Hazır örnekler: `examples/browser-tabs.json`, `examples/desktop-windows.json`
 
 ---
 
-## 10. Dürüst sınırlar
+## 9. Dürüst sınırlar
 
 - **Arayüz değişirse seçiciler kayabilir.** Relay göndermeden önce yazı kutusunun içeriğini
   doğrular; tutmuyorsa göndermez, hata verir.
@@ -260,7 +267,7 @@ Hazır örnekler: `examples/browser-tabs.json`, `examples/desktop-windows.json`
 - `--remote-debugging-port` açık tarayıcı, o portu bulan her yerel programa kontrol verir;
   ayrı profil (`--user-data-dir`) kullan.
 
-## 8. Geliştirme
+## 10. Geliştirme
 
 ```
 tools/agent-relay/
