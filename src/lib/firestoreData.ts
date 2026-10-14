@@ -36,6 +36,7 @@ import {
   type QuerySnapshot,
 } from "firebase/firestore";
 import { db, firebaseConfigured } from "./firebase";
+import { withoutSeedPosts, withoutSeedStories } from "./contentIntegrity";
 import { compressImageWithinLimit } from "../utils/image";
 import type { FeedPost, FeedReply, Place, Story, StoryAccent, UploadPhotoKind } from "../types";
 
@@ -626,10 +627,14 @@ function postsPageQuery(store: Firestore, cursor?: FirestoreCursor) {
   );
 }
 
+function userPostPage(page: FirestorePage<FeedPost>): FirestorePage<FeedPost> {
+  return { ...page, items: withoutSeedPosts(page.items) };
+}
+
 export async function listPostsPage(cursor?: FirestoreCursor): Promise<FirestorePage<FeedPost>> {
   if (!db) return emptyPage();
   const snap = await getDocs(postsPageQuery(db, cursor));
-  return pageFromSnapshot(snap, FIRESTORE_QUERY_LIMITS.postsPage, normalizePost);
+  return userPostPage(pageFromSnapshot(snap, FIRESTORE_QUERY_LIMITS.postsPage, normalizePost));
 }
 
 export function subscribePosts(
@@ -639,7 +644,7 @@ export function subscribePosts(
   if (!db) return () => {};
   return onSnapshot(
     postsPageQuery(db),
-    (snap) => onChange(pageFromSnapshot(snap, FIRESTORE_QUERY_LIMITS.postsPage, normalizePost)),
+    (snap) => onChange(userPostPage(pageFromSnapshot(snap, FIRESTORE_QUERY_LIMITS.postsPage, normalizePost))),
     onError,
   );
 }
@@ -703,7 +708,7 @@ export async function togglePostLikeInFirestore(
   const isRemoval = Array.isArray(current) && next.length < current.length;
   await updateDoc(ref, {
     // Array transformu farklı kullanıcıların eşzamanlı değişikliklerini birleştirir.
-    // `likes` örnek içeriğin sabit taban sayısı olarak değişmeden kalır.
+    // `likes` şema uyumluluğu için 0 kalır; gerçek üyelik `likedBy` içindedir.
     likedBy: isRemoval ? arrayRemove(cleanUid) : arrayUnion(cleanUid),
   });
 }
@@ -780,16 +785,20 @@ function storiesPageQuery(store: Firestore, cutoffMs: number, cursor?: Firestore
   );
 }
 
+function userStoryPage(page: StoryPage): StoryPage {
+  return { ...page, items: withoutSeedStories(page.items) };
+}
+
 export async function listStoriesPage(
   cursor: FirestoreCursor,
   cutoffMs: number,
 ): Promise<StoryPage> {
   if (!db) return { ...emptyPage<Story>(), cutoffMs };
   const snap = await getDocs(storiesPageQuery(db, cutoffMs, cursor));
-  return {
+  return userStoryPage({
     ...pageFromSnapshot(snap, FIRESTORE_QUERY_LIMITS.storiesPage, normalizeStory),
     cutoffMs,
-  };
+  });
 }
 
 export function subscribeStories(
@@ -807,10 +816,10 @@ export function subscribeStories(
   const unsubscribe = onSnapshot(
     storiesPageQuery(db, cutoffMs),
     (snap) => {
-      latestPage = {
+      latestPage = userStoryPage({
         ...pageFromSnapshot(snap, FIRESTORE_QUERY_LIMITS.storiesPage, normalizeStory),
         cutoffMs,
-      };
+      });
       emitActiveStories();
     },
     onError,

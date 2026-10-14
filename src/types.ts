@@ -59,7 +59,7 @@ export interface FeedPost {
   authorUid?: string;
   text: string;
   createdAt: number;
-  /** Örnek içerikten gelen temel beğeni sayısı */
+  /** Şema uyumluluğu için sabit başlangıç sayısı; kullanıcı gönderileri 0 ile başlar. */
   likes: number;
   /** Beğenen istemcilerin kimlikleri */
   likedBy?: string[];
