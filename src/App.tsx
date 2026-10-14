@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bell, Bookmark, Compass, Crosshair, MapPin, MousePointerClick, Plus, UserRound, UsersRound, X } from "lucide-react";
-import MapView, { type BaseMapStyle, type MapViewHandle } from "./components/MapView";
+import type { BaseMapStyle, MapViewHandle } from "./components/MapView";
 import Header from "./components/Header";
 import Hero from "./components/Hero";
 import SearchBox from "./components/SearchBox";
@@ -34,11 +34,27 @@ import type { AtlasRoute, CategoryId, Place, ViewState } from "./types";
 import { haversineKm, reverseName, type SearchResult } from "./utils/geo";
 import { storageGet, storageSet } from "./utils/storage";
 
+const MapView = lazy(() => import("./components/MapView"));
 const MAP_STYLE_KEY = "atlasia.mapStyle.v1";
 
 function initialMapStyle(): BaseMapStyle {
   const saved = storageGet(MAP_STYLE_KEY);
   return saved === "dark" || saved === "street" || saved === "topographic" ? saved : "satellite";
+}
+
+function MapLoadingSkeleton() {
+  return (
+    <div
+      className="absolute inset-0 grid place-items-center bg-[#031b16]"
+      role="status"
+      aria-label="Harita yükleniyor"
+    >
+      <div className="flex flex-col items-center gap-3 text-mint/75">
+        <span className="size-12 animate-pulse rounded-full border border-leaf/40 bg-leaf/10" />
+        <span className="text-sm">Harita hazırlanıyor…</span>
+      </div>
+    </div>
+  );
 }
 
 function placeDeleteErrorMessage(error: unknown) {
@@ -461,21 +477,23 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         İçeriğe geç
       </a>
       <main id="harita" aria-label="Keşif haritası" className="contents" tabIndex={-1}>
-      <MapView
-        ref={mapRef}
-        places={visiblePlaces}
-        activeId={activeId}
-        onSelect={handleSelect}
-        addMode={addMode}
-        onMapClick={handleMapClick}
-        showLabels={labels}
-        terrainEnabled={terrain}
-        baseMap={baseMap}
-        spin={spin && !reducedMotion && !addMode && !draft}
-        onUserInteract={() => setSpin(false)}
-        onViewChange={setView}
-        onViewportChange={setMapViewport}
-      />
+        <Suspense fallback={<MapLoadingSkeleton />}>
+          <MapView
+            ref={mapRef}
+            places={visiblePlaces}
+            activeId={activeId}
+            onSelect={handleSelect}
+            addMode={addMode}
+            onMapClick={handleMapClick}
+            showLabels={labels}
+            terrainEnabled={terrain}
+            baseMap={baseMap}
+            spin={spin && !reducedMotion && !addMode && !draft}
+            onUserInteract={() => setSpin(false)}
+            onViewChange={setView}
+            onViewportChange={setMapViewport}
+          />
+        </Suspense>
       </main>
 
       <Header

@@ -4,7 +4,7 @@ import {
   Copy, Eye, EyeOff, Globe2, Info, KeyRound, Loader2, LockKeyhole,
   Mail, Monitor, Phone, ShieldCheck,
 } from "lucide-react";
-import { RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from "firebase/auth";
+import type { ConfirmationResult, RecaptchaVerifier } from "firebase/auth";
 import { useAuth, type SignupResult } from "../contexts/AuthContext";
 import { authConfigured, authErrorMessage, getAtlasAuth, requestPasswordReset, signInSocial } from "../lib/auth";
 import { AccountError, isValidEmail, normalizeEmail, passwordRules, validPassword } from "../lib/accountTypes";
@@ -259,9 +259,13 @@ export default function AccountAccess() {
     await task("phone", async () => {
       if (mode === "signup") { try { sessionStorage.setItem("atlasia.pendingName", name.trim()); } catch { /* Optional display name. */ } }
       verifier.current?.clear();
-      verifier.current = new RecaptchaVerifier(getAtlasAuth(), "atlasia-recaptcha", { size: "invisible" });
+      const [{ RecaptchaVerifier, signInWithPhoneNumber }, auth] = await Promise.all([
+        import("firebase/auth"),
+        getAtlasAuth(),
+      ]);
+      verifier.current = new RecaptchaVerifier(auth, "atlasia-recaptcha", { size: "invisible" });
       try {
-        pendingPhone.current = await signInWithPhoneNumber(getAtlasAuth(), `${prefix}${digits}`, verifier.current);
+        pendingPhone.current = await signInWithPhoneNumber(auth, `${prefix}${digits}`, verifier.current);
         setScreen("code"); setCode(""); setCooldown(60);
       } catch (failure) { verifier.current?.clear(); verifier.current = null; throw failure; }
     });

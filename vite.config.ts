@@ -25,6 +25,8 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks(id) {
             if (id.includes("node_modules/maplibre-gl") || id.includes("node_modules/@mapbox") || id.includes("node_modules/@maplibre")) return "map-vendor";
+            const firebaseAuthModule = id.includes("node_modules/firebase/auth") || id.includes("node_modules/@firebase/auth");
+            if (firebaseAuthModule) return "firebase-auth";
             if (id.includes("node_modules/firebase") || id.includes("node_modules/@firebase")) return "firebase-vendor";
             if (id.includes("node_modules/react") || id.includes("node_modules/react-dom") || id.includes("node_modules/scheduler")) return "react-vendor";
             if (id.includes("node_modules/lucide-react")) return "icons-vendor";
