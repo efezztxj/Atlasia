@@ -84,6 +84,7 @@ describe("Cloudflare Pages security headers", () => {
       "https://photon.komoot.io",
       "https://api.open-meteo.com",
       "https://commons.wikimedia.org",
+      "https://api.pwnedpasswords.com",
     ]) {
       expect(policy).toContain(source);
     }
@@ -92,6 +93,19 @@ describe("Cloudflare Pages security headers", () => {
     expect(policy).not.toContain("cartocdn.com");
     expect(policy).not.toContain("demotiles.maplibre.org");
     expect(policy).not.toMatch(/(?:default|connect|frame|script)-src[^;]*\s\*/);
+  });
+
+  it("allows Pwned Passwords only as an outbound range API connection", () => {
+    const policy = block("/*").get("content-security-policy") ?? "";
+    const directives = new Map(policy.split(";").map((entry) => {
+      const [name, ...values] = entry.trim().split(/\s+/);
+      return [name, values.join(" ")];
+    }));
+
+    expect(directives.get("connect-src")).toContain("https://api.pwnedpasswords.com");
+    for (const name of ["default-src", "script-src", "style-src", "img-src", "frame-src", "form-action"]) {
+      expect(directives.get(name) ?? "").not.toContain("api.pwnedpasswords.com");
+    }
   });
 
   it("keeps Firebase OAuth, Apple sign-in, phone reCAPTCHA, and map embeds usable", () => {
