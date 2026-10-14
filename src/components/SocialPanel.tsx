@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import { formatAccuracy } from "../hooks/useGeolocation";
+import { totalLikes } from "../lib/feedMetrics";
 import type { FeedPost, Story, StoryAccent, UploadPhotoKind, ViewState } from "../types";
 import { mediaUrl } from "../utils/api";
 import { cn } from "../utils/cn";
@@ -249,7 +250,7 @@ export default function SocialPanel({
   };
 
   const liked = (p: FeedPost) => (p.likedBy ?? []).includes(clientId);
-  const likeCount = (p: FeedPost) => p.likes + (p.likedBy?.length ?? 0);
+  const likeCount = (p: FeedPost) => totalLikes(p);
 
   if (!open) {
     return (
