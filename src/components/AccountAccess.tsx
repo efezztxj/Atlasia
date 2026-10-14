@@ -2,14 +2,14 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "rea
 import {
   Apple, ArrowLeft, ArrowRight, Check, CheckCircle2, Circle, Compass,
   Copy, Eye, EyeOff, Globe2, Info, KeyRound, Loader2, LockKeyhole,
-  Mail, Monitor, Phone, ShieldCheck, X,
+  Mail, Monitor, Phone, ShieldCheck,
 } from "lucide-react";
 import { RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from "firebase/auth";
 import { useAuth, type SignupResult } from "../contexts/AuthContext";
 import { authConfigured, authErrorMessage, getAtlasAuth, requestPasswordReset, signInSocial } from "../lib/auth";
 import { isValidEmail, normalizeEmail, passwordRules, validPassword } from "../lib/accountTypes";
 import { resetDevicePassword } from "../lib/deviceAccounts";
-import { usePanelAccess } from "../hooks/usePanelAccess";
+import LegalNotice from "./LegalNotice";
 
 type Screen = "credentials" | "phone" | "code" | "reset" | "recovery";
 type Busy = "email" | "google" | "apple" | "phone" | "code" | "reset" | "recovery" | "finish";
@@ -79,12 +79,6 @@ function PasswordField({ id, label = "Şifre", value, onChange, error, fresh = f
     <FormError message={error} id={`${id}-error`} />
     {fresh && <div id={`${id}-help`} className="auth-password-help"><ul>{[["length", "En az 8 karakter"], ["letter", "Bir harf"], ["number", "Bir rakam"]].map(([key, text]) => <li key={key} data-valid={rules[key as keyof typeof rules]}>{rules[key as keyof typeof rules] ? <Check size={13} /> : <Circle size={11} />}{text}</li>)}</ul><p>Atlasia için ayrı bir şifre seç; Google veya Apple şifreni kullanma.</p></div>}
   </div>;
-}
-
-function LegalNotice({ type, onClose }: { type: "privacy" | "terms"; onClose: () => void }) {
-  const { backend } = useAuth();
-  const ref = usePanelAccess(true, onClose, true);
-  return <div className="fixed inset-0 z-[100] grid place-items-center bg-black/75 p-4"><button type="button" className="absolute inset-0" onClick={onClose} aria-label="Açıklamayı kapat" /><aside ref={ref} role="dialog" aria-modal="true" aria-labelledby="account-legal-title" className="relative w-full max-w-lg rounded-3xl border border-white/15 bg-ink-2 p-7"><button type="button" onClick={onClose} aria-label="Açıklamayı kapat" className="absolute right-4 top-4 grid size-11 place-items-center"><X size={19} /></button><h2 id="account-legal-title" className="font-display pr-8 text-2xl">{type === "privacy" ? "Gizlilik açıklaması" : "Kullanım koşulları"}</h2><p className="mt-4 text-[15px] leading-relaxed text-mint/85">{type === "privacy" ? backend === "device" ? "Bu modda hesap yalnızca bu cihazın tarayıcısında tutulur. Şifre düz metin olarak saklanmaz; rastgele salt ile PBKDF2 özeti kaydedilir. E-posta doğrulaması veya SMS gönderimi yapılmaz. Tarayıcı verilerini silersen hesabın ve kayıtların kaybolabilir. Bu cihazdaki hesap, çevrimiçi bir kimlik doğrulama hizmeti değildir." : "Hesap girişi Firebase Authentication üzerinden yapılır. E-posta ve şifre veya onayladığın sağlayıcı kullanılır. Atlasia sağlayıcı hesabının şifresini görmez. Yerler ve rotalar bu sürümde cihazında saklanır. Konum ayrı izin ister; paylaşmak zorunda değilsin." : "Bir hesap oluşturup kendi yerlerini ve rotalarını yönetebilirsin. Başkalarının özel bilgilerini paylaşma ve izinsiz görsel yükleme. Rota ve rehber bilgileri öneridir; saat, ücret, güvenlik ve erişim koşullarını ilgili resmî kaynaklardan doğrula."}</p><button type="button" onClick={onClose} className="mt-6 min-h-11 rounded-full bg-sun px-6 text-sm font-semibold text-ink">Okudum</button></aside></div>;
 }
 
 export default function AccountAccess() {
