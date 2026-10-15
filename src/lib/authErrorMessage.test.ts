@@ -13,4 +13,10 @@ describe("Firebase giriş yapılandırma mesajları", () => {
       "Bu giriş yöntemi henüz etkin değil. Başka bir yöntem seçebilir veya daha sonra deneyebilirsin.",
     );
   });
+
+  it("SMS için Blaze gereksinimini net Türkçe açıklar", () => {
+    expect(authErrorMessage({ code: "auth/billing-not-enabled" })).toBe(
+      "SMS ile giriş için Firebase projesinde Blaze faturalandırma planının etkinleştirilmesi gerekiyor. Şimdilik başka bir giriş yöntemi kullanabilirsin.",
+    );
+  });
 });

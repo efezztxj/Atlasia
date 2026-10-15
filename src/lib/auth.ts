@@ -129,6 +129,7 @@ export function authErrorMessage(error: unknown) {
     "auth/cancelled-popup-request": "Başka bir giriş işlemi açık. O pencereyi tamamla veya tekrar dene.",
     "auth/unauthorized-domain": "Bu site adresi giriş için yetkilendirilmemiş. Yayın alanının Firebase'e eklenmesi gerekiyor.",
     "auth/operation-not-allowed": "Bu giriş yöntemi henüz etkin değil. Başka bir yöntem seçebilir veya daha sonra deneyebilirsin.",
+    "auth/billing-not-enabled": "SMS ile giriş için Firebase projesinde Blaze faturalandırma planının etkinleştirilmesi gerekiyor. Şimdilik başka bir giriş yöntemi kullanabilirsin.",
     "auth/invalid-api-key": "Giriş yapılandırması geçerli değil. Uygulamanın kimlik doğrulama ayarları kontrol edilmeli.",
     "auth/network-request-failed": "Bağlantı kurulamadı. İnternetini kontrol edip tekrar dene.",
     "auth/invalid-phone-number": "Telefon numaranı ülke koduyla birlikte kontrol et.",
