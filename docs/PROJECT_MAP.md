@@ -22,6 +22,12 @@ Tüm yollar depo köküne göredir.
 | `storage.rules` | Firebase Storage'ı tamamen kapatan kural (fotoğraflar Firestore'da base64 olarak tutulur). |
 | `satellite-map-web-application.zip` | Eski proje arşivi (1.6 MB). Build tarafından kullanılmıyor. |
 | `satellite-map-web-application (1)/` | **Yinelenen, ayrışmış eski kopya.** Kökteki `src/` ile çok sayıda dosyada farklı (`diff -rq` ile doğrulandı); kendi `package.json`, `vite.config.ts` ve `src/` ağacını içerir. Kök build'ine girmiyor (`tsconfig` `include` yalnızca kökteki `src`). Silinmesi veya taşınması için kullanıcı onayı gerekir. |
+| `data/source/world-atlas/` | Ülke sınırı kaynak TopoJSON'u (world-atlas 2.0.2 / Natural Earth 4.1.0), ISC LICENSE ve README. |
+| `scripts/build-countries-geojson.mjs` | Bağımlılıksız TopoJSON→GeoJSON dönüştürücü. |
+| `scripts/build-countries-geojson.test.mjs` | `node --test scripts/build-countries-geojson.test.mjs` ile çalışan dönüştürücü testleri. |
+| `public/data/countries-110m.geojson` | Üretilmiş ülke sınırları (uygulama bu dosyayı çalışma zamanında çeker). |
+| `src/utils/countries.ts` | Ülke verisi yükleyici (`loadCountries`), `CountrySelection`, `countryDisplayName`. |
+| `docs/COUNTRY_LAYER.md` | Ülke katmanı: kaynak, lisans, mimari, doğrulama, keşif paneli planı. |
 | `.gitignore` | `node_modules/`, `dist/`, `.env*`, Firebase debug logları. `.env.example` **depoda yok** (bkz. KNOWN_ISSUES). |
 
 ## `public/`

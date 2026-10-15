@@ -2,6 +2,12 @@
 
 Her karar, kodda veya repo belgelerinde bulunan kanıtla birlikte yazıldı. Kanıt yoksa "gerekçe doğrulanmadı" denir.
 
+## D-13 · Ülke sınırları: Natural Earth 1:110m (public domain), ayrı GeoJSON katmanı
+- **Karar:** Ülke seçimi için Esri overlay yerine `public/data/countries-110m.geojson`. Kaynak `world-atlas@2.0.2` (ISC) içindeki Natural Earth 4.1.0 1:110m TopoJSON; Natural Earth kamu malı.
+- **Gerekçe:** Lisans açık, küçük boyut (~217 KB), çalışma zamanı bağımlılığı yok (dönüşüm kendi scriptimizle).
+- **Sonuç:** ISO kodsuz poligonlar `x-` slug anahtarı alır; mevcut KKTC elle çizilmiş poligonu değiştirilmedi.
+- Kanıt: `docs/COUNTRY_LAYER.md`, `scripts/build-countries-geojson.test.mjs`.
+
 ## D-01 · Vite + React 19 + TypeScript (strict)
 - **Karar:** SPA, Vite 7.3.2, React 19.2.6, TypeScript 5.9.3 `strict` + `noUnusedLocals`.
 - **Kanıt:** `package.json`, `tsconfig.json`.

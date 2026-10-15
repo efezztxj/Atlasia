@@ -2,6 +2,7 @@ import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "reac
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { KKTC_GEOMETRY, KKTC_NAME } from "../data/regions";
+import { loadCountries, type CountrySelection } from "../utils/countries";
 import type { Place, ViewState } from "../types";
 
 export type BaseMapStyle = "satellite" | "dark" | "street" | "topographic";
@@ -34,6 +35,8 @@ interface Props {
   spin: boolean;
   onUserInteract: () => void;
   onViewChange: (v: ViewState) => void;
+  selectedCountry: string | null;
+  onCountrySelect: (country: CountrySelection | null) => void;
 }
 
 const HOME_CENTER: [number, number] = [30, 30];
@@ -285,6 +288,8 @@ export default function MapView({
   spin,
   onUserInteract,
   onViewChange,
+  selectedCountry,
+  onCountrySelect,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -294,8 +299,8 @@ export default function MapView({
   const [ready, setReady] = useState(false);
 
   // En güncel değerleri harita olaylarında kullanmak için
-  const live = useRef({ onSelect, onMapClick, onUserInteract, onViewChange, addMode, spin });
-  live.current = { onSelect, onMapClick, onUserInteract, onViewChange, addMode, spin };
+  const live = useRef({ onSelect, onMapClick, onUserInteract, onViewChange, onCountrySelect, addMode, spin, selectedCountry });
+  live.current = { onSelect, onMapClick, onUserInteract, onViewChange, onCountrySelect, addMode, spin, selectedCountry };
   const internalMove = useRef(false);
 
   useImperativeHandle(ref, () => ({
@@ -508,7 +513,17 @@ export default function MapView({
     map.on("click", (e) => {
       const target = e.originalEvent.target as HTMLElement | null;
       if (target?.closest(".atl-pin")) return;
-      if (live.current.addMode) live.current.onMapClick(e.lngLat.lng, e.lngLat.lat);
+      if (live.current.addMode) {
+        live.current.onMapClick(e.lngLat.lng, e.lngLat.lat);
+        return;
+      }
+      // Ülke seçimi: yalnızca ayrı ülke katmanına bakılır (Esri overlay'ine bağımlı değil).
+      const hit = map.getLayer("countries-fill")
+        ? map.queryRenderedFeatures(e.point, { layers: ["countries-fill"] })[0]
+        : undefined;
+      const key = hit?.properties?.key;
+      const name = hit?.properties?.name;
+      live.current.onCountrySelect(typeof key === "string" && typeof name === "string" ? { key, name } : null);
     });
 
     // Otomatik dönüş
@@ -576,6 +591,37 @@ export default function MapView({
   useEffect(() => {
     containerRef.current?.classList.toggle("map-add-mode", addMode);
   }, [addMode]);
+
+  // Ülke sınırları: ayrı GeoJSON kaynağı. Pin/rota katmanlarından önce, KKTC çizgisinin altına eklenir.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    let cancelled = false;
+    loadCountries()
+      .then((data) => {
+        if (cancelled || !mapRef.current || map.getSource("countries")) return;
+        map.addSource("countries", { type: "geojson", data });
+        const beforeId = map.getLayer("kktc-outline") ? "kktc-outline" : undefined;
+        const none = ["==", ["get", "key"], live.current.selectedCountry ?? "__none__"] as unknown as maplibregl.FilterSpecification;
+        map.addLayer({ id: "countries-fill", type: "fill", source: "countries", paint: { "fill-color": "#5be0a6", "fill-opacity": 0.03 } }, beforeId);
+        map.addLayer({ id: "countries-line", type: "line", source: "countries", paint: { "line-color": "#e6fff4", "line-opacity": 0.28, "line-width": 0.6 } }, beforeId);
+        map.addLayer({ id: "countries-selected-fill", type: "fill", source: "countries", filter: none, paint: { "fill-color": "#eab54f", "fill-opacity": 0.28 } }, beforeId);
+        map.addLayer({ id: "countries-selected-line", type: "line", source: "countries", filter: none, paint: { "line-color": "#eab54f", "line-width": 2.2 } }, beforeId);
+      })
+      .catch((error) => console.warn("[Atlasia] Ülke sınırları yüklenemedi:", error));
+    return () => {
+      cancelled = true;
+    };
+  }, [ready]);
+
+  // Seçili ülke vurgusu: yalnızca filtre değişir; kaynak yeniden yüklenmez.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready || !map.getLayer("countries-selected-fill")) return;
+    const filter = ["==", ["get", "key"], selectedCountry ?? "__none__"] as unknown as maplibregl.FilterSpecification;
+    map.setFilter("countries-selected-fill", filter);
+    map.setFilter("countries-selected-line", filter);
+  }, [selectedCountry, ready]);
 
   // Pinleri senkronla
   useEffect(() => {

@@ -22,6 +22,12 @@ Durum: **Açık** = çözülmedi; **Doğrulandı** = kanıt var, düzeltilmedi.
 | 13 | Dünya siyasi sınırları üçüncü taraf raster overlay'de; ülke bazlı vektör yok | `MapView.tsx` `labels` kaynağı (Esri Reference) | Sınır doğruluğu/lisansı kontrol edilemiyor; etkileşim yok | `grep -n "World_Boundaries" src/components/MapView.tsx` | Doğrulandı (risk) |
 | 14 | Ülke → şehir → ilçe hiyerarşisi yok | `SearchBox.tsx`, `utils/geo.ts` | Keşif akışı hedefin altında | Arama dışında gezinme UI'si yok | Doğrulandı (eksik özellik) |
 
+| 15 | **Türkiye seçilince amber vurgu görünmüyor** (seçim toast'u çalışıyor) | Tarayıcı: Efes sonrası 4 karadaki tıklama "Turkey" döndürdü; piksel örneklemesinde vurgu rengi yok, KKTC'de var | Ülke vurgusu güvenilir değil; sebep doğrulanmadı (olası: filtre değerinin/katman sırasının etkisi) | `docs/COUNTRY_LAYER.md` §4; `/tmp` test betiği | **Açık — sonraki adımda incelenecek** |
+| 16 | Kuzey Kıbrıs iki farklı poligonla çiziliyor (elle çizilmiş KKTC ve NE "N. Cyprus") | Örnekleme: NE'nin ~%8'i elle çizilmiş alan dışında; ~%96 örtüşme | İki çizgi hafif farklı görünür | `node` örnekleme (COUNTRY_LAYER.md §1) | Doğrulandı — karar bekliyor (NE'ye geçiş mi?) |
+| 17 | Antimeridyen geçen poligonlar (Russia, Fiji, Antarctica) | `scripts/build-countries-geojson.test.mjs` sıçrama raporu | Yatay bant artefaktı olasılığı; tarayıcıda görülmedi | Sıçrama testi | Doğrulanmadı (görsel) |
+| 18 | Ülke adları İngilizce (Turkey, Cyprus, ...) | Veri kaynağı | Türkçe arayüzde tutarsız | Seçim toast'u | Açık |
+| 19 | Harita karoları (ESRI/CARTO) sandbox'ta yüklenemiyor | Konsol: AJAXError / ERR_CONNECTION_CLOSED | Test ortamında arka plan koyu; bu kodun hatası değil | Test çalıştırma | Ortam kısıtı |
+
 ## Doğrulanmadı (canlı ortamda test edilmedi)
 
 | # | Konu | Neden doğrulanmadı |

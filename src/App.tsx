@@ -31,6 +31,7 @@ import { useInstallApp, type InstallAppController } from "./hooks/useInstallApp"
 import { isCloudReady, firebaseConfigSummary } from "./lib/firebase";
 import type { AtlasRoute, CategoryId, Place, ViewState } from "./types";
 import { haversineKm, reverseName, type SearchResult } from "./utils/geo";
+import { countryDisplayName, type CountrySelection } from "./utils/countries";
 import { storageGet, storageSet } from "./utils/storage";
 
 const MAP_STYLE_KEY = "atlasia.mapStyle.v1";
@@ -106,6 +107,11 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   const [streetPlace, setStreetPlace] = useState<Place | null>(null);
   const [locationLabel, setLocationLabel] = useState("Dünya");
   const [toast, setToast] = useState<string | null>(null);
+  const [selectedCountry, setSelectedCountry] = useState<CountrySelection | null>(null);
+  const handleCountrySelect = useCallback((country: CountrySelection | null) => {
+    setSelectedCountry(country);
+    if (country) setToast(`Ülke seçildi: ${countryDisplayName(country)}`);
+  }, []);
 
   // --- Konum izni ---
   const geo = useGeolocation();
@@ -457,6 +463,8 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         spin={spin && !reducedMotion && !addMode && !draft}
         onUserInteract={() => setSpin(false)}
         onViewChange={setView}
+        selectedCountry={selectedCountry?.key ?? null}
+        onCountrySelect={handleCountrySelect}
       />
       </main>
 

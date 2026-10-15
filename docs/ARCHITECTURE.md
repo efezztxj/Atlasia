@@ -67,6 +67,10 @@ Yaşam döngüsü:
 
 Stil: `buildStyle(labels, terrainEnabled, baseMap)` (`MapView.tsx` 52. satır). Bu fonksiyon dört altlık için raster kaynakları ve katmanları (`satellite`, `dark`, `street`, `topographic`) ile etiket/sınır/terrain kaynaklarını tanımlar; kaynak adları ve tile URL'leri kodda doğrudan yazılıdır.
 
+## 5b. Ülke katmanı (eklendi)
+
+`MapView.tsx` `[ready]` ile `countries` GeoJSON kaynağını ve 4 katmanı ekler (`kktc-outline` altına). Tıklama önce pin/ekleme modu kontrolünden geçer; ardından `countries-fill` üzerinde `queryRenderedFeatures`. Vurgu yalnızca `setFilter` ile. Ayrıntılar: `docs/COUNTRY_LAYER.md`.
+
 ## 6. Yardımcı ve dış servisler
 
 Not: Harita kaynakları ESRI (`World_Imagery`, `World_Street_Map`, `World_Topo_Map`, `Reference/World_Boundaries_and_Places`), CARTO (`dark_nolabels`) ve AWS Terrarium tile'larıdır. Kullanım koşulları doğrulanmadı.
