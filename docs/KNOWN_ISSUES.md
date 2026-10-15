@@ -17,6 +17,10 @@ Durum: **Açık** = çözülmedi; **Doğrulandı** = kanıt var, düzeltilmedi.
 | 8 | `App.tsx` 847 satır, tek bileşende çok sorumluluk | `wc -l src/App.tsx` | Değişiklik riski ve bakım zorluğu; ayrı test yazmayı zorlaştırır | `wc -l src/App.tsx` | Doğrulandı (teknik borç) |
 | 9 | `capture.mjs` ve `satellite...` kopyası gibi artefaktlar, çalışma alanı kotası | `du -sh` | Kota (128 MB) ve depo karışıklığı | `du -sh` | Doğrulandı |
 | 10 | `node_modules` (~374 MB) çalışma alanında | `du -sh node_modules` | Kotayı şişirir (snapshot'larda hariç tutulur) | `du -sh node_modules` | Bilgi |
+| 11 | Hedef "beşli alt navigasyon" yok | `Header.tsx` (mobil 3 ikon), `BottomPanel.tsx` (5 sütun kategori ızgarası) | Ürün hedefi karşılanmıyor | `grep -rn "BottomNav\|tabbar" src` boş | Doğrulandı (eksik özellik) |
+| 12 | Ülke tıklamasıyla keşif paneli yok | `MapView.tsx` `map.on("click")` yalnız addMode/pin | Ürün hedefi karşılanmıyor | Haritada ülkeye tıklamak panel açmaz (kod incelemesi) | Doğrulandı (eksik özellik) |
+| 13 | Dünya siyasi sınırları üçüncü taraf raster overlay'de; ülke bazlı vektör yok | `MapView.tsx` `labels` kaynağı (Esri Reference) | Sınır doğruluğu/lisansı kontrol edilemiyor; etkileşim yok | `grep -n "World_Boundaries" src/components/MapView.tsx` | Doğrulandı (risk) |
+| 14 | Ülke → şehir → ilçe hiyerarşisi yok | `SearchBox.tsx`, `utils/geo.ts` | Keşif akışı hedefin altında | Arama dışında gezinme UI'si yok | Doğrulandı (eksik özellik) |
 
 ## Doğrulanmadı (canlı ortamda test edilmedi)
 
@@ -35,3 +39,5 @@ Durum: **Açık** = çözülmedi; **Doğrulandı** = kanıt var, düzeltilmedi.
 - **Event listener birikmesi**: Pin `click`/`keydown` listener'ları yalnız yeni pin elementinde; marker kaldırılınca element de gider. Ayrı temizlik gerekmiyor.
 - **TypeScript**: `npx tsc --noEmit` hatasız çıktı.
 - **Build**: `npx vite build` hatasız tamamlandı (uyarı #5 hariç).
+- **Önizleme**: `vite preview` ile `/` ve iki JS chunk'ı HTTP 200 döndü (yalnızca sunum kontrolü; render değil).
+- **Ortam dosyaları**: `.env*` dosyası yok; içerik okunmadı.

@@ -58,7 +58,7 @@ Yaşam döngüsü:
 - **Tek seferlik kurulum** (`useEffect(..., [])`, ~satır 466): `new maplibregl.Map`, `style.load` → `ready=true`, `moveend`/`zoom` ile `onViewChange`, `mousedown`/`touchstart`/`wheel` ile otomatik dönüşü durdurma, `click` ile ekleme modu. Otomatik dönüş için `requestAnimationFrame` döngüsü.
   - **Cleanup** mevcut: `cancelAnimationFrame`, marker'ların `remove()`'u, `meMarkerRef.remove()`, `map.remove()`, `mapRef = null`.
 - **Altlık geçişi** (~546): dört katman (`satellite`, `dark`, `street`, `topographic`) için yalnızca `visibility` değişir; kaynaklar yeniden yüklenmez.
-- **Etiket/sınır** (~556): `labels`, `kktc-outline`, `kktc-label` görünürlüğü.
+- **Etiket/sınır** (~556): `labels` raster overlay'i (Esri `World_Boundaries_and_Places`, yalnızca satellite/dark altlıkta) ve `kktc-outline`/`kktc-label` görünürlüğü. Dünya sınırları bu üçüncü taraf overlay'den gelir; ülke bazlı vektör sınır yoktur.
 - **Terrain** (~567): `setTerrain` + `terrain-relief` katmanı.
 - **Pinler** (~581): `places` değiştikçe `markersRef` (Map<id, {marker, el}>) ile farkı uygular: kaldırılanları siler, yeni olanları **bir kez** ekler. Tıklama/keydown listener'ları pin elementine eklenir; marker kaldırılınca element de gider (ayrı listener temizliği yok — düşük risk, bkz. KNOWN_ISSUES).
 - **Aktif pin** (~619): `is-active` sınıfı.
@@ -68,6 +68,8 @@ Yaşam döngüsü:
 Stil: `buildStyle(labels, terrainEnabled, baseMap)` (`MapView.tsx` 52. satır). Bu fonksiyon dört altlık için raster kaynakları ve katmanları (`satellite`, `dark`, `street`, `topographic`) ile etiket/sınır/terrain kaynaklarını tanımlar; kaynak adları ve tile URL'leri kodda doğrudan yazılıdır.
 
 ## 6. Yardımcı ve dış servisler
+
+Not: Harita kaynakları ESRI (`World_Imagery`, `World_Street_Map`, `World_Topo_Map`, `Reference/World_Boundaries_and_Places`), CARTO (`dark_nolabels`) ve AWS Terrarium tile'larıdır. Kullanım koşulları doğrulanmadı.
 
 | Servis | Kullanım | Dosya |
 |---|---|---|

@@ -13,12 +13,17 @@ Tüm özellikler "Kodda var + Derleniyor" düzeyindedir; **uçtan uca doğrulanm
 | Özellik | Durum | Dosyalar | Notlar |
 |---|---|---|---|
 | MapLibre dünya haritası, uydu/karanlık/sokak/topografik altlıklar | Kodda var | `components/MapView.tsx`, `App.tsx` | Altlık geçişi visibility ile; kaynak yeniden yüklenmez. |
-| Açılış küresi / otomatik dönüş (spin) | Kodda var | `MapView.tsx` (`tick`), `App.tsx` (`spin`) | Kullanıcı etkileşiminde durur. |
-| Etiketler, sınır (KKTC) katmanları, terrain | Kodda var | `MapView.tsx` | Sınır verisi `buildStyle` içinde. Siyasi sınır doğruluğu doğrulanmadı. |
+| Dönen 3B küre | Kodda var, tarayıcıda doğrulanmadı | `MapView.tsx` (`projection: { type: "globe" }`, `tick`), `App.tsx` (`spin`) | MapLibre globe projeksiyonu; `spin` açıkken dönüş; kullanıcı etkileşiminde durur. Görsel kalite ve performans doğrulanmadı. |
+| Ülke seçimiyle açılan keşif paneli | **Eksik** | — | Haritada ülke poligonuna tıklama işleyicisi yok (`map.on("click")` yalnızca ekleme modu ve pin seçimi için). Ülke araması `SearchBox` + `data/regions.ts` üzerinden; panel açmıyor. |
+| Ülke → şehir → ilçe → konum hiyerarşisi | **Eksik** | — | Hiyerarşik gezinme yok. Arama sonuçları (`utils/geo.ts` Photon/Open-Meteo) tek düzey; `sub` alanında idari bilgi gösterilir. |
+| Beşli alt navigasyon | **Eksik** | — | Alt sekme çubuğu yok. Mobil üst çubukta 3 ikon var (`Header.tsx`: arama, bildirim, menü). `BottomPanel.tsx` içinde 5 sütunlu **kategori ızgarası** var; bu navigasyon değil, kategori filtresidir. |
+| Etiketler ve sınırlar | Kısmi | `MapView.tsx` (`labels` katmanı, `buildStyle`) | Dünya siyasi sınırları, Esri `Reference/World_Boundaries_and_Places` raster overlay'inden gelir (üçüncü taraf, vektör değil); yalnızca uydu/karanlık altlıkta ve etiketler açıkken görünür. Kodda ülke bazlı vektör sınır katmanı yok; tek vektör sınır KKTC (`kktc-outline`, `data/regions.ts`). Overlay'in doğruluğu ve lisans koşulları doğrulanmadı. |
+| Terrain (3B arazi) | Kodda var, tarayıcıda doğrulanmadı | `MapView.tsx` (`terrain`, `terrain-relief`) | `raster-dem` kaynağı, Terrarium tile'ları (AWS S3). |
 | Yer pinleri (kategoriye göre filtre) | Kodda var | `MapView.tsx` (pins effect), `App.tsx` (`visiblePlaces`) | Marker'lar farkla güncellenir. |
 | Yer detayı, öne çıkan yer, döngüleme | Kodda var | `BottomPanel.tsx`, `PlaceDetails.tsx`, `App.tsx` | — |
 | Rehber yerleri (Efes, Kapadokya vb.) | Kodda var | `data/places.ts` | Elle seçilmiş örnekler; kapsam sınırlı. |
 | Arama (ülke/şehir/yer) | Kodda var | `SearchBox.tsx`, `utils/geo.ts`, `utils/openMapPlaces.ts` | Photon'a bağımlı; ağ hatasında yedek şehir araması. Canlı test yok. |
+| Konum detayı (yer bilgileri) | Kodda var | `PlaceDetails.tsx`, `BottomPanel.tsx` | Yer detayı, yol tarifi bölümü. Canlı veriyle doğrulanmadı. |
 | Konum (GPS) ve doğruluk dairesi | Kodda var | `hooks/useGeolocation.ts`, `MapView.tsx` (`showMe`) | İzin reddi ve zaman aşımı durumları App'te toast ile bildiriliyor. |
 | Ters geokodlama (konum adı) | Kodda var | `utils/geo.ts` (`reverseName`) | — |
 | Yer ekleme (haritada tıklayıp "iz" bırakma) | Kodda var | `AddDiscoveryModal.tsx`, `App.tsx` (`addMode`, `draft`) | Bulutta Firestore'a yazılır. |
@@ -81,7 +86,10 @@ Tüm özellikler "Kodda var + Derleniyor" düzeyindedir; **uçtan uca doğrulanm
 
 ## Ürün vizyonu ile farklar (özet)
 
+Son doğrulama: 2026-10-15 (kod incelemesi + `tsc` + `vite build` + önizleme HTTP kontrolü).
+
 - "İnsanların deneyimlerini paylaşması" → Akış ve hikâyeler var; kalıcılık yalnızca Firestore modunda.
 - "Kullanıcıların rota oluşturması/katkıda bulunması" → Kişisel rota var; ortak katkı yok.
 - "Yerler hakkında fotoğraf, tarihçe, rehber" → Rehber sınırlı (birkaç elle seçilmiş yer); kapsam genişletilmesi gerek.
-- "Renkli, etkileşimli 3D dünya küresi, siyasi sınırlar" → Küre/döndürme ve sınır katmanı kodda var; görsel ve sınır doğruluğu tarayıcıda doğrulanmadı.
+- "Renkli, etkileşimli 3D dünya küresi, siyasi sınırlar" → Globe projeksiyonu ve dönüş kodda var; dünya sınırları üçüncü taraf etiket overlay'inden geliyor, etkileşimli ülke sınırı yok. Görsel ve sınır doğruluğu tarayıcıda doğrulanmadı.
+- "Ülke seçimiyle açılan keşif paneli", "ülke→şehir→ilçe→konum" gezinmesi, "beşli alt navigasyon" → **kodda yok.**
