@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Story } from "../types";
 import {
   activeStories,
+  applyPostLikedBy,
   FIRESTORE_LIMITS,
   FIRESTORE_QUERY_LIMITS,
   mergeRecordsById,
@@ -9,8 +10,14 @@ import {
   PLACE_VIEWPORT_MIN_ZOOM,
   preserveDisplacedPageItems,
   STORY_TTL_MS,
+  togglePostLike,
   viewportQueryWindows,
 } from "./firestoreData";
+import type { FeedPost } from "../types";
+
+function feedPost(id: string, likedBy: string[] = []): FeedPost {
+  return { id, author: "Gezgin", text: id, createdAt: 1, likes: 0, likedBy, replies: [], kind: "user" };
+}
 
 function story(id: string, createdAt: number): Story {
   return {
@@ -138,5 +145,33 @@ describe("Firestore veri bütünlüğü yardımcıları", () => {
       story("p-2", 2),
     ]);
     expect(preserveDisplacedPageItems(previousHead, nextHead, [])).toEqual([]);
+  });
+});
+
+describe("KOD-02 beğeni yardımcıları", () => {
+  it("applyPostLikedBy yalnız hedef gönderiyi günceller, diğerlerini aynı referansta tutar", () => {
+    const a = feedPost("a", ["x"]);
+    const b = feedPost("b");
+    const next = applyPostLikedBy([a, b], "b", ["member-a"]);
+    expect(next[0]).toBe(a);
+    expect(next[1].likedBy).toEqual(["member-a"]);
+    expect(next).not.toBe([a, b]);
+  });
+
+  it("applyPostLikedBy eşleşme yoksa aynı diziyi döndürür", () => {
+    const posts = [feedPost("a")];
+    expect(applyPostLikedBy(posts, "missing", ["member-a"])).toBe(posts);
+  });
+
+  it("applyPostLikedBy girdi gönderilerini değiştirmez", () => {
+    const original = feedPost("a", ["x"]);
+    const posts = [original];
+    applyPostLikedBy(posts, "a", ["x", "member-a"]);
+    expect(original.likedBy).toEqual(["x"]);
+    expect(posts[0]).toBe(original);
+  });
+
+  it("togglePostLike Firestore hazır değilken reddeder ve sahte sonuç döndürmez", async () => {
+    await expect(togglePostLike("post-1", "member-a")).rejects.toThrow();
   });
 });

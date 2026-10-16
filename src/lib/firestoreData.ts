@@ -273,6 +273,12 @@ export function nextLikedBy(rawLikedBy: unknown, uid: string): string[] {
     : [...likedBy, cleanUid];
 }
 
+/** Tek bir gönderinin beğeni listesini yerel listede günceller; eşleşme yoksa aynı diziyi döndürür. */
+export function applyPostLikedBy(posts: FeedPost[], postId: string, likedBy: string[]): FeedPost[] {
+  if (!posts.some((post) => post.id === postId)) return posts;
+  return posts.map((post) => (post.id === postId ? { ...post, likedBy: [...likedBy] } : post));
+}
+
 /* ─────────────────────────── Fotoğraf hazırlama ─────────────────────────── */
 
 /**
@@ -585,7 +591,7 @@ export async function togglePostLikeInFirestore(
   store: Firestore,
   postId: string,
   uid: string,
-): Promise<void> {
+): Promise<string[]> {
   if (!uid.trim()) throw dataError("auth/required", "Beğeni için geçerli hesap gerekli.");
 
   const ref = doc(store, COL_POSTS, postId);
@@ -601,9 +607,11 @@ export async function togglePostLikeInFirestore(
     // `likes` şema uyumluluğu için 0 kalır; gerçek üyelik `likedBy` içindedir.
     likedBy: isRemoval ? arrayRemove(cleanUid) : arrayUnion(cleanUid),
   });
+  // Çağırana yazılan beğeni listesini döndürür; yerel görünüm bu değerle güncellenir.
+  return next;
 }
 
-export async function togglePostLike(postId: string, uid: string): Promise<void> {
+export async function togglePostLike(postId: string, uid: string): Promise<string[]> {
   if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
   return togglePostLikeInFirestore(db, postId, uid);
 }

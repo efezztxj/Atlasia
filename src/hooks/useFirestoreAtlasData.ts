@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   activeStories,
+  applyPostLikedBy,
   addPlace as addPlaceFs,
   addPost as addPostFs,
   addReply as addReplyFs,
@@ -93,6 +94,9 @@ export function useFirestoreAtlasData({
   const hasMoreStoriesRef = useRef(false);
   const loadingMorePostsRef = useRef(false);
   const loadingMoreStoriesRef = useRef(false);
+  // Oturum muhafızı: uid/enabled değişimi veya unmount, bekleyen beğeni yazısının
+  // yerel state/ref'e dönüşünü engeller. Firestore yazısı yine commit olur.
+  const sessionRef = useRef(0);
 
   const markLoaded = useCallback((source: Source) => {
     setLoaded((current) => ({ ...current, [source]: true }));
@@ -123,6 +127,9 @@ export function useFirestoreAtlasData({
     hasMoreStoriesRef.current = false;
     setHasMorePosts(false);
     setHasMoreStories(false);
+    return () => {
+      sessionRef.current += 1;
+    };
   }, [uid, enabled]);
 
   // Sahip sorgusu viewport'tan bağımsızdır; kullanıcı kendi tüm izlerine erişir.
@@ -356,7 +363,21 @@ export function useFirestoreAtlasData({
 
   const toggleLike = async (postId: string) => {
     if (!isCloudReady) throw new Error("Bulut bağlantısı yok, beğeni kaydedilemez.");
-    await togglePostLikeFs(postId, uid);
+    // Yazma başarısızsa istisna fırlar ve yerel durum değişmez (sahte başarı yok).
+    const session = sessionRef.current;
+    const likedBy = await togglePostLikeFs(postId, uid);
+    // Oturum değiştiyse (uid/enabled/unmount) eski sonuç yeni oturuma uygulanmaz.
+    if (session !== sessionRef.current) return;
+    setPostHead((current) => {
+      const next = applyPostLikedBy(current, postId, likedBy);
+      postHeadRef.current = next;
+      return next;
+    });
+    setPostTail((current) => {
+      const next = applyPostLikedBy(current, postId, likedBy);
+      postTailRef.current = next;
+      return next;
+    });
   };
 
   const addStory = async (story: Partial<Story>) => {
