@@ -1,8 +1,19 @@
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
-import maplibregl from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import maplibreWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
+import {
+  calibrateMapLabelLayers,
+  mapLabelPaint,
+  type MapLabelTheme,
+  type MapStyleLayer,
+} from "../config/mapLabelCalibration";
+import openFreeMapDarkStyle from "../data/openFreeMapDarkStyle.json";
 import { KKTC_GEOMETRY, KKTC_NAME } from "../data/regions";
+import type { PlaceViewport } from "../lib/firestoreData";
 import type { Place, ViewState } from "../types";
+
+maplibregl.setWorkerUrl(maplibreWorkerUrl);
 
 export type BaseMapStyle = "satellite" | "dark" | "street" | "topographic";
 
@@ -31,9 +42,11 @@ interface Props {
   showLabels: boolean;
   terrainEnabled: boolean;
   baseMap: BaseMapStyle;
+  theme: MapLabelTheme;
   spin: boolean;
   onUserInteract: () => void;
   onViewChange: (v: ViewState) => void;
+  onViewportChange?: (viewport: PlaceViewport) => void;
 }
 
 const HOME_CENTER: [number, number] = [30, 30];
@@ -41,6 +54,61 @@ const SPIN_DEG_PER_SEC = 4;
 const SPIN_MAX_ZOOM = 3.2;
 
 const ESRI = "https://server.arcgisonline.com/ArcGIS/rest/services";
+// Snapshot of https://tiles.openfreemap.org/styles/dark fetched on 2026-10-14.
+// OpenFreeMap's public instance requires no account or API key; attribution is mandatory.
+const OPEN_FREE_MAP_SOURCE_PREFIX = "openfreemap-";
+const OPEN_FREE_MAP_LAYER_PREFIX = "openfreemap-dark-";
+const OPEN_FREE_MAP_ATTRIBUTION = "OpenFreeMap © OpenMapTiles · OpenStreetMap contributors";
+
+const openFreeMapLayerIds = openFreeMapDarkStyle.layers.map((layer) => `${OPEN_FREE_MAP_LAYER_PREFIX}${layer.id}`);
+const openFreeMapSymbolLayerIds = new Set(
+  openFreeMapDarkStyle.layers
+    .filter((layer) => layer.type === "symbol")
+    .map((layer) => `${OPEN_FREE_MAP_LAYER_PREFIX}${layer.id}`),
+);
+
+function openFreeMapSources(): Record<string, maplibregl.SourceSpecification> {
+  return Object.fromEntries(
+    Object.entries(openFreeMapDarkStyle.sources).map(([id, rawSource]) => {
+      const source = { ...rawSource } as Record<string, unknown>;
+      if (id === "openmaptiles") source.attribution = OPEN_FREE_MAP_ATTRIBUTION;
+      return [`${OPEN_FREE_MAP_SOURCE_PREFIX}${id}`, source as unknown as maplibregl.SourceSpecification];
+    }),
+  );
+}
+
+function openFreeMapLayerVisible(layerId: string, labels: boolean, baseMap: BaseMapStyle) {
+  if (openFreeMapSymbolLayerIds.has(layerId)) {
+    return labels && (baseMap === "dark" || baseMap === "satellite");
+  }
+  return baseMap === "dark";
+}
+
+function openFreeMapLayers(
+  labels: boolean,
+  baseMap: BaseMapStyle,
+  theme: MapLabelTheme,
+): maplibregl.LayerSpecification[] {
+  const calibratedLayers = calibrateMapLabelLayers(
+    openFreeMapDarkStyle.layers as unknown as readonly MapStyleLayer[],
+    { theme, baseMap },
+  );
+
+  return calibratedLayers.map((rawLayer) => {
+    const raw = rawLayer as Record<string, unknown>;
+    const id = `${OPEN_FREE_MAP_LAYER_PREFIX}${rawLayer.id}`;
+    const layer: Record<string, unknown> = {
+      ...raw,
+      id,
+      layout: {
+        ...((raw.layout as Record<string, unknown> | undefined) ?? {}),
+        visibility: openFreeMapLayerVisible(id, labels, baseMap) ? "visible" : "none",
+      },
+    };
+    if (typeof raw.source === "string") layer.source = `${OPEN_FREE_MAP_SOURCE_PREFIX}${raw.source}`;
+    return layer as unknown as maplibregl.LayerSpecification;
+  });
+}
 
 const PIN_COLORS = { guide: "#eab54f", user: "#5be0a6" } as const;
 
@@ -49,11 +117,17 @@ function baseZoom(el: HTMLElement) {
   return Math.max(1.1, Math.log2((d * Math.PI) / 512));
 }
 
-function buildStyle(labels: boolean, terrainEnabled: boolean, baseMap: BaseMapStyle): maplibregl.StyleSpecification {
+function buildStyle(
+  labels: boolean,
+  terrainEnabled: boolean,
+  baseMap: BaseMapStyle,
+  theme: MapLabelTheme,
+): maplibregl.StyleSpecification {
   return {
     version: 8,
     projection: { type: "globe" },
-    glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+    glyphs: openFreeMapDarkStyle.glyphs,
+    sprite: openFreeMapDarkStyle.sprite,
     sky: {
       "sky-color": "#1e7d62",
       "sky-horizon-blend": 0.55,
@@ -71,13 +145,6 @@ function buildStyle(labels: boolean, terrainEnabled: boolean, baseMap: BaseMapSt
         maxzoom: 18,
         attribution: "Esri, Maxar, Earthstar Geographics, USGS",
       },
-      dark: {
-        type: "raster",
-        tiles: ["https://a.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png"],
-        tileSize: 256,
-        maxzoom: 20,
-        attribution: "CARTO, OpenStreetMap contributors",
-      },
       street: {
         type: "raster",
         tiles: [`${ESRI}/World_Street_Map/MapServer/tile/{z}/{y}/{x}`],
@@ -92,12 +159,7 @@ function buildStyle(labels: boolean, terrainEnabled: boolean, baseMap: BaseMapSt
         maxzoom: 19,
         attribution: "Esri",
       },
-      labels: {
-        type: "raster",
-        tiles: [`${ESRI}/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}`],
-        tileSize: 256,
-        maxzoom: 18,
-      },
+      ...openFreeMapSources(),
       terrain: {
         type: "raster-dem",
         tiles: ["https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"],
@@ -137,13 +199,6 @@ function buildStyle(labels: boolean, terrainEnabled: boolean, baseMap: BaseMapSt
         },
       },
       {
-        id: "dark",
-        type: "raster",
-        source: "dark",
-        layout: { visibility: baseMap === "dark" ? "visible" : "none" },
-        paint: { "raster-fade-duration": 250, "raster-opacity": 0.96 },
-      },
-      {
         id: "street",
         type: "raster",
         source: "street",
@@ -170,16 +225,7 @@ function buildStyle(labels: boolean, terrainEnabled: boolean, baseMap: BaseMapSt
           "hillshade-accent-color": "#0a7b60",
         },
       },
-      {
-        id: "labels",
-        type: "raster",
-        source: "labels",
-        layout: { visibility: labels && (baseMap === "satellite" || baseMap === "dark") ? "visible" : "none" },
-        paint: {
-          "raster-opacity": ["interpolate", ["linear"], ["zoom"], 1.6, 0, 3.2, 0.95],
-          "raster-fade-duration": 250,
-        },
-      },
+      ...openFreeMapLayers(labels, baseMap, theme),
       {
         id: "kktc-outline",
         type: "line",
@@ -282,20 +328,23 @@ export default function MapView({
   showLabels,
   terrainEnabled,
   baseMap,
+  theme,
   spin,
   onUserInteract,
   onViewChange,
+  onViewportChange,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<Map<string, { marker: maplibregl.Marker; el: HTMLElement }>>(new Map());
+  const initialStyleOptions = useRef({ showLabels, terrainEnabled, baseMap, theme });
   const meMarkerRef = useRef<maplibregl.Marker | null>(null);
   const pulseRef = useRef<maplibregl.Marker | null>(null);
   const [ready, setReady] = useState(false);
 
   // En güncel değerleri harita olaylarında kullanmak için
-  const live = useRef({ onSelect, onMapClick, onUserInteract, onViewChange, addMode, spin });
-  live.current = { onSelect, onMapClick, onUserInteract, onViewChange, addMode, spin };
+  const live = useRef({ onSelect, onMapClick, onUserInteract, onViewChange, onViewportChange, addMode, spin });
+  live.current = { onSelect, onMapClick, onUserInteract, onViewChange, onViewportChange, addMode, spin };
   const internalMove = useRef(false);
 
   useImperativeHandle(ref, () => ({
@@ -467,9 +516,16 @@ export default function MapView({
     const el = containerRef.current;
     if (!el) return;
 
+    const initialStyle = initialStyleOptions.current;
+    const markers = markersRef.current;
     const map = new maplibregl.Map({
       container: el,
-      style: buildStyle(showLabels, terrainEnabled, baseMap),
+      style: buildStyle(
+        initialStyle.showLabels,
+        initialStyle.terrainEnabled,
+        initialStyle.baseMap,
+        initialStyle.theme,
+      ),
       center: HOME_CENTER,
       zoom: baseZoom(el),
       minZoom: 1,
@@ -488,7 +544,18 @@ export default function MapView({
 
     const report = () => {
       const c = map.getCenter();
-      live.current.onViewChange({ zoom: map.getZoom(), lng: c.lng, lat: c.lat });
+      const zoom = map.getZoom();
+      live.current.onViewChange({ zoom, lng: c.lng, lat: c.lat });
+      const bounds = map.getBounds();
+      live.current.onViewportChange?.({
+        zoom,
+        bounds: {
+          west: bounds.getWest(),
+          south: bounds.getSouth(),
+          east: bounds.getEast(),
+          north: bounds.getNorth(),
+        },
+      });
     };
     map.on("moveend", () => {
       if (internalMove.current) return;
@@ -533,8 +600,8 @@ export default function MapView({
 
     return () => {
       cancelAnimationFrame(raf);
-      markersRef.current.forEach((v) => v.marker.remove());
-      markersRef.current.clear();
+      markers.forEach((value) => value.marker.remove());
+      markers.clear();
       meMarkerRef.current?.remove();
       map.remove();
       mapRef.current = null;
@@ -542,26 +609,36 @@ export default function MapView({
     };
   }, []);
 
-  // Altlık haritayı kaynakları yeniden yüklemeden değiştir; pin ve rota katmanları korunur.
+  // Altlık ve etiketleri kaynakları yeniden yüklemeden değiştir; pin ve rota
+  // katmanları korunur. Uydu üstündeki etiketler de anahtarsız OpenFreeMap
+  // vektörlerinden gelir; böylece raster servis filigranı oluşmaz.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
-    for (const layer of ["satellite", "dark", "street", "topographic"] as const) {
+    for (const layer of ["satellite", "street", "topographic"] as const) {
       map.setLayoutProperty(layer, "visibility", layer === baseMap ? "visible" : "none");
     }
-  }, [baseMap, ready]);
-
-  // Etiket katmanı aç/kapat. Sokak ve topoğrafik altlıklarda temel etiketler
-  // görüntünün parçasıdır; ayrı Esri etiketi yalnızca uydu/karanlıkta kullanılır.
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !ready) return;
-    const overlayLabels = showLabels && (baseMap === "satellite" || baseMap === "dark");
-    map.setLayoutProperty("labels", "visibility", overlayLabels ? "visible" : "none");
+    for (const layerId of openFreeMapLayerIds) {
+      map.setLayoutProperty(
+        layerId,
+        "visibility",
+        openFreeMapLayerVisible(layerId, showLabels, baseMap) ? "visible" : "none",
+      );
+    }
+    for (const rawLayer of openFreeMapDarkStyle.layers) {
+      if (rawLayer.type !== "symbol") continue;
+      const paint = mapLabelPaint(rawLayer.id, { theme, baseMap });
+      if (!paint) continue;
+      const layerId = `${OPEN_FREE_MAP_LAYER_PREFIX}${rawLayer.id}`;
+      map.setPaintProperty(layerId, "text-color", paint["text-color"]);
+      map.setPaintProperty(layerId, "text-halo-color", paint["text-halo-color"]);
+      map.setPaintProperty(layerId, "text-halo-width", paint["text-halo-width"]);
+      map.setPaintProperty(layerId, "text-halo-blur", paint["text-halo-blur"]);
+    }
     for (const layer of ["kktc-outline", "kktc-label"]) {
       map.setLayoutProperty(layer, "visibility", showLabels ? "visible" : "none");
     }
-  }, [baseMap, showLabels, ready]);
+  }, [baseMap, showLabels, ready, theme]);
 
   // Yakınlaşınca gerçek yükseklik verisini ister; düşük güçlü cihazlarda kapatılabilir.
   useEffect(() => {

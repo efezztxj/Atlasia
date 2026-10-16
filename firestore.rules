@@ -1,14 +1,22 @@
 rules_version = '2';
 
 // Atlasia — Firestore güvenlik kuralları
-// Bu dosyayı Firebase Console > Firestore > Rules sekmesine yapıştır.
-// Test modundaki açık kuralları bununla değiştirdiğinde production'a hazır olursun.
-
 service cloud.firestore {
   match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
 
-    // Fotoğraflar ücretli dosya depolaması gerektirmemesi için istemcide
-    // JPEG'e sıkıştırılıp veri URL'i olarak içerik dokümanına yazılır.
+    function boundedList(maxItems) {
+      return request.query.limit != null && request.query.limit <= maxItems;
+    }
+
+    function stringBetween(value, minSize, maxSize) {
+      return value is string
+             && value.size() >= minSize
+             && value.size() <= maxSize;
+    }
+
     function hasValidPhoto(data) {
       return ('photo' in data)
              && data.photo is string
@@ -22,78 +30,219 @@ service cloud.firestore {
 
     function hasTextOrPhoto(data, maxTextSize) {
       return data.text is string
-             && data.text.size() < maxTextSize
+             && data.text.size() <= maxTextSize
              && (data.text.size() > 0 || hasValidPhoto(data));
     }
 
-    // Kullanıcı profilleri: herkes herkesin public bilgilerini (isim, xp, rozet)
-    // görebilir ama sadece kendi dokümanını yazabilir.
-    match /users/{uid} {
-      allow read: if true;
-      allow create: if request.auth != null && request.auth.uid == uid;
-      allow update: if request.auth != null
-                    && request.auth.uid == uid
-                    // XP ve level sunucuda güncellenir, kullanıcı yazamamalı
-                    && (!('xp' in request.resource.data) || request.resource.data.xp == resource.data.xp)
-                    && (!('level' in request.resource.data) || request.resource.data.level == resource.data.level);
-      allow delete: if false;
-
-      // Takip listeleri kendi dokümanındadır, ayrı subcollection'a gerek yok.
+    function hasValidOptionalLocation(data) {
+      return (
+        !('lng' in data)
+        && !('lat' in data)
+      ) || (
+        ('lng' in data)
+        && ('lat' in data)
+        && data.lng is number
+        && data.lng >= -180
+        && data.lng <= 180
+        && data.lat is number
+        && data.lat >= -90
+        && data.lat <= 90
+      );
     }
 
-    // Keşif pinleri: herkes okuyabilir, sadece giriş yapmış kullanıcı kendi pinini yazabilir.
+    function validPlaceShape(data) {
+      return data.keys().hasAll([
+               'title', 'region', 'category', 'lng', 'lat', 'note',
+               'author', 'authorUid', 'kind', 'createdAt'
+             ])
+             && data.keys().hasOnly([
+               'title', 'region', 'category', 'lng', 'lat', 'note',
+               'author', 'authorUid', 'kind', 'createdAt', 'photo'
+             ])
+             && stringBetween(data.title, 1, 200)
+             && stringBetween(data.region, 0, 200)
+             && data.category in [
+               'cities', 'beaches', 'history', 'nature', 'camp', 'food',
+               'photo', 'routes', 'community', 'issues'
+             ]
+             && data.lng is number
+             && data.lng >= -180
+             && data.lng <= 180
+             && data.lat is number
+             && data.lat >= -90
+             && data.lat <= 90
+             && stringBetween(data.note, 0, 5000)
+             && stringBetween(data.author, 1, 100)
+             && stringBetween(data.authorUid, 1, 128)
+             && data.kind == 'user'
+             && data.createdAt is timestamp
+             && hasValidOptionalPhoto(data);
+    }
+
+    function validPostShape(data) {
+      return data.keys().hasAll([
+               'author', 'authorUid', 'text', 'createdAt', 'likes',
+               'likedBy', 'replies', 'kind'
+             ])
+             && data.keys().hasOnly([
+               'author', 'authorUid', 'text', 'createdAt', 'likes',
+               'likedBy', 'replies', 'kind', 'placeLabel', 'lng', 'lat', 'photo'
+             ])
+             && stringBetween(data.author, 1, 100)
+             && stringBetween(data.authorUid, 1, 128)
+             && hasTextOrPhoto(data, 5000)
+             && data.createdAt is timestamp
+             && data.likes is int
+             && data.likes >= 0
+             && data.likedBy is list
+             && data.likedBy.size() <= 500
+             && data.likedBy.toSet().size() == data.likedBy.size()
+             && data.replies is list
+             && data.replies.size() <= 100
+             && data.kind == 'user'
+             && (!('placeLabel' in data) || stringBetween(data.placeLabel, 1, 200))
+             && hasValidOptionalLocation(data)
+             && hasValidOptionalPhoto(data);
+    }
+
+    function validLikeToggle() {
+      let before = resource.data.likedBy;
+      let after = request.resource.data.likedBy;
+      let added = after.toSet().difference(before.toSet());
+      let removed = before.toSet().difference(after.toSet());
+      return before is list
+             && after is list
+             && after.size() <= 500
+             && after.toSet().size() == after.size()
+             && (
+               (
+                 after.size() == before.size() + 1
+                 && added.size() == 1
+                 && added.hasOnly([request.auth.uid])
+                 && removed.size() == 0
+               ) || (
+                 after.size() == before.size() - 1
+                 && removed.size() == 1
+                 && removed.hasOnly([request.auth.uid])
+                 && added.size() == 0
+               )
+             );
+    }
+
+    function validReply(reply) {
+      return reply is map
+             && reply.keys().hasAll([
+               'id', 'author', 'authorUid', 'text', 'createdAt', 'likes', 'kind'
+             ])
+             && reply.keys().hasOnly([
+               'id', 'author', 'authorUid', 'text', 'createdAt', 'likes', 'kind'
+             ])
+             && stringBetween(reply.id, 1, 100)
+             && stringBetween(reply.author, 1, 100)
+             && reply.authorUid == request.auth.uid
+             && stringBetween(reply.text, 1, 1000)
+             && reply.createdAt is int
+             && reply.likes == 0
+             && reply.kind == 'user';
+    }
+
+    function validReplyAppend() {
+      let before = resource.data.replies;
+      let after = request.resource.data.replies;
+      let added = after.toSet().difference(before.toSet());
+      let removed = before.toSet().difference(after.toSet());
+      let candidate = after[after.size() - 1];
+      return before is list
+             && after is list
+             && after.size() == before.size() + 1
+             && after.size() <= 100
+             && removed.size() == 0
+             && added.size() == 1
+             && added.hasOnly([candidate])
+             && validReply(candidate);
+    }
+
+    function validPostInteraction() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return changed.size() == 0 || (
+        changed.size() == 1
+        && changed.hasOnly(['likedBy'])
+        && validLikeToggle()
+      ) || (
+        changed.size() == 1
+        && changed.hasOnly(['replies'])
+        && validReplyAppend()
+      );
+    }
+
+    function validStoryShape(data) {
+      return data.keys().hasAll([
+               'author', 'authorUid', 'text', 'accent', 'createdAt', 'seen', 'kind'
+             ])
+             && data.keys().hasOnly([
+               'author', 'authorUid', 'text', 'accent', 'createdAt', 'seen',
+               'kind', 'placeLabel', 'lng', 'lat', 'photo'
+             ])
+             && stringBetween(data.author, 1, 100)
+             && stringBetween(data.authorUid, 1, 128)
+             && hasTextOrPhoto(data, 500)
+             && data.accent in ['sun', 'leaf', 'sea', 'dusk']
+             && data.createdAt is timestamp
+             && data.seen == false
+             && data.kind == 'user'
+             && (!('placeLabel' in data) || stringBetween(data.placeLabel, 1, 200))
+             && hasValidOptionalLocation(data)
+             && hasValidOptionalPhoto(data);
+    }
+
     match /places/{placeId} {
-      allow read: if true;
-      allow create: if request.auth != null
+      allow get: if true;
+      // Toplam içerik tavanı değil: her overview/viewport/sahip cursor sayfası
+      // en fazla 50 kayıt okuyabilir; limitsiz ve aşırı büyük istek fail-closed.
+      allow list: if boundedList(50);
+      allow create: if signedIn()
+                    && validPlaceShape(request.resource.data)
                     && request.resource.data.authorUid == request.auth.uid
-                    && request.resource.data.title is string
-                    && request.resource.data.title.size() > 0
-                    && request.resource.data.title.size() < 200
-                    && request.resource.data.lng is number
-                    && request.resource.data.lat is number
-                    && hasValidOptionalPhoto(request.resource.data);
-      allow update: if request.auth != null
+                    && request.resource.data.createdAt == request.time;
+      allow update: if signedIn()
                     && resource.data.authorUid == request.auth.uid
+                    && validPlaceShape(request.resource.data)
                     && request.resource.data.authorUid == resource.data.authorUid
-                    && hasValidOptionalPhoto(request.resource.data);
-      allow delete: if request.auth != null
+                    && request.resource.data.kind == resource.data.kind
+                    && request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if signedIn()
                     && resource.data.authorUid == request.auth.uid;
     }
 
-    // Postlar: herkes okuyabilir, sadece sahibi silebilir.
     match /posts/{postId} {
-      allow read: if true;
-      allow create: if request.auth != null
+      allow get: if true;
+      // Akış cursor sayfaları 50 kayıtla sınırlıdır; eski kayıtlar sonraki sayfalardadır.
+      allow list: if boundedList(50);
+      allow create: if signedIn()
+                    && validPostShape(request.resource.data)
                     && request.resource.data.authorUid == request.auth.uid
-                    && hasTextOrPhoto(request.resource.data, 5000)
-                    && hasValidOptionalPhoto(request.resource.data);
-      // Diğer kullanıcılar yalnız beğeni ve yanıt alanlarını değiştirebilir;
-      // gönderinin metni, fotoğrafı, yazarı ve konumu sabit kalır.
-      allow update: if request.auth != null
-                    && request.resource.data.diff(resource.data).affectedKeys()
-                         .hasOnly(['likes', 'likedBy', 'replies']);
-      allow delete: if request.auth != null
+                    && request.resource.data.createdAt == request.time
+                    && request.resource.data.likes == 0
+                    && request.resource.data.likedBy.size() == 0
+                    && request.resource.data.replies.size() == 0;
+      allow update: if signedIn() && validPostInteraction();
+      allow delete: if signedIn()
                     && resource.data.authorUid == request.auth.uid;
-
-      // Yanıtlar post dokümanının içinde tutuluyor; ayrı subcollection kullanılmıyor.
     }
 
-    // Story'ler: herkes okuyabilir, sadece sahibi silebilir.
     match /stories/{storyId} {
-      allow read: if true;
-      allow create: if request.auth != null
+      allow get: if true;
+      // 24 saatlik pencere de cursor ile 50 kayıtlık sayfalara ayrılır.
+      allow list: if boundedList(50);
+      allow create: if signedIn()
+                    && validStoryShape(request.resource.data)
                     && request.resource.data.authorUid == request.auth.uid
-                    && hasTextOrPhoto(request.resource.data, 500)
-                    && hasValidOptionalPhoto(request.resource.data);
-      allow update: if request.auth != null
-                    && resource.data.authorUid == request.auth.uid
-                    && request.resource.data.authorUid == resource.data.authorUid
-                    && hasValidOptionalPhoto(request.resource.data);
-      allow delete: if request.auth != null
+                    && request.resource.data.createdAt == request.time;
+      allow update: if false;
+      allow delete: if signedIn()
                     && resource.data.authorUid == request.auth.uid;
     }
 
-    // Bilinmeyen koleksiyonlara erişimi engelle.
     match /{document=**} {
       allow read, write: if false;
     }

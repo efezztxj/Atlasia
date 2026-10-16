@@ -21,6 +21,7 @@ import { usePlaceGallery } from "../hooks/usePlaceGallery";
 import { useCollections } from "../hooks/useCollections";
 import { usePanelAccess } from "../hooks/usePanelAccess";
 import { advice } from "../utils/placeAdvice";
+import { buildGooglePlaceDirectionsUrl, buildYandexPlaceDirectionsUrl } from "../utils/mapLinks";
 
 interface Props {
   place: Place;
@@ -46,9 +47,8 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDele
   const cat = CATEGORY_MAP[place.category];
   const guide = advice(place);
   const story = place.story ?? STORIES[place.id] ?? place.note;
-  const destination = `${place.lat},${place.lng}`;
-  const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
-  const yandexMapsUrl = `https://yandex.com/maps/?rtext=~${encodeURIComponent(destination)}&rtt=auto`;
+  const googleMapsUrl = buildGooglePlaceDirectionsUrl(place);
+  const yandexMapsUrl = buildYandexPlaceDirectionsUrl(place);
 
   useEffect(() => {
     setFailed([]);
@@ -163,8 +163,9 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDele
             <h3 id="directions-title" className="flex items-center gap-2 text-[13px] font-semibold"><Navigation size={16} className="text-leaf" />Yol tarifi</h3>
             <p className="mt-1 text-[12px] leading-relaxed text-mint/60">Atlasia açık kalır; rota yeni sekmede veya uygun harita uygulamasında açılır.</p>
             <div className="mt-3 grid grid-cols-2 gap-2">
-              <a href={googleMapsUrl} target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-white px-3 text-center text-[13px] font-semibold text-[#1f2937]">Google Maps <ExternalLink size={14} /></a>
-              <a href={yandexMapsUrl} target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#ffdf35] px-3 text-center text-[13px] font-semibold text-[#201d12]">Yandex Maps <ExternalLink size={14} /></a>
+              {googleMapsUrl && <a href={googleMapsUrl} target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-white px-3 text-center text-[13px] font-semibold text-[#1f2937]">Google Maps <ExternalLink size={14} /></a>}
+              {yandexMapsUrl && <a href={yandexMapsUrl} target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#ffdf35] px-3 text-center text-[13px] font-semibold text-[#201d12]">Yandex Maps <ExternalLink size={14} /></a>}
+              {!googleMapsUrl && !yandexMapsUrl && <p className="col-span-2 text-[12px] text-mint/70">Bu yerin koordinatları geçerli olmadığı için dış yol tarifi oluşturulamadı.</p>}
             </div>
           </section>
 

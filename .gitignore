@@ -5,10 +5,9 @@ firebase-debug.log
 firestore-debug.log
 ui-debug.log
 
-# Local env
-.env
-.env.local
-.env.*.local
+# Local/build environment files (only the empty template is tracked)
+.env*
+!.env.example
 
 # Build
 dist/

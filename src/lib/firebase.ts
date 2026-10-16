@@ -1,11 +1,11 @@
 /**
- * Atlasia — Firebase bağlantı katmanı.
- * Firestore ve Auth instance'larını tek yerden dışa aktarır.
+ * Atlasia — Firebase çekirdek bağlantı katmanı.
+ * Firestore uygulamayla birlikte hazırlanır; ağır Authentication SDK'sı ilk
+ * kimlik doğrulama ihtiyacında auth.ts tarafından dinamik olarak yüklenir.
  */
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
 import { getFirestore, type Firestore } from "firebase/firestore";
-import { getAuth, type Auth } from "firebase/auth";
 
 // Firebase web kimlikleri gizli değildir. Proje yönetim API'sinden doğrulanan
 // değerleri burada sabitlemek, eski Cloudflare ortam değişkenlerinin App Check'i
@@ -44,7 +44,6 @@ export const firebaseConfigSummary = {
 
 let app: FirebaseApp | null = null;
 let _db: Firestore | null = null;
-let _auth: Auth | null = null;
 
 if (firebaseConfigured) {
   try {
@@ -62,17 +61,13 @@ if (firebaseConfigured) {
       }
     }
     _db = getFirestore(app);
-    _auth = getAuth(app);
-    _auth.languageCode = "tr";
-  } catch (e) {
-    // Firebase init başarısız olursa fallback'e düş
-    console.error("[Atlasia] Firebase init başarısız:", e);
+  } catch (error) {
+    // Firebase init başarısız olursa fallback'e düş.
+    console.error("[Atlasia] Firebase init başarısız:", error);
     app = null;
     _db = null;
-    _auth = null;
   }
 }
 
 export const firebaseApp = app;
 export const db = _db;
-export const auth = _auth;

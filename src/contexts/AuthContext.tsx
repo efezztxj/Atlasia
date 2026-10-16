@@ -1,5 +1,4 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { getRedirectResult, onAuthStateChanged, reload, signOut, updateProfile } from "firebase/auth";
 import {
   authBackend,
   authConfigured,
@@ -53,41 +52,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     let unsubscribe = () => {};
-    try {
-    const auth = getAtlasAuth();
-    unsubscribe = onAuthStateChanged(auth, async (next) => {
+    void (async () => {
+      const [{ getRedirectResult, onAuthStateChanged, signOut, updateProfile }, auth] = await Promise.all([
+        import("firebase/auth"),
+        getAtlasAuth(),
+      ]);
       if (!mounted) return;
-      const request = ++generation.current;
-      if (next && !isSupportedAccount(next)) {
-        setUser(null);
-        setError("Bu hesap için desteklenen bir giriş yöntemi kullanmalısın.");
-        void signOut(auth).catch(() => {});
-      } else {
-        if (next) {
-          let pendingName: string | null = null;
-          try { pendingName = sessionStorage.getItem("atlasia.pendingName"); } catch { /* Profile preference only. */ }
-          if (pendingName && pendingName.trim().length >= 2) {
-            try { await updateProfile(next, { displayName: pendingName.trim().slice(0, 40) }); sessionStorage.removeItem("atlasia.pendingName"); }
-            catch { /* A verified member can finish/edit the profile after signing in. */ }
+      unsubscribe = onAuthStateChanged(auth, async (next) => {
+        if (!mounted) return;
+        const request = ++generation.current;
+        if (next && !isSupportedAccount(next)) {
+          setUser(null);
+          setError("Bu hesap için desteklenen bir giriş yöntemi kullanmalısın.");
+          void signOut(auth).catch(() => {});
+        } else {
+          if (next) {
+            let pendingName: string | null = null;
+            try { pendingName = sessionStorage.getItem("atlasia.pendingName"); } catch { /* Profile preference only. */ }
+            if (pendingName && pendingName.trim().length >= 2) {
+              try { await updateProfile(next, { displayName: pendingName.trim().slice(0, 40) }); sessionStorage.removeItem("atlasia.pendingName"); }
+              catch { /* A verified member can finish/edit the profile after signing in. */ }
+            }
           }
+          if (!mounted || request !== generation.current) return;
+          setUser(next ? toFirebaseAccount(next) : null);
+          setError(null);
         }
-        if (!mounted || request !== generation.current) return;
-        setUser(next ? toFirebaseAccount(next) : null);
-        setError(null);
-      }
-      setChecking(false);
-    }, (failure) => {
+        setChecking(false);
+      }, (failure) => {
+        if (!mounted) return;
+        setChecking(false);
+        setError(authErrorMessage(failure));
+      });
+      void getRedirectResult(auth).catch((failure) => {
+        if (mounted) setError(authErrorMessage(failure));
+      });
+    })().catch((failure) => {
       if (!mounted) return;
       setChecking(false);
       setError(authErrorMessage(failure));
     });
-    void getRedirectResult(auth).catch((failure) => {
-      if (mounted) setError(authErrorMessage(failure));
-    });
-    } catch (failure) {
-      setChecking(false);
-      setError(authErrorMessage(failure));
-    }
     return () => { mounted = false; unsubscribe(); };
   }, []);
 
@@ -128,7 +132,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       finally { setUser(null); setError(null); }
       return;
     }
-    await signOut(getAtlasAuth());
+    const [{ signOut }, auth] = await Promise.all([import("firebase/auth"), getAtlasAuth()]);
+    await signOut(auth);
     setUser(null);
     setError(null);
   };
@@ -141,7 +146,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(await updateDeviceProfile(displayName));
       return;
     }
-    const current = getAtlasAuth().currentUser;
+    const [{ updateProfile }, auth] = await Promise.all([import("firebase/auth"), getAtlasAuth()]);
+    const current = auth.currentUser;
     if (!current) throw new AccountError("auth/session-expired");
     await updateProfile(current, { displayName });
     setUser(toFirebaseAccount(current));
@@ -153,7 +159,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(restored);
       return restored;
     }
-    const current = getAtlasAuth().currentUser;
+    const [{ reload }, auth] = await Promise.all([import("firebase/auth"), getAtlasAuth()]);
+    const current = auth.currentUser;
     if (!current) { setUser(null); return null; }
     await reload(current);
     await current.getIdToken(true);
@@ -163,13 +170,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const resendVerification = async () => {
-    const current = getAtlasAuth().currentUser;
+    const auth = await getAtlasAuth();
+    const current = auth.currentUser;
     if (!current) throw new AccountError("auth/session-expired");
     await sendAtlasVerificationEmail(current);
   };
 
+  const deviceSessionUid = user?.backend === "device" ? user.uid : null;
+
   useEffect(() => {
-    if (!user || user.backend !== "device") return;
+    if (!deviceSessionUid) return;
     let active = true;
     const check = () => {
       void restoreDeviceSession().then((current) => { if (active && !current) setUser(null); }).catch(() => { if (active) setUser(null); });
@@ -177,7 +187,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const timer = setInterval(check, 60_000);
     window.addEventListener("focus", check);
     return () => { active = false; clearInterval(timer); window.removeEventListener("focus", check); };
-  }, [user?.uid, user?.backend]);
+  }, [deviceSessionUid]);
 
   return <Context.Provider value={{ user, backend: authBackend, checking, error, logout, setName, login, signup, refreshSession, resendVerification }}>{children}</Context.Provider>;
 }

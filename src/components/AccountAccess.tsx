@@ -2,14 +2,15 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "rea
 import {
   Apple, ArrowLeft, ArrowRight, Check, CheckCircle2, Circle, Compass,
   Copy, Eye, EyeOff, Globe2, Info, KeyRound, Loader2, LockKeyhole,
-  Mail, Monitor, Phone, ShieldCheck, X,
+  Mail, Monitor, Phone, ShieldCheck,
 } from "lucide-react";
-import { RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from "firebase/auth";
+import type { ConfirmationResult, RecaptchaVerifier } from "firebase/auth";
 import { useAuth, type SignupResult } from "../contexts/AuthContext";
 import { authConfigured, authErrorMessage, getAtlasAuth, requestPasswordReset, signInSocial } from "../lib/auth";
-import { isValidEmail, normalizeEmail, passwordRules, validPassword } from "../lib/accountTypes";
+import { AccountError, isValidEmail, normalizeEmail, passwordRules, validPassword } from "../lib/accountTypes";
+import { checkPwnedPassword, estimatePasswordStrength, type PasswordExposure } from "../lib/passwordSecurity";
 import { resetDevicePassword } from "../lib/deviceAccounts";
-import { usePanelAccess } from "../hooks/usePanelAccess";
+import LegalNotice from "./LegalNotice";
 
 type Screen = "credentials" | "phone" | "code" | "reset" | "recovery";
 type Busy = "email" | "google" | "apple" | "phone" | "code" | "reset" | "recovery" | "finish";
@@ -64,27 +65,44 @@ function BackendNote() {
   return <div className="auth-device-note"><Monitor size={16} /><p><strong>Bu cihaza özel hesap.</strong> Kayıt ve giriş çalışır; e-posta sahipliği doğrulanmaz. Hesabın başka cihazlarla eşitlenmez.</p></div>;
 }
 
-function PasswordField({ id, label = "Şifre", value, onChange, error, fresh = false, forgot, disabled = false }: {
+function PasswordField({ id, label = "Şifre", value, onChange, error, fresh = false, forgot, disabled = false, exposure = { status: "idle" } }: {
   id: string; label?: string; value: string; onChange: (value: string) => void;
-  error?: string; fresh?: boolean; forgot?: ReactNode; disabled?: boolean;
+  error?: string; fresh?: boolean; forgot?: ReactNode; disabled?: boolean; exposure?: PasswordExposure;
 }) {
   const [visible, setVisible] = useState(false);
   const rules = passwordRules(value);
+  const strength = estimatePasswordStrength(value);
+  const describedBy = [error ? `${id}-error` : null, fresh ? `${id}-help ${id}-exposure` : null].filter(Boolean).join(" ") || undefined;
+  const exposureMessage = exposure.status === "checking"
+    ? <><Loader2 size={13} className="animate-spin" />Bilinen sızıntı kayıtları kontrol ediliyor…</>
+    : exposure.status === "exposed"
+      ? <><Info size={13} />Bu şifre bilinen veri sızıntılarında {exposure.count.toLocaleString("tr-TR")} kez görülmüş. Başka bir şifre seç.</>
+      : exposure.status === "safe"
+        ? <><CheckCircle2 size={13} />Bilinen sızıntı kayıtlarında eşleşme bulunmadı. Bu sonuç güvenlik garantisi değildir.</>
+        : exposure.status === "unavailable"
+          ? <><Info size={13} />Sızıntı kontrolü şu anda kullanılamıyor. Devam edebilirsin; güçlü ve başka yerde kullanmadığın bir şifre seç.</>
+          : null;
+
   return <div className="auth-field">
     <div className="auth-field-label"><label htmlFor={id}>{label}</label>{forgot}</div>
     <div className="auth-input-with-action">
-      <input id={id} type={visible ? "text" : "password"} value={value} onChange={(event) => onChange(event.target.value)} autoComplete={fresh ? "new-password" : "current-password"} maxLength={128} disabled={disabled} aria-invalid={!!error} aria-describedby={error ? `${id}-error` : fresh ? `${id}-help` : undefined} />
+      <input id={id} type={visible ? "text" : "password"} value={value} onChange={(event) => onChange(event.target.value)} autoComplete={fresh ? "new-password" : "current-password"} maxLength={128} disabled={disabled} aria-invalid={!!error} aria-describedby={describedBy} />
       <button type="button" onClick={() => setVisible(!visible)} aria-label={visible ? "Şifreyi gizle" : "Şifreyi göster"} aria-pressed={visible} className="auth-input-action">{visible ? <EyeOff size={17} /> : <Eye size={17} />}</button>
     </div>
     <FormError message={error} id={`${id}-error`} />
-    {fresh && <div id={`${id}-help`} className="auth-password-help"><ul>{[["length", "En az 8 karakter"], ["letter", "Bir harf"], ["number", "Bir rakam"]].map(([key, text]) => <li key={key} data-valid={rules[key as keyof typeof rules]}>{rules[key as keyof typeof rules] ? <Check size={13} /> : <Circle size={11} />}{text}</li>)}</ul><p>Atlasia için ayrı bir şifre seç; Google veya Apple şifreni kullanma.</p></div>}
+    {fresh && <div id={`${id}-help`} className="auth-password-help">
+      <div className="auth-password-strength" data-score={strength.score}>
+        <div className="auth-password-strength-copy"><span>Tahmini şifre gücü</span><strong>{strength.label}</strong></div>
+        <div className="auth-password-meter" role="meter" aria-label="Tahmini şifre gücü" aria-valuemin={0} aria-valuemax={4} aria-valuenow={strength.score} aria-valuetext={strength.label}>
+          {[1, 2, 3, 4].map((segment) => <span key={segment} data-active={segment <= strength.score} />)}
+        </div>
+      </div>
+      <ul>{[["length", "8–128 karakter"], ["letter", "En az bir harf"], ["number", "En az bir rakam"]].map(([key, text]) => <li key={key} data-valid={rules[key as keyof typeof rules]}>{rules[key as keyof typeof rules] ? <Check size={13} /> : <Circle size={11} />}{text}</li>)}</ul>
+      <p>Atlasia için ayrı bir şifre seç; Google veya Apple şifreni kullanma.</p>
+      <p className="auth-password-privacy">Sızıntı kontrolü cihazında yapılır. Ağa yalnız SHA-1 özetinin ilk 5 karakteri gönderilir; ham şifren ve tam özet gönderilmez.</p>
+      <p id={`${id}-exposure`} className={`auth-password-exposure auth-password-exposure-${exposure.status}`} aria-live="polite">{exposureMessage}</p>
+    </div>}
   </div>;
-}
-
-function LegalNotice({ type, onClose }: { type: "privacy" | "terms"; onClose: () => void }) {
-  const { backend } = useAuth();
-  const ref = usePanelAccess(true, onClose, true);
-  return <div className="fixed inset-0 z-[100] grid place-items-center bg-black/75 p-4"><button type="button" className="absolute inset-0" onClick={onClose} aria-label="Açıklamayı kapat" /><aside ref={ref} role="dialog" aria-modal="true" aria-labelledby="account-legal-title" className="relative w-full max-w-lg rounded-3xl border border-white/15 bg-ink-2 p-7"><button type="button" onClick={onClose} aria-label="Açıklamayı kapat" className="absolute right-4 top-4 grid size-11 place-items-center"><X size={19} /></button><h2 id="account-legal-title" className="font-display pr-8 text-2xl">{type === "privacy" ? "Gizlilik açıklaması" : "Kullanım koşulları"}</h2><p className="mt-4 text-[15px] leading-relaxed text-mint/85">{type === "privacy" ? backend === "device" ? "Bu modda hesap yalnızca bu cihazın tarayıcısında tutulur. Şifre düz metin olarak saklanmaz; rastgele salt ile PBKDF2 özeti kaydedilir. E-posta doğrulaması veya SMS gönderimi yapılmaz. Tarayıcı verilerini silersen hesabın ve kayıtların kaybolabilir. Bu cihazdaki hesap, çevrimiçi bir kimlik doğrulama hizmeti değildir." : "Hesap girişi Firebase Authentication üzerinden yapılır. E-posta ve şifre veya onayladığın sağlayıcı kullanılır. Atlasia sağlayıcı hesabının şifresini görmez. Yerler ve rotalar bu sürümde cihazında saklanır. Konum ayrı izin ister; paylaşmak zorunda değilsin." : "Bir hesap oluşturup kendi yerlerini ve rotalarını yönetebilirsin. Başkalarının özel bilgilerini paylaşma ve izinsiz görsel yükleme. Rota ve rehber bilgileri öneridir; saat, ücret, güvenlik ve erişim koşullarını ilgili resmî kaynaklardan doğrula."}</p><button type="button" onClick={onClose} className="mt-6 min-h-11 rounded-full bg-sun px-6 text-sm font-semibold text-ink">Okudum</button></aside></div>;
 }
 
 export default function AccountAccess() {
@@ -109,18 +127,51 @@ export default function AccountAccess() {
   const [receipt, setReceipt] = useState<SignupResult | null>(null);
   const [savedRecovery, setSavedRecovery] = useState(false);
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
+  const [passwordExposure, setPasswordExposure] = useState<PasswordExposure>({ status: "idle" });
   const pendingPhone = useRef<ConfirmationResult | null>(null);
   const verifier = useRef<RecaptchaVerifier | null>(null);
+  const passwordCheckSequence = useRef(0);
   const locked = useRef(false);
   const blocked = !!busy || checking;
+  const checksFreshPassword = (mode === "signup" && screen === "credentials") || (backend === "device" && screen === "recovery");
 
   useEffect(() => () => verifier.current?.clear(), []);
   useEffect(() => { if (!cooldown) return; const timer = setTimeout(() => setCooldown((current) => current - 1), 1000); return () => clearTimeout(timer); }, [cooldown]);
+  useEffect(() => {
+    const request = ++passwordCheckSequence.current;
+    const rules = passwordRules(password);
+    if (!checksFreshPassword || !password || !Object.values(rules).every(Boolean)) {
+      setPasswordExposure({ status: "idle" });
+      return;
+    }
+
+    const controller = new AbortController();
+    setPasswordExposure({ status: "idle" });
+    const timer = setTimeout(() => {
+      if (request !== passwordCheckSequence.current) return;
+      setPasswordExposure({ status: "checking" });
+      void checkPwnedPassword(password, { signal: controller.signal }).then((result) => {
+        if (!controller.signal.aborted && request === passwordCheckSequence.current) setPasswordExposure(result);
+      });
+    }, 450);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [checksFreshPassword, password]);
 
   const resetMessages = () => { setErrors({}); setError(null); setSuccess(null); };
   const switchMode = () => { setMode((current) => current === "signin" ? "signup" : "signin"); setScreen("credentials"); setPassword(""); setReceipt(null); resetMessages(); };
   const backToLogin = () => { setMode("signin"); setScreen("credentials"); setPassword(""); setRecoveryInput(""); resetMessages(); };
   const clearField = (key: keyof FieldErrors) => setErrors((current) => ({ ...current, [key]: undefined }));
+  const verifyPasswordBeforeWrite = async () => {
+    const request = ++passwordCheckSequence.current;
+    setPasswordExposure({ status: "checking" });
+    const result = await checkPwnedPassword(password);
+    if (request === passwordCheckSequence.current) setPasswordExposure(result);
+    if (result.status !== "exposed") return;
+
+    const failure = new AccountError("auth/password-exposed");
+    setErrors((current) => ({ ...current, password: authErrorMessage(failure) }));
+    throw failure;
+  };
 
   const task = async (operation: Busy, action: () => Promise<void>) => {
     if (locked.current) return;
@@ -151,6 +202,7 @@ export default function AccountAccess() {
     await task("email", async () => {
       if (mode === "signin") await login(email, password);
       else {
+        await verifyPasswordBeforeWrite();
         const result = await signup({ email, password, displayName: name, country });
         if (result.recoveryCode) { setReceipt(result); setPassword(""); setSavedRecovery(false); }
       }
@@ -182,6 +234,7 @@ export default function AccountAccess() {
     if (Object.keys(next).length) return;
     await task(backend === "device" ? "recovery" : "reset", async () => {
       if (backend === "device") {
+        await verifyPasswordBeforeWrite();
         await resetDevicePassword(email, recoveryInput, password);
         setScreen("credentials");
         setMode("signin");
@@ -206,9 +259,13 @@ export default function AccountAccess() {
     await task("phone", async () => {
       if (mode === "signup") { try { sessionStorage.setItem("atlasia.pendingName", name.trim()); } catch { /* Optional display name. */ } }
       verifier.current?.clear();
-      verifier.current = new RecaptchaVerifier(getAtlasAuth(), "atlasia-recaptcha", { size: "invisible" });
+      const [{ RecaptchaVerifier, signInWithPhoneNumber }, auth] = await Promise.all([
+        import("firebase/auth"),
+        getAtlasAuth(),
+      ]);
+      verifier.current = new RecaptchaVerifier(auth, "atlasia-recaptcha", { size: "invisible" });
       try {
-        pendingPhone.current = await signInWithPhoneNumber(getAtlasAuth(), `${prefix}${digits}`, verifier.current);
+        pendingPhone.current = await signInWithPhoneNumber(auth, `${prefix}${digits}`, verifier.current);
         setScreen("code"); setCode(""); setCooldown(60);
       } catch (failure) { verifier.current?.clear(); verifier.current = null; throw failure; }
     });
@@ -243,7 +300,7 @@ export default function AccountAccess() {
         {mode === "signup" && <>{providers}<div className="auth-separator"><span />veya e-posta ile<span /></div></>}
         <form onSubmit={(event) => void emailSubmit(event)} noValidate className="auth-email-form">
           {emailField}
-          <PasswordField id="account-password" value={password} onChange={(value) => { setPassword(value); clearField("password"); }} error={errors.password} fresh={mode === "signup"} disabled={blocked} forgot={mode === "signin" ? <button type="button" disabled={blocked} className="auth-forgot" onClick={() => { setScreen(backend === "device" ? "recovery" : "reset"); setPassword(""); resetMessages(); }}>Şifremi unuttum</button> : undefined} />
+          <PasswordField id="account-password" value={password} onChange={(value) => { setPassword(value); clearField("password"); }} error={errors.password} fresh={mode === "signup"} exposure={passwordExposure} disabled={blocked} forgot={mode === "signin" ? <button type="button" disabled={blocked} className="auth-forgot" onClick={() => { setScreen(backend === "device" ? "recovery" : "reset"); setPassword(""); resetMessages(); }}>Şifremi unuttum</button> : undefined} />
           {mode === "signup" && <>{profileFields}{consent}</>}
           <button className="auth-submit" type="submit" disabled={blocked}>{busy === "email" ? <Loader2 size={18} className="animate-spin" /> : mode === "signup" ? <ArrowRight size={16} /> : <LockKeyhole size={16} />}{busy === "email" ? "Lütfen bekle..." : mode === "signup" ? "Hesap oluştur" : "Giriş yap"}</button>
         </form>
@@ -255,7 +312,7 @@ export default function AccountAccess() {
 
       {(screen === "reset" || screen === "recovery") && <form className="auth-email-form" onSubmit={(event) => void reset(event)} noValidate>
         {emailField}
-        {screen === "recovery" && <><div className="auth-field"><label htmlFor="account-recovery">Kurtarma anahtarın</label><input id="account-recovery" value={recoveryInput} onChange={(event) => { setRecoveryInput(event.target.value); clearField("recovery"); }} placeholder="XXXX-XXXX-XXXX-XXXX-..." autoComplete="off" spellCheck={false} disabled={blocked} aria-invalid={!!errors.recovery} aria-describedby={errors.recovery ? "account-recovery-error" : undefined} /><FormError id="account-recovery-error" message={errors.recovery} /></div><PasswordField id="account-new-password" label="Yeni şifre" fresh value={password} onChange={(value) => { setPassword(value); clearField("password"); }} error={errors.password} disabled={blocked} /></>}
+        {screen === "recovery" && <><div className="auth-field"><label htmlFor="account-recovery">Kurtarma anahtarın</label><input id="account-recovery" value={recoveryInput} onChange={(event) => { setRecoveryInput(event.target.value); clearField("recovery"); }} placeholder="XXXX-XXXX-XXXX-XXXX-..." autoComplete="off" spellCheck={false} disabled={blocked} aria-invalid={!!errors.recovery} aria-describedby={errors.recovery ? "account-recovery-error" : undefined} /><FormError id="account-recovery-error" message={errors.recovery} /></div><PasswordField id="account-new-password" label="Yeni şifre" fresh value={password} onChange={(value) => { setPassword(value); clearField("password"); }} error={errors.password} exposure={passwordExposure} disabled={blocked} /></>}
         <button type="submit" disabled={blocked} className="auth-submit">{busy === "reset" || busy === "recovery" ? <Loader2 size={17} className="animate-spin" /> : <KeyRound size={17} />}{screen === "recovery" ? "Şifremi yenile" : "Sıfırlama bağlantısı gönder"}</button>
         <button type="button" disabled={blocked} className="auth-back auth-back-centered" onClick={backToLogin}><ArrowLeft size={14} />Giriş ekranına dön</button>
         {screen === "recovery" && <p className="auth-form-hint">Anahtarın yoksa bu modda e-posta ile kurtarma yapılamaz. Mevcut kayıtların silinmez; yeni hesap açmak onları aktarmaz.</p>}
@@ -264,7 +321,7 @@ export default function AccountAccess() {
       {screen === "phone" && <form className="auth-email-form" onSubmit={(event) => void sendCode(event)} noValidate>
         {mode === "signup" && profileFields}
         <div className="auth-field"><label htmlFor="account-phone">Telefon numaran</label><div className="auth-phone-input"><select value={prefix} onChange={(event) => setPrefix(event.target.value)} aria-label="Ülke kodu" disabled={blocked}><option value="+90">TR +90</option><option value="+1">US +1</option><option value="+44">UK +44</option><option value="+49">DE +49</option><option value="+33">FR +33</option><option value="+81">JP +81</option></select><input id="account-phone" type="tel" inputMode="tel" value={phone} onChange={(event) => { setPhone(event.target.value); clearField("phone"); }} autoComplete="tel-national" placeholder="5XX XXX XX XX" disabled={blocked} aria-invalid={!!errors.phone} /></div><FormError message={errors.phone} /></div>
-        <p className="auth-form-hint">Numarana doğrulama SMS'i gönderilir. Standart SMS ücretleri uygulanabilir.</p>
+        <p className="auth-form-hint">Numarana doğrulama SMS’i gönderilir. Google reCAPTCHA, kötüye kullanımı azaltmak için cihaz ve etkileşim sinyallerini otomatik olarak doğrulayabilir; bu kontrol mutlak güvenlik garantisi vermez. Standart SMS ücretleri uygulanabilir.</p>
         {mode === "signup" && consent}
         <button type="submit" disabled={blocked || cooldown > 0} className="auth-submit">{busy === "phone" ? <Loader2 size={18} className="animate-spin" /> : <Phone size={17} />}Doğrulama kodu gönder</button><button type="button" className="auth-back auth-back-centered" disabled={blocked} onClick={() => { setScreen("credentials"); resetMessages(); }}><ArrowLeft size={14} />Diğer giriş yöntemleri</button>
       </form>}

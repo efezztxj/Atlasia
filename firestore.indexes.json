@@ -1,0 +1,21 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "places",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "authorUid", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "places",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "lat", "order": "ASCENDING" },
+        { "fieldPath": "lng", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

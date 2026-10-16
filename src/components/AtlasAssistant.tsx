@@ -12,6 +12,15 @@ import { haversineKm } from "../utils/geo";
 import { fetchOpenMapPlaces, openMapRadiusKm } from "../utils/openMapPlaces";
 import { compressImage } from "../utils/image";
 import { cn } from "../utils/cn";
+import {
+  buildAppleDirectionsUrl,
+  buildGoogleRouteLinks,
+  buildYandexRouteUrl,
+  GOOGLE_MOBILE_MAX_WAYPOINTS,
+  googleWaypointLimitForDevice,
+  isValidMapPoint,
+} from "../utils/mapLinks";
+import { googleRouteSplitNotice, unavailableRouteProviderMessages } from "../utils/mapLinkStatus";
 import PlaceImage from "./PlaceImage";
 
 const QUICK = ["1 günlük rota öner", "Yakınımda gizli yerler", "Fotoğraf rotası", "Kalabalıktan kaç", "Yerel uyarılar", "Ücretsiz alternatifler"];
@@ -246,17 +255,30 @@ function RouteResult({ route, approved, saved, onConfirm, onStop, onReorder, onS
   useEffect(() => { setDay(0); setShared(false); }, [route.id]);
   const day = route.days[Math.min(dayIndex, route.days.length - 1)];
   const stops = route.days.flatMap((item) => item.stops);
-  const google = new URL("https://www.google.com/maps/dir/");
-  google.searchParams.set("api", "1");
-  google.searchParams.set("origin", `${route.origin?.lat ?? stops[0].lat},${route.origin?.lng ?? stops[0].lng}`);
-  google.searchParams.set("destination", `${stops[stops.length - 1].lat},${stops[stops.length - 1].lng}`);
-  google.searchParams.set("waypoints", stops.slice(0, -1).map((stop) => `${stop.lat},${stop.lng}`).join("|"));
-  google.searchParams.set("travelmode", route.transport === "cycling" ? "bicycling" : route.transport);
-  const yandexPoints = [{ lat: route.origin?.lat ?? stops[0].lat, lng: route.origin?.lng ?? stops[0].lng }, ...stops];
-  const yandex = `https://yandex.com/maps/?rtext=${encodeURIComponent(yandexPoints.map((point) => `${point.lat},${point.lng}`).join("~"))}&rtt=auto`;
-  const apple = `https://maps.apple.com/?daddr=${day.stops[0].lat},${day.stops[0].lng}&dirflg=${route.transport === "walking" ? "w" : route.transport === "transit" ? "r" : "d"}`;
+  const routePoints = [...(route.origin ? [route.origin] : []), ...stops];
+  const waypointLimit = typeof navigator === "undefined"
+    ? GOOGLE_MOBILE_MAX_WAYPOINTS
+    : googleWaypointLimitForDevice(navigator.userAgent, navigator.maxTouchPoints);
+  const googleLinks = buildGoogleRouteLinks(routePoints, route.transport, waypointLimit);
+  const yandex = buildYandexRouteUrl(routePoints, route.transport);
+  const appleStop = day.stops[0];
+  const apple = appleStop ? buildAppleDirectionsUrl(appleStop, route.transport) : null;
+  const splitNotice = googleRouteSplitNotice(googleLinks.length, waypointLimit);
+  const unavailableProviders = unavailableRouteProviderMessages({
+    google: googleLinks.length > 0,
+    yandex: yandex !== null,
+    apple: apple !== null,
+    hasRoutePoints: routePoints.length > 0,
+    routeCoordinatesValid: routePoints.length > 0 && routePoints.every(isValidMapPoint),
+    hasAppleStop: !!appleStop,
+    appleStopValid: !!appleStop && isValidMapPoint(appleStop),
+  });
   const share = async () => {
-    const text = `${route.routeTitle}\n${stops.map((stop) => `${stop.order}. ${stop.name}: ${stop.startTime}`).join("\n")}\n${google.toString()}`;
+    const externalLinks = [
+      ...googleLinks.map((link, index) => `Google${googleLinks.length > 1 ? ` ${index + 1}/${googleLinks.length}` : ""}: ${link.url}`),
+      ...(yandex ? [`Yandex: ${yandex}`] : []),
+    ].join("\n");
+    const text = `${route.routeTitle}\n${stops.map((stop) => `${stop.order}. ${stop.name}: ${stop.startTime}`).join("\n")}${externalLinks ? `\n${externalLinks}` : ""}`;
     try { if (navigator.share) await navigator.share({ title: route.routeTitle, text }); else await navigator.clipboard.writeText(text); setShared(true); } catch { /* Sharing can be cancelled by the user. */ }
   };
   return <section className="rounded-2xl border border-sun/20 p-4"><p className="text-[12px] font-semibold text-sun">{approved ? "Haritada gösteriliyor" : "Soluk rota önizlemesi"}</p><h3 className="font-display mt-2 text-lg font-semibold">{route.routeTitle}</h3><p className="mt-1 flex items-center gap-1.5 text-[13px] text-mint/75"><Clock3 size={14} />≈{route.totalDurationHours} saat · ≈{route.totalDistanceKm} km</p><p className="mt-2 text-[12px] leading-relaxed text-mint/65">{route.routeSummary}</p>{route.days.length > 1 && <nav className="mt-3 flex gap-2" aria-label="Rota günleri">{route.days.map((item, i) => <button key={item.dayNumber} type="button" onClick={() => setDay(i)} className={cn("min-h-10 rounded-full border px-3 text-[13px]", i === dayIndex ? "border-sun text-sun" : "border-white/15")}>{item.dayNumber}. gün</button>)}</nav>}
@@ -265,6 +287,6 @@ function RouteResult({ route, approved, saved, onConfirm, onStop, onReorder, onS
     <div className="mt-4 flex flex-wrap gap-2">{!approved && <button type="button" onClick={onConfirm} className="min-h-11 rounded-full bg-sun px-4 text-[13px] font-semibold text-ink">Haritada göster</button>}<button type="button" onClick={onEdit} className="min-h-11 rounded-full border border-white/20 px-4 text-[13px]">Düzenle</button><button type="button" onClick={onSave} className="flex min-h-11 items-center gap-1.5 rounded-full border border-white/20 px-4 text-[13px] text-sun">{saved ? <Check size={14} /> : <Bookmark size={14} />}{saved ? "Kaydedildi" : "Kaydet"}</button><button type="button" onClick={() => void share()} className="min-h-11 rounded-full border border-white/20 px-4 text-[13px]">{shared ? "Paylaşıldı" : "Paylaş"}</button></div>
     <div className="mt-3 flex flex-wrap gap-2">{route.alternatives.map((alternative) => <button key={alternative.label} type="button" onClick={() => onAlternative(alternative.prompt)} className="min-h-10 rounded-full border border-white/15 px-3 text-[12px] text-mint/80">{alternative.label}</button>)}</div>
     {route.dataSources?.includes("OpenStreetMap contributors") && <p className="mt-3 text-[11px] leading-relaxed text-mint/55">Açık harita durakları © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="underline underline-offset-2">OpenStreetMap katkıcıları</a>. Liste eksik veya güncelliğini yitirmiş olabilir.</p>}
-    <div className="mt-4 flex flex-wrap gap-3 border-t border-white/10 pt-3 text-[12px]"><a href={google.toString()} target="_blank" rel="noreferrer" className="flex min-h-10 items-center gap-1.5 text-sun"><Navigation size={13} />Google Haritalar <ExternalLink size={12} /></a><a href={yandex} target="_blank" rel="noreferrer" className="flex min-h-10 items-center gap-1.5 text-sun">Yandex Haritalar <ExternalLink size={12} /></a><a href={apple} target="_blank" rel="noreferrer" className="flex min-h-10 items-center gap-1.5 text-mint">Apple'da ilk durak <ExternalLink size={12} /></a></div><p className="mt-1 text-[11px] text-mint/70">Yol mesafesi tahminidir. Apple bağlantısı ilk durağı açar.</p>
+    <div className="mt-4 flex flex-wrap gap-3 border-t border-white/10 pt-3 text-[12px]">{googleLinks.map((link, index) => <a key={link.url} href={link.url} target="_blank" rel="noreferrer" className="flex min-h-10 items-center gap-1.5 text-sun"><Navigation size={13} />Google Haritalar{googleLinks.length > 1 ? ` ${index + 1}/${googleLinks.length}` : ""} <ExternalLink size={12} /></a>)}{yandex && <a href={yandex} target="_blank" rel="noreferrer" className="flex min-h-10 items-center gap-1.5 text-sun">Yandex Haritalar <ExternalLink size={12} /></a>}{apple && <a href={apple} target="_blank" rel="noreferrer" className="flex min-h-10 items-center gap-1.5 text-mint">Apple'da ilk durak <ExternalLink size={12} /></a>}</div>{unavailableProviders.length > 0 && <ul className="mt-1 space-y-1 text-[11px] leading-relaxed text-mint/70">{unavailableProviders.map((message) => <li key={message}>{message}</li>)}</ul>}{splitNotice && <p className="mt-1 text-[11px] text-mint/70">{splitNotice}</p>}<p className="mt-1 text-[11px] text-mint/70">Yol mesafesi tahminidir.</p>{apple && <p className="mt-1 text-[11px] text-mint/70">Apple bağlantısı seçili günün ilk durağını açar.</p>}
   </section>;
 }

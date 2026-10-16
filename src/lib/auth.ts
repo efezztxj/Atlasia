@@ -1,35 +1,33 @@
-import {
-  GoogleAuthProvider,
-  OAuthProvider,
-  createUserWithEmailAndPassword,
-  sendEmailVerification,
-  sendPasswordResetEmail,
-  signInWithEmailAndPassword,
-  signInWithPopup,
-  signInWithRedirect,
-  updateProfile,
-  type ActionCodeSettings,
-  type User,
-} from "firebase/auth";
+import type { ActionCodeSettings, Auth, User } from "firebase/auth";
 import { AccountError, normalizeEmail, type AtlasAccount, type SignupDetails } from "./accountTypes";
-import { auth as firebaseAuth, isCloudReady } from "./firebase";
+import { firebaseApp, isCloudReady } from "./firebase";
 
 /** Auth ve Firestore her zaman aynı Firebase uygulamasını kullanır. */
-export const authConfigured = isCloudReady && firebaseAuth !== null;
+export const authConfigured = isCloudReady && firebaseApp !== null;
+export const authBackend = authConfigured ? "firebase" : "device";
 
 const EMAIL_ACTION_SETTINGS: ActionCodeSettings = {
   url: "https://atlasia.pages.dev/",
   handleCodeInApp: false,
 };
 
-export function sendAtlasVerificationEmail(user: User) {
-  return sendEmailVerification(user, EMAIL_ACTION_SETTINGS);
-}
-export const authBackend = authConfigured ? "firebase" : "device";
+let authPromise: Promise<Auth> | null = null;
 
-export function getAtlasAuth() {
-  if (!authConfigured || !firebaseAuth) throw new Error("auth/not-configured");
-  return firebaseAuth;
+/** Firebase Authentication SDK'sını yalnız gerçekten gerektiğinde yükler. */
+export function getAtlasAuth(): Promise<Auth> {
+  const app = firebaseApp;
+  if (!authConfigured || !app) return Promise.reject(new Error("auth/not-configured"));
+  authPromise ??= import("firebase/auth").then(({ getAuth }) => {
+    const auth = getAuth(app);
+    auth.languageCode = "tr";
+    return auth;
+  });
+  return authPromise;
+}
+
+export async function sendAtlasVerificationEmail(user: User) {
+  const { sendEmailVerification } = await import("firebase/auth");
+  return sendEmailVerification(user, EMAIL_ACTION_SETTINGS);
 }
 
 export function isVerifiedMember(user: User | null): user is User {
@@ -52,11 +50,19 @@ export function toFirebaseAccount(user: User): AtlasAccount {
 }
 
 export async function signInEmail(email: string, password: string) {
-  return signInWithEmailAndPassword(getAtlasAuth(), normalizeEmail(email), password);
+  const [{ signInWithEmailAndPassword }, auth] = await Promise.all([
+    import("firebase/auth"),
+    getAtlasAuth(),
+  ]);
+  return signInWithEmailAndPassword(auth, normalizeEmail(email), password);
 }
 
 export async function registerEmail(details: SignupDetails) {
-  const credential = await createUserWithEmailAndPassword(getAtlasAuth(), normalizeEmail(details.email), details.password);
+  const [{ createUserWithEmailAndPassword, updateProfile }, auth] = await Promise.all([
+    import("firebase/auth"),
+    getAtlasAuth(),
+  ]);
+  const credential = await createUserWithEmailAndPassword(auth, normalizeEmail(details.email), details.password);
   // Keep the created account pending verification if delivery fails; do not
   // discard a valid account or grant a verified session on an email error.
   await updateProfile(credential.user, { displayName: details.displayName.trim().slice(0, 40) });
@@ -66,13 +72,22 @@ export async function registerEmail(details: SignupDetails) {
 
 export async function requestPasswordReset(email: string) {
   if (!authConfigured) throw new AccountError("device/recovery-required");
-  try { await sendPasswordResetEmail(getAtlasAuth(), normalizeEmail(email), EMAIL_ACTION_SETTINGS); }
+  const [{ sendPasswordResetEmail }, auth] = await Promise.all([
+    import("firebase/auth"),
+    getAtlasAuth(),
+  ]);
+  try { await sendPasswordResetEmail(auth, normalizeEmail(email), EMAIL_ACTION_SETTINGS); }
   catch (error) { if ((error as { code?: string }).code !== "auth/user-not-found") throw error; }
 }
 
 export async function signInSocial(method: "google" | "apple") {
-  const auth = getAtlasAuth();
-  const provider = method === "google" ? new GoogleAuthProvider() : new OAuthProvider("apple.com");
+  const [{ GoogleAuthProvider, OAuthProvider, signInWithPopup, signInWithRedirect }, auth] = await Promise.all([
+    import("firebase/auth"),
+    getAtlasAuth(),
+  ]);
+  const provider = method === "google"
+    ? new GoogleAuthProvider()
+    : new OAuthProvider("apple.com");
   if (method === "google") provider.setCustomParameters({ prompt: "select_account" });
   else {
     provider.addScope("email");
@@ -100,6 +115,7 @@ export function authErrorMessage(error: unknown) {
     "auth/wrong-password": "E-posta veya şifre doğru değil. Bilgilerini kontrol et.",
     "auth/user-not-found": "E-posta veya şifre doğru değil. Bilgilerini kontrol et.",
     "auth/weak-password": "Şifren 8–128 karakter olmalı ve en az bir harf ile bir rakam içermeli.",
+    "auth/password-exposed": "Bu şifre bilinen veri sızıntılarında görülmüş. Hesabını korumak için başka hiçbir yerde kullanmadığın farklı bir şifre seç.",
     "auth/password-does-not-meet-requirements": "Şifren hesabın güvenlik kurallarını karşılamıyor. Daha uzun bir şifre, harf ve rakam kullan.",
     "auth/invalid-profile-name": "Profil adın en az 2 karakter olmalı.",
     "auth/missing-password": "Şifreni yaz.",
@@ -113,13 +129,14 @@ export function authErrorMessage(error: unknown) {
     "auth/cancelled-popup-request": "Başka bir giriş işlemi açık. O pencereyi tamamla veya tekrar dene.",
     "auth/unauthorized-domain": "Bu site adresi giriş için yetkilendirilmemiş. Yayın alanının Firebase'e eklenmesi gerekiyor.",
     "auth/operation-not-allowed": "Bu giriş yöntemi henüz etkin değil. Başka bir yöntem seçebilir veya daha sonra deneyebilirsin.",
+    "auth/billing-not-enabled": "SMS ile giriş için Firebase projesinde Blaze faturalandırma planının etkinleştirilmesi gerekiyor. Şimdilik başka bir giriş yöntemi kullanabilirsin.",
     "auth/invalid-api-key": "Giriş yapılandırması geçerli değil. Uygulamanın kimlik doğrulama ayarları kontrol edilmeli.",
     "auth/network-request-failed": "Bağlantı kurulamadı. İnternetini kontrol edip tekrar dene.",
     "auth/invalid-phone-number": "Telefon numaranı ülke koduyla birlikte kontrol et.",
     "auth/invalid-verification-code": "Doğrulama kodu doğru değil. SMS'teki 6 haneli kodu tekrar yaz.",
     "auth/code-expired": "Kodun süresi doldu. Yeni bir doğrulama kodu iste.",
     "auth/session-expired": "Doğrulama süresi doldu. Yeni bir kod iste.",
-    "auth/too-many-requests": "Çok fazla deneme yapıldı. Biraz bekleyip tekrar dene.",
+    "auth/too-many-requests": "Hesabını ve hizmeti koruyan geçici güvenlik sınırına ulaşıldı. Biraz bekleyip tekrar dene; bu sırada yeni istek gönderme.",
     "auth/quota-exceeded": "SMS gönderim sınırına ulaşıldı. Google ile giriş yapmayı deneyebilirsin.",
     "auth/captcha-check-failed": "Güvenlik doğrulaması tamamlanamadı. Sayfayı yenileyip tekrar dene.",
     "auth/account-exists-with-different-credential": "Bu hesap başka bir giriş yöntemiyle kayıtlı. Daha önce kullandığın yöntemi seç.",

@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bell, Bookmark, Compass, Crosshair, MapPin, MousePointerClick, Plus, UserRound, UsersRound, X } from "lucide-react";
-import MapView, { type BaseMapStyle, type MapViewHandle } from "./components/MapView";
+import type { BaseMapStyle, MapViewHandle } from "./components/MapView";
 import Header from "./components/Header";
 import Hero from "./components/Hero";
 import SearchBox from "./components/SearchBox";
@@ -29,15 +29,32 @@ import { useFirestoreAtlasData } from "./hooks/useFirestoreAtlasData";
 import { useTheme } from "./hooks/useTheme";
 import { useInstallApp, type InstallAppController } from "./hooks/useInstallApp";
 import { isCloudReady, firebaseConfigSummary } from "./lib/firebase";
+import type { PlaceViewport } from "./lib/firestoreData";
 import type { AtlasRoute, CategoryId, Place, ViewState } from "./types";
 import { haversineKm, reverseName, type SearchResult } from "./utils/geo";
 import { storageGet, storageSet } from "./utils/storage";
 
+const MapView = lazy(() => import("./components/MapView"));
 const MAP_STYLE_KEY = "atlasia.mapStyle.v1";
 
 function initialMapStyle(): BaseMapStyle {
   const saved = storageGet(MAP_STYLE_KEY);
   return saved === "dark" || saved === "street" || saved === "topographic" ? saved : "satellite";
+}
+
+function MapLoadingSkeleton() {
+  return (
+    <div
+      className="absolute inset-0 grid place-items-center bg-[#031b16]"
+      role="status"
+      aria-label="Harita yükleniyor"
+    >
+      <div className="flex flex-col items-center gap-3 text-mint/75">
+        <span className="size-12 animate-pulse rounded-full border border-leaf/40 bg-leaf/10" />
+        <span className="text-sm">Harita hazırlanıyor…</span>
+      </div>
+    </div>
+  );
 }
 
 function placeDeleteErrorMessage(error: unknown) {
@@ -53,9 +70,15 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   const { user } = useAuth();
   const { theme, setTheme } = useTheme();
 
+  const [mapViewport, setMapViewport] = useState<PlaceViewport | null>(null);
+
   // Yerel veri yalnız yapılandırmasız mod ve ilk canlı liste görünümü için yedektir.
   const local = useAtlasData(user!.uid);
-  const remote = useFirestoreAtlasData({ uid: user!.uid, enabled: isCloudReady });
+  const remote = useFirestoreAtlasData({
+    uid: user!.uid,
+    enabled: isCloudReady,
+    viewport: mapViewport,
+  });
   // Bulut yapılandırılmışsa yazma/silme işlemleri her zaman Firestore'a gider.
   // İlk canlı snapshot gelene kadar yalnız görünür liste için yerel içerik kullanılır;
   // böylece açılış anındaki hızlı bir işlem cihazda mahsur kalmaz.
@@ -66,7 +89,17 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         posts: remote.ready ? remote.posts : local.posts,
         stories: remote.ready ? remote.stories : local.stories,
       }
-    : local;
+    : {
+        ...local,
+        ready: true,
+        error: null,
+        hasMorePosts: false,
+        hasMoreStories: false,
+        loadingMorePosts: false,
+        loadingMoreStories: false,
+        loadMorePosts: async () => {},
+        loadMoreStories: async () => {},
+      };
 
   // Kullanıcıya bulut bağlantısı durumunu bildir
   useEffect(() => {
@@ -433,7 +466,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
 
   const heroHidden = view.zoom > 3.4;
   const dockVisible = !recordsOpen && !profileOpen && !myPlacesOpen && !storyPlace && !atlasOpen && !settingsOpen && !drawerOpen && !feedOpen;
-  const mobilePanelOpen = panelOpen && dockVisible;
+  const discoveryPanelVisible = dockVisible;
   const mobileExplore = () => { closePanels(); setPanelOpen(true); };
   const openMyPlaces = () => { closePanels(); setMyPlacesOpen(true); };
   const mobileTab = myPlacesOpen ? "İzlerim" : recordsOpen ? "Kaydet" : feedOpen ? "Topluluk" : profileOpen ? "Profil" : "Keşfet";
@@ -444,20 +477,24 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         İçeriğe geç
       </a>
       <main id="harita" aria-label="Keşif haritası" className="contents" tabIndex={-1}>
-      <MapView
-        ref={mapRef}
-        places={visiblePlaces}
-        activeId={activeId}
-        onSelect={handleSelect}
-        addMode={addMode}
-        onMapClick={handleMapClick}
-        showLabels={labels}
-        terrainEnabled={terrain}
-        baseMap={baseMap}
-        spin={spin && !reducedMotion && !addMode && !draft}
-        onUserInteract={() => setSpin(false)}
-        onViewChange={setView}
-      />
+        <Suspense fallback={<MapLoadingSkeleton />}>
+          <MapView
+            ref={mapRef}
+            places={visiblePlaces}
+            activeId={activeId}
+            onSelect={handleSelect}
+            addMode={addMode}
+            onMapClick={handleMapClick}
+            showLabels={labels}
+            terrainEnabled={terrain}
+            baseMap={baseMap}
+            theme={theme}
+            spin={spin && !reducedMotion && !addMode && !draft}
+            onUserInteract={() => setSpin(false)}
+            onViewChange={setView}
+            onViewportChange={setMapViewport}
+          />
+        </Suspense>
       </main>
 
       <Header
@@ -558,7 +595,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         )}
       </div>
       <p role="contentinfo" className="pointer-events-none absolute inset-x-0 bottom-[2px] z-20 hidden px-2 text-center text-[11px] leading-none text-mint/45 md:block">
-        Harita © Esri, CARTO ve OpenStreetMap katkıcıları · Yükseklik verisi: AWS Terrain Tiles
+        Harita © Esri, OpenFreeMap, OpenMapTiles ve OpenStreetMap katkıcıları · Yükseklik verisi: AWS Terrain Tiles
       </p>
 
       {/* Ekleme modu bandı */}
@@ -590,7 +627,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         </div>
       )}
 
-      {mobilePanelOpen && <BottomPanel
+      {discoveryPanelVisible && <BottomPanel
         open={panelOpen}
         onToggle={() => setPanelOpen((v) => !v)}
         category={category}
@@ -655,6 +692,12 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         onRequestPrecise={handleLocate}
         posts={cloud.posts}
         stories={cloud.stories}
+        hasMorePosts={cloud.hasMorePosts}
+        hasMoreStories={cloud.hasMoreStories}
+        loadingMorePosts={cloud.loadingMorePosts}
+        loadingMoreStories={cloud.loadingMoreStories}
+        onLoadMorePosts={cloud.loadMorePosts}
+        onLoadMoreStories={cloud.loadMoreStories}
         clientId={cloud.clientId}
         currentUid={user!.uid}
         uploadPhoto={cloud.uploadPhoto}
