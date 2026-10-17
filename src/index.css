@@ -620,8 +620,11 @@ body,
   }
   .mobile-map-controls .map-round-btn { width: 30px; height: 30px; }
   .mobile-map-controls .map-round-btn svg { width: 13px; height: 13px; }
+  /* Mobilde: ayırıcı, Sıfırla (3. div) ve Yer adları (5. div) gizlenir;
+     Konumuma git (4) ve 3D görünüm (6) GÖRÜNÜR kalır. */
   .mobile-map-controls > span,
-  .mobile-map-controls > div:nth-of-type(n + 5) { display: none; }
+  .mobile-map-controls > div:nth-of-type(3),
+  .mobile-map-controls > div:nth-of-type(5) { display: none; }
 
   .atlas-launcher {
     right: 8px;
