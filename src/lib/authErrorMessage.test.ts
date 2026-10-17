@@ -19,4 +19,24 @@ describe("Firebase giriş yapılandırma mesajları", () => {
       "SMS ile giriş için Firebase projesinde Blaze faturalandırma planının etkinleştirilmesi gerekiyor. Şimdilik başka bir giriş yöntemi kullanabilirsin.",
     );
   });
+
+  it("referrer engelini adres taşıyan kodda da tanır", () => {
+    expect(
+      authErrorMessage({ code: "auth/requests-from-referer-https://atlasia.pages.dev/-are-blocked" }),
+    ).toContain("HTTP referrer kısıtına https://atlasia.pages.dev/*");
+  });
+
+  it("API anahtarı yetkisiz uygulama kodunu genel hataya düşürmez", () => {
+    expect(authErrorMessage({ code: "auth/app-not-authorized" })).toContain("HTTP referrer kısıtına");
+  });
+
+  it("tanınmayan kodda teşhis için kodu mesaja ekler", () => {
+    expect(authErrorMessage({ code: "auth/bilinmeyen-kod" })).toContain("(kod: auth/bilinmeyen-kod)");
+  });
+
+  it("yalnız message taşıyan hatada da kodu okur", () => {
+    expect(authErrorMessage(new Error("auth/operation-not-allowed"))).toBe(
+      "Bu giriş yöntemi henüz etkin değil. Başka bir yöntem seçebilir veya daha sonra deneyebilirsin.",
+    );
+  });
 });
