@@ -27,4 +27,4 @@
 ## SHA-256 ve commit
 - PKG-0 staged `src/index.css` blob SHA-256: `dce46c08678b41fa87ffb3a6e58d41f8beda2a3dba85350eff07250fe268aa29`.
 - Çalışma ağacındaki `src/index.css` SHA-256: `2e2724afa81af0b9a53ea1075a56b1bf55ed440abcf7b7f8f92c0e16d1fd129b` (korunan, commit dışı 15 satırı da içerir).
-- PKG-0 commit: `feat(ui1): PKG-0 — mobile map controls visibility fix` (SHA, commit sonrasında kaydedilecek).
+- PKG-0 commit: `feat(ui1): PKG-0 — mobile map controls visibility fix`; SHA `d48c954e24370ce7ed68960795a9b28801360464`.
