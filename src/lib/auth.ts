@@ -80,33 +80,63 @@ export async function requestPasswordReset(email: string) {
   catch (error) { if ((error as { code?: string }).code !== "auth/user-not-found") throw error; }
 }
 
+/**
+ * Popup akışının tarayıcı ortamında tamamlanamadığı durumlar. Bu kodlarda
+ * kullanıcıya hata göstermek yerine tam sayfa yönlendirme akışına geçilir;
+ * mobil tarayıcılarda (Opera/Safari katı depolama) popup güvenilir değildir.
+ */
+const REDIRECT_FALLBACK_CODES = new Set([
+  "auth/popup-blocked",
+  "auth/operation-not-supported-in-this-environment",
+  "auth/web-storage-unsupported",
+  "auth/internal-error",
+]);
+
+/** Hata kodunu tek yerden okur; bazı tarayıcılar yalnız `message` doldurur. */
+function authErrorCode(error: unknown): string {
+  const detail = error as { code?: unknown; message?: unknown } | null;
+  const code = typeof detail?.code === "string" ? detail.code : "";
+  if (code) return code.trim();
+  const message = typeof detail?.message === "string" ? detail.message : "";
+  return message.trim();
+}
+
 export async function signInSocial(method: "google" | "apple") {
   const [{ GoogleAuthProvider, OAuthProvider, signInWithPopup, signInWithRedirect }, auth] = await Promise.all([
     import("firebase/auth"),
     getAtlasAuth(),
   ]);
-  const provider = method === "google"
-    ? new GoogleAuthProvider()
-    : new OAuthProvider("apple.com");
-  if (method === "google") provider.setCustomParameters({ prompt: "select_account" });
-  else {
-    provider.addScope("email");
-    provider.addScope("name");
-    provider.setCustomParameters({ locale: "tr" });
-  }
-  try {
-    return await signInWithPopup(auth, provider);
-  } catch (error) {
-    if ((error as { code?: string }).code === "auth/popup-blocked") {
-      await signInWithRedirect(auth, provider);
-      return null;
+  const buildProvider = () => {
+    const provider = method === "google"
+      ? new GoogleAuthProvider()
+      : new OAuthProvider("apple.com");
+    if (method === "google") provider.setCustomParameters({ prompt: "select_account" });
+    else {
+      provider.addScope("email");
+      provider.addScope("name");
+      provider.setCustomParameters({ locale: "tr" });
     }
-    throw error;
+    return provider;
+  };
+  try {
+    return await signInWithPopup(auth, buildProvider());
+  } catch (error) {
+    const code = authErrorCode(error);
+    // Tanı için: kullanıcı bildirdiğinde hangi kodun oluştuğu görülebilsin.
+    console.error("[Atlasia] Sosyal giriş hatası:", code || "(kod yok)", error);
+    if (!REDIRECT_FALLBACK_CODES.has(code)) throw error;
+    try {
+      await signInWithRedirect(auth, buildProvider());
+      return null;
+    } catch (redirectError) {
+      console.error("[Atlasia] Yönlendirmeli giriş hatası:", authErrorCode(redirectError), redirectError);
+      throw redirectError;
+    }
   }
 }
 
 export function authErrorMessage(error: unknown) {
-  const code = (error as { code?: string; message?: string })?.code ?? (error as Error)?.message;
+  const code = authErrorCode(error);
   const messages: Record<string, string> = {
     "auth/not-configured": "Google, Apple ve SMS girişi için sağlayıcı bağlantısı henüz kurulmamış. E-posta ve şifreyle bu cihaza özel hesabını kullanabilirsin.",
     "auth/invalid-email": "Geçerli bir e-posta adresi yaz.",
@@ -141,6 +171,17 @@ export function authErrorMessage(error: unknown) {
     "auth/captcha-check-failed": "Güvenlik doğrulaması tamamlanamadı. Sayfayı yenileyip tekrar dene.",
     "auth/account-exists-with-different-credential": "Bu hesap başka bir giriş yöntemiyle kayıtlı. Daha önce kullandığın yöntemi seç.",
     "auth/user-disabled": "Bu hesap devre dışı bırakılmış.",
+    "auth/app-not-authorized": "Bu site adresi Firebase API anahtarına tanımlı değil. API anahtarının HTTP referrer kısıtına https://atlasia.pages.dev/* eklenmesi gerekiyor.",
+    "auth/web-storage-unsupported": "Tarayıcı bu sitede oturum deposunu engelliyor. Üçüncü taraf çerez/depolama engelini kaldırıp tekrar dene.",
+    "auth/internal-error": "Giriş penceresi bu tarayıcıda tamamlanamadı. Sayfayı yenileyip tekrar dene; sorun sürerse yönlendirmeli giriş kullanılacak.",
+    "auth/operation-not-supported-in-this-environment": "Bu ortam açılır pencereyle girişi desteklemiyor. Yönlendirmeli giriş denenecek.",
+    "auth/redirect-cancelled-by-user": "Yönlendirmeli giriş yarıda kaldı. Tekrar deneyebilirsin.",
   };
-  return messages[code ?? ""] ?? "Giriş tamamlanamadı. Biraz sonra tekrar dene; oturumun açılmadı.";
+  // `auth/requests-from-referer-<adres>-are-blocked` kodun içinde adres taşır.
+  if (code.startsWith("auth/requests-from-referer")) {
+    return "Bu site adresi Firebase API anahtarına tanımlı değil. API anahtarının HTTP referrer kısıtına https://atlasia.pages.dev/* eklenmesi gerekiyor.";
+  }
+  const known = messages[code];
+  if (known) return known;
+  return `Giriş tamamlanamadı. Biraz sonra tekrar dene; oturumun açılmadı.${code ? ` (kod: ${code})` : ""}`;
 }
