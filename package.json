@@ -1,12 +1,22 @@
 {
-  "name": "react-vite-tailwind",
+  "name": "atlasia-web",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings=0",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "check": "npm run typecheck && npm run lint && npm run test:run && npm run test:rules:emulator && npm run build && npm run verify:social-metadata && npm run audit:check",
+    "verify:social-metadata": "node scripts/verify-social-metadata.mjs",
+    "audit:prod": "npm audit --omit=dev",
+    "audit:check": "node scripts/audit-baseline.mjs",
+    "test:rules": "vitest run --config vitest.rules.config.ts",
+    "test:rules:emulator": "node scripts/run-firestore-rules-tests.mjs"
   },
   "dependencies": {
     "@types/suncalc": "^1.9.2",
@@ -15,21 +25,37 @@
     "fflate": "^0.8.3",
     "firebase": "^12.19.0",
     "lucide-react": "^1.50.0",
-    "maplibre-gl": "^5.24.0",
+    "maplibre-gl": "6.4.1",
     "react": "19.2.6",
     "react-dom": "19.2.6",
     "suncalc": "^1.9.0",
     "tailwind-merge": "3.4.0",
     "tz-lookup": "^6.1.25"
   },
+  "overrides": {
+    "@grpc/grpc-js": "1.13.6"
+  },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@firebase/rules-unit-testing": "^5.0.2",
     "@tailwindcss/vite": "4.1.17",
     "@types/node": "22.19.17",
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "5.1.1",
+    "eslint": "^10.12.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.7",
+    "globals": "^16.5.0",
     "tailwindcss": "4.1.17",
     "typescript": "5.9.3",
-    "vite": "7.3.2"
-  }
+    "typescript-eslint": "^8.71.2",
+    "vite": "^7.3.7",
+    "vitest": "^4.1.11"
+  },
+  "engines": {
+    "node": "^22.13.0 || >=24.0.0"
+  },
+  "description": "Atlasia keşif haritası ve konum tabanlı web/PWA uygulaması",
+  "packageManager": "npm@10.9.2"
 }

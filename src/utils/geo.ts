@@ -57,7 +57,7 @@ export async function searchWorld(q: string, signal?: AbortSignal): Promise<Sear
       const [lng, lat] = feature.geometry.coordinates;
       const p = feature.properties;
       const b = p.extent;
-      return { id: `osm-${p.osm_type}-${p.osm_id ?? i}`, label: p.name ?? p.city ?? q, sub: isWithinNorthernCyprus(lng, lat) ? KKTC_NAME : [p.city, p.state, p.country].filter(Boolean).join(" · "), lng, lat, bbox: b ? [b[0], b[3], b[2], b[1]] as [number, number, number, number] : undefined };
+      return { id: `osm-${p.osm_type}-${p.osm_id ?? i}`, label: p.name ?? p.city ?? q, sub: isWithinNorthernCyprus(lng, lat) ? KKTC_NAME : [p.city, p.state, p.country].filter(Boolean).join(" · "), lng, lat, bbox: b };
     });
     if (results.length) { searchCache.set(key, results); return results; }
   } catch (failure) { if (signal?.aborted) throw failure; }

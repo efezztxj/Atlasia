@@ -66,6 +66,77 @@ export default function BottomPanel({
   locating,
 }: Props) {
   const { savePlace, isSaved } = useCollections();
+
+  // Kapatılan keşif alanı kaybolmaz: açık panelin yer kartını tek, ince bir
+  // satır olarak korur. Kartın metin tarafına dokunmak paneli yeniden açar.
+  if (!open) {
+    return (
+      <div
+        className={cn(
+          "pointer-events-none absolute inset-x-0 bottom-[calc(70px+env(safe-area-inset-bottom))] z-20 flex justify-center px-3 pb-3 transition-[padding] duration-500 md:bottom-0 md:pb-7",
+          shifted && "lg:pl-[420px]",
+        )}
+      >
+        <div className="w-full max-w-[920px]">
+          <section
+            aria-label="Daraltılmış keşif önerisi"
+            className="mobile-discovery-panel desktop-discovery-panel pointer-events-auto rounded-[22px] border border-leaf/25 bg-[#021915]/95 p-2.5 shadow-2xl shadow-black/60 backdrop-blur-xl max-md:fixed max-md:inset-x-3 max-md:bottom-[calc(110px+env(safe-area-inset-bottom))] max-md:z-20 md:rounded-[28px] md:p-4"
+          >
+            {current ? (
+              <div className="flex min-w-0 items-center gap-1.5 md:gap-3">
+                <button
+                  type="button"
+                  onClick={onToggle}
+                  aria-label={`Keşif panelini aç: ${current.title}`}
+                  className="flex min-w-0 flex-1 items-center gap-2.5 text-left md:gap-4"
+                >
+                  <PlaceThumb place={current} className="h-12 w-14 shrink-0 rounded-xl ring-1 ring-white/10 md:h-[58px] md:w-[72px]" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[12.5px] font-semibold text-white md:text-[13px]">
+                      {current.title}
+                      <span className="font-normal text-mint/60"> · </span>
+                      <span className={cn("font-normal", current.kind === "user" ? "text-leaf" : "text-sun")}>
+                        {current.kind === "user" ? `Keşif · ${current.author}` : current.author}
+                      </span>
+                    </span>
+                    <span className="mt-1 block truncate text-[10.5px] leading-snug text-mint/65 md:text-[11.5px]">{current.note}</span>
+                  </span>
+                </button>
+
+                <div className="flex shrink-0 items-center gap-1.5 md:gap-2">
+                  <button type="button" onClick={() => savePlace(current)} aria-label={isSaved(current.id) ? "Yer kaydını kaldır" : "Yeri kaydet"} className="hidden size-10 place-items-center rounded-full border border-white/15 text-sun min-[520px]:grid"><Bookmark size={16} fill={isSaved(current.id) ? "currentColor" : "none"} /></button>
+                  <button type="button" onClick={() => onCycle(-1)} aria-label="Önceki yer" className="hidden size-8 place-items-center rounded-full border border-white/10 text-mint/70 transition hover:bg-white/10 hover:text-white md:grid"><ChevronLeft className="size-4" /></button>
+                  <button type="button" onClick={() => onCycle(1)} aria-label="Sonraki yer" className="grid size-9 place-items-center rounded-full border border-white/10 text-mint/70 transition hover:bg-white/10 hover:text-white md:size-8"><ChevronRight className="size-4" /></button>
+                  {canDelete(current) && (
+                    <button type="button" onClick={() => void onDelete(current)} aria-label="Keşfimi sil" title="Keşfimi sil" className="hidden size-8 place-items-center rounded-full border border-red-400/20 text-red-300/70 transition hover:bg-red-400/10 hover:text-red-300 sm:grid"><Trash2 className="size-3.5" /></button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => onShow(current)}
+                    className={cn(
+                      "flex min-h-10 items-center gap-1.5 rounded-full px-3 text-[12px] font-bold text-ink transition active:scale-95 md:px-5 md:text-[12.5px]",
+                      isActive ? "bg-leaf" : "bg-sun hover:bg-sun-2",
+                    )}
+                  >
+                    <span className="hidden sm:inline">{isActive ? "Odaklandı" : "Haritada gör"}</span>
+                    <span className="sm:hidden">Gör</span>
+                    <ArrowRight className="size-3.5" strokeWidth={2.6} />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button type="button" onClick={onToggle} className="flex min-h-12 w-full items-center gap-3 text-left" aria-label="Keşif panelini aç">
+                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-leaf/10 text-leaf"><Sparkles className="size-4" /></span>
+                <span className="min-w-0 flex-1"><span className="block text-[13px] font-semibold text-white">Bir sonraki güzel tesadüfün</span><span className="mt-0.5 block truncate text-[11px] text-mint/60">Kategorileri ve keşif önerilerini yeniden aç.</span></span>
+                <ChevronUp className="size-4 shrink-0 text-sun" />
+              </button>
+            )}
+          </section>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className={cn(

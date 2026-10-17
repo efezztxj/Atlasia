@@ -42,6 +42,8 @@ export interface ViewState {
 export interface FeedReply {
   id: string;
   author: string;
+  /** Bulut yanıtlarında Firebase hesap sahibi. */
+  authorUid?: string;
   text: string;
   createdAt: number;
   likes: number;
@@ -57,7 +59,7 @@ export interface FeedPost {
   authorUid?: string;
   text: string;
   createdAt: number;
-  /** Örnek içerikten gelen temel beğeni sayısı */
+  /** Şema uyumluluğu için sabit başlangıç sayısı; kullanıcı gönderileri 0 ile başlar. */
   likes: number;
   /** Beğenen istemcilerin kimlikleri */
   likedBy?: string[];

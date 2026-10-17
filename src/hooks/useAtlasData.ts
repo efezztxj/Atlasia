@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { SEED_POSTS, SEED_STORIES } from "../data/feed";
 import type { FeedPost, Place, Story, UploadPhotoKind } from "../types";
+import { withoutSeedPosts, withoutSeedStories } from "../lib/contentIntegrity";
 import { compressImage } from "../utils/image";
 import { isStoryAlive } from "../utils/time";
 import { storageGet, storageSet } from "../utils/storage";
@@ -40,9 +40,11 @@ export function useAtlasData(uid: string) {
   const postsKey = `${POSTS_KEY}.${uid}`;
   const storiesKey = `${STORIES_KEY}.${uid}`;
   const [places, setPlaces] = useState<Place[]>(() => load(placesKey, [] as Place[]));
-  const [posts, setPosts] = useState<FeedPost[]>(() => load(postsKey, SEED_POSTS));
+  const [posts, setPosts] = useState<FeedPost[]>(() =>
+    withoutSeedPosts(load(postsKey, [] as FeedPost[])),
+  );
   const [stories, setStories] = useState<Story[]>(() =>
-    load(storiesKey, SEED_STORIES).filter((s) => isStoryAlive(s.createdAt)),
+    withoutSeedStories(load(storiesKey, [] as Story[])).filter((story) => isStoryAlive(story.createdAt)),
   );
 
   useEffect(() => save(placesKey, places), [placesKey, places]);

@@ -517,6 +517,21 @@ body,
 .auth-password-help li { display: flex; align-items: center; gap: 4px; }
 .auth-password-help li[data-valid="true"] { color: #b6e7b8; }
 .auth-password-help > p { margin-top: 5px; }
+.auth-password-strength { margin: 2px 0 9px; }
+.auth-password-strength-copy { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #d7e1d0; }
+.auth-password-strength-copy strong { color: #efd58b; font-weight: 600; }
+.auth-password-meter { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; margin-top: 5px; }
+.auth-password-meter > span { height: 4px; border-radius: 999px; background: #354b39; transition: background .18s ease; }
+.auth-password-strength[data-score="1"] .auth-password-meter > span[data-active="true"] { background: #d58b6d; }
+.auth-password-strength[data-score="2"] .auth-password-meter > span[data-active="true"] { background: #d5b66d; }
+.auth-password-strength[data-score="3"] .auth-password-meter > span[data-active="true"] { background: #9fbd79; }
+.auth-password-strength[data-score="4"] .auth-password-meter > span[data-active="true"] { background: #78bd82; }
+.auth-password-privacy { padding-left: 9px; border-left: 2px solid #526f57; color: #aebfa9; }
+.auth-password-exposure { display: flex; align-items: flex-start; gap: 6px; min-height: 19px; color: #c5d5bc; }
+.auth-password-exposure:empty { min-height: 0; margin-top: 0; }
+.auth-password-exposure svg { flex: 0 0 auto; margin-top: 3px; }
+.auth-password-exposure-exposed, .auth-password-exposure-unavailable { color: #f0ce86; }
+.auth-password-exposure-safe { color: #b6e7b8; }
 .auth-device-note { display: flex; align-items: flex-start; gap: 9px; margin: 18px 0 22px; padding-left: 11px; border-left: 2px solid #739567; color: #c5d6c0; font-size: 12px; line-height: 1.7; }
 .auth-device-note svg { flex-shrink: 0; margin-top: 3px; }
 .auth-device-note strong { color: #e2ebd9; font-weight: 600; }
