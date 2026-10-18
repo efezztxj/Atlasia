@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { FeedPost, Place, Story, UploadPhotoKind } from "../types";
 import { withoutSeedPosts, withoutSeedStories } from "../lib/contentIntegrity";
-import { compressImage } from "../utils/image";
+import { compressImage, compressImageWithinLimit, MAX_PLACE_PHOTO_CHARS } from "../utils/image";
 import { isStoryAlive } from "../utils/time";
 import { storageGet, storageSet } from "../utils/storage";
 
@@ -51,8 +51,10 @@ export function useAtlasData(uid: string) {
   useEffect(() => save(postsKey, posts), [postsKey, posts]);
   useEffect(() => save(storiesKey, stories), [storiesKey, stories]);
 
-  const uploadPhoto = useCallback(async (file: File, _kind: UploadPhotoKind) => {
-    const { dataUrl } = await compressImage(file, 860, 0.7);
+  const uploadPhoto = useCallback(async (file: File, kind: UploadPhotoKind) => {
+    const { dataUrl } = kind === "place"
+      ? await compressImageWithinLimit(file, MAX_PLACE_PHOTO_CHARS)
+      : await compressImage(file, 860, 0.7);
     return dataUrl;
   }, []);
 

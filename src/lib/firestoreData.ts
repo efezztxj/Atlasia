@@ -35,7 +35,7 @@ import {
 } from "firebase/firestore";
 import { db, firebaseConfigured } from "./firebase";
 import { withoutSeedPosts, withoutSeedStories } from "./contentIntegrity";
-import { compressImageWithinLimit } from "../utils/image";
+import { compressImageWithinLimit, MAX_PLACE_PHOTO_CHARS } from "../utils/image";
 import type { FeedPost, FeedReply, Place, Story, StoryAccent, UploadPhotoKind } from "../types";
 
 const COL_PLACES = "places";
@@ -187,7 +187,8 @@ function normalizePlace(id: string, raw: DocumentData): Place {
     note: raw.note ?? "",
     image: raw.image,
     photo: raw.photo,
-    gallery: raw.gallery,
+    gallery: Array.isArray(raw.gallery) && raw.gallery.every((item: unknown) => typeof item === "string")
+      ? raw.gallery as string[] : undefined,
     story: raw.story,
     author: raw.author ?? "Gezgin",
     authorUid: typeof raw.authorUid === "string" ? raw.authorUid : undefined,
@@ -286,8 +287,11 @@ export function applyPostLikedBy(posts: FeedPost[], postId: string, likedBy: str
  * dönüştürür. Veri URL'i ilgili içerikle aynı dokümana atomik olarak yazılır;
  * ayrı bir ücretli dosya depolama hizmeti gerekmez.
  */
-export async function uploadPhoto(file: File, _kind: UploadPhotoKind): Promise<string> {
-  const { dataUrl } = await compressImageWithinLimit(file);
+export async function uploadPhoto(file: File, kind: UploadPhotoKind): Promise<string> {
+  const { dataUrl } = await compressImageWithinLimit(
+    file,
+    kind === "place" ? MAX_PLACE_PHOTO_CHARS : undefined,
+  );
   return dataUrl;
 }
 
@@ -454,8 +458,10 @@ export interface NewPlaceInput {
   lat: number;
   note: string;
   author: string;
-  /** Fotoğraf daha önce uploadPhoto ile yüklendiyse doğrudan URL. */
+  /** İlk fotoğraf, uploadPhoto ile hazırlanmış JPEG data URL'i. */
   photoUrl?: string;
+  /** Diğer fotoğraflar; eski tek fotoğraflı kayıtlarla uyumludur. */
+  gallery?: string[];
   photoFile?: File;
 }
 
@@ -479,6 +485,7 @@ export async function addPlace(input: NewPlaceInput): Promise<Place> {
     createdAt: serverTimestamp(),
   };
   if (photoUrl) payload.photo = photoUrl;
+  if (input.gallery?.length) payload.gallery = input.gallery;
   await setDoc(doc(db, COL_PLACES, id), payload);
   return {
     id,
@@ -492,6 +499,7 @@ export async function addPlace(input: NewPlaceInput): Promise<Place> {
     authorUid: input.uid,
     kind: "user",
     photo: photoUrl,
+    gallery: input.gallery,
     createdAt: Date.now(),
   };
 }

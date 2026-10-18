@@ -405,6 +405,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
     author: string;
     region: string;
     photo?: string;
+    gallery?: string[];
   }) => {
     if (!draft) return;
     const created = await cloud.addPlace({
@@ -416,6 +417,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
       note: data.note || "Bu keşif için henüz bir ipucu bırakılmadı.",
       author: data.author || "Gezgin",
       photo: data.photo,
+      gallery: data.gallery,
     });
     setDraft(null);
     setCategory(null);

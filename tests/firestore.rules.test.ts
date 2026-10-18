@@ -222,6 +222,65 @@ describe("Firestore güvenlik kuralları", () => {
     await assertSucceeds(deleteDoc(placeRef));
   });
 
+  it("300 kelimelik pin notunu ve en fazla üç JPEG'i kabul eder; galeriyi sınırlar", async () => {
+    const ownerDb = testEnv.authenticatedContext("owner").firestore();
+    const otherDb = testEnv.authenticatedContext("other").firestore();
+    const jpg = (content: string) => `data:image/jpeg;base64,${content}`;
+    const first = jpg("AQ==");
+    const second = jpg("Ag==");
+    const third = jpg("Aw==");
+    const galleryPlace = { ...validPlace("owner"), photo: first, gallery: [second, third] };
+    const placeRef = doc(ownerDb, "places/gallery");
+
+    await assertSucceeds(setDoc(placeRef, galleryPlace));
+    expect((await getDoc(placeRef)).data()?.gallery).toEqual([second, third]);
+    await assertSucceeds(updateDoc(placeRef, { note: Array(300).fill("kelime").join(" ") }));
+    await assertFails(updateDoc(doc(otherDb, "places/gallery"), { gallery: [third] }));
+    await assertSucceeds(setDoc(doc(ownerDb, "places/legacy"), { ...validPlace("owner"), photo: first }));
+
+    await assertFails(setDoc(doc(ownerDb, "places/no-cover"), { ...validPlace("owner"), gallery: [second] }));
+    await assertFails(setDoc(doc(ownerDb, "places/empty"), { ...validPlace("owner"), photo: first, gallery: [] }));
+    await assertFails(setDoc(doc(ownerDb, "places/four"), { ...galleryPlace, gallery: [second, third, jpg("BA==")] }));
+    await assertFails(setDoc(doc(ownerDb, "places/duplicate"), { ...galleryPlace, gallery: [second, second] }));
+    await assertFails(setDoc(doc(ownerDb, "places/wrong-type"), { ...galleryPlace, gallery: ["data:image/png;base64,Ag=="] }));
+    await assertFails(setDoc(doc(ownerDb, "places/oversized"), { ...galleryPlace, gallery: [jpg("A".repeat(100000))] }));
+    await assertFails(setDoc(doc(ownerDb, "places/long-note"), { ...validPlace("owner"), note: "x".repeat(5001) }));
+  });
+
+  it("doğrudan Firestore yazımında 300 kelimeyi kabul eder, 301'i create/update için reddeder", async () => {
+    const ownerDb = testEnv.authenticatedContext("owner").firestore();
+    const words = (count: number, separator: string) => Array(count).fill("kelime").join(separator);
+    // JS /\S+/gu için tümü kelime ayırıcıdır; RE2 \s tek başına bunları kapsamaz.
+    const unicodeSeparator = "\t\n\v\u00A0\u2028\u202F\u3000\uFEFF";
+    const ref = doc(ownerDb, "places/word-boundary");
+
+    await assertSucceeds(setDoc(ref, { ...validPlace("owner"), note: words(300, " ") }));
+    await assertFails(setDoc(doc(ownerDb, "places/too-many-words"), {
+      ...validPlace("owner"), note: words(301, " "),
+    }));
+    await assertSucceeds(updateDoc(ref, { note: words(300, unicodeSeparator) }));
+    await assertFails(updateDoc(ref, { note: words(301, unicodeSeparator) }));
+    await assertFails(setDoc(doc(ownerDb, "places/unicode-bypass"), {
+      ...validPlace("owner"), note: words(301, "\u00A0"),
+    }));
+    await assertSucceeds(updateDoc(ref, { note: " \t\n\u00A0\uFEFF " }));
+  });
+
+  it("eski 300+ kelimelik pinin değişmeyen notunu korur, yeni notu sınırlı yazar", async () => {
+    const ownerDb = testEnv.authenticatedContext("owner").firestore();
+    const ref = doc(ownerDb, "places/legacy-note");
+    const words = (count: number, separator: string) => Array(count).fill("kelime").join(separator);
+    await seed("places/legacy-note", {
+      ...validPlace("owner"),
+      note: words(301, " "),
+      createdAt: Timestamp.now(),
+    });
+
+    await assertSucceeds(updateDoc(ref, { title: "Eski pin korunur" }));
+    await assertFails(updateDoc(ref, { note: words(301, "\n") }));
+    await assertSucceeds(updateDoc(ref, { note: words(300, "\uFEFF") }));
+  });
+
   it("post oluştururken sahiplik, başlangıç sayaçları ve alan beyaz listesini korur", async () => {
     const ownerDb = testEnv.authenticatedContext("owner").firestore();
     const postRef = doc(ownerDb, "posts/post-1");

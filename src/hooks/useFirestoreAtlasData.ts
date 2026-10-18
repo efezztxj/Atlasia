@@ -314,6 +314,7 @@ export function useFirestoreAtlasData({
       note: place.note,
       author: place.author,
       photoUrl: place.photo,
+      gallery: place.gallery,
     };
     const created = await addPlaceFs(input);
     setOwnedPlaces((current) => sortNewest(mergeRecordsById([created], current)));

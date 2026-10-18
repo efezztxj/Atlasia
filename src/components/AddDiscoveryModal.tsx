@@ -5,6 +5,8 @@ import type { CategoryId, UploadPhotoKind } from "../types";
 import { mediaUrl } from "../utils/api";
 import { cn } from "../utils/cn";
 import { formatCoords, reverseName } from "../utils/geo";
+import { photoUploadErrorMessage } from "../utils/image";
+import { countWords, MAX_PLACE_NOTE_CHARS, MAX_PLACE_NOTE_WORDS, MAX_PLACE_PHOTOS, preparePlacePhotos } from "../utils/placeDraft";
 import { storageGet, storageSet } from "../utils/storage";
 
 interface Props {
@@ -18,13 +20,15 @@ interface Props {
     author: string;
     region: string;
     photo?: string;
+    gallery?: string[];
   }) => void | Promise<void>;
 }
 
 export default function AddDiscoveryModal({ draft, uploadPhoto, onClose, onSave }: Props) {
-  const [photo, setPhoto] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [photoNeedsConfirmation, setPhotoNeedsConfirmation] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState("");
@@ -52,7 +56,9 @@ export default function AddDiscoveryModal({ draft, uploadPhoto, onClose, onSave 
   }, [onClose]);
 
   const coords = formatCoords(draft.lat, draft.lng);
-  const canSave = title.trim().length >= 2 && !saving && !uploading;
+  const noteWords = countWords(note);
+  const canSave = title.trim().length >= 2 && noteWords <= MAX_PLACE_NOTE_WORDS
+    && note.length <= MAX_PLACE_NOTE_CHARS && !saving && !uploading && !photoNeedsConfirmation;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,28 +73,41 @@ export default function AddDiscoveryModal({ draft, uploadPhoto, onClose, onSave 
         note: note.trim(),
         author: author.trim(),
         region: region ?? coords,
-        photo: photo ?? undefined,
+        photo: photos[0],
+        gallery: photos.length > 1 ? photos.slice(1) : undefined,
       });
     } catch (failure) {
       console.error("[Atlasia] İz kaydedilemedi:", failure);
-      setError("İz kaydedilemedi. Bağlantını kontrol edip tekrar dene.");
+      const code = (failure as { code?: string } | null)?.code ?? "";
+      setError(code.includes("permission-denied")
+        ? "Sunucu bu izi reddetti. Çoklu fotoğraf için Firestore kuralları yayınlanmamış olabilir; kayıt yapılmadı."
+        : "İz kaydedilemedi. Bağlantını kontrol edip tekrar dene.");
     } finally {
       setSaving(false);
     }
   };
 
-  const pick = async (file?: File) => {
-    if (!file) return;
+  const pick = async (files: File[]) => {
+    if (!files.length || uploading || saving) return;
     setUploading(true);
+    setPhotoNeedsConfirmation(false);
     setError(null);
     try {
-      setPhoto(await uploadPhoto(file, "place"));
+      const result = await preparePlacePhotos(photos, files, (file) => uploadPhoto(file, "place"), (failure) => {
+        console.error("[Atlasia] Fotoğraf hazırlanamadı:", failure);
+        return photoUploadErrorMessage(failure);
+      });
+      setPhotos(result.photos);
+      const failures = result.failures.map(({ name, reason }) => `${name}: ${reason}`);
+      if (result.failures.length) setPhotoNeedsConfirmation(true);
+      if (result.skipped) failures.push(`En fazla ${MAX_PLACE_PHOTOS} fotoğraf eklenebilir; ${result.skipped} fotoğraf işlenmedi.`);
+      if (failures.length) setError(failures.join(" "));
     } catch (failure) {
-      console.error("[Atlasia] Fotoğraf yüklenemedi:", failure);
-      setError("Fotoğraf yüklenemedi. İstersen fotoğrafsız devam edebilirsin.");
+      console.error("[Atlasia] Fotoğraf hazırlama hatası:", failure);
+      setPhotoNeedsConfirmation(true);
+      setError(photoUploadErrorMessage(failure));
     } finally {
       setUploading(false);
-      if (fileRef.current) fileRef.current.value = "";
     }
   };
 
@@ -165,59 +184,71 @@ export default function AddDiscoveryModal({ draft, uploadPhoto, onClose, onSave 
         </div>
 
         <label className="mt-4 block text-[12px] font-medium text-mint/80">
-          Küçük ipucu
+          Notun <span className="text-mint/50">(en fazla 300 kelime)</span>
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            maxLength={180}
-            rows={3}
+            maxLength={MAX_PLACE_NOTE_CHARS}
+            aria-describedby="place-note-count"
+            aria-invalid={noteWords > MAX_PLACE_NOTE_WORDS}
+            rows={6}
             placeholder="Gelecek gezginlere ne söylemek istersin? Hangi saatte, neye dikkat etmeli?"
-            className="mt-1.5 w-full resize-none rounded-xl border border-white/10 bg-ink px-3.5 py-2.5 text-[13px] leading-relaxed text-white outline-none transition placeholder:text-mint/35 focus:border-sun/70"
+            className="mt-1.5 w-full resize-y rounded-xl border border-white/10 bg-ink px-3.5 py-2.5 text-[13px] leading-relaxed text-white outline-none transition placeholder:text-mint/35 focus:border-sun/70"
           />
-          <span className="mt-1 block text-right text-[10px] text-mint/40">{note.length}/180</span>
+          <span id="place-note-count" className={cn("mt-1 block text-right text-[11px]", noteWords > MAX_PLACE_NOTE_WORDS ? "text-red-200" : "text-mint/60")}>
+            {noteWords}/{MAX_PLACE_NOTE_WORDS} kelime · {note.length}/{MAX_PLACE_NOTE_CHARS} karakter
+          </span>
         </label>
 
-        {/* Fotoğraf */}
+        {/* Birden fazla fotoğraf aynı seçimde hazırlanır; ilk görsel kapaktır. */}
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
-          disabled={uploading}
+          disabled={uploading || saving || photos.length >= MAX_PLACE_PHOTOS}
           className={cn(
-            "mt-1 flex w-full items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left text-[12px] transition",
-            photo
+            "mt-1 flex min-h-11 w-full items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left text-[12px] transition disabled:cursor-not-allowed",
+            photos.length
               ? "border-leaf/45 bg-leaf/10 text-mint"
               : "border-dashed border-white/15 bg-white/[0.02] text-mint/60 hover:border-leaf/50 hover:text-mint",
           )}
         >
-          {photo ? (
-            <img src={mediaUrl(photo)} alt="" className="size-9 shrink-0 rounded-lg object-cover" />
-          ) : uploading ? (
-            <Loader2 className="size-4 shrink-0 animate-spin text-leaf" />
-          ) : (
-            <ImagePlus className="size-4 shrink-0 text-mint/45" />
-          )}
-          <span className="min-w-0 flex-1 truncate">
-            {uploading ? "Fotoğraf hazırlanıyor…" : photo ? "Fotoğraf eklendi" : "Fotoğraf ekle"}
+          {uploading ? <Loader2 className="size-4 shrink-0 animate-spin text-leaf" /> : <ImagePlus className="size-4 shrink-0 text-mint/70" />}
+          <span className="min-w-0 flex-1">
+            {uploading ? "Fotoğraflar hazırlanıyor…" : photos.length >= MAX_PLACE_PHOTOS
+              ? "3/3 fotoğraf · değiştirmek için birini kaldır"
+              : `Fotoğraf ekle · ${photos.length}/${MAX_PLACE_PHOTOS} (birden fazla seçebilirsin)`}
           </span>
-          {photo && (
-            <span
-              onClick={(e) => {
-                e.stopPropagation();
-                setPhoto(null);
-              }}
-              className="shrink-0 rounded-full p-1 text-mint/50 transition hover:text-white"
-            >
-              <X className="size-3.5" />
-            </span>
-          )}
         </button>
         <input
           ref={fileRef}
           type="file"
-          accept="image/*"
+          accept="image/*,.heic,.heif"
+          multiple
           hidden
-          onChange={(e) => void pick(e.target.files?.[0])}
+          onChange={(e) => {
+            const selected = Array.from(e.currentTarget.files ?? []);
+            e.currentTarget.value = "";
+            void pick(selected);
+          }}
         />
+        {photos.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-2" aria-label="Seçilen fotoğraflar">
+            {photos.map((photo, index) => (
+              <div key={index} className="relative size-16 overflow-hidden rounded-lg border border-leaf/40">
+                <img src={mediaUrl(photo)} alt={`${index + 1}. fotoğraf${index === 0 ? " (kapak)" : ""}`} className="size-full object-cover" />
+                <button
+                  type="button"
+                  disabled={uploading || saving}
+                  onClick={() => { setPhotos((current) => current.filter((_, i) => i !== index)); setError(null); setPhotoNeedsConfirmation(false); }}
+                  aria-label={`${index + 1}. fotoğrafı kaldır`}
+                  className="absolute top-0 right-0 grid size-7 place-items-center rounded-bl-lg bg-ink/90 text-white disabled:opacity-50"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
 
         <label className="mt-3 block text-[12px] font-medium text-mint/80">
           Takma adın <span className="text-mint/40">(isteğe bağlı)</span>
@@ -230,7 +261,16 @@ export default function AddDiscoveryModal({ draft, uploadPhoto, onClose, onSave 
           />
         </label>
 
-        {error && <p role="alert" className="mt-4 rounded-xl border border-red-400/20 bg-red-400/[0.07] px-3 py-2 text-[12px] leading-relaxed text-red-200">{error}</p>}
+        {error && (
+          <div role="alert" className="mt-4 rounded-xl border border-red-400/20 bg-red-400/[0.07] px-3 py-2 text-[12px] leading-relaxed text-red-200">
+            <p>{error}</p>
+            {photoNeedsConfirmation && (
+              <button type="button" onClick={() => { setPhotoNeedsConfirmation(false); setError(null); }} className="mt-2 min-h-10 text-left font-semibold text-sun underline">
+                {photos.length ? "Hazır fotoğraflarla devam et" : "Fotoğrafsız devam et"}
+              </button>
+            )}
+          </div>
+        )}
 
         <div className="mt-6 flex items-center justify-end gap-2">
           <button

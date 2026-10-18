@@ -17,21 +17,51 @@ service cloud.firestore {
              && value.size() <= maxSize;
     }
 
+    function validPhotoValue(value, maxSize) {
+      return value is string
+             && value.size() <= maxSize
+             && value.matches('data:image/jpeg;base64,[A-Za-z0-9+/=]+');
+    }
+
     function hasValidPhoto(data) {
-      return ('photo' in data)
-             && data.photo is string
-             && data.photo.size() <= 180000
-             && data.photo.matches('data:image/jpeg;base64,[A-Za-z0-9+/=]+');
+      return ('photo' in data) && validPhotoValue(data.photo, 180000);
     }
 
     function hasValidOptionalPhoto(data) {
       return !('photo' in data) || hasValidPhoto(data);
     }
 
+    // Mevcut tek fotoğraflı pinler değişmeden kalır. Yeni galeriler ilk fotoğrafla
+    // birlikte en fazla iki küçük JPEG içerebilir (medya üst sınırı 380 KB).
+    function hasValidPlaceGallery(data) {
+      return !('gallery' in data) || (
+        hasValidPhoto(data)
+        && data.gallery is list
+        && data.gallery.size() > 0
+        && data.gallery.size() <= 2
+        && validPhotoValue(data.gallery[0], 100000)
+        && data.gallery[0] != data.photo
+        && (data.gallery.size() == 1 || (
+          validPhotoValue(data.gallery[1], 100000)
+          && data.gallery[1] != data.photo
+          && data.gallery[1] != data.gallery[0]
+        ))
+      );
+    }
+
     function hasTextOrPhoto(data, maxTextSize) {
       return data.text is string
              && data.text.size() <= maxTextSize
              && (data.text.size() > 0 || hasValidPhoto(data));
+    }
+
+    // JS /\S+/gu ile aynı sözcük tanımı: RE2 \s Unicode ayırıcıları,
+    // dikey sekmeyi (0B) ve BOM'u (FEFF) kapsamaz. Her sözcük bir 'x'e
+    // çevrilip boşluklar kaldırılınca kalan uzunluk sözcük sayısıdır.
+    function validPlaceNote(note) {
+      return stringBetween(note, 0, 5000)
+             && note.replace('[^\\s\\p{Z}\\x{0B}\\x{FEFF}]+', 'x')
+                    .replace('[\\s\\p{Z}\\x{0B}\\x{FEFF}]+', '').size() <= 300;
     }
 
     function hasValidOptionalLocation(data) {
@@ -57,7 +87,7 @@ service cloud.firestore {
              ])
              && data.keys().hasOnly([
                'title', 'region', 'category', 'lng', 'lat', 'note',
-               'author', 'authorUid', 'kind', 'createdAt', 'photo'
+               'author', 'authorUid', 'kind', 'createdAt', 'photo', 'gallery'
              ])
              && stringBetween(data.title, 1, 200)
              && stringBetween(data.region, 0, 200)
@@ -76,7 +106,8 @@ service cloud.firestore {
              && stringBetween(data.authorUid, 1, 128)
              && data.kind == 'user'
              && data.createdAt is timestamp
-             && hasValidOptionalPhoto(data);
+             && hasValidOptionalPhoto(data)
+             && hasValidPlaceGallery(data);
     }
 
     function validPostShape(data) {
@@ -202,11 +233,16 @@ service cloud.firestore {
       allow list: if boundedList(50);
       allow create: if signedIn()
                     && validPlaceShape(request.resource.data)
+                    && validPlaceNote(request.resource.data.note)
                     && request.resource.data.authorUid == request.auth.uid
                     && request.resource.data.createdAt == request.time;
       allow update: if signedIn()
                     && resource.data.authorUid == request.auth.uid
                     && validPlaceShape(request.resource.data)
+                    // Eski 300+ kelimelik pinler okunup diğer alanları güncellenebilir;
+                    // not değişirse yeni sınır zorunlu, eski kayıtlar silinmez.
+                    && (request.resource.data.note == resource.data.note
+                        || validPlaceNote(request.resource.data.note))
                     && request.resource.data.authorUid == resource.data.authorUid
                     && request.resource.data.kind == resource.data.kind
                     && request.resource.data.createdAt == resource.data.createdAt;
