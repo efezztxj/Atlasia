@@ -12,7 +12,7 @@ describe("depo hijyeni", () => {
     };
 
     expect(pkg).toMatchObject({
-      name: "atlasia-web",
+      name: "atlasia",
       version: "0.1.0",
       packageManager: "npm@10.9.2",
       engines: { node: "^22.13.0 || >=24.0.0" },
