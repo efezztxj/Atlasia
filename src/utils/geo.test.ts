@@ -1,5 +1,18 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { searchWorld } from "./geo";
+import { haversineKm, searchWorld } from "./geo";
+
+describe("haversineKm mesafe kilidi", () => {
+  it("İstanbul → Ankara büyük daire mesafesi ≈ 349.4 km (±0.5)", () => {
+    // Regresyon kilidi: haversine formülü değiştirilirse mesafeler sessizce kayar.
+    const km = haversineKm(41.0082, 28.9784, 39.9334, 32.8597);
+    expect(km).toBeGreaterThan(348.9);
+    expect(km).toBeLessThan(349.9);
+  });
+
+  it("aynı nokta sıfır mesafedir", () => {
+    expect(haversineKm(41.0082, 28.9784, 41.0082, 28.9784)).toBe(0);
+  });
+});
 
 describe("Photon arama sınırları", () => {
   afterEach(() => {
