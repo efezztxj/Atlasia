@@ -9,6 +9,7 @@
   - `2d75a79` — `feat: duraklarin varis saatine gore hava ve yagmur plani ekle` (Adım 15)
   - `75d7fd1` — `feat: firestore grup ve sohbet akisini ekle` (Adım 16)
   - `dca8b31` — `refactor: moderasyon rapor dogrulamasini tipli girdiyle sadelestir` (tip temizliği; davranış değişmedi)
+  - `0e1d86b` — `docs: p4 faz e teslimatini ekle` (bu dosya)
 - **Kilit kontrolü:** `src/components/MapView.tsx` değişmedi. `storage.rules` değişmedi. `main`'e commit yok, PR açılmadı.
 
 ```
@@ -360,7 +361,7 @@ Tek eşleşme **bu teslimattan önce var olan** test satırıdır; bu dalda o do
 ## 8. Değişen dosyalar
 
 ```
-$ git diff --stat ab29018..HEAD
+$ git diff --stat ab29018..HEAD -- . ':!teslimat-p4.md'   # teslimat dosyası hariç, kod değişikliği
 
  firestore.rules                       | 196 +++++++++++++++++
  src/App.tsx                           |  79 +++++--
