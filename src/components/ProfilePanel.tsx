@@ -10,6 +10,7 @@ import {
   Phone,
   RefreshCw,
   Route,
+  Copy,
   Send,
   ShieldCheck,
   Trash2,
@@ -150,6 +151,30 @@ export default function ProfilePanel({ onClose, onRecords }: Props) {
           {user?.phoneNumber ? <Phone size={15} /> : <Mail size={15} />}
           {user?.email ?? user?.phoneNumber}
         </p>
+
+        <div className="mt-4 rounded-xl border border-leaf/20 bg-white/[0.03] p-3">
+          <p className="text-[11px] text-mint/60">Hesap kimliğin (grup daveti için paylaş)</p>
+          <div className="mt-1 flex items-center gap-2">
+            <code className="min-w-0 flex-1 truncate text-[11px] text-mint/85">{user?.uid}</code>
+            <button
+              type="button"
+              onClick={async () => {
+                if (!user) return;
+                try {
+                  await navigator.clipboard.writeText(user.uid);
+                  setStatus("Hesap kimliğin kopyalandı.");
+                } catch (error) {
+                  setStatus("Kopyalanamadı. Kimliği elle seçip kopyalayabilirsin.");
+                  console.warn("[Atlasia] Kimlik kopyalanamadı:", error);
+                }
+              }}
+              aria-label="Hesap kimliğini kopyala"
+              className="grid size-8 shrink-0 place-items-center rounded-full border border-white/10 text-mint/70 hover:bg-white/5"
+            >
+              <Copy size={13} />
+            </button>
+          </div>
+        </div>
 
         {needsEmailVerification && (
           <section className="mt-4 rounded-2xl border border-sun/25 bg-sun/[0.07] p-4" aria-labelledby="verify-email-title">

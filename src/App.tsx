@@ -115,7 +115,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
       console.warn("[Atlasia] Config özeti:", firebaseConfigSummary);
     }
   }, [remote.ready, remote.error]);
-  const { isBlocked } = useBlocks(user?.uid);
+  const { blockedSet, isBlocked } = useBlocks(user?.uid);
   const freshness = useFreshness(user?.uid);
   const rawDiscoveries = cloud.places;
   const rawPosts = cloud.posts;
@@ -143,6 +143,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   const [myPlacesOpen, setMyPlacesOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [pendingGroupId, setPendingGroupId] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [resumeRoute, setResumeRoute] = useState<AtlasRoute | null>(null);
   const [smallScreen, setSmallScreen] = useState(() => window.innerWidth < 768);
@@ -207,9 +208,16 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
     const unsub = subscribeNotifications(user.uid, setNotifications);
     return () => unsub();
   }, [user?.uid]);
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const visibleNotifications = notifications.filter((item) => !isBlocked(item.actorUid));
+  const unreadCount = visibleNotifications.filter((n) => !n.read).length;
   const handleMarkAllRead = () => { if (user?.uid) void markAllRead(user.uid, notifications); };
   const handleNotificationRead = (id: string) => { if (user?.uid) void markNotificationRead(user.uid, id, true); };
+  const clearPendingGroup = useCallback(() => setPendingGroupId(null), []);
+  const openGroupFromNotification = useCallback((groupId: string) => {
+    closePanels();
+    setFeedOpen(true);
+    setPendingGroupId(groupId);
+  }, []);
 
   const precise = useMemo(
     () =>
@@ -736,6 +744,10 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         onToggleLike={cloud.toggleLike}
         onAddStory={cloud.addStory}
         onRemoveStory={cloud.removeStory}
+        blockedSet={blockedSet}
+        isBlocked={isBlocked}
+        pendingGroupId={pendingGroupId}
+        onGroupOpened={clearPendingGroup}
       />
 
       {recordsOpen && <RecordsDock onClose={() => setRecordsOpen(false)} onPlace={(place) => { closePanels(); focusPlace(place); setStoryPlace(place); }} onRoute={(route) => { closePanels(); setResumeRoute(route); setAtlasOpen(true); }} />}
@@ -772,7 +784,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
       />
 
       {notificationsOpen && (
-        <NotificationsPanel notifications={notifications} unreadCount={unreadCount} onClose={() => setNotificationsOpen(false)} onMarkAllRead={handleMarkAllRead} onMarkRead={handleNotificationRead} />
+        <NotificationsPanel notifications={visibleNotifications} unreadCount={unreadCount} onClose={() => setNotificationsOpen(false)} onMarkAllRead={handleMarkAllRead} onMarkRead={handleNotificationRead} onOpenGroup={openGroupFromNotification} />
       )}
 
       {draft && (

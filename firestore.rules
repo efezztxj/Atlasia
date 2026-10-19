@@ -229,6 +229,50 @@ service cloud.firestore {
              && data.createdAt == request.time;
     }
 
+    function validGroupShape(data) {
+      return data.keys().hasAll(['name', 'ownerUid', 'memberUids', 'createdAt', 'updatedAt'])
+             && data.keys().hasOnly(['name', 'ownerUid', 'memberUids', 'createdAt', 'updatedAt', 'lastMessage'])
+             && stringBetween(data.name, 1, 80)
+             && stringBetween(data.ownerUid, 1, 128)
+             && data.ownerUid == request.auth.uid
+             && data.memberUids is list
+             && data.memberUids.size() >= 1
+             && data.memberUids.size() <= 20
+             && data.memberUids.toSet().size() == data.memberUids.size()
+             && request.auth.uid in data.memberUids
+             && data.createdAt is timestamp
+             && data.updatedAt == request.time
+             && (!('lastMessage' in data) || validLastMessage(data.lastMessage));
+    }
+
+    function validLastMessage(message) {
+      return message is map
+             && message.keys().hasAll(['text', 'senderUid', 'senderName', 'createdAt'])
+             && message.keys().hasOnly(['text', 'senderUid', 'senderName', 'createdAt'])
+             && stringBetween(message.text, 1, 200)
+             && message.senderUid == request.auth.uid
+             && stringBetween(message.senderName, 1, 100)
+             && message.createdAt == request.time;
+    }
+
+    function validGroupMessage(data) {
+      return data.keys().hasAll(['senderUid', 'senderName', 'text', 'createdAt'])
+             && data.keys().hasOnly(['senderUid', 'senderName', 'text', 'createdAt'])
+             && data.senderUid == request.auth.uid
+             && stringBetween(data.senderName, 1, 100)
+             && stringBetween(data.text, 1, 1000)
+             && data.createdAt == request.time;
+    }
+
+    function validGroupIndex(data, groupId) {
+      return data.keys().hasAll(['groupId', 'name', 'role', 'joinedAt'])
+             && data.keys().hasOnly(['groupId', 'name', 'role', 'joinedAt'])
+             && data.groupId == groupId
+             && stringBetween(data.name, 1, 80)
+             && data.role in ['owner', 'member']
+             && data.joinedAt == request.time;
+    }
+
     function validNotification(data) {
       return data.keys().hasAll(['recipientUid', 'actorUid', 'type', 'title', 'body', 'read', 'createdAt'])
              && data.keys().hasOnly(['recipientUid', 'actorUid', 'type', 'title', 'body', 'read', 'createdAt', 'targetId'])
@@ -316,6 +360,63 @@ service cloud.firestore {
       allow create: if signedIn() && validBlock(request.resource.data);
       allow update: if false;
       allow delete: if signedIn() && resource.data.blockerUid == request.auth.uid;
+    }
+
+    // ─────────────────────────── Adım 16 · grup + sohbet ───────────────────────────
+    // Okuma sınırı: grup listesi kullanıcının kendi indeksinden (limit 20), mesajlar
+    // tek grupta en yeni 50 kayıttan okunur. Realtime Database veya üçüncü taraf yok.
+    match /groups/{groupId} {
+      allow get: if signedIn() && request.auth.uid in resource.data.memberUids;
+      // Geniş koleksiyon taraması kapalı: kullanıcı yalnız üyesi olduğu grubu tek
+      // belge olarak okur; liste kendi users/{uid}/groups indeksinden gelir.
+      allow list: if false;
+      allow create: if signedIn() && validGroupShape(request.resource.data)
+                    && request.resource.data.createdAt == request.time;
+      allow update: if signedIn()
+                    && request.auth.uid in resource.data.memberUids
+                    && (
+                      (
+                        resource.data.ownerUid == request.auth.uid
+                        && validGroupShape(request.resource.data)
+                        && request.resource.data.ownerUid == resource.data.ownerUid
+                        && request.resource.data.createdAt == resource.data.createdAt
+                      ) || (
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'updatedAt'])
+                        && validLastMessage(request.resource.data.lastMessage)
+                        && request.resource.data.name == resource.data.name
+                        && request.resource.data.ownerUid == resource.data.ownerUid
+                        && request.resource.data.memberUids == resource.data.memberUids
+                      ) || (
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberUids', 'updatedAt'])
+                        && request.resource.data.name == resource.data.name
+                        && request.resource.data.ownerUid == resource.data.ownerUid
+                        && request.resource.data.memberUids.toSet() == resource.data.memberUids.toSet().difference([request.auth.uid].toSet())
+                      )
+                    );
+      allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+
+      match /messages/{messageId} {
+        function groupMembers() {
+          return get(/databases/$(database)/documents/groups/$(groupId)).data.memberUids;
+        }
+        allow get: if signedIn() && request.auth.uid in groupMembers();
+        allow list: if signedIn() && boundedList(50) && request.auth.uid in groupMembers();
+        allow create: if signedIn()
+                      && request.auth.uid in groupMembers()
+                      && validGroupMessage(request.resource.data);
+        allow update: if false;
+        allow delete: if signedIn() && resource.data.senderUid == request.auth.uid;
+      }
+    }
+
+    // Kullanıcının kendi grup indeksi: listeleme buradan yapılır (limit 20).
+    match /users/{uid}/groups/{groupId} {
+      allow get: if signedIn() && uid == request.auth.uid;
+      allow list: if signedIn() && uid == request.auth.uid && boundedList(20);
+      allow create: if signedIn() && uid == request.auth.uid
+                    && validGroupIndex(request.resource.data, groupId);
+      allow update: if false;
+      allow delete: if signedIn() && uid == request.auth.uid;
     }
 
     // Notifications: kullanıcı subcollection — yalnız alıcı okur, aktör yazar (engelleme hariç)

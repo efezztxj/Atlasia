@@ -16,6 +16,7 @@ import {
   Send,
   Sparkles,
   Trash2,
+  UsersRound,
   X,
 } from "lucide-react";
 
@@ -31,6 +32,7 @@ import Avatar from "./Avatar";
 import StoryComposer from "./StoryComposer";
 import StoryViewer from "./StoryViewer";
 import ReportDialog from "./ReportDialog";
+import GroupsPanel from "./GroupsPanel";
 import { blockUser } from "../lib/moderation";
 
 const SEEN_KEY = "atlasia.feed.seen.v1";
@@ -64,6 +66,10 @@ interface Props {
   onToggleLike: (postId: string) => Promise<unknown> | unknown;
   onAddStory: (s: Partial<Story>) => Promise<unknown> | unknown;
   onRemoveStory: (id: string) => Promise<unknown> | unknown;
+  blockedSet: Set<string>;
+  isBlocked: (uid?: string | null) => boolean;
+  pendingGroupId?: string | null;
+  onGroupOpened?: () => void;
 }
 
 export default function SocialPanel({
@@ -92,6 +98,10 @@ export default function SocialPanel({
   onToggleLike,
   onAddStory,
   onRemoveStory,
+  blockedSet,
+  isBlocked,
+  pendingGroupId,
+  onGroupOpened,
 }: Props) {
   const [seen, setSeen] = useState<string[]>(() => {
     try {
@@ -116,6 +126,12 @@ export default function SocialPanel({
   const [composerOpen, setComposerOpen] = useState(false);
   const [reportPost, setReportPost] = useState<FeedPost | null>(null);
   const [menuPostId, setMenuPostId] = useState<string | null>(null);
+  const [groupsOpen, setGroupsOpen] = useState(false);
+  useEffect(() => {
+    if (!pendingGroupId) return;
+    setGroupsOpen(true);
+    onGroupOpened?.();
+  }, [pendingGroupId, onGroupOpened]);
 
   const listRef = useRef<HTMLDivElement>(null);
   const replyInputRef = useRef<HTMLInputElement>(null);
@@ -296,9 +312,16 @@ export default function SocialPanel({
           <span className="text-[13px] text-mint/55">{posts.length} ipucu</span>
 
           <button
+            type="button"
+            onClick={() => setGroupsOpen(true)}
+            className="ml-auto flex min-h-9 items-center gap-1.5 rounded-full border border-leaf/25 px-3 text-[11.5px] text-leaf transition hover:bg-leaf/10"
+          >
+            <UsersRound className="size-3.5" />Gruplar
+          </button>
+          <button
             onClick={onClose}
             aria-label="İzler panelini küçült"
-            className="ml-auto grid size-11 place-items-center rounded-full text-mint/60 transition hover:bg-white/10 hover:text-white"
+            className="grid size-11 place-items-center rounded-full text-mint/60 transition hover:bg-white/10 hover:text-white"
           >
             <Minus className="size-4" />
           </button>
@@ -733,6 +756,9 @@ export default function SocialPanel({
       )}
       {reportPost && (
         <ReportDialog targetType="post" targetId={reportPost.id} targetOwnerUid={reportPost.authorUid} targetLabel={reportPost.text.slice(0,40)} reporterUid={currentUid} onClose={() => setReportPost(null)} onReported={() => setActionError("Raporun alındı, inceleyeceğiz.")} />
+      )}
+      {groupsOpen && (
+        <GroupsPanel currentUid={currentUid} currentName={author()} blockedSet={blockedSet} isBlocked={isBlocked} initialGroupId={pendingGroupId} onClose={() => setGroupsOpen(false)} />
       )}
     </>
   );

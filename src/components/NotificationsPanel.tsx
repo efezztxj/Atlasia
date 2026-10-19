@@ -9,9 +9,10 @@ interface Props {
   onClose: () => void;
   onMarkAllRead: () => void;
   onMarkRead: (id: string) => void;
+  onOpenGroup?: (groupId: string) => void;
 }
 
-export default function NotificationsPanel({ notifications, unreadCount, onClose, onMarkAllRead, onMarkRead }: Props) {
+export default function NotificationsPanel({ notifications, unreadCount, onClose, onMarkAllRead, onMarkRead, onOpenGroup }: Props) {
   const panelRef = usePanelAccess(true, onClose);
   return (
     <aside ref={panelRef as never} aria-label="Bildirimler" className="mobile-notifications fixed inset-0 z-[60] flex justify-end bg-black/35 md:inset-auto md:right-4 md:top-[88px] md:bg-transparent">
@@ -36,7 +37,12 @@ export default function NotificationsPanel({ notifications, unreadCount, onClose
               <h3 className="text-[13px] font-semibold">{n.title}</h3>
               <p className="mt-1 text-[12px] leading-relaxed text-mint/75">{n.body}</p>
               <p className="mt-2 text-[11px] text-mint/50">{relativeTime(n.createdAt)} · {n.type}</p>
-              {!n.read && <button type="button" onClick={() => onMarkRead(n.id)} className="mt-2 text-[11px] text-sun">Okundu işaretle</button>}
+              <div className="mt-2 flex items-center gap-3">
+                {!n.read && <button type="button" onClick={() => onMarkRead(n.id)} className="text-[11px] text-sun">Okundu işaretle</button>}
+                {(n.type === "group_invite" || n.type === "group_message") && n.targetId && onOpenGroup && (
+                  <button type="button" onClick={() => onOpenGroup(n.targetId as string)} className="text-[11px] text-leaf">Grubu aç</button>
+                )}
+              </div>
             </article>
           ))}
         </div>

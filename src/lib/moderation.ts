@@ -15,6 +15,7 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  updateDoc,
   where,
   writeBatch,
 } from "firebase/firestore";
@@ -269,6 +270,61 @@ async function deleteOwnedBlocks(uid: string): Promise<number> {
   return deleted;
 }
 
+async function deleteOwnSubcollection(uid: string, subcollection: "notifications" | "groups"): Promise<number> {
+  if (!db) return 0;
+  const q = query(collection(db, `users/${uid}/${subcollection}`), limit(50));
+  let deleted = 0;
+  let snap = await getDocs(q);
+  while (snap.size > 0) {
+    const batch = writeBatch(db);
+    snap.docs.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+    deleted += snap.size;
+    snap = await getDocs(q);
+  }
+  return deleted;
+}
+
+async function leaveOrDeleteGroups(uid: string): Promise<number> {
+  if (!db) return 0;
+  const indexSnap = await getDocs(query(collection(db, `users/${uid}/groups`), limit(50)));
+  let cleaned = 0;
+  for (const indexDoc of indexSnap.docs) {
+    const groupId = indexDoc.id;
+    try {
+      const groupRef = doc(db, "groups", groupId);
+      const snap = await getDoc(groupRef);
+      if (!snap.exists()) continue;
+      const data = snap.data();
+      // Kişinin kendi mesajlarını sil (kural: yalnız gönderen).
+      const messages = await getDocs(query(
+        collection(db, "groups", groupId, "messages"),
+        where("senderUid", "==", uid),
+        limit(50),
+      ));
+      if (messages.size > 0) {
+        const batch = writeBatch(db);
+        messages.docs.forEach((message) => batch.delete(message.ref));
+        await batch.commit();
+        cleaned += messages.size;
+      }
+      const members = Array.isArray(data.memberUids) ? (data.memberUids as string[]) : [];
+      if (data.ownerUid === uid) {
+        await deleteDoc(groupRef);
+      } else if (members.includes(uid)) {
+        await updateDoc(groupRef, {
+          memberUids: members.filter((member) => member !== uid),
+          updatedAt: serverTimestamp(),
+        });
+      }
+      cleaned += 1;
+    } catch (error) {
+      console.warn(`[Atlasia] ${groupId} grubundan ayrılma tamamlanamadı:`, error);
+    }
+  }
+  return cleaned;
+}
+
 async function deleteOwnedVerifications(uid: string): Promise<number> {
   // Adım 14'te eklenir; yoksa sessizce 0 döner
   if (!db) return 0;
@@ -301,18 +357,13 @@ export async function deleteUserData(uid: string): Promise<{ places: number; pos
     deleteOwnedBlocks(cleanUid),
     deleteOwnedVerifications(cleanUid),
   ]);
-  // Top-level veriler silindi; local storage temizliği çağıran tarafta yapılır.
+  // Grup üyeliği, gönderdiği mesajlar ve bildirimler de kalkar.
   try {
-    // Firestore'da groups/messages temizliği Adım 16'da eklenecek; şimdilik yer tutucu
-    const groupQuery = query(collection(db, "groups"), where("createdBy", "==", cleanUid), limit(50));
-    const groupSnap = await getDocs(groupQuery);
-    if (groupSnap.size > 0) {
-      const batch = writeBatch(db);
-      groupSnap.docs.forEach((d) => batch.delete(d.ref));
-      await batch.commit();
-    }
+    await leaveOrDeleteGroups(cleanUid);
+    await deleteOwnSubcollection(cleanUid, "groups");
+    await deleteOwnSubcollection(cleanUid, "notifications");
   } catch (error) {
-    console.warn("[Atlasia] Grup verisi temizlenemedi:", error);
+    console.warn("[Atlasia] Grup/notification verisi temizlenemedi:", error);
   }
   return { places, posts, stories, reports, blocks, verifications };
 }
