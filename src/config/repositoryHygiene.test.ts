@@ -20,6 +20,17 @@ describe("depo hijyeni", () => {
     expect(pkg.description).toContain("Atlasia");
   });
 
+  it("örnek ortam dosyası altı boş VITE_ değişkeni içerir ve README belge hedeflerini bağlar", () => {
+    const env = readFileSync(".env.example", "utf8");
+    const viteVariables = env.split(/\r?\n/).filter((line) => line.startsWith("VITE_"));
+    expect(viteVariables).toHaveLength(6);
+    expect(viteVariables.every((line) => /^VITE_[A-Z0-9_]+=$/.test(line))).toBe(true);
+
+    const readme = readFileSync("README.md", "utf8");
+    expect(readme).toContain("(AUTH_SETUP.md)");
+    expect(readme).toContain("(CHANGELOG.md)");
+  });
+
   it("kopya uygulama, zip ve bağımlılığı olmayan capture betiğini tutmaz", () => {
     expect(existsSync("satellite-map-web-application (1)")).toBe(false);
     expect(existsSync("satellite-map-web-application.zip")).toBe(false);

@@ -3,8 +3,8 @@
 > Bu dosya, Atlasia'ya eklenecek işlerin **bağımlılık sırasıdır**; özellik listesi değil.
 > Ajanlar için yazıldı: her adımın amacı, girdisi, dosya yolları, "bitti kanıtı" komutu ve riski var.
 >
-> - **Son güncelleme:** 2026-10-14 (v2)
-> - **Durum:** Adım 0 bekliyor · 5 karar onay bekliyor (⛔)
+> - **Son güncelleme:** 2026-10-20 (P1 · TEMEL & KAPANIŞ)
+> - **Durum:** Adım 0 tamamlandı; Adım 1–2 ve kapanış uygulandı. Firestore Rules emulator kanıtı Java 21 runtime eksikliği nedeniyle bekliyor; kalan doğrulamalar `teslimat-p1.md` içinde. Karar (a) alt koleksiyon olarak seçildi; (b–g) açık.
 > - **Kural:** ⛔ işaretli adımlarda insan onayı olmadan kod yazılmaz.
 > - **v1'e göre değişiklik:** ürün tezi netleşti (topluluk uygulaması) → sosyal katman silinmiyor, fonlanıyor; `routes`/`tracks` nesneleri eklendi; içerik boru hattı ayrı faz oldu.
 
@@ -40,14 +40,14 @@ Bu tablo yeniden türetilmesin diye burada. Değiştiyse güncelle.
 
 | Olgu | Değer | Doğrulama |
 |---|---|---|
-| Commit | 46, 2026-10-09 → 2026-10-13 (5 gün) | `git rev-list --count HEAD` |
-| İzlenen dosya | 145 — **63'ü kopya klasörde (%43)** | `git ls-files \| wc -l` |
-| Test | **0 dosya** | `find . -name "*.test.*" -not -path "./node_modules/*"` |
-| CI | **yok** (`.github` dizini yok) | `ls .github` |
-| `.env.example` | **yok** — ama iki doküman ondan bahsediyor | `git ls-files \| grep -c env.example` |
+| Commit | P1 adım commitleri Arena branch'inde; SHA'lar teslimat raporunda | `git log --oneline` |
+| İzlenen dosya | 145 mevcut + 5 P1 teslimat dosyası; kopya proje ağacı yok | `git ls-files \| wc -l` |
+| Test | 29 Vitest dosyası + Firestore Rules suite + 7 credential-free Node tests | `find . -name "*.test.*" -not -path "./node_modules/*"` |
+| CI | Node 22 gate; PR, `main`, `arena/**` push | `ls .github` |
+| `.env.example` | 6 boş `VITE_` değişkeni | `git ls-files \| grep -c env.example` |
 | `npx tsc --noEmit` | 0 hata | çalıştır |
-| `npm run build` | başarılı (~17 sn) | çalıştır |
-| Entry JS (gzip) | map-vendor 276K · firebase-vendor 166K · index 119K · react 58K · icons 8K ≈ **627K** | `dist/assets/*.js` üzerinde gzip |
+| `npm run build` | başarılı; vendor chunk >500 kB warning (non-fatal) | çalıştır |
+| Entry JS (gzip) | Build chunk ölçüleri son build çıktısında raporlanır | `npm run build` |
 | Env değişkeni | 6 | `rg "import\.meta\.env\." src` |
 
 Env: `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_GEOCODER_URL`, `VITE_GOOGLE_MAPS_EMBED_KEY`, `VITE_APPLE_AUTH_ENABLED`.
@@ -57,8 +57,9 @@ Env: `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJEC
 | Koleksiyon | İçerik | Not |
 |---|---|---|
 | `places/{id}` | keşif pinleri | `kind: "guide" \| "user"`, kural `authorUid` koruyor |
-| `posts/{id}` | gönderi + `likes`, `likedBy[]`, `replies[]` | yanıtlar **doküman içi dizi** |
-| `stories/{id}` | 24 saat ömürlü | `seen` alanı global (kusurlu) |
+| `posts/{id}` | gönderi + seed/base `likes`, kullanıcı üyelikleri `likedBy[]` | toplam = base + benzersiz üyeler; yeni yanıtlarda gömülü alan yok |
+| `posts/{id}/replies/{replyId}` | tek yanıt belgesi | bounded public read; yazar UID ile doğrulanır; değiştirilemez |
+| `stories/{id}` | 24 saat ömürlü | görüldü durumu cihaz bazlı localStorage'da; Firestore `seen` yok |
 | `users/{uid}` | profil | `xp`/`level` istemciden yazılamaz |
 | — | **rotalar** | **yalnız localStorage** (`atlasia.member.{uid}`) |
 | — | **grup / mesaj** | **hiç yok** |
@@ -85,20 +86,20 @@ Hiçbir moderasyon yapısı yok: `report`, `şikayet`, `block`, `ban` araması g
 | `polyline` | Google Encoded Polyline, 1e-5 (≈1,1 m). **Zaman ve doğruluk kodlanmıyor** |
 | `usePlaceGallery` | Wikimedia Commons'a **mekânsal** sorgu: `generator=geosearch`, `ggsradius=500`, `ggsnamespace=6` |
 | `drawRoute` | `drawRoute(coords, preview?)` — tek çizgi, `#F2D77C`, kalınlık 3.2 (önizleme 2.2) |
-| `firestore.rules` | `users` delete `false` · `posts` update yalnız `likes/likedBy/replies` · fotoğraf ≤180.000 karakter JPEG data URL |
+| `firestore.rules` | `users` delete `false` · `posts` update yalnız `likedBy` · yanıtlar alt koleksiyonda, sınırlı okuma/yetkili oluşturma/değiştiremezlik · fotoğraf ≤180.000 karakter JPEG data URL |
 
 ### 2.4 Bilinen kusurlar (kanıtlı)
 
 | # | Kusur | Yer | Etki |
 |---|---|---|---|
-| 1 | `bbox: [b[0], b[3], b[2], b[1]]` — eksen ters | `src/utils/geo.ts:60` | uzun-ince bir yer aratatınca ~6 kademe fazla zoom; `latSpan` hep 0.0006 tabanına düşer |
-| 2 | `likes: (data?.likes ?? 0) + (has ? -1 : 1)` — operatör önceliği | `src/lib/firestoreData.ts:393` | beğeni sayacı hiç değişmez (`likes ?? (0+1)` diye çözülüyor) |
-| 3 | `togglePostLike` / `addReply` tüm diziyi baştan yazıyor | aynı dosya | eşzamanlı yazımda kayıp (read-modify-write yarışı) |
-| 4 | Yanıtlarda `authorUid` yok, kural dizi elemanını doğrulayamaz | `types.ts` + `firestoreData.ts` | yanıt yazarı taklit edilebilir; dizi 1 MiB doküman sınırına yaklaşır |
-| 5 | `subscribePosts`/`subscribeStories` tüm koleksiyonu canlı dinliyor, `limit()` yok | `firestoreData.ts:333` | fotoğraflar satır içi data URL olduğu için 50 post ≈ **9 MB** iniş |
-| 6 | Ölü sosyal katman: `awardXp`, `addBadge`, `followUser`, `unfollowUser`, `markStorySeen`, `ensureUserProfile`, `getUserProfile` | `firestoreData.ts` | tüm `src` taramasında **çağıranı yok**, üstelik `firestore.rules` yazımlarını reddeder |
-| 7 | Story `seen` alanı dokümanda **global**; UI cihaz bazlı `atlasia.feed.seen.v1` kullanıyor | `firestoreData.ts:453,472` | iki çelişkili model |
-| 8 | `firestoreData.ts` başlığı `posts/{id}/replies/{replyId}` alt koleksiyonunu belgeliyor ama kod diziye yazıyor | dosya başlığı | belgelenen model ile gerçek model ayrışmış |
+| 1 | BBOX eksen sırası regresyon kilidi | `src/utils/geo.ts` + `geo.test.ts` | Photon extent `[west,south,east,north]` doğrudan korunur; `toSearchResult` saf test dikişidir |
+| 2 | Seed tabanı ve gerçek beğeni üyeliği ayrımı | `src/utils/likes.ts`, `firestoreData.ts` | tamamlandı: toplam seed/base + benzersiz `likedBy`; toggle yalnız atomik array transform yazar |
+| 3 | Reply array read-modify-write yarışı | `posts/{id}/replies/{replyId}` | tamamlandı: yanıt başına belge; bounded batches ile parent silme öncesi child cleanup |
+| 4 | Yanıtlarda yazar doğrulaması | `firestore.rules` | tamamlandı: `authorUid == request.auth.uid`, reply update kapalı, owner/author delete |
+| 5 | Feed okumalarında sınır | `firestoreData.ts` | feed sayfaları 50; yanıt sayfaları 100; cursor tabanlı yükleme |
+| 6 | Eski sosyal katman yardımcıları | gerçek `src/` taraması | eski `awardXp`/`followUser` ailesi bu checkout'ta mevcut değil; yeniden tanıtılırsa deprecated işaretle ve finansman kararı bekle |
+| 7 | Story `seen` alanı global dokümanda | `types.ts`, `firestoreData.ts`, rules | tamamlandı: Firestore şemasından çıkarıldı; UI yalnız cihaz bazlı `atlasia.feed.seen.v1` kullanır |
+| 8 | Reply veri yolu sözleşmesi | `firestoreData.ts`, README, rules | tamamlandı: başlık, yazma/okuma, rules ve doküman aynı alt koleksiyon modelini kullanır |
 | 9 | Sokak/topoğrafik altlıklarda `kktc-label` ile Esri'nin gömülü etiketleri **üst üste gelebilir** | `MapView.tsx` efektler | aynı bölge iki farklı adla yazılabilir — tarayıcıda gözle doğrulanmalı |
 
 ## 3. Vizyon → kod boşluk haritası
@@ -174,42 +175,16 @@ test -f .env.example && grep -c VITE_ .env.example   # 6
 
 **Neden:** Son 15 commit'te 9 `fix` / 5 `feat` — düzeltme oranı özelliği geçmişse sözleşme borcu birikmiş demektir. Ve `firestore.rules` 5 gündür istemciyle çelişiyor, kimse fark etmedi çünkü hiçbir otomatik kontrol yok.
 
-**1.1 Arama ekseni** — `src/utils/geo.ts`: Photon `extent`'i zaten `[minLon, minLat, maxLon, maxLat]`, tipin sözleşmesi de `[west, south, east, north]`:
-```ts
-// önce
-bbox: b ? [b[0], b[3], b[2], b[1]] as [number, number, number, number] : undefined
-// sonra
-bbox: b,
-```
-**1.2 Beğeni sözleşmesi** — karar: `likes` = **seed/taban** (istemciden asla yazılmaz), `likedBy` = gerçek kullanıcılar, toplam tek yerden: `src/utils/likes.ts` → `totalLikes(post)`. `SocialPanel.tsx` bu yardımcıyı kullanır.
-```ts
-export async function togglePostLike(postId: string, uid: string): Promise<void> {
-  if (!db) return;
-  const ref = doc(db, COL_POSTS, postId);
-  const snap = await getDoc(ref);
-  const has = ((snap.data()?.likedBy as string[]) ?? []).includes(uid);
-  await updateDoc(ref, { likedBy: has ? arrayRemove(uid) : arrayUnion(uid) });
-}
-```
-**1.3 Yanıt yazımı atomik** — `updateDoc(ref, { replies: arrayUnion(next) })`.
-**1.4 Yanıtlar dizi mi alt koleksiyon mu** — dizi, kural ile yazar doğrulamasını imkânsız kılar ve 1 MiB tavana sahiptir. Öneri: `posts/{id}/replies/{rid}`. Karar (a)'ya bağlı.
-**1.5 Story `seen`'i kaldır** — `addStory` payload'ı, `markStorySeen`, `normalizeStory.seen`. UI zaten cihaz bazlı liste kullanıyor.
-**1.6 Ölü sosyal katman** — `awardXp`, `addBadge`, `followUser`, `unfollowUser`, `ensureUserProfile`, `getUserProfile`, `markStorySeen`: çağıranı yok. **Ürün tezi gereği silinmez, Adım 14'te fonlanır.** Şimdilik dosya başında `@deprecated` benzeri net bir not ve kural çelişkisi giderilir.
-**1.7 Feed'e tavan** — `subscribePosts`/`subscribeStories` → `limit(50)`.
-**1.8 Kuralları sıkılaştır** — `firestore.rules`:
-```javascript
-allow update: if request.auth != null
-              && request.resource.data.diff(resource.data).affectedKeys()
-                   .hasOnly(['likes', 'likedBy', 'replies'])
-              && request.resource.data.likes == resource.data.likes
-              && request.resource.data.likedBy.size() <= 5000
-              && request.resource.data.replies.size() <= 200;
-
-allow update: if request.auth != null && request.auth.uid == uid
-              && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['xp','level']);
-```
-**Bitti kanıtı:** `npx tsc --noEmit` (0 hata) · `rg -n "likes:.*\?\?" src` (boş) · `rg -n "awardXp|followUser" src/hooks src/components` (boş)
-**Commit:** `fix: veri sozlesmelerini tek anlamda birlestir`
+**1.1 Arama ekseni** — bu checkout'ta `src/utils/geo.ts` Photon extent'ini zaten `[west, south, east, north]` olarak doğrudan geçiriyordu; ters sıralama regresyonu mevcut değildi. `toSearchResult` dikişi ve bbox sırası testleri eklendi; `MapView.tsx` değiştirilmedi.
+**1.2 Beğeni sözleşmesi** — `likes` seed/taban olarak kalır; kullanıcı üyeliği `likedBy` içindedir. Toplam `src/utils/likes.ts` → `totalLikes(post)` ile hesaplanır; Firestore toggle yalnız `likedBy` üzerinde `arrayUnion`/`arrayRemove` dönüşümü uygular.
+**1.3 Yanıt yazımı** — seçilen modelde her yanıt `posts/{id}/replies/{replyId}` alt koleksiyonuna ayrı belge olarak yazılır; create kuralı yazar UID'sini doğrular.
+**1.4 Yanıtlar dizi mi alt koleksiyon mu** — karar (a): **alt koleksiyon seçildi**; eski gömülü yanıtlar okuma uyumluluğu için normalize edilir, yeni yazımlar alt koleksiyona gider.
+**1.5 Story `seen`'i kaldır** — tamamlandı: Firestore payload/type/rules alanından çıkarıldı; UI cihaz bazlı liste kullanır.
+**1.6 Ölü sosyal katman** — eski `awardXp`/`addBadge`/`followUser` API ailesi bu checkout'ta yok; bunları yeniden tanıtma. İleride yeni yardımcı eklenirse çağrı sahibi ve ürün kararı netleştirilip deprecated durumu ayrıca tanımlanır.
+**1.7 Feed'e tavan** — tamamlandı: gönderi/stories cursor sayfaları 50 kayıtla sınırlı; yanıt sorgusu 100 kayıtla sınırlı.
+**1.8 Kuralları sıkılaştır** — tamamlandı: gönderi root shape'inde `replies` kabul edilmez; post update yalnız `likedBy` toggle'ı; replies bounded public read, doğrulanmış authenticated create, immutable update denial ve author/post-owner delete.
+**Bitti kanıtı:** `npx tsc --noEmit` (0 hata) · `rg -n "likes:.*\?\?" src` (boş) · `rg -n "awardXp|followUser" src/hooks src/components` (boş). Rules emulator sonucu Java 21 runtime'ı olan ortamda tamamlanmalı.
+**Commit:** `eede957 fix: freeze Firestore social data contracts`
 
 ## Adım 2 · Kanıt: test + CI
 **1 gün · bağımlılık: Adım 1 · EŞİK — bu bitmeden özellik başlamaz**
@@ -223,17 +198,17 @@ allow update: if request.auth != null && request.auth.uid == uid
 | Dosya | Kilitlediği |
 |---|---|
 | `geo.test.ts` | Photon `extent` doğrudan geçer; `bbox[1] < bbox[3]` — **regresyon kilidi** |
-| `geo.test.ts` | `haversineKm(41.0082,28.9784, 39.9334,32.8597)` ≈ 351 km (±1) |
+| `geo.test.ts` | `haversineKm(41.0082,28.9784, 39.9334,32.8597)` ≈ 351 km (fark <2 km) |
 | `likes.test.ts` | `totalLikes` = `likes` + benzersiz `likedBy` |
 | `time.test.ts` | `isStoryAlive` 24 saat sınırı; `storyRemaining` sonrası `null` |
 | `polyline.test.ts` | `decodePolyline(encodePolyline(c))` → `c` (1e-5) |
 | `routePlanner.test.ts` | `reorderRoute` mesafeyi artırmaz; `nearbyPlaces` yarıçapı; `validPlace` sınırları |
 | `sun.test.ts` | `goldenHourWindow` doğuş < batış; kutup durumu boş |
 
-**2.4 CI:** `.github/workflows/ci.yml` → `npm ci` → `npx tsc --noEmit` → `npm test` → `npm run build` (Node 22).
+**2.4 CI:** `.github/workflows/ci.yml` Node 22'de `npm ci`, audit, typecheck, lint, `npm test`, credential-free owner-index Node tests, Firestore Rules emulator tests ve build'i çalıştırır; push kapsamı `main` ve `arena/**`, ayrıca PR'dır.
 
-**Bitti kanıtı:** `npm test` yeşil · CI PR'da yeşil.
-**Commit:** `test: sozlesme regresyonlarini kapsayan test ve ci ekle`
+**Bitti kanıtı:** `npm test` ve `npm run build` yerelde geçti; Rules emulator bu sandbox'ta Java 21 olmadığı için çalışmadı. Push sonrası branch CI'sı ayrıca doğrulanmalı.
+**Commit:** `f17d1b7 test: gate geo time and solar contracts in CI`
 
 ---
 
@@ -411,7 +386,7 @@ Wikidata / Wikipedia geosearch  →  tarihçe metni
 
 | # | Karar | Seçenekler | Etkilediği adımlar | Geri dönüş maliyeti |
 |---|---|---|---|---|
-| a | Yanıtlar: dizi mi alt koleksiyon mu | (1) dizi kalır (2) `posts/{id}/replies` | 1, 7 | orta — doküman şekli değişir |
+| a | Yanıtlar: dizi mi alt koleksiyon mu | **Seçildi:** `posts/{id}/replies` | 1, 7 | orta — uygulandı; eski gömülü değerler yalnız okuma uyumluluğu |
 | b | Fotoğraf depolama | (1) data URL kalır (2) nesne depolamaya geç | 3, 6, 12 | yüksek — feed sorgusu + kural + yükleme birlikte değişir |
 | c | Koleksiyon senkronu | (1) cihazda kalır (2) `users/{uid}` altında buluta | 3, 6 | orta — veri biriktikçe pahalanır |
 | d | XP/rozet/takip | (1) silinir (2) Adım 14'te Cloud Functions ile fonlanır | 14 | yüksek — ölü kod her okumada yanlış izlenim verir |
@@ -423,13 +398,11 @@ Wikidata / Wikipedia geosearch  →  tarihçe metni
 
 | Borç | Kaynak | Etki |
 |---|---|---|
-| `replies` dizi olarak kalıyor | Adım 1.4 ertelendiyse | yazar doğrulanamaz; 1 MiB tavanı |
-| `likes` istemciden yazılıyor | Adım 1.2 eksikse | sayaç kayar, yarış olur |
-| Feed'de `limit()` yok | Adım 1.7 eksikse | koleksiyon büyüdükçe iniş boyutu |
-| Kopya klasör izleniyor | Adım 0 eksikse | aramalar ve ajan okumaları kirli |
-| `.env.example` yok | Adım 0 eksikse | kurulum 3. adımda durur |
-| Test yok | Adım 2 eksikse | her düzeltme kanıtsız |
-| İzler localStorage'da | Adım 3 eksikse | kayıt özelliği kaybolur |
+| Firestore Rules emulator doğrulaması bu sandbox'ta çalışmadı | Java 21 runtime kurulu değil; test scripti Java 21+ ister | emulator Rules suite'i Java 21 ortamında çalıştırılmalı; bu kısıt `teslimat-p1.md` içinde kanıtlandı |
+| Bağımsız aynı-candidate audit bekliyor | kullanıcı no-deploy/no-bypass gate | üretim dağıtımı veya audit bypass yapılmadı |
+| Eski gömülü reply verisi Firestore'da kalabilir | yeni kontrat alt koleksiyon | normalize edilir; bu işin otomatik prod veri migrasyonu/deploy'u yok |
+| Yol çizgileri yol navigasyonu değildir | routePlanner mevcut davranışı | kullanıcıya gerçek yol/navigasyon gibi sunulmamalı |
+| Rotalar ve kayıtlı koleksiyonlar localStorage'dadır | Adım 3 bekliyor | başka cihaza senkron olmaz |
 | Moderasyon yok | Adım 13 eksikse | grup/sohbet açılamaz |
 | Sokak/topoda çakışan etiket riski | doğrulanmadı | aynı bölge iki adla yazılabilir |
 
