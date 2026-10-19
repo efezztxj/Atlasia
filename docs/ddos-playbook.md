@@ -126,7 +126,11 @@ Uygulama kodunda App Check **zaten bağlı** (`src/lib/firebase.ts`,
 
 **Yerel geliştirme notu:** Emülatör/localhost App Check atlamalıdır; gerçek tarayıcıda
 üretim dışından giren geliştirici için **Manage debug tokens** ile debug token kaydı
-yapılır (konsol → App Check → Apps → ⋯ → Manage debug tokens).
+yapılır (konsol → App Check → Apps → ⋯ → Manage debug tokens → **Generate token** →
+isim ver → Save). Üretilen token'ı yerel `.env.local` içine
+`VITE_APPCHECK_DEBUG_TOKEN=<token>` olarak yaz; uygulama bunu yalnız `npm run dev`
+(DEV) sırasında SDK'ya sunar (`src/lib/appCheckDebug.ts`). Token App Check'i
+atlatır — ASLA commit edilmez, üretime konmaz.
 
 ### 2.2 Spark planında kal — $0 tavanının kendisi
 

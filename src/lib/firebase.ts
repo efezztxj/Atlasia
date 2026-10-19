@@ -6,6 +6,7 @@
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
 import { getFirestore, type Firestore } from "firebase/firestore";
+import { installAppCheckDebugToken } from "./appCheckDebug";
 
 // Firebase web kimlikleri gizli değildir. Proje yönetim API'sinden doğrulanan
 // değerleri burada sabitlemek, eski Cloudflare ortam değişkenlerinin App Check'i
@@ -50,6 +51,11 @@ if (firebaseConfigured) {
     app = getApps()[0] ?? initializeApp(firebaseConfig);
     if (typeof window !== "undefined") {
       try {
+        // Yalnız yerel geliştirme: Firebase konsolunda kayıtlı debug token'ı varsa
+        // App Check atlaması için SDK'ya sun. Üretim derlemesinde bu dal yoktur.
+        if (import.meta.env.DEV) {
+          installAppCheckDebugToken(import.meta.env.VITE_APPCHECK_DEBUG_TOKEN as string | undefined);
+        }
         initializeAppCheck(app, {
           provider: new ReCaptchaEnterpriseProvider(ATLASIA_APP_CHECK_SITE_KEY),
           isTokenAutoRefreshEnabled: true,
