@@ -5,6 +5,7 @@
  */
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
+import { resolveAppCheckSiteKey } from "./appCheckConfig";
 import { getFirestore, type Firestore } from "firebase/firestore";
 
 // Firebase web kimlikleri gizli değildir. Proje yönetim API'sinden doğrulanan
@@ -12,7 +13,9 @@ import { getFirestore, type Firestore } from "firebase/firestore";
 // yanlış uygulama kimliğiyle başlatmasını engeller.
 const ATLASIA_MESSAGING_SENDER_ID = "21255827476";
 const ATLASIA_FIREBASE_APP_ID = "1:21255827476:web:318093fd0d09738b3b7701";
-const ATLASIA_APP_CHECK_SITE_KEY = "6LeGMuwtAAAAACwVaaPrm8KzCa7Sw0nFdl-TMcQr";
+const ATLASIA_APP_CHECK_SITE_KEY = resolveAppCheckSiteKey(
+  import.meta.env.VITE_FIREBASE_APP_CHECK_SITE_KEY as string | undefined,
+);
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY as string | undefined,

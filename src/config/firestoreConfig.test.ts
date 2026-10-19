@@ -24,6 +24,17 @@ describe("Firestore sorgu yapılandırması", () => {
     });
   });
 
+  it("AUTH_SETUP canlı index yönergesini repodaki gerçek CLI yapılandırmasına bağlar", () => {
+    const config = JSON.parse(readFileSync("firebase.json", "utf8")) as {
+      firestore?: { indexes?: string };
+    };
+    const authSetup = readFileSync("AUTH_SETUP.md", "utf8");
+
+    expect(authSetup).toContain("firebase deploy --only firestore:indexes --project <onayli-proje-id>");
+    expect(authSetup).not.toContain("scripts/ensure-owner-places-index.mjs");
+    expect(config.firestore?.indexes).toBe("firestore.indexes.json");
+  });
+
   it("authorUid sahip ve lat/lng viewport sorgularının bileşik indekslerini tanımlar", () => {
     const config = JSON.parse(readFileSync("firestore.indexes.json", "utf8")) as {
       indexes: FirestoreIndex[];

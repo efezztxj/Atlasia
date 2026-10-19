@@ -37,7 +37,10 @@ self.addEventListener("activate", (event) => {
 async function navigationResponse(event) {
   const cache = await caches.open(CACHE);
   try {
-    const response = await event.preloadResponse || await fetch(event.request);
+    // A failed preload does not imply the network failed. Retry navigation before
+    // falling back to a potentially stale cached app shell.
+    const preloaded = await Promise.resolve(event.preloadResponse).catch(() => undefined);
+    const response = preloaded || await fetch(event.request);
     if (response?.ok && response.headers.get("content-type")?.includes("text/html")) {
       await cache.put("/", response.clone());
     }

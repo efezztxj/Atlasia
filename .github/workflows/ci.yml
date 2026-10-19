@@ -28,11 +28,14 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Use Java 21 for the Firestore emulator
+      - name: Bootstrap Java 21 for the Firestore emulator
         uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
         with:
           distribution: temurin
           java-version: 21
+
+      - name: Verify Java bootstrap
+        run: java -version
 
       - name: Cache the pinned Firestore emulator
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
@@ -54,6 +57,9 @@ jobs:
 
       - name: Unit tests
         run: npm run test:run
+
+      - name: Route planner regression test
+        run: npm run test:route
 
       - name: Firestore security rules tests
         run: npm run test:rules:emulator

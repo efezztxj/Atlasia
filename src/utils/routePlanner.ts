@@ -132,9 +132,16 @@ export function planRoute(places: Place[], origin: { lat: number; lng: number },
 }
 
 export function reorderRoute(route: AtlasRoute, dayIndex: number, from: number, to: number) {
+  if (![dayIndex, from, to].every(Number.isInteger)) return route;
+  const sourceDay = route.days[dayIndex];
+  if (
+    !sourceDay ||
+    from < 0 || from >= sourceDay.stops.length ||
+    to < 0 || to >= sourceDay.stops.length
+  ) return route;
+
   const days = route.days.map((day) => ({ ...day, stops: [...day.stops] }));
   const day = days[dayIndex];
-  if (!day || to < 0 || to >= day.stops.length) return route;
   const [stop] = day.stops.splice(from, 1);
   day.stops.splice(to, 0, stop);
   let distance = 0;

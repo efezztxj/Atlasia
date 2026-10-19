@@ -43,11 +43,24 @@ Bu ortamda Google/Apple sağlayıcıları ve SMS uçtan uca test edilemez.
 
 Atlasia Web uygulaması yalnız **reCAPTCHA Enterprise / Fraud Defense** sağlayıcısıyla App Check'e kayıtlıdır. Ekranda kullanımdan kaldırıldığı belirtilen klasik reCAPTCHA ayrıca bağlanmamalıdır.
 
-- Production anahtarı yalnız `atlasia.pages.dev` ve onun alt alan adlarına izin verir; checkbox göstermez, görünmez skor tabanlı çalışır.
+- Provider görünmez, skor tabanlı reCAPTCHA Enterprise kullanır. Gerçek anahtar ve domain izinlerini Google Cloud Console'daki Enterprise anahtarında doğrula; dokümantasyon canlı ayarların kanıtı değildir.
+- İsteğe bağlı `VITE_FIREBASE_APP_CHECK_SITE_KEY` build değişkeni kayıtlı Enterprise site key'ini seçer; boş bırakılırsa mevcut Atlasia anahtarı kullanılır. Anahtar public site key'dir; buraya secret veya debug token koyma. Firebase App Check web-app kaydı, proje ve site key birbiriyle eşleşmelidir.
 - İstemci App Check'i Firebase servislerinden önce başlatır ve tokenı otomatik yeniler.
 - İlk yayından sonra Firebase Console > App Check > APIs metriklerinde doğrulanmış istekler izlenmelidir.
 - Eski PWA sürümlerini kilitlememek için doğrulama görülmeden Firestore veya Authentication enforcement açılmamalıdır. Enforcement açıldığında doğrulanmamış bütün istekler reddedilir.
 - Faturalandırmasız Fraud Defense Essentials kotası aşılırsa değerlendirmeler ay sonuna kadar `429` dönebilir; kullanım kotası ayrıca izlenmelidir.
+
+## Firestore indeksleri
+
+`places` koleksiyonundaki kullanıcıya ait yerler sorgusu için gerekli bileşik indeks `firestore.indexes.json` içinde tanımlıdır ve `firebase.json` tarafından bağlanır. Önceki özel index-script yönergesi depoda çalıştırılabilir bir dosyaya karşılık gelmiyordu; sahte bir betik eklemek yerine gerçek Firebase CLI akışı kullanılır.
+
+Firebase CLI kurulmuş, oturum açılmış ve hedef proje açıkça doğrulanmış, onaylı yönetim terminalinde indeksleri deploy et:
+
+```sh
+firebase deploy --only firestore:indexes --project <onayli-proje-id>
+```
+
+Bu komut yalnız repodaki Firestore indeks tanımlarını deploy eder; Rules veya Hosting deploy etmez. Firebase Console > Firestore > Indexes bölümünde `places` composite index'in **Ready/Enabled** olduğunu doğrula. `Building` durumu başarı değildir. Ardından yerler, sonraki sayfa ve hesap değişimi akışlarını gerçek kullanıcıyla doğrula. Firebase CLI bu uygulamanın runtime dependency'si değildir.
 
 ## Oturum ve Veri
 

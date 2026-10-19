@@ -106,6 +106,23 @@ describe("routePlanner", () => {
     expect(decodePolyline(reordered.days[0].polyline)).toHaveLength(4);
   });
 
+  it("rejects invalid reorder indexes without mutating or corrupting the route", () => {
+    const route = planRoute(
+      [place("one", 38.421, 27.141), place("two", 38.422, 27.142)],
+      origin,
+      brief,
+      null,
+    );
+    const originalStops = route.days[0].stops;
+
+    expect(reorderRoute(route, 0, -1, 0)).toBe(route);
+    expect(reorderRoute(route, 0, 0, 99)).toBe(route);
+    expect(reorderRoute(route, 99, 0, 0)).toBe(route);
+    expect(reorderRoute(route, 0.5, 0, 1)).toBe(route);
+    expect(route.days[0].stops).toBe(originalStops);
+    expect(route.days[0].stops.every((stop) => Boolean(stop.pinId))).toBe(true);
+  });
+
   it("clamps custom duration and exposes a stable surprise brief", () => {
     expect(briefHours({ ...brief, duration: "custom", customHours: 0 })).toBe(1);
     expect(briefHours({ ...brief, duration: "custom", customHours: 99 })).toBe(24);

@@ -16,7 +16,9 @@
     "audit:prod": "npm audit --omit=dev",
     "audit:check": "node scripts/audit-baseline.mjs",
     "test:rules": "vitest run --config vitest.rules.config.ts",
-    "test:rules:emulator": "node scripts/run-firestore-rules-tests.mjs"
+    "test:rules:emulator": "node scripts/run-firestore-rules-tests.mjs",
+    "test:route": "vitest run src/utils/routePlanner.test.ts",
+    "check:local": "npm run check"
   },
   "dependencies": {
     "@types/suncalc": "^1.9.2",

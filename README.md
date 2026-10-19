@@ -16,7 +16,9 @@ Netlify Atlasia yayın hattının parçası değildir.
 
 - Node.js 22.13+ veya 24+
 - npm 10.9.2 (`packageManager` ile sabitlenmiştir)
-- Firestore güvenlik kuralı testleri için Java 21
+- Firestore Emulator Rules testleri için Java 21 veya üzeri (JRE yeterlidir)
+
+GitHub Actions, doğrulama job'ında Temurin Java 21'i `actions/setup-java` ile otomatik hazırlar. Yerel makinede `java -version` çıktısının 21 veya üzeri olduğunu doğrula; örneğin Ubuntu 24.04'te `sudo apt install openjdk-21-jre-headless`, macOS'ta `brew install openjdk@21`, Windows'ta `winget install EclipseAdoptium.Temurin.21.JDK` kullanılabilir.
 
 ## Yerel geliştirme
 
@@ -31,19 +33,12 @@ Vite, varsayılan olarak yalnız kendi güvenli host davranışını kullanır. 
 
 ```bash
 npm ci
-npm run typecheck
-npm run lint
-npm run test:run
-npm run test:rules:emulator
-npm run build
-npm run audit:check
+npm run check:local
 ```
 
-Tüm yerel doğrulamaları sırayla çalıştırmak için:
+`check:local` typecheck, lint, tüm Vitest testleri, gerçek Java 21+ Firestore Emulator Rules testi, production build, sosyal metadata doğrulaması ve dependency audit'ini sırayla çalıştırır. Rota planlayıcı testini tek başına çalıştırmak için `npm run test:route`; bu test tüm testlerin de parçasıdır.
 
-```bash
-npm run check
-```
+Eski `npm run check` adı `check:local` ile aynı doğrulama zincirini çalıştırır.
 
 Firestore Rules testi Google'ın Firestore Emulator 1.22.0 JAR'ını kullanıcı cache dizinine indirir ve sabit SHA-256 özetiyle doğrular. Emulator veya `firebase-tools` production paketine dahil edilmez.
 
@@ -59,6 +54,7 @@ Zorunlu Firebase web değişkenleri:
 
 İsteğe bağlı:
 
+- `VITE_FIREBASE_APP_CHECK_SITE_KEY` — reCAPTCHA Enterprise public site key; boşsa kayıtlı Atlasia anahtarı kullanılır
 - `VITE_GEOCODER_URL` — varsayılan Photon adresinin yerine kullanılacak geocoder kökü
 - `VITE_APPLE_AUTH_ENABLED` — Apple sağlayıcısı tamamen yapılandırıldığında `true`
 - `VITE_GOOGLE_MAPS_EMBED_KEY` — Street Peek gömüsü; HTTP referrer ve API kısıtları zorunludur
