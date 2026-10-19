@@ -25,8 +25,8 @@ describe("moderasyon sözleşmesi", () => {
 
   it("oturumsuz, bilinmeyen neden ve bilinmeyen hedefi reddeder", () => {
     expect(validateReportInput(base, "   ")).toBe("auth/required");
-    expect(validateReportInput({ ...base, reason: "begenmedim" as never }, "member-a")).toBe("report/reason-invalid");
-    expect(validateReportInput({ ...base, targetType: "comment" as never }, "member-a")).toBe("report/target-type-invalid");
+    expect(validateReportInput({ ...base, reason: "begenmedim" }, "member-a")).toBe("report/reason-invalid");
+    expect(validateReportInput({ ...base, targetType: "comment" }, "member-a")).toBe("report/target-type-invalid");
   });
 
   it("boş veya aşırı uzun hedef ve ayrıntıyı reddeder", () => {

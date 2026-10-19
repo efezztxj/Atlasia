@@ -15,7 +15,7 @@ interface Props {
 export default function NotificationsPanel({ notifications, unreadCount, onClose, onMarkAllRead, onMarkRead, onOpenGroup }: Props) {
   const panelRef = usePanelAccess(true, onClose);
   return (
-    <aside ref={panelRef as never} aria-label="Bildirimler" className="mobile-notifications fixed inset-0 z-[60] flex justify-end bg-black/35 md:inset-auto md:right-4 md:top-[88px] md:bg-transparent">
+    <aside ref={panelRef} aria-label="Bildirimler" className="mobile-notifications fixed inset-0 z-[60] flex justify-end bg-black/35 md:inset-auto md:right-4 md:top-[88px] md:bg-transparent">
       <button type="button" aria-label="Bildirimleri kapat" onClick={onClose} className="absolute inset-0 md:hidden" />
       <div className="relative flex h-dvh w-full max-w-[360px] flex-col overflow-hidden border border-leaf/20 bg-[#041d17] md:h-[min(70dvh,520px)] md:rounded-[22px] md:shadow-2xl max-md:ml-auto">
         <header className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">

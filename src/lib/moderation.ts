@@ -70,10 +70,18 @@ function newId(prefix: string): string {
 export const REPORT_TARGET_TYPES = ["place", "post", "story", "user"] as const;
 
 /** Rapor yükünü yazmadan önce doğrular; kural katmanıyla aynı sınırları kullanır. */
-export function validateReportInput(input: ReportInput, uid: string): string | null {
+export interface ReportValidationInput {
+  targetType: string;
+  targetId: string;
+  reason: string;
+  targetOwnerUid?: string;
+  details?: string;
+}
+
+export function validateReportInput(input: ReportValidationInput, uid: string): string | null {
   if (!uid.trim()) return "auth/required";
-  if (!REPORT_TARGET_TYPES.includes(input.targetType)) return "report/target-type-invalid";
-  if (!REPORT_REASONS.includes(input.reason)) return "report/reason-invalid";
+  if (!(REPORT_TARGET_TYPES as readonly string[]).includes(input.targetType)) return "report/target-type-invalid";
+  if (!(REPORT_REASONS as readonly string[]).includes(input.reason)) return "report/reason-invalid";
   if (!input.targetId.trim() || input.targetId.trim().length > 200) return "report/target-invalid";
   if (input.targetOwnerUid !== undefined && (!input.targetOwnerUid.trim() || input.targetOwnerUid.trim().length > 128)) return "report/owner-invalid";
   if (input.details !== undefined && input.details.trim().length > 1000) return "report/details-too-long";
@@ -85,7 +93,7 @@ export function blockIdFor(blockerUid: string, blockedUid: string): string {
   return `${blockerUid.trim()}_${blockedUid.trim()}`;
 }
 
-export async function createReport(input: ReportInput, uid: string): Promise<string> {
+export async function createReport(input: ReportValidationInput, uid: string): Promise<string> {
   if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
   const cleanUid = uid.trim();
   const invalid = validateReportInput(input, cleanUid);

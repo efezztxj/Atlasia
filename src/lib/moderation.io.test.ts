@@ -100,7 +100,7 @@ describe("moderasyon yazımı ve hesap verisi silme", () => {
   it("geçersiz rapor yazılmadan reddedilir", async () => {
     await expect(createReport({ targetType: "post", targetId: " ", reason: "spam" }, "member-1"))
       .rejects.toMatchObject({ code: "report/target-invalid" });
-    await expect(createReport({ targetType: "post", targetId: "post-1", reason: "begenmedim" as never }, "member-1"))
+    await expect(createReport({ targetType: "post", targetId: "post-1", reason: "begenmedim" }, "member-1"))
       .rejects.toMatchObject({ code: "report/reason-invalid" });
     expect(h.store.size).toBe(0);
   });
