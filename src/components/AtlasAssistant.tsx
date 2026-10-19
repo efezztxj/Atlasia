@@ -41,7 +41,7 @@ interface Props {
 const coordinates = (route: AtlasRoute) => route.days.flatMap((day) => decodePolyline(day.polyline));
 
 export default function AtlasAssistant({ open, onOpen, onClose, places, view, origin, selectedPlace, hasLocation, resumeRoute, dockExpanded, onOpenRouteEditor, onPreview, onDraw, onPulse, onFit }: Props) {
-  const { saveRoute } = useCollections();
+  const { saveRoute, savedRoutes } = useCollections();
   const panelRef = usePanelAccess(open, onClose);
   const bodyRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -76,11 +76,15 @@ export default function AtlasAssistant({ open, onOpen, onClose, places, view, or
     lastResumeRoute.current = resumeRoute;
     setRoute(resumeRoute);
     setApproved(false);
-    setSaved(true);
     const points = coordinates(resumeRoute);
     if (points.length > 1) { onPreview(points); onFit(points); }
     add({ role: "assistant", text: `“${resumeRoute.routeTitle}” kaydını açtım. Önce gözden geçir; istersen sırayı değiştir veya haritada göster.` });
   }, [open, resumeRoute, onPreview, onFit]);
+
+  useEffect(() => {
+    if (!route) { setSaved(false); return; }
+    setSaved(savedRoutes.some((savedRoute) => savedRoute.id === route.id));
+  }, [route, savedRoutes]);
 
   const weather = async (center: { lat: number; lng: number }) => {
     const controller = new AbortController();

@@ -21,6 +21,7 @@ export default function RouteEditor({ route, onClose, onSaved }: Props) {
   const { publishRoute } = useCollections();
   const [title, setTitle] = useState(route.routeTitle);
   const [summary, setSummary] = useState(route.routeSummary);
+  const [region, setRegion] = useState(route.region ?? "");
   const [photo, setPhoto] = useState(route.photo ?? "");
   const [visibility, setVisibility] = useState<RouteVisibility>("private");
   const [busy, setBusy] = useState(false);
@@ -31,6 +32,7 @@ export default function RouteEditor({ route, onClose, onSaved }: Props) {
   useEffect(() => {
     setTitle(route.routeTitle);
     setSummary(route.routeSummary);
+    setRegion(route.region ?? "");
     setPhoto(route.photo ?? "");
     setVisibility("private");
     setShareLink(null);
@@ -53,7 +55,7 @@ export default function RouteEditor({ route, onClose, onSaved }: Props) {
     if (summary.length > 5000) { setError("Not en fazla 5.000 karakter olabilir."); return; }
     setBusy(true);
     setError(null);
-    const updated: AtlasRoute = { ...route, routeTitle: title.trim().slice(0, 160), routeSummary: summary.trim(), ...(photo ? { photo } : {}) };
+    const updated: AtlasRoute = { ...route, routeTitle: title.trim().slice(0, 160), routeSummary: summary.trim(), region: region.trim().slice(0, 120), ...(photo ? { photo } : {}) };
     if (!photo) delete updated.photo;
     try {
       await publishRoute(updated, visibility);
@@ -90,6 +92,9 @@ export default function RouteEditor({ route, onClose, onSaved }: Props) {
         </label>
         <label className="grid gap-1.5 text-[13px] font-medium">Not / açıklama
           <textarea value={summary} maxLength={5000} onChange={(event) => setSummary(event.target.value)} rows={4} className="rounded-xl border border-white/15 bg-black/20 p-3 text-[14px] leading-relaxed outline-none focus:border-sun/60" />
+        </label>
+        <label className="grid gap-1.5 text-[13px] font-medium">Bölge <span className="font-normal text-mint/55">(keşif filtrelemesi için)</span>
+          <input value={region} maxLength={120} onChange={(event) => setRegion(event.target.value)} placeholder="Örn. İzmir · Kordon" className="min-h-12 rounded-xl border border-white/15 bg-black/20 px-3 text-[15px] outline-none focus:border-sun/60" />
         </label>
 
         <div>

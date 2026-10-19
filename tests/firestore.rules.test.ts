@@ -22,6 +22,7 @@ import {
   Timestamp,
   updateDoc,
   where,
+  writeBatch,
 } from "firebase/firestore";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -469,10 +470,35 @@ describe("Firestore güvenlik kuralları", () => {
       place,
       savedAt: serverTimestamp(),
     }));
-    await assertSucceeds(setDoc(doc(ownerDb, "users/owner/savedRoutes/route-1"), {
+    const routeBody = {
+      id: "route-1",
+      routeTitle: "Kordon",
+      routeSummary: "Kıyı yürüyüşü.",
+      totalDurationHours: 1,
+      totalDistanceKm: 1,
+      transport: "walking",
+      vibe: "Sakin",
+      days: [],
+      weatherNote: null,
+      alternatives: [],
+      createdAt: Date.now(),
+    };
+    await assertSucceeds(setDoc(doc(ownerDb, "routes/route-1"), {
+      authorUid: "owner",
+      visibility: "public",
+      route: routeBody,
+      saveCount: 0,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }));
+    const addSavedRoute = writeBatch(ownerDb);
+    addSavedRoute.set(doc(ownerDb, "users/owner/savedRoutes/route-1"), {
       routeId: "route-1",
       savedAt: serverTimestamp(),
-    }));
+    });
+    addSavedRoute.update(doc(ownerDb, "routes/route-1"), { saveCount: 1, updatedAt: serverTimestamp() });
+    await assertSucceeds(addSavedRoute.commit());
+
     await assertSucceeds(getDoc(doc(ownerDb, "users/owner/savedPlaces/place-1")));
     await assertFails(getDoc(doc(otherDb, "users/owner/savedPlaces/place-1")));
     await assertFails(getDoc(doc(guestDb, "users/owner/savedRoutes/route-1")));
@@ -484,6 +510,12 @@ describe("Firestore güvenlik kuralları", () => {
       routeId: "different-id",
       savedAt: serverTimestamp(),
     }));
+    await assertFails(updateDoc(doc(ownerDb, "routes/route-1"), { saveCount: 9, updatedAt: serverTimestamp() }));
+
+    const removeSavedRoute = writeBatch(ownerDb);
+    removeSavedRoute.delete(doc(ownerDb, "users/owner/savedRoutes/route-1"));
+    removeSavedRoute.update(doc(ownerDb, "routes/route-1"), { saveCount: 0, updatedAt: serverTimestamp() });
+    await assertSucceeds(removeSavedRoute.commit());
   });
 
   it("emekliye ayrılan kullanıcı profili belgesi ve üst seviye koleksiyonu kapalı tutar", async () => {

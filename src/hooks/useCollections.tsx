@@ -3,7 +3,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { firebaseConfigured } from "../lib/firebase";
 import {
   publishRoute,
-  removeSavedRoute,
+  removeRouteFromLibrary,
   saveRouteReference,
   subscribeSavedCollections,
   toggleSavedPlace,
@@ -87,7 +87,7 @@ export function CollectionsProvider({ children }: { children: ReactNode }) {
       setSavedRoutes((current) => current.filter((route) => route.id !== id));
       return;
     }
-    void removeSavedRoute(user!.uid, id).catch((failure: unknown) => {
+    void removeRouteFromLibrary(user!.uid, id).catch((failure: unknown) => {
       setError(failure instanceof Error ? failure.message : "Rota kaydı kaldırılamadı.");
     });
   };

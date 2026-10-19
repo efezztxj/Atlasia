@@ -185,7 +185,7 @@ service cloud.firestore {
              && route.keys().hasOnly([
                'id', 'routeTitle', 'routeSummary', 'totalDurationHours',
                'totalDistanceKm', 'transport', 'vibe', 'days', 'weatherNote',
-               'alternatives', 'dataSources', 'createdAt', 'origin', 'photo'
+               'alternatives', 'dataSources', 'createdAt', 'origin', 'photo', 'region'
              ])
              && stringBetween(route.id, 1, 128)
              && stringBetween(route.routeTitle, 1, 160)
@@ -208,7 +208,8 @@ service cloud.firestore {
                route.photo is string
                && route.photo.size() <= 180000
                && route.photo.matches('data:image/jpeg;base64,[A-Za-z0-9+/=]+')
-             ));
+             ))
+             && (!('region' in route) || stringBetween(route.region, 0, 120));
     }
 
     function validRouteDocument(data) {
@@ -221,6 +222,36 @@ service cloud.firestore {
              && data.saveCount >= 0
              && data.createdAt is timestamp
              && data.updatedAt is timestamp;
+    }
+
+    function routeCounterChange(routeId) {
+      let savedPath = /databases/$(database)/documents/users/$(request.auth.uid)/savedRoutes/$(routeId);
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      let addedSavedRoute = !exists(savedPath) && existsAfter(savedPath);
+      let removedSavedRoute = exists(savedPath) && !existsAfter(savedPath);
+      return signedIn()
+             && changed.hasOnly(['saveCount', 'updatedAt'])
+             && request.resource.data.updatedAt == request.time
+             && (
+               (addedSavedRoute
+                && request.resource.data.saveCount == resource.data.saveCount + 1)
+               || (removedSavedRoute
+                   && resource.data.saveCount > 0
+                   && request.resource.data.saveCount == resource.data.saveCount - 1)
+             );
+    }
+
+    function savedRouteCounterIncreased(routeId) {
+      let routePath = /databases/$(database)/documents/routes/$(routeId);
+      return exists(routePath)
+             && getAfter(routePath).data.saveCount == get(routePath).data.saveCount + 1;
+    }
+
+    function savedRouteCounterDecreased(routeId) {
+      let routePath = /databases/$(database)/documents/routes/$(routeId);
+      return !existsAfter(routePath)
+             || (exists(routePath)
+                 && get(routePath).data.saveCount == getAfter(routePath).data.saveCount + 1);
     }
 
     function validTrackDocument(data) {
@@ -339,13 +370,16 @@ service cloud.firestore {
                     && request.resource.data.updatedAt == request.time
                     && validRouteDocument(request.resource.data);
       allow update: if signedIn()
-                    && resource.data.authorUid == request.auth.uid
                     && request.resource.data.authorUid == resource.data.authorUid
                     && request.resource.data.createdAt == resource.data.createdAt
-                    && request.resource.data.saveCount == resource.data.saveCount
-                    && request.resource.data.updatedAt == request.time
                     && request.resource.data.route.id == routeId
-                    && validRouteDocument(request.resource.data);
+                    && validRouteDocument(request.resource.data)
+                    && (
+                      (resource.data.authorUid == request.auth.uid
+                       && request.resource.data.saveCount == resource.data.saveCount
+                       && request.resource.data.updatedAt == request.time)
+                      || routeCounterChange(routeId)
+                    );
       allow delete: if signedIn() && resource.data.authorUid == request.auth.uid;
     }
 
@@ -382,13 +416,17 @@ service cloud.firestore {
     match /users/{uid}/savedRoutes/{routeId} {
       allow get: if signedIn() && request.auth.uid == uid;
       allow list: if signedIn() && request.auth.uid == uid && boundedList(100);
-      allow create, update: if signedIn()
-                            && request.auth.uid == uid
-                            && request.resource.data.keys().hasOnly(['routeId', 'savedAt'])
-                            && request.resource.data.keys().hasAll(['routeId', 'savedAt'])
-                            && request.resource.data.routeId == routeId
-                            && request.resource.data.savedAt == request.time;
-      allow delete: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn()
+                    && request.auth.uid == uid
+                    && request.resource.data.keys().hasOnly(['routeId', 'savedAt'])
+                    && request.resource.data.keys().hasAll(['routeId', 'savedAt'])
+                    && request.resource.data.routeId == routeId
+                    && request.resource.data.savedAt == request.time
+                    && savedRouteCounterIncreased(routeId);
+      allow update: if false;
+      allow delete: if signedIn()
+                    && request.auth.uid == uid
+                    && savedRouteCounterDecreased(routeId);
     }
 
     match /{document=**} {
