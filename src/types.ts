@@ -1,3 +1,5 @@
+import type { PlaceFreshness } from "./utils/freshness";
+
 export type CategoryId =
   | "cities"
   | "beaches"
@@ -30,6 +32,11 @@ export interface Place {
   authorUid?: string;
   kind: "guide" | "user";
   createdAt?: number;
+  /**
+   * Yalnız istemcide hesaplanır (Firestore alanı değil). Adım 14 tazelik döngüsü
+   * yerin bilgisinin hâlâ doğru olduğunu gösteren doğrulama özetidir.
+   */
+  freshness?: PlaceFreshness;
 }
 
 export interface ViewState {

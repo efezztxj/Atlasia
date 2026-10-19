@@ -5,6 +5,7 @@ import {
   Camera,
   ChevronLeft,
   ChevronRight,
+  Clock3,
   ExternalLink,
   Flag,
   Loader2,
@@ -24,6 +25,7 @@ import { useCollections } from "../hooks/useCollections";
 import { usePanelAccess } from "../hooks/usePanelAccess";
 import { useAuth } from "../contexts/AuthContext";
 import { blockUser } from "../lib/moderation";
+import { VERIFICATION_LABELS, VERIFICATION_STATUSES, type VerificationStatus } from "../utils/freshness";
 import ReportDialog from "./ReportDialog";
 import { advice } from "../utils/placeAdvice";
 import { buildGooglePlaceDirectionsUrl, buildYandexPlaceDirectionsUrl } from "../utils/mapLinks";
@@ -35,9 +37,10 @@ interface Props {
   onPlan: () => void;
   canDelete?: boolean;
   onDelete?: () => Promise<boolean>;
+  onVerify?: (status: VerificationStatus, note?: string) => Promise<void>;
 }
 
-export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDelete = false, onDelete }: Props) {
+export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDelete = false, onDelete, onVerify }: Props) {
   const { photos: allPhotos, loading, error } = usePlaceGallery(place);
   const { savePlace, isSaved } = useCollections();
   const panelRef = usePanelAccess(true, onClose, true);
@@ -48,7 +51,25 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDele
   const [deleting, setDeleting] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [blocking, setBlocking] = useState(false);
+  const [verifyBusy, setVerifyBusy] = useState<VerificationStatus | null>(null);
+  const [verifyNote, setVerifyNote] = useState("");
+  const [verifyStatus, setVerifyStatus] = useState<string | null>(null);
   const { user } = useAuth();
+
+  const submitVerification = async (status: VerificationStatus) => {
+    if (!onVerify || verifyBusy) return;
+    setVerifyBusy(status);
+    setVerifyStatus(null);
+    try {
+      await onVerify(status, verifyNote.trim() || undefined);
+      setVerifyNote("");
+      setVerifyStatus("Doğrulaman kaydedildi. Teşekkürler!");
+    } catch (error) {
+      setVerifyStatus((error as Error).message || "Doğrulama kaydedilemedi.");
+    } finally {
+      setVerifyBusy(null);
+    }
+  };
 
   const photos = allPhotos.filter((photoItem) => !failed.includes(photoItem.url));
   const photo = photos[Math.min(index, Math.max(0, photos.length - 1))];
@@ -170,6 +191,43 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDele
 
           {status && <p role="status" className="mt-2 text-[13px] text-sun">{status}</p>}
           <p className="mt-5 text-[15px] leading-[1.8] text-mint/90">{story}</p>
+
+          <section aria-labelledby="freshness-title" className="mt-7 rounded-2xl border border-leaf/25 bg-white/[0.03] p-3.5">
+            <h3 id="freshness-title" className="flex items-center gap-2 text-[13px] font-semibold"><Clock3 size={16} className="text-leaf" />Tazelik</h3>
+            <p className="mt-1 text-[13px] leading-relaxed text-mint/85">
+              {place.freshness ? place.freshness.label : "Henüz doğrulanmadı · bilgi eski olabilir"}
+            </p>
+            {place.freshness?.latestAt && (
+              <p className="mt-1 text-[11px] text-mint/55">
+                Son doğrulama: {new Date(place.freshness.latestAt).toLocaleDateString("tr-TR")} · toplam {place.freshness.totalCount} doğrulama
+              </p>
+            )}
+            {onVerify && (
+              <>
+                <p className="mt-3 text-[12px] text-mint/70">Burayı yeni ziyaret ettiysen tek dokunuşla doğrula:</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {VERIFICATION_STATUSES.map((status) => (
+                    <button
+                      key={status}
+                      type="button"
+                      disabled={!!verifyBusy}
+                      onClick={() => void submitVerification(status)}
+                      className="flex min-h-9 items-center gap-1.5 rounded-full border border-white/15 px-3 text-[12px] text-mint/85 transition hover:border-leaf/60 hover:text-white disabled:opacity-50"
+                    >
+                      {verifyBusy === status ? <Loader2 size={12} className="animate-spin" /> : null}
+                      {VERIFICATION_LABELS[status]}
+                    </button>
+                  ))}
+                </div>
+                <label className="mt-2 block text-[11px] text-mint/60">
+                  İsteğe bağlı not (max 280)
+                  <input value={verifyNote} onChange={(event) => setVerifyNote(event.target.value)} maxLength={280} placeholder="Örn. giriş ücreti 200 TL oldu" className="mt-1 h-9 w-full rounded-lg border border-white/10 bg-ink px-2 text-[12px] text-mint outline-none focus:border-leaf/50" />
+                </label>
+                {verifyStatus && <p role="status" className="mt-2 text-[12px] text-sun">{verifyStatus}</p>}
+              </>
+            )}
+            <p className="mt-2 text-[11px] leading-relaxed text-mint/50">Tazelik bir güven sinyalidir; doğrulama puan/rozet kazandırmaz. Rota motoru taze doğrulanmış durağı öne alır.</p>
+          </section>
 
           <h3 className="mt-7 text-[12px] font-bold tracking-[0.16em] text-sun uppercase">Gitmeden bil</h3>
           <dl className="mt-3 space-y-4">

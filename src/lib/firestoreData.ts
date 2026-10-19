@@ -7,6 +7,14 @@
  *   posts/{postId}                    — sosyal akış gönderileri
  *   posts/{postId}.replies[]           — gönderi yanıtları (sınırlı gömülü liste)
  *   stories/{storyId}                 — 24 saat ömürlü hikâyeler
+ *   verifications/{verificationId}     — tazelik doğrulamaları (Adım 14)
+ *
+ * Ürün kararı (d) BAĞLI — XP/rozet/takip fonlanmıyor:
+ * Bu katmanda XP/level yazacak istemci fonksiyonu YOKTUR ve eklenmeyecektir;
+ * puan üretimi Cloud Functions (Blaze) gerektirir. `@deprecated` niteliğindeki
+ * eski sosyal ilerleme yardımcıları varsa silinmez, çağrılmaz. Puan yerine
+ * tazelik doğrulaması bir güven sinyali olarak çalışır (bkz. utils/freshness).
+ * XP'nin gerçek işi lansman sonrası Blaze onayına ertelenmiştir.
  */
 import {
   arrayRemove,

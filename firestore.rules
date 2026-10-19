@@ -218,6 +218,17 @@ service cloud.firestore {
              && data.createdAt == request.time;
     }
 
+    function validVerification(data) {
+      return data.keys().hasAll(['placeId', 'uid', 'status', 'createdAt'])
+             && data.keys().hasOnly(['placeId', 'uid', 'status', 'createdAt', 'note'])
+             && stringBetween(data.placeId, 1, 200)
+             && stringBetween(data.uid, 1, 128)
+             && data.uid == request.auth.uid
+             && data.status in ['still_open', 'fee_changed', 'road_closed', 'free_entry', 'closed']
+             && (!('note' in data) || stringBetween(data.note, 1, 280))
+             && data.createdAt == request.time;
+    }
+
     function validNotification(data) {
       return data.keys().hasAll(['recipientUid', 'actorUid', 'type', 'title', 'body', 'read', 'createdAt'])
              && data.keys().hasOnly(['recipientUid', 'actorUid', 'type', 'title', 'body', 'read', 'createdAt', 'targetId'])
@@ -279,6 +290,16 @@ service cloud.firestore {
       allow update: if false;
       allow delete: if signedIn()
                     && resource.data.authorUid == request.auth.uid;
+    }
+
+    // Tazelik doğrulamaları: herkese açık okuma, yalnız kendi adına yazma.
+    // Liste isteği 50 kayıtla sınırlıdır; canlı dinleyici tek pencere tutar.
+    match /verifications/{verificationId} {
+      allow get: if true;
+      allow list: if boundedList(50);
+      allow create: if signedIn() && validVerification(request.resource.data);
+      allow update: if false;
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
     }
 
     match /reports/{reportId} {

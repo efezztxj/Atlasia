@@ -34,6 +34,7 @@ import type { AtlasRoute, CategoryId, Place, ViewState } from "./types";
 import { haversineKm, reverseName, type SearchResult } from "./utils/geo";
 import { storageGet, storageSet } from "./utils/storage";
 import { useBlocks } from "./hooks/useBlocks";
+import { useFreshness } from "./hooks/useFreshness";
 import { subscribeNotifications, markNotificationRead, markAllRead, type AppNotification } from "./lib/notifications";
 import NotificationsPanel from "./components/NotificationsPanel";
 
@@ -115,6 +116,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
     }
   }, [remote.ready, remote.error]);
   const { isBlocked } = useBlocks(user?.uid);
+  const freshness = useFreshness(user?.uid);
   const rawDiscoveries = cloud.places;
   const rawPosts = cloud.posts;
   const rawStories = cloud.stories;
@@ -290,7 +292,10 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [addMode]);
 
-  const allPlaces = useMemo(() => [...discoveries, ...GUIDE_PLACES], [discoveries]);
+  const allPlaces = useMemo(
+    () => freshness.withFreshness([...discoveries, ...GUIDE_PLACES]),
+    [discoveries, freshness],
+  );
   const canManagePlace = useCallback(
     (place: Place) => place.kind === "user" && (place.authorUid ? place.authorUid === user!.uid : !remote.ready),
     [remote.ready, user],
@@ -302,6 +307,10 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   );
 
   const activePlace = activeId ? allPlaces.find((p) => p.id === activeId) : undefined;
+  // Tazelik verisi canlı değiştiğinde açık detay paneli de güncel özeti gösterir.
+  const liveStoryPlace = storyPlace
+    ? allPlaces.find((item) => item.id === storyPlace.id) ?? storyPlace
+    : null;
   const current =
     activePlace ??
     (visiblePlaces.length ? visiblePlaces[featuredIdx % visiblePlaces.length] : undefined);
@@ -815,23 +824,30 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         />
       )}
 
-      {storyPlace && (
+      {liveStoryPlace && (
         <PlaceDetails
-          place={storyPlace}
+          place={liveStoryPlace}
           onClose={() => setStoryPlace(null)}
           onStreet={() => {
-            const place = storyPlace;
+            const place = liveStoryPlace;
+            if (!place) return;
             if (smallScreen) setStoryPlace(null);
             setStreetPlace(place);
           }}
           onPlan={() => {
-            const place = storyPlace;
+            const place = liveStoryPlace;
+            if (!place) return;
             closePanels();
             focusPlace(place);
             setAtlasOpen(true);
           }}
-          canDelete={canManagePlace(storyPlace)}
-          onDelete={() => handleDelete(storyPlace)}
+          canDelete={canManagePlace(liveStoryPlace)}
+          onDelete={() => handleDelete(liveStoryPlace)}
+          onVerify={(status, note) => {
+            const target = liveStoryPlace;
+            if (!target) return Promise.resolve();
+            return freshness.verify(target.id, status, note);
+          }}
         />
       )}
       {streetPlace && !atlasOpen && (

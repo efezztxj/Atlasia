@@ -394,6 +394,33 @@ describe("Firestore güvenlik kuralları", () => {
     await assertSucceeds(deleteDoc(storyRef));
   });
 
+  it("tazelik doğrulamasını yalnız kendi adına yazar, herkes sınırlı sayfada okur", async () => {
+    const memberDb = testEnv.authenticatedContext("member").firestore();
+    const otherDb = testEnv.authenticatedContext("other").firestore();
+    const guestDb = testEnv.unauthenticatedContext().firestore();
+    const valid = {
+      placeId: "place-1",
+      uid: "member",
+      status: "still_open",
+      note: "Giriş hâlâ açık.",
+      createdAt: serverTimestamp(),
+    };
+
+    await assertFails(setDoc(doc(guestDb, "verifications/guest"), valid));
+    await assertFails(setDoc(doc(memberDb, "verifications/spoofed"), { ...valid, uid: "other" }));
+    await assertFails(setDoc(doc(memberDb, "verifications/bad-status"), { ...valid, status: "harika" }));
+    await assertFails(setDoc(doc(memberDb, "verifications/extra"), { ...valid, xp: 50 }));
+    await assertSucceeds(setDoc(doc(memberDb, "verifications/vr-1"), valid));
+
+    await assertSucceeds(getDoc(doc(guestDb, "verifications/vr-1")));
+    await assertFails(getDocs(collection(guestDb, "verifications")));
+    await assertSucceeds(getDocs(query(collection(guestDb, "verifications"), limit(50))));
+    await assertFails(getDocs(query(collection(guestDb, "verifications"), limit(51))));
+    await assertFails(updateDoc(doc(memberDb, "verifications/vr-1"), { status: "closed" }));
+    await assertFails(deleteDoc(doc(otherDb, "verifications/vr-1")));
+    await assertSucceeds(deleteDoc(doc(memberDb, "verifications/vr-1")));
+  });
+
   it("içerik bildirimini yalnız oturum sahibi adına ve sınırlı alanlarla kabul eder", async () => {
     const memberDb = testEnv.authenticatedContext("member").firestore();
     const otherDb = testEnv.authenticatedContext("other").firestore();
