@@ -136,6 +136,29 @@ export interface RouteDay {
   polyline: string;
 }
 
+export type RouteVisibility = "private" | "unlisted" | "public";
+
+export interface AtlasTrackStop {
+  startedAt: number;
+  endedAt: number;
+  lat: number;
+  lng: number;
+  pointCount: number;
+}
+
+/** Sahibe özel ham iz: zaman bilgisi tam çözünürlüklü noktalarla kayıtta türetilir. */
+export interface AtlasTrack {
+  id: string;
+  authorUid: string;
+  startedAt: number;
+  endedAt: number;
+  distanceKm: number;
+  polyline: string;
+  stops: AtlasTrackStop[];
+  accuracy: { sampleCount: number; meanMeters: number; maxMeters: number };
+  createdAt?: number;
+}
+
 export interface AtlasRoute {
   id: string;
   routeTitle: string;
