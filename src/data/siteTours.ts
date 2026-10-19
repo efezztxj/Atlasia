@@ -246,16 +246,17 @@ export function isRealPath(tour: AtlasRoute): boolean {
     let count = 0;
     while (i < poly.length) {
       // her nokta 2 değer kodlar
-      let s = 0;
+      let _s = 0;
       let b: number;
       do {
         b = poly.charCodeAt(i++) - 63;
-        s += 5;
+        _s += 5;
       } while (b >= 0x20 && i < poly.length);
       do {
         b = poly.charCodeAt(i++) - 63;
-        s += 5;
+        _s += 5;
       } while (b >= 0x20 && i < poly.length);
+      void _s;
       count++;
     }
     return count;
