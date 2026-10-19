@@ -1,4 +1,5 @@
 import type { PlaceFreshness } from "./utils/freshness";
+import type { StopWeather } from "./utils/weather";
 
 export type CategoryId =
   | "cities"
@@ -133,6 +134,8 @@ export interface RouteStop {
   category: string;
   imageUrl: string | null;
   source?: "atlasia" | "community" | "openstreetmap";
+  /** Adım 15: durağın varış saatindeki hava tahmini (istemcide hesaplanır). */
+  weather?: StopWeather;
 }
 
 export interface RouteDay {
