@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import {
+  Ban,
   Bookmark,
   Camera,
   ChevronLeft,
   ChevronRight,
   ExternalLink,
+  Flag,
   Loader2,
   Map,
   MapPin,
@@ -20,6 +22,9 @@ import { CATEGORY_MAP } from "../data/categories";
 import { usePlaceGallery } from "../hooks/usePlaceGallery";
 import { useCollections } from "../hooks/useCollections";
 import { usePanelAccess } from "../hooks/usePanelAccess";
+import { useAuth } from "../contexts/AuthContext";
+import { blockUser } from "../lib/moderation";
+import ReportDialog from "./ReportDialog";
 import { advice } from "../utils/placeAdvice";
 import { buildGooglePlaceDirectionsUrl, buildYandexPlaceDirectionsUrl } from "../utils/mapLinks";
 
@@ -41,6 +46,9 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDele
   const [status, setStatus] = useState<string | null>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showReport, setShowReport] = useState(false);
+  const [blocking, setBlocking] = useState(false);
+  const { user } = useAuth();
 
   const photos = allPhotos.filter((photoItem) => !failed.includes(photoItem.url));
   const photo = photos[Math.min(index, Math.max(0, photos.length - 1))];
@@ -147,6 +155,17 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDele
                 {deleting ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}İzimi sil
               </button>
             )}
+            {place.authorUid && place.authorUid !== user?.uid && (
+              <button type="button" disabled={blocking} onClick={async () => {
+                if (!user || !place.authorUid) return;
+                if (!confirm(`${place.author} kullanıcısını engellemek istiyor musun?`)) return;
+                setBlocking(true);
+                try { await blockUser(place.authorUid, user.uid); setStatus("Kullanıcı engellendi."); } catch (e) { setStatus((e as Error).message); } finally { setBlocking(false); }
+              }} className="flex min-h-11 items-center gap-2 rounded-full border border-white/10 px-4 text-sm text-mint/70 disabled:opacity-50">
+                {blocking ? <Loader2 size={15} className="animate-spin" /> : <Ban size={15} />}Engelle
+              </button>
+            )}
+            <button type="button" onClick={() => setShowReport(true)} className="flex min-h-11 items-center gap-2 rounded-full border border-white/10 px-4 text-sm text-mint/70"><Flag size={15} />Bildir</button>
           </div>
 
           {status && <p role="status" className="mt-2 text-[13px] text-sun">{status}</p>}
@@ -178,6 +197,9 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDele
           <p className="mt-5 border-l-2 border-sun/30 pl-3 text-[12px] leading-relaxed text-mint/75">Bu bir rehber özetidir. Saat, ücret ve erişim koşullarını gitmeden resmî kaynaktan doğrula.</p>
         </div>
       </aside>
+      {showReport && user && (
+        <ReportDialog targetType="place" targetId={place.id} targetOwnerUid={place.authorUid} targetLabel={place.title} reporterUid={user.uid} onClose={() => setShowReport(false)} onReported={() => setStatus("Raporun alındı, inceleyeceğiz.")} />
+      )}
     </div>
   );
 }

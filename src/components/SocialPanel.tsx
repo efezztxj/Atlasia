@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Ban,
   CornerDownRight,
   Crosshair,
+  Flag,
   Heart,
   ImagePlus,
   Loader2,
@@ -9,6 +11,7 @@ import {
   MessageCircle,
   MessagesSquare,
   Minus,
+  MoreHorizontal,
   Plus,
   Send,
   Sparkles,
@@ -27,6 +30,8 @@ import { storageGet, storageSet } from "../utils/storage";
 import Avatar from "./Avatar";
 import StoryComposer from "./StoryComposer";
 import StoryViewer from "./StoryViewer";
+import ReportDialog from "./ReportDialog";
+import { blockUser } from "../lib/moderation";
 
 const SEEN_KEY = "atlasia.feed.seen.v1";
 const NEARBY_KM = 900;
@@ -109,6 +114,8 @@ export default function SocialPanel({
   const [expanded, setExpanded] = useState<string[]>([]);
   const [storyIndex, setStoryIndex] = useState<number | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
+  const [reportPost, setReportPost] = useState<FeedPost | null>(null);
+  const [menuPostId, setMenuPostId] = useState<string | null>(null);
 
   const listRef = useRef<HTMLDivElement>(null);
   const replyInputRef = useRef<HTMLInputElement>(null);
@@ -430,6 +437,25 @@ export default function SocialPanel({
                           <Trash2 className="size-3.5" />
                         </button>
                       )}
+                      {p.authorUid && p.authorUid !== currentUid && (
+                        <div className="relative ml-auto">
+                          <button type="button" onClick={() => setMenuPostId(menuPostId === p.id ? null : p.id)} aria-label="Gönderi menüsü" className="grid size-7 place-items-center rounded-full text-mint/40 hover:bg-white/10 hover:text-mint">
+                            <MoreHorizontal size={14} />
+                          </button>
+                          {menuPostId === p.id && (
+                            <div className="absolute right-0 top-8 z-10 w-44 rounded-xl border border-white/10 bg-[#0a221b] p-1 shadow-xl">
+                              <button type="button" onClick={() => { setMenuPostId(null); setReportPost(p); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[12px] text-mint/80 hover:bg-white/5"><Flag size={14} />Bildir</button>
+                              <button type="button" onClick={async () => {
+                                if (!p.authorUid) return;
+                                if (!confirm(`${p.author} kullanıcısını engellemek istiyor musun?`)) return;
+                                setMenuPostId(null);
+                                try { await blockUser(p.authorUid, currentUid); setActionError(`${p.author} engellendi.`); } catch (e) { setActionError((e as Error).message); }
+                              }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[12px] text-mint/80 hover:bg-white/5"><Ban size={14} />Engelle</button>
+                              <button type="button" onClick={() => setMenuPostId(null)} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[11px] text-mint/50">Kapat</button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {p.text && (
@@ -704,6 +730,9 @@ export default function SocialPanel({
           onClose={() => setComposerOpen(false)}
           onPublish={publishStory}
         />
+      )}
+      {reportPost && (
+        <ReportDialog targetType="post" targetId={reportPost.id} targetOwnerUid={reportPost.authorUid} targetLabel={reportPost.text.slice(0,40)} reporterUid={currentUid} onClose={() => setReportPost(null)} onReported={() => setActionError("Raporun alındı, inceleyeceğiz.")} />
       )}
     </>
   );

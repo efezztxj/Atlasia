@@ -69,7 +69,7 @@ export const privacyDocument: LegalDocument = {
     {
       title: "6. SAKLAMA SÜRELERİ",
       paragraphs: [
-        "Hesap ve profil verin: hesabın açık olduğu süre boyunca. İçeriklerin: sen silene veya hesabın kapanana dek (sildiğin içerik görünümden kaldırılır). Hikâyeler: 24 saat sonra görünümden kaldırılır. Teknik güvenlik kayıtları: suistimali önlemek için gerekli makul süre. Hukuki yükümlülük gerektiren kayıtlar: ilgili mevzuatta öngörülen süre. Hesabını kapatmak için Ayarlar üzerinden veya bize e-posta ile başvurabilirsin.",
+        "Hesap ve profil verin: hesabın açık olduğu süre boyunca. İçeriklerin: sen silene veya hesabın kapanana dek (sildiğin içerik görünümden kaldırılır). Hikâyeler: 24 saat sonra görünümden kaldırılır. Teknik güvenlik kayıtları: suistimali önlemek için gerekli makul süre. Hukuki yükümlülük gerektiren kayıtlar: ilgili mevzuatta öngörülen süre. Hesabını ve verilerini Profil > Tehlikeli alan > “Hesabımı ve verilerimi sil” ile uygulama içinden kalıcı olarak silebilirsin: izlerin, gönderilerin, hikâyelerin, raporların ve engelleme kayıtların bu işlemle kaldırılır; cihaz modundaki hesabın da tarayıcı deposundan silinir. Soruların için bize e-posta ile de başvurabilirsin.",
       ],
     },
     {
@@ -140,7 +140,7 @@ export const termsDocument: LegalDocument = {
     {
       title: "6. MODERASYON VE ŞEFFAFLIK",
       paragraphs: [
-        "Bildirilen içerikler önce gözden geçirilir; kurala aykırı bulunan içerik kaldırılır ve sahibine sebebi bildirilir, hesabında görünür. Karara [E-POSTA] veya uygulama içi yol üzerinden itiraz edebilirsin; itirazın incelenir ve sonucu paylaşılır. Spam'i önlemek için yeni hesapların ilk içerikleri kısa süre yayın öncesi denetime tabi olabilir ve topluluğu korumak amacıyla makul paylaşım sınırları uygulanabilir; bu sınırlar abonelikle satılmaz. Tekrarlayan veya ağır ihlallerde hesap sınırlandırılabilir ya da kalıcı kapatılabilir; sessizce veri silmiyoruz — hesapla ilgili her işlemden seni haberdar ederiz (yasal zorunluluk veya acil güvenlik hâlleri dışında).",
+        "Herhangi bir izi, gönderiyi veya kullanıcıyı uygulama içinden bildirebilirsin. Bir kullanıcıyı engellediğinde o kullanıcının izleri, gönderileri ve hikâyeleri senin görünümünden gizlenir; engelleme kaydı yalnızca sana aittir ve dilediğinde kaldırılabilir. Bildirilen içerikler önce gözden geçirilir; kurala aykırı bulunan içerik kaldırılır ve sahibine sebebi bildirilir, hesabında görünür. Karara [E-POSTA] veya uygulama içi yol üzerinden itiraz edebilirsin; itirazın incelenir ve sonucu paylaşılır. Spam'i önlemek için yeni hesapların ilk içerikleri kısa süre yayın öncesi denetime tabi olabilir ve topluluğu korumak amacıyla makul paylaşım sınırları uygulanabilir; bu sınırlar abonelikle satılmaz. Tekrarlayan veya ağır ihlallerde hesap sınırlandırılabilir ya da kalıcı kapatılabilir; sessizce veri silmiyoruz — hesapla ilgili her işlemden seni haberdar ederiz (yasal zorunluluk veya acil güvenlik hâlleri dışında).",
       ],
     },
     {

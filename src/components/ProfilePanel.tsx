@@ -12,6 +12,7 @@ import {
   Route,
   Send,
   ShieldCheck,
+  Trash2,
   UserRound,
   X,
 } from "lucide-react";
@@ -19,6 +20,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useCollections } from "../hooks/useCollections";
 import { authErrorMessage } from "../lib/auth";
 import { usePanelAccess } from "../hooks/usePanelAccess";
+import { deleteAccount } from "../lib/moderation";
 
 interface Props {
   onClose: () => void;
@@ -36,6 +38,8 @@ export default function ProfilePanel({ onClose, onRecords }: Props) {
   const [status, setStatus] = useState<string | null>(null);
   const [verificationBusy, setVerificationBusy] = useState<"send" | "check" | null>(null);
   const [verificationSent, setVerificationSent] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const needsEmailVerification = user?.backend === "firebase" && !!user.email && !user.emailVerified;
 
   const sendVerification = async () => {
@@ -88,6 +92,25 @@ export default function ProfilePanel({ onClose, onRecords }: Props) {
       setStatus(authErrorMessage(error));
       setConfirmLogout(false);
       setLoggingOut(false);
+    }
+  };
+
+  const completeDelete = async () => {
+    if (!user) return;
+    setDeleting(true);
+    setStatus(null);
+    try {
+      await deleteAccount(user.uid);
+      setStatus("Hesabın ve tüm verilerin silindi.");
+      // Oturum zaten kalktı; kısa gecikme sonrası kapan
+      setTimeout(() => {
+        setConfirmDelete(false);
+        onClose();
+      }, 800);
+    } catch (error) {
+      setStatus(authErrorMessage(error) || (error as Error).message);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -176,6 +199,13 @@ export default function ProfilePanel({ onClose, onRecords }: Props) {
           <Route size={15} className="mt-1 shrink-0" />
           Kaydettiğin yerler ve rotalar bu cihazda, hesabına özel tutulur.
         </p>
+        <section aria-labelledby="danger-title" className="mt-6 rounded-2xl border border-red-300/20 bg-red-400/5 p-4">
+          <h3 id="danger-title" className="flex items-center gap-2 text-[13px] font-semibold text-red-200"><Trash2 size={14} />Tehlikeli alan</h3>
+          <p className="mt-1 text-[12px] leading-relaxed text-mint/60">Hesabını silersen tüm izlerin, gönderilerin, hikâyelerin ve engelleme listelerin kalıcı olarak kalkar. Bu işlem geri alınamaz.</p>
+          <button type="button" onClick={() => setConfirmDelete(true)} className="mt-3 flex min-h-10 items-center gap-2 rounded-full border border-red-300/25 px-4 text-[12px] font-semibold text-red-200 hover:bg-red-400/10">
+            <Trash2 size={14} />Hesabımı ve verilerimi sil
+          </button>
+        </section>
       </div>
 
       <footer className="shrink-0 border-t border-white/10 bg-ink-2 px-6 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] md:pb-4">
@@ -198,6 +228,21 @@ export default function ProfilePanel({ onClose, onRecords }: Props) {
               <button type="button" disabled={loggingOut} onClick={() => void completeLogout()} className="flex min-h-11 items-center justify-center gap-2 rounded-full bg-red-300 px-4 text-sm font-semibold text-[#30110f] disabled:opacity-60">
                 {loggingOut ? <Loader2 size={16} className="animate-spin" /> : <LogOut size={16} />}
                 Çıkış yap
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+      {confirmDelete && (
+        <div className="absolute inset-0 z-20 grid place-items-end bg-black/65 p-4 backdrop-blur-sm md:place-items-center">
+          <section role="alertdialog" aria-modal="true" aria-labelledby="delete-title" className="w-full rounded-[24px] border border-red-300/20 bg-[#1a0f0f] p-5 shadow-2xl">
+            <h3 id="delete-title" className="font-display text-lg font-semibold text-red-200">Hesabın tamamen silinsin mi?</h3>
+            <p className="mt-2 text-[13px] leading-relaxed text-mint/70">Tüm izlerin, gönderilerin, hikâyelerin, raporların ve engellerin silinir. Oturumun kapanır ve verilerin geri getirilemez. Onaylıyor musun?</p>
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              <button type="button" disabled={deleting} onClick={() => setConfirmDelete(false)} className="min-h-11 rounded-full border border-white/15 text-sm text-mint disabled:opacity-50">Vazgeç</button>
+              <button type="button" disabled={deleting} onClick={() => void completeDelete()} className="flex min-h-11 items-center justify-center gap-2 rounded-full bg-red-300 px-4 text-sm font-semibold text-[#30110f] disabled:opacity-60">
+                {deleting ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                Evet, sil
               </button>
             </div>
           </section>

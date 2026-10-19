@@ -195,6 +195,44 @@ service cloud.firestore {
              && hasValidOptionalPhoto(data);
     }
 
+    function validReport(data) {
+      return data.keys().hasAll(['reporterUid', 'targetType', 'targetId', 'reason', 'createdAt'])
+             && data.keys().hasOnly(['reporterUid', 'targetType', 'targetId', 'targetOwnerUid', 'reason', 'details', 'createdAt'])
+             && stringBetween(data.reporterUid, 1, 128)
+             && data.reporterUid == request.auth.uid
+             && data.targetType in ['place', 'post', 'story', 'user']
+             && stringBetween(data.targetId, 1, 200)
+             && (!('targetOwnerUid' in data) || stringBetween(data.targetOwnerUid, 1, 128))
+             && data.reason in ['spam', 'harassment', 'hate', 'misinfo', 'privacy', 'other']
+             && (!('details' in data) || stringBetween(data.details, 1, 1000))
+             && data.createdAt == request.time;
+    }
+
+    function validBlock(data) {
+      return data.keys().hasAll(['blockerUid', 'blockedUid', 'createdAt'])
+             && data.keys().hasOnly(['blockerUid', 'blockedUid', 'createdAt'])
+             && stringBetween(data.blockerUid, 1, 128)
+             && stringBetween(data.blockedUid, 1, 128)
+             && data.blockerUid == request.auth.uid
+             && data.blockedUid != request.auth.uid
+             && data.createdAt == request.time;
+    }
+
+    function validNotification(data) {
+      return data.keys().hasAll(['recipientUid', 'actorUid', 'type', 'title', 'body', 'read', 'createdAt'])
+             && data.keys().hasOnly(['recipientUid', 'actorUid', 'type', 'title', 'body', 'read', 'createdAt', 'targetId'])
+             && stringBetween(data.recipientUid, 1, 128)
+             && stringBetween(data.actorUid, 1, 128)
+             && data.actorUid == request.auth.uid
+             && data.type in ['report_received', 'report_actioned', 'blocked', 'group_invite', 'group_message', 'system']
+             && stringBetween(data.title, 1, 200)
+             && stringBetween(data.body, 0, 500)
+             && data.read is bool
+             && data.read == false
+             && data.createdAt == request.time
+             && (!('targetId' in data) || stringBetween(data.targetId, 1, 200));
+    }
+
     match /places/{placeId} {
       allow get: if true;
       // Toplam içerik tavanı değil: her overview/viewport/sahip cursor sayfası
@@ -241,6 +279,42 @@ service cloud.firestore {
       allow update: if false;
       allow delete: if signedIn()
                     && resource.data.authorUid == request.auth.uid;
+    }
+
+    match /reports/{reportId} {
+      allow get: if signedIn() && resource.data.reporterUid == request.auth.uid;
+      allow list: if signedIn() && boundedList(50);
+      allow create: if signedIn() && validReport(request.resource.data);
+      allow update: if false;
+      allow delete: if signedIn() && resource.data.reporterUid == request.auth.uid;
+    }
+
+    match /blocks/{blockId} {
+      allow get: if signedIn() && resource.data.blockerUid == request.auth.uid;
+      allow list: if signedIn() && boundedList(50);
+      allow create: if signedIn() && validBlock(request.resource.data);
+      allow update: if false;
+      allow delete: if signedIn() && resource.data.blockerUid == request.auth.uid;
+    }
+
+    // Notifications: kullanıcı subcollection — yalnız alıcı okur, aktör yazar (engelleme hariç)
+    match /users/{uid}/notifications/{notificationId} {
+      allow get: if signedIn() && uid == request.auth.uid;
+      allow list: if signedIn() && uid == request.auth.uid && boundedList(50);
+      allow create: if signedIn() && validNotification(request.resource.data) && request.resource.data.recipientUid == uid;
+      allow update: if signedIn() && uid == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read'])
+                    && request.resource.data.read is bool;
+      allow delete: if signedIn() && uid == request.auth.uid;
+    }
+
+    // Blocks subcollection (alternatif yol) — üstteki top-level ile aynı, uyumluluk için
+    match /users/{uid}/blocks/{blockedId} {
+      allow get: if signedIn() && uid == request.auth.uid;
+      allow list: if signedIn() && uid == request.auth.uid && boundedList(50);
+      allow create: if signedIn() && uid == request.auth.uid && request.resource.data.blockerUid == uid && request.resource.data.blockedUid == blockedId && request.resource.data.createdAt == request.time;
+      allow update: if false;
+      allow delete: if signedIn() && uid == request.auth.uid;
     }
 
     match /{document=**} {
