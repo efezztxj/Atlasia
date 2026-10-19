@@ -415,12 +415,17 @@ describe("Firestore güvenlik kuralları", () => {
       authorUid: "owner",
       visibility,
       route: { ...routeBody, id: routeId },
+      saveCount: 0,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
     await assertSucceeds(setDoc(doc(ownerDb, "routes/route-public"), routeDocument("public", "route-public")));
     await assertSucceeds(setDoc(doc(ownerDb, "routes/route-unlisted"), routeDocument("unlisted", "route-unlisted")));
     await assertSucceeds(setDoc(doc(ownerDb, "routes/route-private"), routeDocument("private", "route-private")));
+    await assertFails(setDoc(doc(ownerDb, "routes/route-invalid-photo"), {
+      ...routeDocument("public", "route-invalid-photo"),
+      route: { ...routeBody, id: "route-invalid-photo", photo: "https://example.com/photo.jpg" },
+    }));
     await assertSucceeds(getDoc(doc(guestDb, "routes/route-public")));
     await assertSucceeds(getDoc(doc(guestDb, "routes/route-unlisted")));
     await assertFails(getDoc(doc(guestDb, "routes/route-private")));

@@ -79,6 +79,7 @@ export function CollectionsProvider({ children }: { children: ReactNode }) {
 
   const publish = async (route: AtlasRoute, visibility: RouteVisibility) => {
     await publishRoute(user!.uid, route, visibility);
+    await saveRouteReference(user!.uid, route);
   };
 
   const removeRoute = (id: string) => {

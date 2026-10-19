@@ -21,6 +21,7 @@ import NearbyAudioGuide from "./components/NearbyAudioGuide";
 import LandingPage from "./components/LandingPage";
 import RecordsDock from "./components/RecordsDock";
 import TrackRecorderPanel from "./components/TrackRecorderPanel";
+import RouteEditor from "./components/RouteEditor";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { CollectionsProvider } from "./hooks/useCollections";
 import { GUIDE_PLACES } from "./data/places";
@@ -31,7 +32,8 @@ import { useTheme } from "./hooks/useTheme";
 import { useInstallApp, type InstallAppController } from "./hooks/useInstallApp";
 import { isCloudReady, firebaseConfigSummary } from "./lib/firebase";
 import type { PlaceViewport } from "./lib/firestoreData";
-import type { AtlasRoute, CategoryId, Place, ViewState } from "./types";
+import { getPublishedRoute } from "./lib/routeData";
+import type { AtlasRoute, CategoryId, Place, RouteVisibility, ViewState } from "./types";
 import { haversineKm, reverseName, type SearchResult } from "./utils/geo";
 import { storageGet, storageSet } from "./utils/storage";
 import { decodePolyline } from "./utils/polyline";
@@ -136,6 +138,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [resumeRoute, setResumeRoute] = useState<AtlasRoute | null>(null);
+  const [routeEditorRoute, setRouteEditorRoute] = useState<AtlasRoute | null>(null);
   const [smallScreen, setSmallScreen] = useState(() => window.innerWidth < 768);
   const [reducedMotion, setReducedMotion] = useState(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   const [storyPlace, setStoryPlace] = useState<Place | null>(null);
@@ -161,6 +164,24 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
 
   useEffect(() => { if (user?.displayName) storageSet("atlasia.author", user.displayName); }, [user?.displayName]);
   useEffect(() => { storageSet(MAP_STYLE_KEY, baseMap); }, [baseMap]);
+
+  useEffect(() => {
+    const routeId = new URLSearchParams(window.location.search).get("route");
+    if (!routeId) return;
+    let active = true;
+    void getPublishedRoute(routeId).then((result) => {
+      if (!active) return;
+      if (!result) { setToast("Bu rota bulunamadı veya artık paylaşılmıyor."); return; }
+      setResumeRoute(result.route);
+      setAtlasOpen(true);
+      setToast("Paylaşılan rota açıldı. Kendi kayıtlarına ekleyebilirsin.");
+    }).catch((failure: unknown) => {
+      if (active) setToast(failure instanceof Error && failure.message.includes("permission-denied")
+        ? "Bu rota özel. Yalnız sahibi açabilir."
+        : "Rota yüklenemedi. Bağlantıyı ve internetini kontrol et.");
+    });
+    return () => { active = false; };
+  }, []);
 
   const closePanels = () => {
     setDrawerOpen(false);
@@ -690,6 +711,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         hasLocation={!!precise}
         resumeRoute={resumeRoute}
         dockExpanded={panelOpen && dockVisible}
+        onOpenRouteEditor={(route) => setRouteEditorRoute(route)}
         origin={{
           lat: precise?.lat ?? view.lat,
           lng: precise?.lng ?? view.lng,
@@ -733,6 +755,17 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
       />
 
       {recordsOpen && <RecordsDock onClose={() => setRecordsOpen(false)} onPlace={(place) => { closePanels(); focusPlace(place); setStoryPlace(place); }} onRoute={(route) => { closePanels(); setResumeRoute(route); setAtlasOpen(true); }} />}
+      {routeEditorRoute && <RouteEditor
+        route={routeEditorRoute}
+        onClose={() => setRouteEditorRoute(null)}
+        onSaved={(route, visibility: RouteVisibility) => {
+          setResumeRoute(route);
+          setAtlasOpen(true);
+          const coords = route.days.flatMap((day) => decodePolyline(day.polyline));
+          if (coords.length > 1) mapRef.current?.drawRoute(coords, false);
+          setToast(visibility === "private" ? "Rota hesabında özel olarak kaydedildi." : "Rota yayımlandı. Kalıcı bağlantı hazır.");
+        }}
+      />}
       {profileOpen && <ProfilePanel onClose={() => setProfileOpen(false)} onRecords={openRecords} />}
       {myPlacesOpen && (
         <MyPlacesPanel

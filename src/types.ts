@@ -161,6 +161,8 @@ export interface AtlasTrack {
 
 export interface AtlasRoute {
   id: string;
+  /** Rota kapağı: JPEG data URL; Firestore kuralları 180 KB üstünü reddeder. */
+  photo?: string;
   routeTitle: string;
   routeSummary: string;
   totalDurationHours: number;

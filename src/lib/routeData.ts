@@ -98,6 +98,7 @@ export async function publishRoute(uid: string, route: AtlasRoute, visibility: R
     authorUid: uid,
     visibility,
     route: routeData,
+    saveCount: existing.exists() && typeof existing.data().saveCount === "number" ? existing.data().saveCount : 0,
     createdAt: existing.exists() ? existing.data().createdAt : serverTimestamp(),
     updatedAt: serverTimestamp(),
   }, { merge: false });

@@ -185,7 +185,7 @@ service cloud.firestore {
              && route.keys().hasOnly([
                'id', 'routeTitle', 'routeSummary', 'totalDurationHours',
                'totalDistanceKm', 'transport', 'vibe', 'days', 'weatherNote',
-               'alternatives', 'dataSources', 'createdAt', 'origin'
+               'alternatives', 'dataSources', 'createdAt', 'origin', 'photo'
              ])
              && stringBetween(route.id, 1, 128)
              && stringBetween(route.routeTitle, 1, 160)
@@ -203,15 +203,22 @@ service cloud.firestore {
              && route.alternatives is list
              && route.alternatives.size() <= 20
              && (route.weatherNote == null || stringBetween(route.weatherNote, 0, 2000))
-             && (!('dataSources' in route) || (route.dataSources is list && route.dataSources.size() <= 20));
+             && (!('dataSources' in route) || (route.dataSources is list && route.dataSources.size() <= 20))
+             && (!('photo' in route) || (
+               route.photo is string
+               && route.photo.size() <= 180000
+               && route.photo.matches('data:image/jpeg;base64,[A-Za-z0-9+/=]+')
+             ));
     }
 
     function validRouteDocument(data) {
-      return data.keys().hasAll(['authorUid', 'visibility', 'route', 'createdAt', 'updatedAt'])
-             && data.keys().hasOnly(['authorUid', 'visibility', 'route', 'createdAt', 'updatedAt'])
+      return data.keys().hasAll(['authorUid', 'visibility', 'route', 'saveCount', 'createdAt', 'updatedAt'])
+             && data.keys().hasOnly(['authorUid', 'visibility', 'route', 'saveCount', 'createdAt', 'updatedAt'])
              && stringBetween(data.authorUid, 1, 128)
              && data.visibility in ['private', 'unlisted', 'public']
              && validRouteBody(data.route)
+             && data.saveCount is int
+             && data.saveCount >= 0
              && data.createdAt is timestamp
              && data.updatedAt is timestamp;
     }
@@ -327,6 +334,7 @@ service cloud.firestore {
       allow create: if signedIn()
                     && request.resource.data.authorUid == request.auth.uid
                     && request.resource.data.route.id == routeId
+                    && request.resource.data.saveCount == 0
                     && request.resource.data.createdAt == request.time
                     && request.resource.data.updatedAt == request.time
                     && validRouteDocument(request.resource.data);
@@ -334,6 +342,7 @@ service cloud.firestore {
                     && resource.data.authorUid == request.auth.uid
                     && request.resource.data.authorUid == resource.data.authorUid
                     && request.resource.data.createdAt == resource.data.createdAt
+                    && request.resource.data.saveCount == resource.data.saveCount
                     && request.resource.data.updatedAt == request.time
                     && request.resource.data.route.id == routeId
                     && validRouteDocument(request.resource.data);
