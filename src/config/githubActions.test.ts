@@ -25,7 +25,7 @@ describe("GitHub Actions tedarik zinciri", () => {
   });
 
   it("workflow yetkisini yalnız içerik okumayla sınırlar", () => {
-    const workflow = readFileSync(".github/workflows/ci.yml", "utf8");
+    const workflow = readFileSync(".github/workflows/ci.yml", "utf8").replace(/\r\n/g, "\n");
     expect(workflow).toMatch(/permissions:\n\s+contents:\s+read/);
     expect(workflow).not.toMatch(/permissions:\s+write-all/);
   });

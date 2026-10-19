@@ -248,6 +248,11 @@ describe("Firestore güvenlik kuralları", () => {
     const memberRef = doc(memberDb, "posts/post-1");
     const otherRef = doc(otherDb, "posts/post-1");
 
+    // Aynı değeri tekrar yazmak belgeyi değiştirmese de Firestore write isteği
+    // üretir; etkileşim dışı ve etkisiz post güncellemeleri reddedilmelidir.
+    await assertFails(updateDoc(otherRef, {
+      text: "İzmir'den güvenli bir keşif notu.",
+    }));
     await assertSucceeds(updateDoc(memberRef, { likedBy: ["member"] }));
     await assertFails(updateDoc(otherRef, { likedBy: ["member", "spoofed"] }));
     await assertFails(updateDoc(memberRef, { likedBy: ["member", "member"] }));
