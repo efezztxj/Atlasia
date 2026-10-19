@@ -30,6 +30,8 @@ export interface Place {
   authorUid?: string;
   kind: "guide" | "user";
   createdAt?: number;
+  /** Veri kaynağı atıfları: ODbL (OSM) ve CC BY-SA (Wikipedia) */
+  dataSources?: string[];
 }
 
 export interface ViewState {
