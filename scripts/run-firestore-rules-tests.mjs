@@ -107,10 +107,14 @@ function waitForPort(child, timeoutMs = 30_000) {
 }
 
 function runRulesTests() {
-  const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
+  const isWindows = process.platform === "win32";
+  const npmCommand = isWindows ? "npm.cmd" : "npm";
   return new Promise((resolve, reject) => {
     const child = spawn(npmCommand, ["run", "test:rules"], {
       stdio: "inherit",
+      // Node 18.20+/20.12+ (CVE-2024-27980) Windows'ta .cmd/.bat dosyalarını
+      // shell olmadan EINVAL ile reddeder; yalnız Windows'ta shell açılır.
+      shell: isWindows,
       env: {
         ...process.env,
         FIRESTORE_EMULATOR_HOST: `${host}:${port}`,
