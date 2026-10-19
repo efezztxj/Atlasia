@@ -4,7 +4,7 @@
 > Ajanlar için yazıldı: her adımın amacı, girdisi, dosya yolları, "bitti kanıtı" komutu ve riski var.
 >
 > - **Son güncelleme:** 2026-10-20 (P1 · TEMEL & KAPANIŞ)
-> - **Durum:** Adım 0–2 ve kapanış uygulandı; Arena CI run `39333178610` tüm gate'lerde geçti (Rules emulator dahil). Yerel sandbox'ta Java 21 yok; yerel emulator komutu bu yüzden başlamaz. Kanıtlar `teslimat-p1.md` içinde. Karar (a) alt koleksiyon olarak seçildi; (b–g) açık.
+> - **Durum:** Adım 0–2 ve kapanış uygulandı; Arena CI run `39333404281` tüm gate'lerde geçti (Rules emulator dahil). Yerel sandbox'ta Java 21 yok; yerel emulator komutu bu yüzden başlamaz. Kanıtlar `teslimat-p1.md` içinde. Karar (a) alt koleksiyon olarak seçildi; (b–g) açık.
 > - **Kural:** ⛔ işaretli adımlarda insan onayı olmadan kod yazılmaz.
 > - **v1'e göre değişiklik:** ürün tezi netleşti (topluluk uygulaması) → sosyal katman silinmiyor, fonlanıyor; `routes`/`tracks` nesneleri eklendi; içerik boru hattı ayrı faz oldu.
 
@@ -207,7 +207,7 @@ test -f .env.example && grep -c VITE_ .env.example   # 6
 
 **2.4 CI:** `.github/workflows/ci.yml` Node 22'de `npm ci`, audit, typecheck, lint, `npm test`, credential-free owner-index Node tests, Firestore Rules emulator tests ve build'i çalıştırır; push kapsamı `main` ve `arena/**`, ayrıca PR'dır.
 
-**Bitti kanıtı:** `npm test` ve `npm run build` yerelde geçti. Branch CI run `39333178610` (SHA `fa030956e0269bb3dd9a73b18c9d63a8c16f22bd`) tüm adımlarda yeşil; Rules emulator dahil.
+**Bitti kanıtı:** `npm test` ve `npm run build` yerelde geçti. Branch CI run `39333404281` (SHA `9c79726372f7d7dcc915f32729af1eb22c22649c`) tüm adımlarda yeşil; Rules emulator dahil.
 **Commit:** `f17d1b7 test: gate geo time and solar contracts in CI`
 
 ---
@@ -398,7 +398,7 @@ Wikidata / Wikipedia geosearch  →  tarihçe metni
 
 | Borç | Kaynak | Etki |
 |---|---|---|
-| Yerel Firestore emulator komutu Java 21 ister | Java 21 runtime bu sandbox'ta kurulu değil | GitHub Actions run `39333178610` Java 21 ile Rules emulator suite'ini geçti; yerel sınırlama `teslimat-p1.md` içinde kayıtlı |
+| Yerel Firestore emulator komutu Java 21 ister | Java 21 runtime bu sandbox'ta kurulu değil | GitHub Actions run `39333404281` Java 21 ile Rules emulator suite'ini geçti; yerel sınırlama `teslimat-p1.md` içinde kayıtlı |
 | Bağımsız aynı-candidate audit bekliyor | kullanıcı no-deploy/no-bypass gate | üretim dağıtımı veya audit bypass yapılmadı |
 | Eski gömülü reply verisi Firestore'da kalabilir | yeni kontrat alt koleksiyon | normalize edilir; bu işin otomatik prod veri migrasyonu/deploy'u yok |
 | Yol çizgileri yol navigasyonu değildir | routePlanner mevcut davranışı | kullanıcıya gerçek yol/navigasyon gibi sunulmamalı |
