@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Bell, Bookmark, Compass, Crosshair, MapPin, MousePointerClick, Plus, UserRound, UsersRound, X } from "lucide-react";
+import { Activity, Bell, Bookmark, Compass, Crosshair, MapPin, MousePointerClick, Plus, UserRound, UsersRound, X } from "lucide-react";
 import type { BaseMapStyle, MapViewHandle } from "./components/MapView";
 import Header from "./components/Header";
 import Hero from "./components/Hero";
@@ -20,6 +20,7 @@ import MyPlacesPanel from "./components/MyPlacesPanel";
 import NearbyAudioGuide from "./components/NearbyAudioGuide";
 import LandingPage from "./components/LandingPage";
 import RecordsDock from "./components/RecordsDock";
+import TrackRecorderPanel from "./components/TrackRecorderPanel";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { CollectionsProvider } from "./hooks/useCollections";
 import { GUIDE_PLACES } from "./data/places";
@@ -33,6 +34,7 @@ import type { PlaceViewport } from "./lib/firestoreData";
 import type { AtlasRoute, CategoryId, Place, ViewState } from "./types";
 import { haversineKm, reverseName, type SearchResult } from "./utils/geo";
 import { storageGet, storageSet } from "./utils/storage";
+import { decodePolyline } from "./utils/polyline";
 
 const MapView = lazy(() => import("./components/MapView"));
 const MAP_STYLE_KEY = "atlasia.mapStyle.v1";
@@ -128,6 +130,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   const [feedOpen, setFeedOpen] = useState(false);
   const [atlasOpen, setAtlasOpen] = useState(false);
   const [recordsOpen, setRecordsOpen] = useState(false);
+  const [trackRecorderOpen, setTrackRecorderOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [myPlacesOpen, setMyPlacesOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -561,6 +564,26 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         labels={labels}
         terrain={terrain}
       />
+
+      {!trackRecorderOpen && <button
+        type="button"
+        onClick={() => setTrackRecorderOpen(true)}
+        aria-label="Yürüyüş kaydını aç"
+        className="fixed bottom-[136px] left-3 z-30 flex min-h-11 items-center gap-2 rounded-full border border-leaf/30 bg-ink/90 px-4 text-[13px] font-semibold text-mint shadow-xl backdrop-blur-xl md:bottom-24 md:left-8"
+      ><Activity size={16} className="text-sun" />Yürüyüş kaydı</button>}
+      {trackRecorderOpen && <TrackRecorderPanel
+        uid={user!.uid}
+        onClose={() => setTrackRecorderOpen(false)}
+        onPreview={(coords) => mapRef.current?.drawRoute(coords, true)}
+        onFinished={(track, route) => {
+          const coords = decodePolyline(track.polyline);
+          mapRef.current?.drawRoute(coords, false);
+          setResumeRoute(route);
+          setTrackRecorderOpen(false);
+          setAtlasOpen(true);
+          setToast("İz gizli olarak kaydedildi. Yürüyüş taslağı hazır.");
+        }}
+      />}
 
       <NearbyAudioGuide
         location={precise}
