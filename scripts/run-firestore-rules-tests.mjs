@@ -107,9 +107,24 @@ function waitForPort(child, timeoutMs = 30_000) {
 }
 
 function runRulesTests() {
-  const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
+  // npm's Windows shim is a .cmd file, which Node cannot spawn directly with
+  // shell:false (EINVAL). npm exposes its JS CLI path in npm_execpath, so invoke
+  // that through the current Node executable; retain a cmd.exe fallback for
+  // direct script execution outside an npm lifecycle.
+  const npmCliPath = process.env.npm_execpath;
+  const command = npmCliPath
+    ? process.execPath
+    : process.platform === "win32"
+      ? (process.env.ComSpec ?? "cmd.exe")
+      : "npm";
+  const args = npmCliPath
+    ? [npmCliPath, "run", "test:rules"]
+    : process.platform === "win32"
+      ? ["/d", "/s", "/c", "npm.cmd run test:rules"]
+      : ["run", "test:rules"];
+
   return new Promise((resolve, reject) => {
-    const child = spawn(npmCommand, ["run", "test:rules"], {
+    const child = spawn(command, args, {
       stdio: "inherit",
       env: {
         ...process.env,

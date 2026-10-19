@@ -164,7 +164,7 @@ service cloud.firestore {
 
     function validPostInteraction() {
       let changed = request.resource.data.diff(resource.data).affectedKeys();
-      return changed.size() == 0 || (
+      return (
         changed.size() == 1
         && changed.hasOnly(['likedBy'])
         && validLikeToggle()
