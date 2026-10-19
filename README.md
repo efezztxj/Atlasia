@@ -68,8 +68,9 @@ Firebase web yapılandırması ve diğer `VITE_` değerleri istemci uygulamasın
 ## Veri modeli ve güvenlik kuralları
 
 - `places/{placeId}` — kullanıcı keşif pinleri
-- `posts/{postId}` — gönderi, atomik `likedBy` üyelikleri ve sınırlı gömülü yanıtlar
-- `stories/{storyId}` — 24 saatlik kullanıcı hikâyeleri
+- `posts/{postId}` — gönderi ve atomik `likedBy` üyelikleri; toplam beğeni = seed tabanı + benzersiz kullanıcılar
+- `posts/{postId}/replies/{replyId}` — yazarı kuralla doğrulanan, değiştirilemeyen yanıtlar
+- `stories/{storyId}` — 24 saatlik kullanıcı hikâyeleri; görüldü bilgisi yalnızca cihazda tutulur
 
 Emekliye ayrılan profil/XP/rozet/takip koleksiyonu uygulama şemasında tanımlı değildir ve Firestore'un varsayılan reddetme kuralı altında kapalıdır. Akış ve harita okumaları kalıcı toplam içerik tavanı kullanmaz; küçük cursor sayfaları ve harita viewport sorgularıyla ilerler. Kurallar yerelde `npm run test:rules:emulator` ile test edilir. Onaylı Firebase projesine kural/index dağıtımı, web yayınının dışında ve açık denetim kapısından sonra şu kapsamla yapılır:
 

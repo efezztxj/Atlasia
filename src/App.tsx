@@ -795,6 +795,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         onAddPost={cloud.addPost}
         onRemovePost={cloud.removePost}
         onAddReply={cloud.addReply}
+        onLoadReplies={cloud.loadPostReplies}
         onToggleLike={cloud.toggleLike}
         onAddStory={cloud.addStory}
         onRemoveStory={cloud.removeStory}

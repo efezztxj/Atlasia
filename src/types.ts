@@ -104,7 +104,6 @@ export interface Story {
   lat?: number;
   /** Sunucudaki yol (/media/...) ya da yerel data URL */
   photo?: string;
-  seen?: boolean;
   kind: "seed" | "user";
 }
 

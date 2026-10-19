@@ -82,11 +82,11 @@ service cloud.firestore {
     function validPostShape(data) {
       return data.keys().hasAll([
                'author', 'authorUid', 'text', 'createdAt', 'likes',
-               'likedBy', 'replies', 'kind'
+               'likedBy', 'kind'
              ])
              && data.keys().hasOnly([
                'author', 'authorUid', 'text', 'createdAt', 'likes',
-               'likedBy', 'replies', 'kind', 'placeLabel', 'lng', 'lat', 'photo'
+               'likedBy', 'kind', 'placeLabel', 'lng', 'lat', 'photo'
              ])
              && stringBetween(data.author, 1, 100)
              && stringBetween(data.authorUid, 1, 128)
@@ -97,8 +97,6 @@ service cloud.firestore {
              && data.likedBy is list
              && data.likedBy.size() <= 500
              && data.likedBy.toSet().size() == data.likedBy.size()
-             && data.replies is list
-             && data.replies.size() <= 100
              && data.kind == 'user'
              && (!('placeLabel' in data) || stringBetween(data.placeLabel, 1, 200))
              && hasValidOptionalLocation(data)
@@ -129,37 +127,18 @@ service cloud.firestore {
              );
     }
 
-    function validReply(reply) {
-      return reply is map
-             && reply.keys().hasAll([
-               'id', 'author', 'authorUid', 'text', 'createdAt', 'likes', 'kind'
+    function validReplyShape(data) {
+      return data.keys().hasAll([
+               'author', 'authorUid', 'text', 'createdAt', 'kind'
              ])
-             && reply.keys().hasOnly([
-               'id', 'author', 'authorUid', 'text', 'createdAt', 'likes', 'kind'
+             && data.keys().hasOnly([
+               'author', 'authorUid', 'text', 'createdAt', 'kind'
              ])
-             && stringBetween(reply.id, 1, 100)
-             && stringBetween(reply.author, 1, 100)
-             && reply.authorUid == request.auth.uid
-             && stringBetween(reply.text, 1, 1000)
-             && reply.createdAt is int
-             && reply.likes == 0
-             && reply.kind == 'user';
-    }
-
-    function validReplyAppend() {
-      let before = resource.data.replies;
-      let after = request.resource.data.replies;
-      let added = after.toSet().difference(before.toSet());
-      let removed = before.toSet().difference(after.toSet());
-      let candidate = after[after.size() - 1];
-      return before is list
-             && after is list
-             && after.size() == before.size() + 1
-             && after.size() <= 100
-             && removed.size() == 0
-             && added.size() == 1
-             && added.hasOnly([candidate])
-             && validReply(candidate);
+             && stringBetween(data.author, 1, 100)
+             && data.authorUid == request.auth.uid
+             && stringBetween(data.text, 1, 1000)
+             && data.createdAt == request.time
+             && data.kind == 'user';
     }
 
     function validPostInteraction() {
@@ -168,10 +147,6 @@ service cloud.firestore {
         changed.size() == 1
         && changed.hasOnly(['likedBy'])
         && validLikeToggle()
-      ) || (
-        changed.size() == 1
-        && changed.hasOnly(['replies'])
-        && validReplyAppend()
       );
     }
 
@@ -288,10 +263,10 @@ service cloud.firestore {
 
     function validStoryShape(data) {
       return data.keys().hasAll([
-               'author', 'authorUid', 'text', 'accent', 'createdAt', 'seen', 'kind'
+               'author', 'authorUid', 'text', 'accent', 'createdAt', 'kind'
              ])
              && data.keys().hasOnly([
-               'author', 'authorUid', 'text', 'accent', 'createdAt', 'seen',
+               'author', 'authorUid', 'text', 'accent', 'createdAt',
                'kind', 'placeLabel', 'lng', 'lat', 'photo'
              ])
              && stringBetween(data.author, 1, 100)
@@ -299,7 +274,6 @@ service cloud.firestore {
              && hasTextOrPhoto(data, 500)
              && data.accent in ['sun', 'leaf', 'sea', 'dusk']
              && data.createdAt is timestamp
-             && data.seen == false
              && data.kind == 'user'
              && (!('placeLabel' in data) || stringBetween(data.placeLabel, 1, 200))
              && hasValidOptionalLocation(data)
@@ -427,11 +401,27 @@ service cloud.firestore {
                     && request.resource.data.authorUid == request.auth.uid
                     && request.resource.data.createdAt == request.time
                     && request.resource.data.likes == 0
-                    && request.resource.data.likedBy.size() == 0
-                    && request.resource.data.replies.size() == 0;
+                    && request.resource.data.likedBy.size() == 0;
       allow update: if signedIn() && validPostInteraction();
       allow delete: if signedIn()
                     && resource.data.authorUid == request.auth.uid;
+
+      match /replies/{replyId} {
+        function parentPostExists() {
+          return exists(/databases/$(database)/documents/posts/$(postId));
+        }
+
+        allow get: if parentPostExists();
+        allow list: if parentPostExists() && boundedList(100);
+        allow create: if signedIn()
+                      && parentPostExists()
+                      && validReplyShape(request.resource.data);
+        allow update: if false;
+        allow delete: if signedIn()
+                      && (resource.data.authorUid == request.auth.uid
+                          || (parentPostExists()
+                              && get(/databases/$(database)/documents/posts/$(postId)).data.authorUid == request.auth.uid));
+      }
     }
 
     match /stories/{storyId} {

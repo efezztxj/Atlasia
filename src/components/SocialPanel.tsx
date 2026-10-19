@@ -21,8 +21,8 @@ import {
 } from "lucide-react";
 
 import { formatAccuracy } from "../hooks/useGeolocation";
-import { totalLikes } from "../lib/feedMetrics";
-import type { FeedPost, Story, StoryAccent, UploadPhotoKind, ViewState } from "../types";
+import { totalLikes } from "../utils/likes";
+import type { FeedPost, FeedReply, Story, StoryAccent, UploadPhotoKind, ViewState } from "../types";
 import { mediaUrl } from "../utils/api";
 import { cn } from "../utils/cn";
 import { haversineKm } from "../utils/geo";
@@ -63,6 +63,7 @@ interface Props {
   onAddPost: (p: Partial<FeedPost>) => Promise<unknown> | unknown;
   onRemovePost: (id: string) => Promise<unknown> | unknown;
   onAddReply: (postId: string, author: string, text: string) => Promise<unknown> | unknown;
+  onLoadReplies: (postId: string) => Promise<FeedReply[]>;
   onToggleLike: (postId: string) => Promise<unknown> | unknown;
   onAddStory: (s: Partial<Story>) => Promise<unknown> | unknown;
   onRemoveStory: (id: string) => Promise<unknown> | unknown;
@@ -95,6 +96,7 @@ export default function SocialPanel({
   onAddPost,
   onRemovePost,
   onAddReply,
+  onLoadReplies,
   onToggleLike,
   onAddStory,
   onRemoveStory,
@@ -122,6 +124,8 @@ export default function SocialPanel({
   const [replyFor, setReplyFor] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [expanded, setExpanded] = useState<string[]>([]);
+  const [repliesByPost, setRepliesByPost] = useState<Record<string, FeedReply[]>>({});
+  const [loadingReplies, setLoadingReplies] = useState<string[]>([]);
   const [storyIndex, setStoryIndex] = useState<number | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
   const [reportPost, setReportPost] = useState<FeedPost | null>(null);
@@ -192,6 +196,25 @@ export default function SocialPanel({
     }
   };
 
+  const loadRepliesForPost = async (postId: string) => {
+    if (loadingReplies.includes(postId)) return;
+    setLoadingReplies((current) => [...current, postId]);
+    try {
+      const fetched = await onLoadReplies(postId);
+      const legacy = posts.find((post) => post.id === postId)?.replies ?? [];
+      setRepliesByPost((current) => {
+        const unique = new Map<string, FeedReply>();
+        [...legacy, ...(current[postId] ?? []), ...fetched].forEach((reply) => unique.set(reply.id, reply));
+        return { ...current, [postId]: [...unique.values()].sort((a, b) => a.createdAt - b.createdAt) };
+      });
+    } catch (failure) {
+      console.error("[Atlasia] Yanıtlar yüklenemedi:", failure);
+      setActionError("Yanıtlar yüklenemedi. Bağlantını kontrol edip tekrar dene.");
+    } finally {
+      setLoadingReplies((current) => current.filter((id) => id !== postId));
+    }
+  };
+
   const markSeen = useCallback((id: string) => {
     setSeen((prev) => (prev.includes(id) ? prev : [...prev, id]));
   }, []);
@@ -243,6 +266,7 @@ export default function SocialPanel({
     setReplyText("");
     setReplyFor(null);
     setExpanded((prev) => (prev.includes(postId) ? prev : [...prev, postId]));
+    await loadRepliesForPost(postId);
   };
 
   const publishStory = async (data: {
@@ -437,6 +461,8 @@ export default function SocialPanel({
 
           {visiblePosts.map((p) => {
             const isOpen = expanded.includes(p.id);
+            const postReplies = repliesByPost[p.id] ?? p.replies;
+            const repliesLoading = loadingReplies.includes(p.id);
             const img = mediaUrl(p.photo);
             return (
               <article key={p.id} className="group border-b border-white/[0.06] px-1.5 py-3 last:border-0">
@@ -525,6 +551,8 @@ export default function SocialPanel({
                         onClick={() => {
                           setReplyFor(replyFor === p.id ? null : p.id);
                           setReplyText("");
+                          setExpanded((prev) => (prev.includes(p.id) ? prev : [...prev, p.id]));
+                          void loadRepliesForPost(p.id);
                           requestAnimationFrame(() => replyInputRef.current?.focus());
                         }}
                         className="flex items-center gap-1.5 text-[11.5px] text-mint/50 transition hover:text-mint"
@@ -532,23 +560,26 @@ export default function SocialPanel({
                         <MessageCircle className="size-3.5" />
                         Yanıtla
                       </button>
-                      {p.replies.length > 0 && (
-                        <button
-                          onClick={() =>
-                            setExpanded((prev) =>
-                              isOpen ? prev.filter((x) => x !== p.id) : [...prev, p.id],
-                            )
-                          }
-                          className="text-[11.5px] text-leaf/80 transition hover:text-leaf"
-                        >
-                          {isOpen ? "Yanıtları gizle" : `${p.replies.length} yanıt`}
-                        </button>
-                      )}
+                      <button
+                        onClick={() => {
+                          setExpanded((prev) =>
+                            isOpen ? prev.filter((x) => x !== p.id) : [...prev, p.id],
+                          );
+                          if (!isOpen) void loadRepliesForPost(p.id);
+                        }}
+                        className="text-[11.5px] text-leaf/80 transition hover:text-leaf"
+                      >
+                        {isOpen ? "Yanıtları gizle" : postReplies.length ? `${postReplies.length} yanıt` : "Yanıtları gör"}
+                      </button>
                     </div>
 
-                    {isOpen && p.replies.length > 0 && (
+                    {isOpen && (
                       <div className="mt-2.5 space-y-2.5 border-l border-white/10 pl-3">
-                        {p.replies.map((r) => (
+                        {repliesLoading ? (
+                          <p className="text-[11px] text-mint/50">Yanıtlar yükleniyor…</p>
+                        ) : postReplies.length === 0 ? (
+                          <p className="text-[11px] text-mint/50">Henüz yanıt yok.</p>
+                        ) : postReplies.map((r) => (
                           <div key={r.id} className="flex gap-2">
                             <Avatar name={r.author} className="size-6" textClass="text-[10px]" />
                             <div className="min-w-0 flex-1">

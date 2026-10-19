@@ -27,6 +27,7 @@ import {
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
   addReplyInFirestore,
+  removePostInFirestore,
   togglePostLikeInFirestore,
 } from "../src/lib/firestoreData";
 
@@ -65,7 +66,6 @@ function validPost(uid: string) {
     createdAt: serverTimestamp(),
     likes: 0,
     likedBy: [],
-    replies: [],
     kind: "user",
   };
 }
@@ -77,7 +77,6 @@ function validStory(uid: string) {
     text: "Gün batımı başladı.",
     accent: "dusk",
     createdAt: serverTimestamp(),
-    seen: false,
     kind: "user",
   };
 }
@@ -236,6 +235,10 @@ describe("Firestore güvenlik kuralları", () => {
       ...validPost("owner"),
       role: "admin",
     }));
+    await assertFails(setDoc(doc(ownerDb, "posts/legacy-replies"), {
+      ...validPost("owner"),
+      replies: [],
+    }));
     await assertSucceeds(setDoc(postRef, validPost("owner")));
   });
 
@@ -264,42 +267,64 @@ describe("Firestore güvenlik kuralları", () => {
     await assertSucceeds(updateDoc(memberRef, { likedBy: [] }));
   });
 
-  it("yanıtı yalnız yeni, sahipli ve değiştirilemez bir kayıt olarak sona ekler", async () => {
+  it("yanıtları yazar sahipliği doğrulanan alt koleksiyonda tutar", async () => {
     await seed("posts/post-1", {
       ...validPost("owner"),
       createdAt: Timestamp.now(),
     });
     const memberDb = testEnv.authenticatedContext("member").firestore();
     const otherDb = testEnv.authenticatedContext("other").firestore();
-    const firstReply = {
-      id: "reply-1",
+    const guestDb = testEnv.unauthenticatedContext().firestore();
+    const replyRef = doc(memberDb, "posts/post-1/replies/reply-1");
+    const reply = {
       author: "Üye",
       authorUid: "member",
       text: "İlk güvenli yanıt.",
-      createdAt: Date.now(),
-      likes: 0,
+      createdAt: serverTimestamp(),
       kind: "user",
     };
 
-    await assertSucceeds(updateDoc(doc(memberDb, "posts/post-1"), { replies: [firstReply] }));
-    await assertFails(updateDoc(doc(memberDb, "posts/post-1"), {
-      replies: [{ ...firstReply, text: "Eski yanıt değiştirildi" }],
+    await assertSucceeds(setDoc(replyRef, reply));
+    await assertSucceeds(getDoc(doc(guestDb, "posts/post-1/replies/reply-1")));
+    await assertFails(updateDoc(replyRef, { text: "Eski yanıt değiştirildi" }));
+    await assertFails(setDoc(doc(otherDb, "posts/post-1/replies/spoof"), {
+      ...reply,
+      authorUid: "member",
     }));
-    await assertFails(updateDoc(doc(otherDb, "posts/post-1"), {
-      replies: [firstReply, { ...firstReply, id: "reply-2", authorUid: "member" }],
+    await assertFails(setDoc(doc(memberDb, "posts/post-1/replies/extra"), {
+      ...reply,
+      admin: true,
     }));
-    await assertSucceeds(updateDoc(doc(otherDb, "posts/post-1"), {
-      replies: [
-        firstReply,
+    await assertSucceeds(deleteDoc(replyRef));
+  });
+
+  it("gönderi silinirken yanıt alt koleksiyonunu da batch ile temizler", async () => {
+    await seed("posts/post-1", {
+      ...validPost("owner"),
+      createdAt: Timestamp.now(),
+    });
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const firestore = context.firestore();
+      await Promise.all(["reply-1", "reply-2"].map((replyId) => setDoc(
+        doc(firestore, `posts/post-1/replies/${replyId}`),
         {
-          ...firstReply,
-          id: "reply-2",
-          author: "Diğer üye",
-          authorUid: "other",
-          text: "İkinci güvenli yanıt.",
+          author: "Üye",
+          authorUid: "member",
+          text: "Test yanıtı",
+          createdAt: Timestamp.now(),
+          kind: "user",
         },
-      ],
-    }));
+      )));
+    });
+
+    await removePostInFirestore(testEnv.authenticatedContext("owner").firestore(), "post-1");
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const firestore = context.firestore();
+      const parent = await getDoc(doc(firestore, "posts/post-1"));
+      const replies = await getDocs(collection(firestore, "posts/post-1/replies"));
+      expect(parent.exists()).toBe(false);
+      expect(replies.empty).toBe(true);
+    });
   });
 
   it("eşzamanlı beğeni ve yanıt dönüşümlerinde iki kullanıcının verisini korur", async () => {
@@ -314,7 +339,7 @@ describe("Firestore güvenlik kuralları", () => {
       togglePostLikeInFirestore(memberDb, "post-1", "member"),
       togglePostLikeInFirestore(otherDb, "post-1", "other"),
     ]);
-    let snapshot = await getDoc(doc(memberDb, "posts/post-1"));
+    const snapshot = await getDoc(doc(memberDb, "posts/post-1"));
     expect(new Set(snapshot.data()?.likedBy)).toEqual(new Set(["member", "other"]));
     expect(snapshot.data()?.likes).toBe(0);
 
@@ -322,50 +347,50 @@ describe("Firestore güvenlik kuralları", () => {
       addReplyInFirestore(memberDb, "post-1", "member", "Üye", "İlk eşzamanlı yanıt."),
       addReplyInFirestore(otherDb, "post-1", "other", "Diğer", "İkinci eşzamanlı yanıt."),
     ]);
-    snapshot = await getDoc(doc(memberDb, "posts/post-1"));
-    const replies = snapshot.data()?.replies as Array<{ authorUid: string }>;
-    expect(replies).toHaveLength(2);
-    expect(new Set(replies.map((reply) => reply.authorUid))).toEqual(
+    const replies = await getDocs(query(
+      collection(memberDb, "posts/post-1/replies"),
+      orderBy("createdAt", "asc"),
+      limit(10),
+    ));
+    expect(replies.size).toBe(2);
+    expect(new Set(replies.docs.map((reply) => reply.data().authorUid))).toEqual(
       new Set(["member", "other"]),
     );
   });
 
-  it("sosyal dizi sınırlarının aşılmasını reddeder", async () => {
+  it("beğeni tavanını ve yanıt sorgusu sayfa sınırını uygular", async () => {
     const likedBy = Array.from({ length: 500 }, (_, index) => `member-${index}`);
-    const replies = Array.from({ length: 100 }, (_, index) => ({
-      id: `reply-${index}`,
-      author: "Üye",
-      authorUid: `member-${index}`,
-      text: `Yanıt ${index}`,
-      createdAt: Date.now() - index,
-      likes: 0,
-      kind: "user",
-    }));
     await seed("posts/post-1", {
       ...validPost("owner"),
       createdAt: Timestamp.now(),
       likedBy,
-      replies,
+    });
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const firestore = context.firestore();
+      await Promise.all(Array.from({ length: 101 }, (_, index) => setDoc(
+        doc(firestore, `posts/post-1/replies/reply-${index}`),
+        {
+          author: "Üye",
+          authorUid: `member-${index}`,
+          text: `Yanıt ${index}`,
+          createdAt: Timestamp.fromMillis(10_000 + index),
+          kind: "user",
+        },
+      )));
     });
     const memberDb = testEnv.authenticatedContext("new-member").firestore();
 
     await assertFails(updateDoc(doc(memberDb, "posts/post-1"), {
       likedBy: [...likedBy, "new-member"],
     }));
-    await assertFails(updateDoc(doc(memberDb, "posts/post-1"), {
-      replies: [
-        ...replies,
-        {
-          id: "reply-over-limit",
-          author: "Yeni üye",
-          authorUid: "new-member",
-          text: "Sınırı aşan yanıt.",
-          createdAt: Date.now(),
-          likes: 0,
-          kind: "user",
-        },
-      ],
-    }));
+    await assertSucceeds(getDocs(query(
+      collection(memberDb, "posts/post-1/replies"),
+      limit(100),
+    )));
+    await assertFails(getDocs(query(
+      collection(memberDb, "posts/post-1/replies"),
+      limit(101),
+    )));
   });
 
   it("postu yalnız sahibi silebilir", async () => {
@@ -387,6 +412,10 @@ describe("Firestore güvenlik kuralları", () => {
     const storyRef = doc(ownerDb, "stories/story-1");
 
     await assertSucceeds(setDoc(storyRef, validStory("owner")));
+    await assertFails(setDoc(doc(ownerDb, "stories/story-with-global-seen"), {
+      ...validStory("owner"),
+      seen: false,
+    }));
     await assertFails(updateDoc(storyRef, { seen: true }));
     await assertFails(getDocs(collection(guestDb, "stories")));
     await assertSucceeds(getDocs(query(collection(guestDb, "stories"), limit(50))));
