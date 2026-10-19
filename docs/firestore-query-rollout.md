@@ -8,7 +8,7 @@ Bu paket eski `places=250`, `posts=100`, `stories=100` tek pencere modelini kald
 2. Yeni istemciyi Cloudflare preview'da doğrula. Özellikle İzlerim, yakınlaştırılmış harita, “Daha eski gönderileri yükle” ve “Daha eski” story akışlarını kontrol et.
 3. Yeni istemciyi yayınla; hata oranı ve Firestore `failed-precondition` / `permission-denied` kayıtlarını izle.
 4. Eski service worker/sekme sürümlerinin yenilenmesi için geçiş penceresi bırak.
-5. Son olarak yeni `firestore.rules` dosyasını dağıt. Bu adım istek başına sınırları places=50, posts=25 ve stories=25 olarak sıkılaştırır.
+5. Son olarak yeni `firestore.rules` dosyasını dağıt. Bu sürüm istek başına places, posts ve stories liste sorgularını 50 kayıtla sınırlar.
 
 İndeksler hazır olmadan istemci veya kurallar yayınlanmamalıdır. Eski istemci 250/100/100 limitleriyle sorgu yaptığı için kuralların erkenden sıkılaştırılması, açık eski sekmeleri fail-closed biçimde durdurur.
 

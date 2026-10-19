@@ -1,0 +1,3 @@
+# These files are checked as exact text snapshots; keep LF on Windows too.
+/.github/workflows/*.yml text eol=lf
+/src/data/openFreeMapDarkStyle.json text eol=lf
