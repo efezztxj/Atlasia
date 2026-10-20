@@ -424,7 +424,7 @@ describe("Firestore güvenlik kuralları", () => {
     await assertSucceeds(deleteDoc(storyRef));
   });
 
-  it.skip("rotaları görünürlük seçimine, izleri ise yalnız sahibine açar", async () => {
+  it("rotaları görünürlük seçimine, izleri ise yalnız sahibine açar", async () => {
     const ownerDb = testEnv.authenticatedContext("owner").firestore();
     const otherDb = testEnv.authenticatedContext("other").firestore();
     const guestDb = testEnv.unauthenticatedContext().firestore();
@@ -489,7 +489,7 @@ describe("Firestore güvenlik kuralları", () => {
     await assertSucceeds(deleteDoc(doc(ownerDb, "tracks/track-1")));
   });
 
-  it.skip("savedPlaces ve savedRoutes bulut kayıtlarını UID altında özel tutar; profil belgesi kapalı kalır", async () => {
+  it("savedPlaces ve savedRoutes bulut kayıtlarını UID altında özel tutar; profil belgesi kapalı kalır", async () => {
     const ownerDb = testEnv.authenticatedContext("owner").firestore();
     const otherDb = testEnv.authenticatedContext("other").firestore();
     const guestDb = testEnv.unauthenticatedContext().firestore();
