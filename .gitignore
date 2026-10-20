@@ -29,3 +29,6 @@ Thumbs.db
 
 # Dependencies
 node_modules/
+
+# Archived project copies and exported bundles
+satellite-map-web-application*

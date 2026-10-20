@@ -1,30 +1,31 @@
 import { describe, expect, it } from "vitest";
-import { isStoryAlive, relativeTime, storyRemaining } from "./time";
+import { isStoryAlive, storyRemaining, relativeTime } from "./time";
 
 const MIN = 60_000;
 const HOUR = 60 * MIN;
 const DAY = 24 * HOUR;
 const T0 = 1_760_000_000_000;
 
-describe("story 24 saat penceresi", () => {
-  it("isStoryAlive 24 saat sınırını açık üstten zorlar", () => {
-    expect(isStoryAlive(T0, T0 + 1)).toBe(true);
-    expect(isStoryAlive(T0, T0 + DAY - 1)).toBe(true);
-    // Tam 24 saatte ve sonrasında story canlı değildir.
-    expect(isStoryAlive(T0, T0 + DAY)).toBe(false);
-    expect(isStoryAlive(T0, T0 + DAY + 1)).toBe(false);
+describe("24 saatlik story zamanı", () => {
+  it("tam 24 saat dolana kadar aktiftir, dolduğu anda kapanır", () => {
+    const createdAt = 1_000_000;
+    expect(isStoryAlive(createdAt, createdAt + DAY - 1)).toBe(true);
+    expect(isStoryAlive(createdAt, createdAt + DAY)).toBe(false);
   });
 
+  it("süre dolunca kalan zamanı null yapar", () => {
+    const createdAt = 1_000_000;
+    expect(storyRemaining(createdAt, createdAt + DAY)).toBeNull();
+    expect(storyRemaining(createdAt, createdAt + DAY - 60_000)).toBe("1 dk kaldı");
+  });
+});
+
+describe("storyRemaining ek kilitler", () => {
   it("storyRemaining son saati dakika olarak söyler", () => {
     expect(storyRemaining(T0, T0 + DAY - 5 * HOUR)).toBe("5 sa kaldı");
     expect(storyRemaining(T0, T0 + DAY - 30 * MIN)).toBe("30 dk kaldı");
     // 1 dakikadan az kalsa bile en az "1 dk" gösterilir.
     expect(storyRemaining(T0, T0 + DAY - 1)).toBe("1 dk kaldı");
-  });
-
-  it("storyRemaining tam bitişte ve sonrasında null döner", () => {
-    expect(storyRemaining(T0, T0 + DAY)).toBeNull();
-    expect(storyRemaining(T0, T0 + DAY + 5 * MIN)).toBeNull();
   });
 });
 

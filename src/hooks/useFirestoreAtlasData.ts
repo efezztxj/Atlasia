@@ -16,6 +16,7 @@ import {
   addStory as addStoryFs,
   isCloudReady,
   listPostsPage,
+  listPostReplies as listPostRepliesFs,
   listStoriesPage,
   mergeRecordsById,
   preserveDisplacedPageItems,
@@ -36,7 +37,7 @@ import {
   type NewStoryInput,
   type PlaceViewport,
 } from "../lib/firestoreData";
-import type { FeedPost, Place, Story, UploadPhotoKind } from "../types";
+import type { FeedPost, FeedReply, Place, Story, UploadPhotoKind } from "../types";
 
 export interface UseFirestoreAtlasDataArgs {
   uid: string;
@@ -356,6 +357,11 @@ export function useFirestoreAtlasData({
     });
   };
 
+  const loadPostReplies = async (postId: string): Promise<FeedReply[]> => {
+    if (!isCloudReady) return [];
+    return listPostRepliesFs(postId);
+  };
+
   const addReply = async (postId: string, author: string, text: string) => {
     if (!isCloudReady) throw new Error("Bulut bağlantısı yok, yanıt eklenemez.");
     await addReplyFs(postId, uid, author, text);
@@ -444,6 +450,7 @@ export function useFirestoreAtlasData({
     addPost,
     removePost,
     addReply,
+    loadPostReplies,
     toggleLike,
     addStory,
     removeStory,

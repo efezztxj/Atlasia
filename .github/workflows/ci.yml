@@ -3,7 +3,7 @@ name: Atlasia CI
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, "arena/**"]
 
 permissions:
   contents: read
@@ -53,7 +53,10 @@ jobs:
         run: npm run lint
 
       - name: Unit tests
-        run: npm run test:run
+        run: npm test
+
+      - name: Owner index script tests (no credentials)
+        run: npm run test:owner-index
 
       - name: Firestore security rules tests
         run: npm run test:rules:emulator

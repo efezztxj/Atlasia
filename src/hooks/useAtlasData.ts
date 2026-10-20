@@ -97,13 +97,17 @@ export function useAtlasData(uid: string) {
               ...p,
               replies: [
                 ...p.replies,
-                { id: newId("fr"), author, text, createdAt: Date.now(), likes: 0, kind: "user" as const },
+                { id: newId("fr"), author, authorUid: uid, text, createdAt: Date.now(), likes: 0, kind: "user" as const },
               ],
             }
           : p,
       ),
     );
-  }, []);
+  }, [uid]);
+
+  const loadPostReplies = useCallback(async (postId: string) => {
+    return posts.find((post) => post.id === postId)?.replies ?? [];
+  }, [posts]);
 
   const toggleLike = useCallback(async (postId: string) => {
     const who = me.current;
@@ -149,6 +153,7 @@ export function useAtlasData(uid: string) {
     addPost,
     removePost,
     addReply,
+    loadPostReplies,
     toggleLike,
     addStory,
     removeStory,
