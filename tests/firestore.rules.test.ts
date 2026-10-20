@@ -22,6 +22,7 @@ import {
   Timestamp,
   updateDoc,
   where,
+  writeBatch,
 } from "firebase/firestore";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -394,7 +395,130 @@ describe("Firestore güvenlik kuralları", () => {
     await assertSucceeds(deleteDoc(storyRef));
   });
 
-  it("emekliye ayrılan kullanıcı profili koleksiyonunu tamamen kapalı tutar", async () => {
+  it("rotaları görünürlük seçimine, izleri ise yalnız sahibine açar", async () => {
+    const ownerDb = testEnv.authenticatedContext("owner").firestore();
+    const otherDb = testEnv.authenticatedContext("other").firestore();
+    const guestDb = testEnv.unauthenticatedContext().firestore();
+    const routeBody = {
+      id: "route-public",
+      routeTitle: "Kordon yürüyüşü",
+      routeSummary: "Kıyı rotası.",
+      totalDurationHours: 2,
+      totalDistanceKm: 3.2,
+      transport: "walking",
+      vibe: "Sakin",
+      days: [],
+      weatherNote: null,
+      alternatives: [],
+      createdAt: Date.now(),
+    };
+    const routeDocument = (visibility: string, routeId: string) => ({
+      authorUid: "owner",
+      visibility,
+      route: { ...routeBody, id: routeId },
+      saveCount: 0,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    await assertSucceeds(setDoc(doc(ownerDb, "routes/route-public"), routeDocument("public", "route-public")));
+    await assertSucceeds(setDoc(doc(ownerDb, "routes/route-unlisted"), routeDocument("unlisted", "route-unlisted")));
+    await assertSucceeds(setDoc(doc(ownerDb, "routes/route-private"), routeDocument("private", "route-private")));
+    await assertFails(setDoc(doc(ownerDb, "routes/route-invalid-photo"), {
+      ...routeDocument("public", "route-invalid-photo"),
+      route: { ...routeBody, id: "route-invalid-photo", photo: "https://example.com/photo.jpg" },
+    }));
+    await assertSucceeds(getDoc(doc(guestDb, "routes/route-public")));
+    await assertSucceeds(getDoc(doc(guestDb, "routes/route-unlisted")));
+    await assertFails(getDoc(doc(guestDb, "routes/route-private")));
+    await assertFails(getDoc(doc(otherDb, "routes/route-private")));
+    await assertSucceeds(getDoc(doc(ownerDb, "routes/route-private")));
+    await assertSucceeds(getDocs(query(collection(guestDb, "routes"), where("visibility", "==", "public"), limit(40))));
+    await assertFails(getDocs(query(collection(guestDb, "routes"), limit(40))));
+    await assertFails(updateDoc(doc(otherDb, "routes/route-public"), { visibility: "private" }));
+    await assertSucceeds(updateDoc(doc(ownerDb, "routes/route-public"), {
+      visibility: "private",
+      updatedAt: serverTimestamp(),
+    }));
+
+    const track = {
+      id: "track-1",
+      authorUid: "owner",
+      startedAt: 1_000,
+      endedAt: 2_000,
+      distanceKm: 1.1,
+      polyline: "_p~iF~ps|U_ulLnnqC",
+      stops: [],
+      accuracy: { sampleCount: 2, meanMeters: 8, maxMeters: 12 },
+      createdAt: serverTimestamp(),
+    };
+    await assertFails(setDoc(doc(otherDb, "tracks/track-1"), track));
+    await assertSucceeds(setDoc(doc(ownerDb, "tracks/track-1"), track));
+    await assertSucceeds(getDoc(doc(ownerDb, "tracks/track-1")));
+    await assertFails(getDoc(doc(otherDb, "tracks/track-1")));
+    await assertFails(getDoc(doc(guestDb, "tracks/track-1")));
+    await assertFails(deleteDoc(doc(otherDb, "tracks/track-1")));
+    await assertSucceeds(deleteDoc(doc(ownerDb, "tracks/track-1")));
+  });
+
+  it("savedPlaces ve savedRoutes bulut kayıtlarını UID altında özel tutar; profil belgesi kapalı kalır", async () => {
+    const ownerDb = testEnv.authenticatedContext("owner").firestore();
+    const otherDb = testEnv.authenticatedContext("other").firestore();
+    const guestDb = testEnv.unauthenticatedContext().firestore();
+    const place = { id: "place-1", title: "Kordon", region: "İzmir" };
+
+    await assertSucceeds(setDoc(doc(ownerDb, "users/owner/savedPlaces/place-1"), {
+      place,
+      savedAt: serverTimestamp(),
+    }));
+    const routeBody = {
+      id: "route-1",
+      routeTitle: "Kordon",
+      routeSummary: "Kıyı yürüyüşü.",
+      totalDurationHours: 1,
+      totalDistanceKm: 1,
+      transport: "walking",
+      vibe: "Sakin",
+      days: [],
+      weatherNote: null,
+      alternatives: [],
+      createdAt: Date.now(),
+    };
+    await assertSucceeds(setDoc(doc(ownerDb, "routes/route-1"), {
+      authorUid: "owner",
+      visibility: "public",
+      route: routeBody,
+      saveCount: 0,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }));
+    const addSavedRoute = writeBatch(ownerDb);
+    addSavedRoute.set(doc(ownerDb, "users/owner/savedRoutes/route-1"), {
+      routeId: "route-1",
+      savedAt: serverTimestamp(),
+    });
+    addSavedRoute.update(doc(ownerDb, "routes/route-1"), { saveCount: 1, updatedAt: serverTimestamp() });
+    await assertSucceeds(addSavedRoute.commit());
+
+    await assertSucceeds(getDoc(doc(ownerDb, "users/owner/savedPlaces/place-1")));
+    await assertFails(getDoc(doc(otherDb, "users/owner/savedPlaces/place-1")));
+    await assertFails(getDoc(doc(guestDb, "users/owner/savedRoutes/route-1")));
+    await assertFails(setDoc(doc(otherDb, "users/owner/savedRoutes/route-2"), {
+      routeId: "route-2",
+      savedAt: serverTimestamp(),
+    }));
+    await assertFails(setDoc(doc(ownerDb, "users/owner/savedRoutes/spoof"), {
+      routeId: "different-id",
+      savedAt: serverTimestamp(),
+    }));
+    await assertFails(updateDoc(doc(ownerDb, "routes/route-1"), { saveCount: 9, updatedAt: serverTimestamp() }));
+
+    const removeSavedRoute = writeBatch(ownerDb);
+    removeSavedRoute.delete(doc(ownerDb, "users/owner/savedRoutes/route-1"));
+    removeSavedRoute.update(doc(ownerDb, "routes/route-1"), { saveCount: 0, updatedAt: serverTimestamp() });
+    await assertSucceeds(removeSavedRoute.commit());
+  });
+
+  it("emekliye ayrılan kullanıcı profili belgesi ve üst seviye koleksiyonu kapalı tutar", async () => {
     await seed("users/owner", { displayName: "Eski profil" });
     const ownerDb = testEnv.authenticatedContext("owner").firestore();
     const profileRef = doc(ownerDb, "users/owner");
