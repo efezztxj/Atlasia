@@ -3,9 +3,9 @@ import { haversineKm } from "./geo";
 import { encodePolyline } from "./polyline";
 
 const CATEGORY_INTERESTS: Record<string, string[]> = { Doğa: ["nature", "camp"], Tarih: ["history"], Yemek: ["food"], Fotoğraf: ["photo", "cities"], Kamp: ["camp"], Plaj: ["beaches"], "Gizli Yerler": ["community", "nature"], Manzara: ["photo", "nature", "beaches"], Mimari: ["cities", "history"] };
-const TYPES: Record<Place["category"], StopType> = { cities: "city", beaches: "beach", history: "history", nature: "nature", camp: "camp", food: "food", photo: "photo", routes: "viewpoint", community: "hidden_gem", issues: "other" };
-const STAY: Record<Place["category"], number> = { cities: 50, beaches: 60, history: 60, nature: 50, camp: 70, food: 45, photo: 35, routes: 45, community: 35, issues: 25 };
-const SPEED: Record<TransportMode, number> = { walking: 4, cycling: 12, driving: 35, transit: 18 };
+const TYPES: Record<Place["category"], StopType> = { cities: "city", beaches: "beach", history: "history", nature: "nature", camp: "camp", food: "food", photo: "photo", routes: "viewpoint", community: "hidden_gem", issues: "other", parking: "parking", trailhead: "trailhead", descent: "descent", water: "water" };
+const STAY: Record<Place["category"], number> = { cities: 50, beaches: 60, history: 60, nature: 50, camp: 70, food: 45, photo: 35, routes: 45, community: 35, issues: 25, parking: 5, trailhead: 8, descent: 10, water: 30 };
+const SPEED: Record<TransportMode, number> = { walking: 4, cycling: 12, driving: 35, transit: 18, trail: 3, offroad: 2.2 };
 export const ROUTE_ALTERNATIVES = [
   { label: "Daha kısa", prompt: "Bu rotayı daha kısa hale getir." },
   { label: "Daha az yürüyüş", prompt: "Daha az yürüyüş olsun." },

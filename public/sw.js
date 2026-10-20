@@ -1,11 +1,27 @@
 const CACHE = "atlasia-shell-v4";
+const TILE_CACHE = "atlasia-tiles-v1";
 const CACHE_PREFIX = "atlasia-shell-";
+const TILE_CACHE_MAX = 500;
 const SHELL = [
   "/manifest.webmanifest",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
   "/images/atlasia-earth-hero.jpg",
 ];
+
+function isEsriTile(url) {
+  return url.includes("server.arcgisonline.com") || url.includes("arcgisonline.com");
+}
+
+function isCacheableTile(url) {
+  if (isEsriTile(url)) return false;
+  return (
+    url.includes("tiles.openfreemap.org") ||
+    url.includes("elevation-tiles-prod") ||
+    url.includes("openfreemap") ||
+    url.includes("s3.amazonaws.com/elevation-tiles-prod")
+  );
+}
 
 async function precacheAppShell() {
   const cache = await caches.open(CACHE);
@@ -28,7 +44,9 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys.filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE).map((key) => caches.delete(key)));
+    await Promise.all(keys.filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE).map((key) => caches.delete(key))));
+    // Eski tile cache temizliği: yalnız mevcut TILE_CACHE korunur, eski versiyonlar silinir
+    await Promise.all(keys.filter((key) => key.startsWith("atlasia-tiles-") && key !== TILE_CACHE).map((key) => caches.delete(key)));
     if (self.registration.navigationPreload) await self.registration.navigationPreload.enable();
     await self.clients.claim();
   })());
@@ -72,22 +90,78 @@ async function cachedAsset(request) {
   }
 }
 
+async function trimTileCache() {
+  try {
+    const cache = await caches.open(TILE_CACHE);
+    const keys = await cache.keys();
+    if (keys.length > TILE_CACHE_MAX) {
+      const toDelete = keys.slice(0, keys.length - TILE_CACHE_MAX);
+      await Promise.all(toDelete.map((k) => cache.delete(k)));
+    }
+  } catch {
+    // ignore
+  }
+}
+
+async function tileResponse(request) {
+  const cache = await caches.open(TILE_CACHE);
+  const cached = await cache.match(request);
+  // Stale-while-revalidate + LRU boyut sınırı
+  const networkFetch = fetch(request).then(async (response) => {
+    if (response.ok) {
+      // Esri asla yazılmaz (güvenlik: double-check)
+      if (!isEsriTile(request.url)) {
+        await cache.put(request, response.clone());
+        void trimTileCache();
+      }
+    }
+    return response;
+  }).catch(() => undefined);
+
+  if (cached) {
+    void networkFetch.catch(() => undefined);
+    return cached;
+  }
+
+  try {
+    const fresh = await networkFetch;
+    if (fresh) return fresh;
+  } catch {
+    // ignore
+  }
+  // Çevrimdışı ve önbellekte yoksa 204 boş karo dön, harita boş kalmasın
+  return new Response("", { status: 204, statusText: "Offline tile not cached" });
+}
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
 
-  const url = new URL(request.url);
+  const url = request.url;
+
+  // Esri toplu önbellekleme YASAK: hiçbir Esri isteği cache'e yazılmaz, normal ağa bırakılır
+  if (isEsriTile(url)) {
+    return;
+  }
+
+  // Harita ve arazi karoları: OpenFreeMap + terrain raster-dem — uçak modunda kaydırılabilir olmalı
+  if (isCacheableTile(url)) {
+    event.respondWith(tileResponse(request));
+    return;
+  }
+
+  const parsed = new URL(request.url);
   if (request.mode === "navigate") {
     event.respondWith(navigationResponse(event));
     return;
   }
 
-  if (url.origin !== self.location.origin || url.pathname === "/sw.js") return;
+  if (parsed.origin !== self.location.origin || parsed.pathname === "/sw.js") return;
 
   const cacheable = ["script", "style", "font", "image", "manifest"].includes(request.destination)
-    || url.pathname.startsWith("/assets/")
-    || url.pathname.startsWith("/icons/")
-    || url.pathname.startsWith("/images/");
+    || parsed.pathname.startsWith("/assets/")
+    || parsed.pathname.startsWith("/icons/")
+    || parsed.pathname.startsWith("/images/");
 
   if (cacheable) event.respondWith(cachedAsset(request));
 });

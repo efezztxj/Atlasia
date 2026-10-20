@@ -8,7 +8,11 @@ export type CategoryId =
   | "photo"
   | "routes"
   | "community"
-  | "issues";
+  | "issues"
+  | "parking"
+  | "trailhead"
+  | "descent"
+  | "water";
 
 export interface Place {
   id: string;
@@ -30,6 +34,8 @@ export interface Place {
   authorUid?: string;
   kind: "guide" | "user";
   createdAt?: number;
+  /** Veri kaynağı atıfları: ODbL (OSM) ve CC BY-SA (Wikipedia) */
+  dataSources?: string[];
 }
 
 export interface ViewState {
@@ -94,7 +100,7 @@ export interface Story {
   kind: "seed" | "user";
 }
 
-export type TransportMode = "walking" | "cycling" | "driving" | "transit";
+export type TransportMode = "walking" | "cycling" | "driving" | "transit" | "trail" | "offroad";
 export type RouteTempo = "Rahat" | "Dengeli" | "Yoğun";
 export type RouteBudget = "Düşük" | "Orta" | "Yüksek";
 export type StopType =
@@ -107,7 +113,11 @@ export type StopType =
   | "beach"
   | "viewpoint"
   | "hidden_gem"
-  | "other";
+  | "other"
+  | "parking"
+  | "trailhead"
+  | "descent"
+  | "water";
 
 export interface RouteStop {
   order: number;
@@ -128,12 +138,24 @@ export interface RouteStop {
   source?: "atlasia" | "community" | "openstreetmap";
 }
 
+export type LegMode = TransportMode | "descent";
+
+export interface RouteLeg {
+  id: string;
+  coords: [number, number][];
+  mode: LegMode;
+  distanceKm: number;
+  durationMinutes: number;
+  elevationGain?: number;
+}
+
 export interface RouteDay {
   dayNumber: number;
   title: string;
   summary: string;
   stops: RouteStop[];
   polyline: string;
+  legs?: RouteLeg[];
 }
 
 export type RouteVisibility = "private" | "unlisted" | "public";

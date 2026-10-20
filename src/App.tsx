@@ -25,6 +25,8 @@ import RouteEditor from "./components/RouteEditor";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { CollectionsProvider } from "./hooks/useCollections";
 import { GUIDE_PLACES } from "./data/places";
+import { EPHESUS_CENTER } from "./data/ephesusFixture";
+import { EPHESUS_TOUR } from "./data/siteTours";
 import { formatAccuracy, useGeolocation } from "./hooks/useGeolocation";
 import { useAtlasData } from "./hooks/useAtlasData";
 import { useFirestoreAtlasData } from "./hooks/useFirestoreAtlasData";
@@ -226,6 +228,12 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         : null,
     [geo.fix, preciseLabel],
   );
+
+  const activeTour = useMemo(() => {
+    if (!precise) return null;
+    const d = haversineKm(precise.lat, precise.lng, EPHESUS_CENTER.lat, EPHESUS_CENTER.lng);
+    return d <= 5 ? EPHESUS_TOUR : null;
+  }, [precise]);
 
   // Location and storage share one panel; receiving a fix does not close it.
   useEffect(() => {
@@ -609,6 +617,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
       <NearbyAudioGuide
         location={precise}
         places={GUIDE_PLACES}
+        tourRoute={activeTour}
         onOpenPlace={(place) => {
           closePanels();
           focusPlace(place, 15);
