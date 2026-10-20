@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   buildOutgoingMessage,
+  generateJoinCode,
   messageRecipients,
   normalizeMemberUids,
   validateGroupName,
+  validateJoinCode,
   validateMessageText,
   visibleMessages,
   type Group,
@@ -15,6 +17,7 @@ const group: Group = {
   name: "Kapadokya ekibi",
   ownerUid: "user-a",
   memberUids: ["user-a", "user-b"],
+  joinCode: "123456",
   createdAt: 1,
   updatedAt: 1,
 };
@@ -79,5 +82,22 @@ describe("grup ve sohbet sözleşmesi", () => {
     ];
     expect(visibleMessages(messages, new Set(["user-b"])).map((item) => item.id)).toEqual(["m-1"]);
     expect(visibleMessages(messages, new Set())).toHaveLength(2);
+  });
+
+  it("katılma kodunu 4–8 hane rakamla sınırlar", () => {
+    expect(validateJoinCode("1234")).toBeNull();
+    expect(validateJoinCode("12345678")).toBeNull();
+    expect(validateJoinCode("123")).toBe("group/join-code-length");
+    expect(validateJoinCode("123456789")).toBe("group/join-code-length");
+    expect(validateJoinCode("12a4")).toBe("group/join-code-digits");
+    expect(validateJoinCode("  ")).toBe("group/join-code-length");
+    expect(validateJoinCode(" 1234 ")).toBeNull();
+  });
+
+  it("üretilen katılma kodu 6 haneli rakamdır", () => {
+    const code = generateJoinCode();
+    expect(code).toMatch(/^\d{6}$/);
+    const codes = new Set(Array.from({ length: 40 }, () => generateJoinCode()));
+    expect(codes.size).toBeGreaterThan(1);
   });
 });

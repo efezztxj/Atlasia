@@ -315,11 +315,12 @@ service cloud.firestore {
     }
 
     function validGroupShape(data) {
-      return data.keys().hasAll(['name', 'ownerUid', 'memberUids', 'createdAt', 'updatedAt'])
-             && data.keys().hasOnly(['name', 'ownerUid', 'memberUids', 'createdAt', 'updatedAt', 'lastMessage'])
+      return data.keys().hasAll(['name', 'ownerUid', 'memberUids', 'joinCode', 'createdAt', 'updatedAt'])
+             && data.keys().hasOnly(['name', 'ownerUid', 'memberUids', 'joinCode', 'createdAt', 'updatedAt', 'lastMessage'])
              && stringBetween(data.name, 1, 80)
              && stringBetween(data.ownerUid, 1, 128)
              && data.ownerUid == request.auth.uid
+             && data.joinCode.matches('[0-9]{4,8}')
              && data.memberUids is list
              && data.memberUids.size() >= 1
              && data.memberUids.size() <= 20
@@ -551,24 +552,42 @@ service cloud.firestore {
       allow create: if signedIn() && validGroupShape(request.resource.data)
                     && request.resource.data.createdAt == request.time;
       allow update: if signedIn()
-                    && request.auth.uid in resource.data.memberUids
                     && (
                       (
-                        resource.data.ownerUid == request.auth.uid
-                        && validGroupShape(request.resource.data)
+                        request.auth.uid in resource.data.memberUids
+                        && (
+                          (
+                            resource.data.ownerUid == request.auth.uid
+                            && validGroupShape(request.resource.data)
+                            && request.resource.data.ownerUid == resource.data.ownerUid
+                            && request.resource.data.createdAt == resource.data.createdAt
+                          ) || (
+                            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'updatedAt'])
+                            && validLastMessage(request.resource.data.lastMessage)
+                            && request.resource.data.name == resource.data.name
+                            && request.resource.data.ownerUid == resource.data.ownerUid
+                            && request.resource.data.joinCode == resource.data.joinCode
+                            && request.resource.data.memberUids == resource.data.memberUids
+                          ) || (
+                            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberUids', 'updatedAt'])
+                            && request.resource.data.name == resource.data.name
+                            && request.resource.data.ownerUid == resource.data.ownerUid
+                            && request.resource.data.joinCode == resource.data.joinCode
+                            && request.resource.data.memberUids.toSet() == resource.data.memberUids.toSet().difference([request.auth.uid].toSet())
+                          )
+                        )
+                      ) || (
+                        // Kod ile katılma: üye olmayan yalnız kendini ekler ve katılma
+                        // kodunu aynı batch'teki joinAttempts yazısıyla kanıtlar (getAfter).
+                        !(request.auth.uid in resource.data.memberUids)
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberUids', 'updatedAt'])
+                        && request.resource.data.memberUids.toSet() == resource.data.memberUids.toSet().union([request.auth.uid].toSet())
+                        && request.resource.data.name == resource.data.name
                         && request.resource.data.ownerUid == resource.data.ownerUid
+                        && request.resource.data.joinCode == resource.data.joinCode
                         && request.resource.data.createdAt == resource.data.createdAt
-                      ) || (
-                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'updatedAt'])
-                        && validLastMessage(request.resource.data.lastMessage)
-                        && request.resource.data.name == resource.data.name
-                        && request.resource.data.ownerUid == resource.data.ownerUid
-                        && request.resource.data.memberUids == resource.data.memberUids
-                      ) || (
-                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberUids', 'updatedAt'])
-                        && request.resource.data.name == resource.data.name
-                        && request.resource.data.ownerUid == resource.data.ownerUid
-                        && request.resource.data.memberUids.toSet() == resource.data.memberUids.toSet().difference([request.auth.uid].toSet())
+                        && request.resource.data.updatedAt == request.time
+                        && getAfter(/databases/$(database)/documents/groups/$(groupId)/joinAttempts/$(request.auth.uid)).data.code == resource.data.joinCode
                       )
                     );
       allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
@@ -584,6 +603,21 @@ service cloud.firestore {
                       && validGroupMessage(request.resource.data);
         allow update: if false;
         allow delete: if signedIn() && resource.data.senderUid == request.auth.uid;
+      }
+
+      // Katılma kodu doğrulama izi: yalnız yazan okur/siler; asıl denetim grup
+      // güncelleme kuralında getAfter ile bu kaydın kodu üzerinden yapılır.
+      match /joinAttempts/{joinId} {
+        allow get: if signedIn() && joinId == request.auth.uid;
+        allow list: if false;
+        allow create: if signedIn()
+                      && joinId == request.auth.uid
+                      && request.resource.data.keys().hasAll(['code', 'at'])
+                      && request.resource.data.keys().hasOnly(['code', 'at'])
+                      && request.resource.data.code.matches('[0-9]{4,8}')
+                      && request.resource.data.at == request.time;
+        allow update: if false;
+        allow delete: if signedIn() && joinId == request.auth.uid;
       }
     }
 

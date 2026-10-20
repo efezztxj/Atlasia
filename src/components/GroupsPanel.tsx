@@ -5,8 +5,10 @@ import {
   deleteGroup,
   deleteGroupMessage,
   fetchGroup,
-  joinGroup,
+  generateJoinCode,
+  joinGroupWithCode,
   leaveGroup,
+  rotateGroupCode,
   sendGroupMessage,
   subscribeMessages,
   subscribeMyGroups,
@@ -44,6 +46,8 @@ export default function GroupsPanel({ currentUid, currentName, blockedSet, isBlo
   const [newName, setNewName] = useState("");
   const [newMembers, setNewMembers] = useState("");
   const [joinId, setJoinId] = useState("");
+  const [newCode, setNewCode] = useState(() => generateJoinCode());
+  const [joinCodeInput, setJoinCodeInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [reportSender, setReportSender] = useState<string | null>(null);
 
@@ -108,14 +112,16 @@ export default function GroupsPanel({ currentUid, currentName, blockedSet, isBlo
         ownerUid: currentUid,
         ownerName: currentName,
         memberUids: newMembers.split(",").map((value) => value.trim()).filter(Boolean),
+        joinCode: newCode,
       });
       setCreateOpen(false);
       setNewName("");
       setNewMembers("");
+      setNewCode(generateJoinCode());
       setStatus(
         result.invited > 0
-          ? `Grup oluşturuldu ve ${result.invited} kişiye davet bildirimi gönderildi.`
-          : "Grup oluşturuldu.",
+          ? `Grup oluşturuldu ve ${result.invited} kişiye davet bildirimi gönderildi. Katılma kodu: ${result.group.joinCode}`
+          : `Grup oluşturuldu. Katılma kodu: ${result.group.joinCode}`,
       );
       setIndex((current) => [{ groupId: result.group.id, name: result.group.name, role: "owner", joinedAt: Date.now() }, ...current]);
       setOpenGroup(result.group);
@@ -130,8 +136,9 @@ export default function GroupsPanel({ currentUid, currentName, blockedSet, isBlo
     setBusy(true);
     setError(null);
     try {
-      const group = await joinGroup(joinId, currentUid);
+      const group = await joinGroupWithCode(joinId, joinCodeInput, currentUid);
       setJoinId("");
+      setJoinCodeInput("");
       setStatus(`“${group.name}” grubuna katıldın.`);
       setIndex((current) => current.some((item) => item.groupId === group.id)
         ? current
@@ -141,6 +148,28 @@ export default function GroupsPanel({ currentUid, currentName, blockedSet, isBlo
       setError((failure as Error).message || "Gruba katılınamadı.");
     } finally {
       setBusy(false);
+    }
+  };
+
+  const rotateCode = async () => {
+    if (!openGroup || openGroup.ownerUid !== currentUid) return;
+    if (!confirm("Katılma kodu yenilensin mi? Eski kod artık geçersiz olur.")) return;
+    try {
+      const next = await rotateGroupCode(openGroup.id, currentUid);
+      setOpenGroup({ ...openGroup, joinCode: next });
+      setStatus(`Yeni katılma kodu: ${next}`);
+    } catch (failure) {
+      setError((failure as Error).message || "Kod yenilenemedi.");
+    }
+  };
+
+  const copyCode = async () => {
+    if (!openGroup?.joinCode) return;
+    try {
+      await navigator.clipboard.writeText(openGroup.joinCode);
+      setStatus("Katılma kodu kopyalandı.");
+    } catch {
+      setError("Kod kopyalanamadı; elle seçip kopyalayabilirsin.");
     }
   };
 
@@ -229,13 +258,15 @@ export default function GroupsPanel({ currentUid, currentName, blockedSet, isBlo
                 <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
                   <label className="block text-[12px] text-mint/70">Grup adı<input value={newName} onChange={(event) => setNewName(event.target.value)} maxLength={80} placeholder="Örn. Kapadokya ekibi" className="mt-1 h-10 w-full rounded-lg border border-white/10 bg-ink px-2 text-[13px] text-mint outline-none focus:border-sun/50" /></label>
                   <label className="mt-2 block text-[12px] text-mint/70">Üye hesap kimlikleri (virgülle, en fazla 19)<textarea value={newMembers} onChange={(event) => setNewMembers(event.target.value)} rows={2} placeholder="UID1, UID2" className="mt-1 w-full rounded-lg border border-white/10 bg-ink px-2 py-1.5 text-[12px] text-mint outline-none focus:border-sun/50" /></label>
+                  <label className="mt-2 block text-[12px] text-mint/70">Katılma kodu (4–8 hane — kodu bilmeyen giremez)<span className="mt-1 flex items-center gap-2"><input value={newCode} onChange={(event) => setNewCode(event.target.value.replace(/\D/g, ""))} maxLength={8} inputMode="numeric" placeholder="123456" className="h-10 w-32 rounded-lg border border-white/10 bg-ink px-2 text-[13px] text-mint outline-none focus:border-sun/50" /><button type="button" onClick={() => setNewCode(generateJoinCode())} className="h-10 rounded-full border border-white/10 px-3 text-[11px] text-mint/70 hover:border-sun/40">Yeni kod</button></span></label>
                   <p className="mt-1 text-[11px] text-mint/50">Kişi, Profil panelindeki “Hesap kimliğin” alanından kimliğini paylaşabilir. Davet bildirimi otomatik gider.</p>
                   <button type="button" disabled={busy} onClick={() => void submitCreate()} className="mt-2 flex min-h-10 w-full items-center justify-center gap-2 rounded-full bg-sun text-[12px] font-semibold text-ink disabled:opacity-50">{busy ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}Oluştur</button>
                 </div>
               )}
               <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-3">
                 <label className="block text-[12px] text-mint/70">Davet edildiğin gruba katıl<input value={joinId} onChange={(event) => setJoinId(event.target.value)} placeholder="Grup kimliği" className="mt-1 h-10 w-full rounded-lg border border-white/10 bg-ink px-2 text-[12px] text-mint outline-none focus:border-sun/50" /></label>
-                <button type="button" disabled={busy || joinId.trim().length < 3} onClick={() => void submitJoin()} className="mt-2 min-h-9 w-full rounded-full border border-leaf/30 text-[12px] text-leaf disabled:opacity-50">Katıl</button>
+                <label className="mt-2 block text-[12px] text-mint/70">Katılma kodu<input value={joinCodeInput} onChange={(event) => setJoinCodeInput(event.target.value.replace(/\D/g, ""))} maxLength={8} inputMode="numeric" placeholder="4–8 hane" className="mt-1 h-10 w-full rounded-lg border border-white/10 bg-ink px-2 text-[12px] text-mint outline-none focus:border-sun/50" /></label>
+                <button type="button" disabled={busy || joinId.trim().length < 3 || joinCodeInput.trim().length < 4} onClick={() => void submitJoin()} className="mt-2 min-h-9 w-full rounded-full border border-leaf/30 text-[12px] text-leaf disabled:opacity-50">Kod ile katıl</button>
               </div>
             </div>
 
@@ -256,6 +287,13 @@ export default function GroupsPanel({ currentUid, currentName, blockedSet, isBlo
 
         {openGroup && (
           <>
+            <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-white/10 px-3 py-2 text-[11px] text-mint/60">
+              <span>Katılma kodu: <b className="tracking-widest text-mint">{openGroup.joinCode || "—"}</b></span>
+              <button type="button" onClick={() => void copyCode()} className="rounded-full border border-white/10 px-2 py-0.5 hover:border-leaf/40">Kopyala</button>
+              {openGroup.ownerUid === currentUid && (
+                <button type="button" onClick={() => void rotateCode()} className="ml-auto rounded-full border border-sun/30 px-2 py-0.5 text-sun/80 hover:border-sun/60">Kodu yenile</button>
+              )}
+            </div>
             <div className="thin-scroll min-h-0 flex-1 space-y-2 overflow-y-auto px-3 py-3">
               {visible.length === 0 && <p className="py-8 text-center text-[12px] text-mint/55">Henüz mesaj yok. İlk mesajı yaz.</p>}
               {visible.map((message) => {

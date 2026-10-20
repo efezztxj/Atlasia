@@ -530,6 +530,7 @@ describe("Firestore güvenlik kuralları", () => {
       name: "Kapadokya ekibi",
       ownerUid: "owner",
       memberUids: ["owner", "member"],
+      joinCode: "123456",
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
@@ -539,6 +540,16 @@ describe("Firestore güvenlik kuralları", () => {
     await assertFails(setDoc(doc(ownerDb, "groups/empty"), { ...valid, memberUids: [] }));
     await assertFails(setDoc(doc(ownerDb, "groups/too-many"), { ...valid, memberUids: Array.from({ length: 21 }, (_, index) => `member-${index}`) }));
     await assertFails(setDoc(doc(ownerDb, "groups/extra"), { ...valid, visibility: "public" }));
+    // Katılma kodu zorunlu ve 4–8 hane olmalı.
+    await assertFails(setDoc(doc(ownerDb, "groups/no-code"), {
+      name: "Kapadokya ekibi",
+      ownerUid: "owner",
+      memberUids: ["owner"],
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }));
+    await assertFails(setDoc(doc(ownerDb, "groups/short-code"), { ...valid, joinCode: "123" }));
+    await assertFails(setDoc(doc(ownerDb, "groups/letter-code"), { ...valid, joinCode: "abcd" }));
     await assertSucceeds(setDoc(doc(ownerDb, "groups/group-1"), valid));
 
     await assertSucceeds(getDoc(doc(ownerDb, "groups/group-1")));
@@ -553,6 +564,7 @@ describe("Firestore güvenlik kuralları", () => {
       name: "Kapadokya ekibi",
       ownerUid: "owner",
       memberUids: ["owner", "member"],
+      joinCode: "123456",
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     });
@@ -594,11 +606,61 @@ describe("Firestore güvenlik kuralları", () => {
     }));
   });
 
+  it("gruba katılma kodu olmadan girilemez; kod yalnız kendini ekler", async () => {
+    await seed("groups/group-1", {
+      name: "Kapadokya ekibi",
+      ownerUid: "owner",
+      memberUids: ["owner", "member"],
+      joinCode: "123456",
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
+    const outsiderDb = testEnv.authenticatedContext("outsider").firestore();
+    const otherDb = testEnv.authenticatedContext("other").firestore();
+
+    // Kodsuz üyelik denemesi reddedilir.
+    await assertFails(updateDoc(doc(outsiderDb, "groups/group-1"), {
+      memberUids: ["owner", "member", "outsider"],
+      updatedAt: serverTimestamp(),
+    }));
+
+    // Yanlış kodla katılma batch'i (iz + üyelik) atomik reddedilir.
+    const badBatch = writeBatch(outsiderDb);
+    badBatch.set(doc(outsiderDb, "groups/group-1/joinAttempts/outsider"), { code: "999999", at: serverTimestamp() });
+    badBatch.update(doc(outsiderDb, "groups/group-1"), {
+      memberUids: ["owner", "member", "outsider"],
+      updatedAt: serverTimestamp(),
+    });
+    await assertFails(badBatch.commit());
+
+    // Başkası adına doğrulama izi yazılamaz.
+    await assertFails(setDoc(doc(outsiderDb, "groups/group-1/joinAttempts/other"), { code: "123456", at: serverTimestamp() }));
+
+    // Doğru kod: yalnız kendini ekler.
+    const joinBatch = writeBatch(outsiderDb);
+    joinBatch.set(doc(outsiderDb, "groups/group-1/joinAttempts/outsider"), { code: "123456", at: serverTimestamp() });
+    joinBatch.update(doc(outsiderDb, "groups/group-1"), {
+      memberUids: ["owner", "member", "outsider"],
+      updatedAt: serverTimestamp(),
+    });
+    await assertSucceeds(joinBatch.commit());
+
+    // Yeni üye kodu değiştiremez; kurucu yenileyebilir.
+    await assertFails(updateDoc(doc(outsiderDb, "groups/group-1"), { joinCode: "654321", updatedAt: serverTimestamp() }));
+    const ownerDb = testEnv.authenticatedContext("owner").firestore();
+    await assertSucceeds(updateDoc(doc(ownerDb, "groups/group-1"), { joinCode: "654321", updatedAt: serverTimestamp() }));
+
+    // Doğrulama izleri başkalarına kapalı kalır.
+    await assertFails(getDoc(doc(otherDb, "groups/group-1/joinAttempts/outsider")));
+    await assertSucceeds(getDoc(doc(outsiderDb, "groups/group-1/joinAttempts/outsider")));
+  });
+
   it("sohbet mesajını yalnız grup üyesi kendi adına yazar, sınırlı okur ve kendi mesajını siler", async () => {
     await seed("groups/group-1", {
       name: "Kapadokya ekibi",
       ownerUid: "owner",
       memberUids: ["owner", "member"],
+      joinCode: "123456",
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     });

@@ -17,6 +17,7 @@ import {
   onSnapshot,
   orderBy,
   query,
+  runTransaction,
   serverTimestamp,
   setDoc,
   updateDoc,
@@ -30,12 +31,17 @@ export const GROUPS_LIMIT = 20;
 export const GROUP_MEMBERS_MAX = 20;
 export const MESSAGES_LIMIT = 50;
 export const MESSAGE_TEXT_MAX = 1000;
+/** Grup katılma kodu: en az 4, en fazla 8 hane (kullanıcı isteği: en az 4 haneli). */
+export const JOIN_CODE_MIN = 4;
+export const JOIN_CODE_MAX = 8;
 
 export interface Group {
   id: string;
   name: string;
   ownerUid: string;
   memberUids: string[];
+  /** Katılma kodu — yalnız grup üyeleri okuyabilir; kuralda [0-9]{4,8} zorunlu. */
+  joinCode: string;
   createdAt: number;
   updatedAt: number;
   lastMessage?: { text: string; senderUid: string; senderName: string; createdAt: number };
@@ -83,6 +89,25 @@ export function validateGroupName(name: string): string | null {
   return null;
 }
 
+export function validateJoinCode(code: string): string | null {
+  const clean = code.trim();
+  if (clean.length < JOIN_CODE_MIN || clean.length > JOIN_CODE_MAX) return "group/join-code-length";
+  if (!/^\d+$/.test(clean)) return "group/join-code-digits";
+  return null;
+}
+
+/** Varsayılan 6 haneli katılma kodu; mümkünse güvenli rastgelelikle. */
+export function generateJoinCode(): string {
+  const digits = JOIN_CODE_MIN + 2;
+  const values = new Uint8Array(digits);
+  if (typeof globalThis.crypto?.getRandomValues === "function") {
+    globalThis.crypto.getRandomValues(values);
+  } else {
+    for (let index = 0; index < digits; index += 1) values[index] = Math.floor(Math.random() * 256);
+  }
+  return Array.from(values, (value) => String(value % 10)).join("");
+}
+
 export function normalizeGroup(id: string, raw: DocumentData): Group {
   const last = raw.lastMessage as Record<string, unknown> | undefined;
   return {
@@ -90,6 +115,7 @@ export function normalizeGroup(id: string, raw: DocumentData): Group {
     name: typeof raw.name === "string" ? raw.name : "Grup",
     ownerUid: typeof raw.ownerUid === "string" ? raw.ownerUid : "",
     memberUids: Array.isArray(raw.memberUids) ? (raw.memberUids as string[]) : [],
+    joinCode: typeof raw.joinCode === "string" ? raw.joinCode : "",
     createdAt: toMillis(raw.createdAt),
     updatedAt: toMillis(raw.updatedAt),
     lastMessage: last && typeof last.text === "string"
@@ -164,6 +190,8 @@ export interface CreateGroupInput {
   ownerUid: string;
   ownerName: string;
   memberUids: string[];
+  /** Boş bırakılırsa 6 haneli kod üretilir. */
+  joinCode?: string;
 }
 
 export async function createGroup(input: CreateGroupInput): Promise<{ group: Group; invited: number }> {
@@ -173,12 +201,16 @@ export async function createGroup(input: CreateGroupInput): Promise<{ group: Gro
   const name = input.name.trim();
   const memberUids = normalizeMemberUids(input.ownerUid, input.memberUids);
   if (memberUids.length < 1) throw dataError("group/member-required", "Grup için en az bir üye gerekli.");
+  const joinCode = (input.joinCode ?? generateJoinCode()).trim();
+  const invalidCode = validateJoinCode(joinCode);
+  if (invalidCode) throw dataError(invalidCode, `Katılma kodu ${JOIN_CODE_MIN}–${JOIN_CODE_MAX} hane olmalı (yalnız rakam).`);
 
   const ref = doc(collection(db, "groups"));
   await setDoc(ref, {
     name,
     ownerUid: input.ownerUid,
     memberUids,
+    joinCode,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -208,11 +240,73 @@ export async function createGroup(input: CreateGroupInput): Promise<{ group: Gro
       name,
       ownerUid: input.ownerUid,
       memberUids,
+      joinCode,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     },
     invited,
   };
+}
+
+/**
+ * Kod ile katılma: aynı batch'te gizli doğrulama yazısı + üyelik güncellemesi.
+ * Kural, `groups/{id}/joinAttempts/{uid}` içindeki kodun `joinCode` ile eşleşmesini
+ * getAfter ile atomik denetler; kod yanlışsa tüm batch reddedilir.
+ */
+export async function joinGroupWithCode(groupId: string, code: string, uid: string): Promise<Group> {
+  if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
+  const clean = code.trim();
+  const invalidCode = validateJoinCode(clean);
+  if (invalidCode) throw dataError(invalidCode, `Katılma kodu ${JOIN_CODE_MIN}–${JOIN_CODE_MAX} hane olmalı (yalnız rakam).`);
+  const group = await fetchGroup(groupId);
+  if (group && group.memberUids.includes(uid)) {
+    await writeGroupIndex(uid, group.id, group.name, group.ownerUid === uid ? "owner" : "member");
+    return group;
+  }
+
+  const groupRef = doc(db, "groups", groupId);
+  const attemptRef = doc(db, `groups/${groupId}/joinAttempts/${uid}`);
+  try {
+    await runTransaction(db, async (transaction) => {
+      const snapshot = await transaction.get(groupRef);
+      if (!snapshot.exists()) throw dataError("group/not-found", "Grup bulunamadı.");
+      const current = normalizeGroup(groupId, snapshot.data()!);
+      if (current.memberUids.includes(uid)) return;
+      if (current.memberUids.length >= GROUP_MEMBERS_MAX) {
+        throw dataError("group/full", "Grup dolu (en fazla 20 üye).");
+      }
+      transaction.set(attemptRef, { code: clean, at: serverTimestamp() });
+      transaction.update(groupRef, {
+        memberUids: [...current.memberUids, uid],
+        updatedAt: serverTimestamp(),
+      });
+    });
+  } catch (error) {
+    const codeText = (error as { code?: string }).code ?? "";
+    if (codeText.includes("permission-denied")) {
+      throw dataError("group/bad-code", "Katılma kodu yanlış.");
+    }
+    throw error;
+  } finally {
+    // Doğrulama izi gizli kalmasın diye temizle (en iyi çaba).
+    void deleteDoc(attemptRef).catch(() => {});
+  }
+
+  const fresh = await fetchGroup(groupId);
+  if (!fresh || !fresh.memberUids.includes(uid)) throw dataError("group/not-found", "Grup bulunamadı.");
+  await writeGroupIndex(uid, fresh.id, fresh.name, fresh.ownerUid === uid ? "owner" : "member");
+  return fresh;
+}
+
+/** Kurucu katılma kodunu yeniler (kod paylaşıldıysa eskisi geçersizleşir). */
+export async function rotateGroupCode(groupId: string, uid: string): Promise<string> {
+  if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
+  const group = await fetchGroup(groupId);
+  if (!group) throw dataError("group/not-found", "Grup bulunamadı.");
+  if (group.ownerUid !== uid) throw dataError("group/not-owner", "Yalnız grup sahibi kodu yenileyebilir.");
+  const joinCode = generateJoinCode();
+  await updateDoc(doc(db, "groups", groupId), { joinCode, updatedAt: serverTimestamp() });
+  return joinCode;
 }
 
 export async function joinGroup(groupId: string, uid: string): Promise<Group> {
