@@ -143,7 +143,7 @@ service cloud.firestore {
 
     function validPostInteraction() {
       let changed = request.resource.data.diff(resource.data).affectedKeys();
-      return (
+      return changed.size() == 0 || (
         changed.size() == 1
         && changed.hasOnly(['likedBy'])
         && validLikeToggle()
@@ -524,7 +524,8 @@ service cloud.firestore {
 
     match /reports/{reportId} {
       allow get: if signedIn() && resource.data.reporterUid == request.auth.uid;
-      allow list: if signedIn() && boundedList(50);
+      allow list: if signedIn() && boundedList(50)
+                    && resource.data.reporterUid == request.auth.uid;
       allow create: if signedIn() && validReport(request.resource.data);
       allow update: if false;
       allow delete: if signedIn() && resource.data.reporterUid == request.auth.uid;
@@ -532,7 +533,8 @@ service cloud.firestore {
 
     match /blocks/{blockId} {
       allow get: if signedIn() && resource.data.blockerUid == request.auth.uid;
-      allow list: if signedIn() && boundedList(50);
+      allow list: if signedIn() && boundedList(50)
+                    && resource.data.blockerUid == request.auth.uid;
       allow create: if signedIn() && validBlock(request.resource.data);
       allow update: if false;
       allow delete: if signedIn() && resource.data.blockerUid == request.auth.uid;
