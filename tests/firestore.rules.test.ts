@@ -835,4 +835,105 @@ describe("Firestore güvenlik kuralları", () => {
     await assertFails(updateDoc(profileRef, { displayName: "Değiştirilemez" }));
     await assertFails(deleteDoc(profileRef));
   });
+
+  it("public profil dizinini 20 kayitla listeler, yalniz sahibi yazar", async () => {
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    const bobDb = testEnv.authenticatedContext("bob").firestore();
+    const guestDb = testEnv.unauthenticatedContext().firestore();
+
+    await assertFails(setDoc(doc(guestDb, "userProfiles/alice"), { uid: "alice", displayName: "Alice", createdAt: serverTimestamp(), updatedAt: serverTimestamp() }));
+    await assertFails(setDoc(doc(bobDb, "userProfiles/alice"), { uid: "alice", displayName: "Alice", createdAt: serverTimestamp(), updatedAt: serverTimestamp() }));
+    await assertFails(setDoc(doc(aliceDb, "userProfiles/alice"), { uid: "alice", displayName: "A", createdAt: serverTimestamp(), updatedAt: serverTimestamp() }));
+    await assertSucceeds(setDoc(doc(aliceDb, "userProfiles/alice"), { uid: "alice", displayName: "Alice", createdAt: serverTimestamp(), updatedAt: serverTimestamp() }));
+    await assertSucceeds(setDoc(doc(bobDb, "userProfiles/bob"), { uid: "bob", displayName: "Bob", createdAt: serverTimestamp(), updatedAt: serverTimestamp() }));
+
+    await assertSucceeds(getDoc(doc(aliceDb, "userProfiles/bob")));
+    await assertFails(getDoc(doc(guestDb, "userProfiles/alice")));
+    await assertFails(getDocs(collection(aliceDb, "userProfiles")));
+    await assertSucceeds(getDocs(query(collection(aliceDb, "userProfiles"), limit(20))));
+    await assertSucceeds(getDocs(query(collection(aliceDb, "userProfiles"), limit(20))));
+    await assertFails(getDocs(query(collection(aliceDb, "userProfiles"), limit(21))));
+
+    await assertFails(updateDoc(doc(bobDb, "userProfiles/alice"), { displayName: "Alice2", updatedAt: serverTimestamp() }));
+    await assertSucceeds(updateDoc(doc(aliceDb, "userProfiles/alice"), { displayName: "Alice Updated", updatedAt: serverTimestamp(), createdAt: Timestamp.now() }));
+    await assertFails(deleteDoc(doc(bobDb, "userProfiles/alice")));
+    await assertSucceeds(deleteDoc(doc(aliceDb, "userProfiles/alice")));
+  });
+
+  it("arkadaslik istegini yalniz gonderen alicinin kuyruguna yazar, alici listeler ve her iki taraf silebilir", async () => {
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    const bobDb = testEnv.authenticatedContext("bob").firestore();
+    const charlieDb = testEnv.authenticatedContext("charlie").firestore();
+
+    // Gonderen kendi adina olusturur
+    await assertSucceeds(setDoc(doc(aliceDb, "users/bob/friendRequests/alice"), { fromUid: "alice", fromName: "Alice", toUid: "bob", createdAt: serverTimestamp() }));
+    // Baska kullanici adina yazamaz
+    await assertFails(setDoc(doc(bobDb, "users/bob/friendRequests/alice"), { fromUid: "alice", fromName: "Alice", toUid: "bob", createdAt: serverTimestamp() }));
+    // Kendine istek atamaz
+    await assertFails(setDoc(doc(aliceDb, "users/alice/friendRequests/alice"), { fromUid: "alice", fromName: "Alice", toUid: "alice", createdAt: serverTimestamp() }));
+    // Eksik alan
+    await assertFails(setDoc(doc(aliceDb, "users/bob/friendRequests/bad"), { fromUid: "alice", toUid: "bob", createdAt: serverTimestamp() }));
+
+    // Alici okuyabilir, baskasi okuyamaz
+    await assertSucceeds(getDoc(doc(bobDb, "users/bob/friendRequests/alice")));
+    await assertFails(getDoc(doc(aliceDb, "users/bob/friendRequests/alice")));
+    await assertFails(getDoc(doc(charlieDb, "users/bob/friendRequests/alice")));
+    await assertSucceeds(getDocs(query(collection(bobDb, "users/bob/friendRequests"), limit(50))));
+    await assertFails(getDocs(collection(bobDb, "users/bob/friendRequests")));
+    await assertFails(getDocs(query(collection(aliceDb, "users/bob/friendRequests"), limit(50))));
+
+    // Alici ve gonderen silebilir
+    await assertSucceeds(deleteDoc(doc(aliceDb, "users/bob/friendRequests/alice")));
+    // Yeniden olustur
+    await assertSucceeds(setDoc(doc(aliceDb, "users/bob/friendRequests/alice"), { fromUid: "alice", fromName: "Alice", toUid: "bob", createdAt: serverTimestamp() }));
+    await assertSucceeds(deleteDoc(doc(bobDb, "users/bob/friendRequests/alice")));
+    await assertFails(updateDoc(doc(bobDb, "users/bob/friendRequests/alice"), { fromName: "Changed" } as never));
+  });
+
+  it("kabul edilmis arkadasligi yalniz users icindeki kisi olusturur, liste kapali, yalniz uyeler okur", async () => {
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    const bobDb = testEnv.authenticatedContext("bob").firestore();
+    const charlieDb = testEnv.authenticatedContext("charlie").firestore();
+
+    const valid = { users: ["alice", "bob"], requesterUid: "alice", recipientUid: "bob", status: "accepted", createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
+    await assertFails(setDoc(doc(aliceDb, "friendships/alice_bob"), { ...valid, users: ["alice"] }));
+    await assertFails(setDoc(doc(charlieDb, "friendships/alice_bob"), valid));
+    await assertFails(setDoc(doc(aliceDb, "friendships/alice_bob"), { ...valid, status: "pending" }));
+    await assertSucceeds(setDoc(doc(bobDb, "friendships/alice_bob"), valid));
+
+    await assertSucceeds(getDoc(doc(aliceDb, "friendships/alice_bob")));
+    await assertSucceeds(getDoc(doc(bobDb, "friendships/alice_bob")));
+    await assertFails(getDoc(doc(charlieDb, "friendships/alice_bob")));
+    await assertFails(getDocs(query(collection(aliceDb, "friendships"), limit(50))));
+    await assertFails(updateDoc(doc(aliceDb, "friendships/alice_bob"), { status: "blocked" } as never));
+    await assertFails(deleteDoc(doc(charlieDb, "friendships/alice_bob")));
+    await assertSucceeds(deleteDoc(doc(aliceDb, "friendships/alice_bob")));
+  });
+
+  it("arkadas indeksini sahibi veya karsi taraf kabul sonrasi yazar, 100 kayitla listeler", async () => {
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    const bobDb = testEnv.authenticatedContext("bob").firestore();
+    // Alice kendi indeksini yazar
+    await assertSucceeds(setDoc(doc(aliceDb, "users/alice/friends/bob"), { friendUid: "bob", friendName: "Bob", since: serverTimestamp() }));
+    // Bob Alice'in indeksini dogrudan kabul sonrasi karsi taraf adina yazabilir (friendUid == auth.uid)
+    await assertSucceeds(setDoc(doc(bobDb, "users/alice/friends/bob"), { friendUid: "bob", friendName: "Bob", since: serverTimestamp() }));
+    // Yetkisiz yazamaz
+    const charlieDb = testEnv.authenticatedContext("charlie").firestore();
+    await assertFails(setDoc(doc(charlieDb, "users/alice/friends/bob"), { friendUid: "bob", friendName: "Bob", since: serverTimestamp() }));
+
+    await assertSucceeds(getDoc(doc(aliceDb, "users/alice/friends/bob")));
+    await assertFails(getDoc(doc(bobDb, "users/alice/friends/bob")));
+    await assertSucceeds(getDocs(query(collection(aliceDb, "users/alice/friends"), limit(100))));
+    await assertFails(getDocs(collection(aliceDb, "users/alice/friends")));
+    await assertFails(getDocs(query(collection(aliceDb, "users/alice/friends"), limit(101))));
+    await assertSucceeds(deleteDoc(doc(aliceDb, "users/alice/friends/bob")));
+  });
+
+  it("arkadaslik bildirim tiplerini kabul eder", async () => {
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    await assertSucceeds(setDoc(doc(aliceDb, "users/bob/notifications/n1"), { recipientUid: "bob", actorUid: "alice", type: "friend_request", title: "Arkadaslik istegi", body: "Alice seni eklemek istiyor.", targetId: "alice", read: false, createdAt: serverTimestamp() }));
+    await assertSucceeds(setDoc(doc(aliceDb, "users/bob/notifications/n2"), { recipientUid: "bob", actorUid: "alice", type: "friend_accepted", title: "Kabul edildi", body: "Bob kabul etti.", targetId: "bob", read: false, createdAt: serverTimestamp() }));
+    await assertSucceeds(setDoc(doc(aliceDb, "users/bob/notifications/n3"), { recipientUid: "bob", actorUid: "alice", type: "friend_declined", title: "Reddedildi", body: "Bob reddetti.", targetId: "bob", read: false, createdAt: serverTimestamp() }));
+    await assertFails(setDoc(doc(aliceDb, "users/bob/notifications/bad"), { recipientUid: "bob", actorUid: "alice", type: "like", title: "x", body: "x", read: false, createdAt: serverTimestamp() }));
+  });
 });

@@ -193,18 +193,28 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDele
           <p className="mt-5 text-[15px] leading-[1.8] text-mint/90">{story}</p>
 
           <section aria-labelledby="freshness-title" className="mt-7 rounded-2xl border border-leaf/25 bg-white/[0.03] p-3.5">
-            <h3 id="freshness-title" className="flex items-center gap-2 text-[13px] font-semibold"><Clock3 size={16} className="text-leaf" />Tazelik</h3>
+            <h3 id="freshness-title" className="flex items-center gap-2 text-[13px] font-semibold"><Clock3 size={16} className="text-leaf" />Tazelik — topluluk doğrulaması</h3>
             <p className="mt-1 text-[13px] leading-relaxed text-mint/85">
               {place.freshness ? place.freshness.label : "Henüz doğrulanmadı · bilgi eski olabilir"}
             </p>
             {place.freshness?.latestAt && (
-              <p className="mt-1 text-[11px] text-mint/55">
-                Son doğrulama: {new Date(place.freshness.latestAt).toLocaleDateString("tr-TR")} · toplam {place.freshness.totalCount} doğrulama
-              </p>
+              <>
+                <p className="mt-1 text-[11px] text-mint/60">
+                  Son doğrulama: {new Date(place.freshness.latestAt).toLocaleDateString("tr-TR")} · {place.freshness.sourceDetail} · toplam {place.freshness.totalCount} doğrulama
+                </p>
+                <p className="mt-1 text-[11px] leading-relaxed text-sun/80">Zaman damgası ve kaynak yukarıda. Tek kişinin bildirimi resmî bilgiyi belirlemez.</p>
+                {place.freshness.isSingleContributor && (
+                  <p className="mt-1 rounded-lg border border-amber-300/20 bg-amber-400/10 px-2 py-1 text-[11px] text-amber-200/90">Yalnız 1 gezgin doğruladı — henüz topluluk onayı yok. Ücret/saat için resmî kaynağa bakın.</p>
+                )}
+                <p className="mt-1 text-[11px] leading-relaxed text-mint/50">{place.freshness.disclaimer}</p>
+              </>
+            )}
+            {!place.freshness?.latestAt && (
+              <p className="mt-1 text-[11px] leading-relaxed text-mint/50">Topluluk doğrulaması yok; resmî kaynaktan doğrulayın.</p>
             )}
             {onVerify && (
               <>
-                <p className="mt-3 text-[12px] text-mint/70">Burayı yeni ziyaret ettiysen tek dokunuşla doğrula:</p>
+                <p className="mt-3 text-[12px] text-mint/70">Burayı yeni ziyaret ettiysen topluluğa bilgi ver (resmî kaynak değil):</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {VERIFICATION_STATUSES.map((status) => (
                     <button
@@ -220,13 +230,13 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDele
                   ))}
                 </div>
                 <label className="mt-2 block text-[11px] text-mint/60">
-                  İsteğe bağlı not (max 280)
-                  <input value={verifyNote} onChange={(event) => setVerifyNote(event.target.value)} maxLength={280} placeholder="Örn. giriş ücreti 200 TL oldu" className="mt-1 h-9 w-full rounded-lg border border-white/10 bg-ink px-2 text-[12px] text-mint outline-none focus:border-leaf/50" />
+                  İsteğe bağlı not (max 280) — resmî fiyatı yazma, gözlediğini bildir
+                  <input value={verifyNote} onChange={(event) => setVerifyNote(event.target.value)} maxLength={280} placeholder="Örn. kalabalık, yol çalışması var" className="mt-1 h-9 w-full rounded-lg border border-white/10 bg-ink px-2 text-[12px] text-mint outline-none focus:border-leaf/50" />
                 </label>
                 {verifyStatus && <p role="status" className="mt-2 text-[12px] text-sun">{verifyStatus}</p>}
               </>
             )}
-            <p className="mt-2 text-[11px] leading-relaxed text-mint/50">Tazelik bir güven sinyalidir; doğrulama puan/rozet kazandırmaz. Rota motoru taze doğrulanmış durağı öne alır.</p>
+            <p className="mt-2 text-[11px] leading-relaxed text-mint/50">Tazelik bir güven sinyalidir; doğrulama puan/rozet kazandırmaz. Rota motoru taze doğrulanmış durağı öne alır. Resmî bilgi yalnızca resmî kaynaktır.</p>
           </section>
 
           <h3 className="mt-7 text-[12px] font-bold tracking-[0.16em] text-sun uppercase">Gitmeden bil</h3>

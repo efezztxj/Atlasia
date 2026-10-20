@@ -43,6 +43,8 @@ export interface PlaceFreshness {
   /** Son 90 gündeki bağımsız doğrulama sayısı. */
   recentCount: number;
   totalCount: number;
+  /** Son 90 günde doğrulayan farklı kişi sayısı. */
+  distinctUids: number;
   /** Son doğrulamanın durumu; hiç yoksa null. */
   latestStatus: VerificationStatus | null;
   band: FreshnessBand;
@@ -50,6 +52,12 @@ export interface PlaceFreshness {
   score: number;
   /** Kullanıcıya gösterilecek Türkçe özet. */
   label: string;
+  /** Topluluk bildirimi mi resmi kaynak mi ayirimi icin aciklama. */
+  disclaimer: string;
+  /** Tek kisinin katkisi resmiyi belirlemez bayragi. */
+  isSingleContributor: boolean;
+  /** Zaman damgasi ve kaynagi iceren detay. */
+  sourceDetail: string;
 }
 
 export const FRESHNESS_WINDOW_DAYS = 90;
@@ -94,6 +102,18 @@ function relativeDays(latestAt: number, now: number): string {
   return `${months} ay önce`;
 }
 
+export function freshnessDisclaimer(status: VerificationStatus | null, distinctUids: number): string {
+  if (status === null) return "Resmî kaynak değil; gitmeden doğrulayın.";
+  if (distinctUids <= 1) return "Topluluk bildirimi — tek kişinin katkısı resmî bilgiyi belirlemez. Resmî kaynaktan doğrulayın.";
+  return "Topluluk doğrulaması — resmî ücret/saat değil. Gitmeden resmî kaynaktan doğrulayın.";
+}
+
+export function freshnessSourceDetail(latestAt: number, distinctUids: number, now: number): string {
+  const when = relativeDays(latestAt, now);
+  const who = distinctUids > 1 ? `${distinctUids} farklı gezgin` : "1 gezgin";
+  return `${who} · ${when}`;
+}
+
 export function summarizeFreshness(
   placeId: string,
   verifications: PlaceVerification[],
@@ -107,26 +127,42 @@ export function summarizeFreshness(
       latestAt: null,
       recentCount: 0,
       totalCount: 0,
+      distinctUids: 0,
       latestStatus: null,
       band: "unknown",
       score: 1,
       label: "Henüz doğrulanmadı · bilgi eski olabilir",
+      disclaimer: "Resmî kaynak değil; topluluk doğrulaması bekleniyor.",
+      isSingleContributor: false,
+      sourceDetail: "Henüz doğrulama yok",
     };
   }
   const latest = mine[0];
-  const recentCount = mine.filter((verification) => verification.createdAt >= now - FRESHNESS_WINDOW_DAYS * DAY_MS).length;
+  const recent = mine.filter((verification) => verification.createdAt >= now - FRESHNESS_WINDOW_DAYS * DAY_MS);
+  const recentCount = recent.length;
+  const distinctUids = new Set(recent.map((item) => item.uid)).size;
+  const totalDistinct = new Set(mine.map((item) => item.uid)).size;
+  // Tek kisinin katkisi resmiyi belirlemez: distinct tek ise isSingle true
+  const isSingleContributor = distinctUids <= 1 && totalDistinct <= 1;
   const band = freshnessBand(latest.createdAt, now);
-  const score = band === "fresh" ? 1.35 : band === "aging" ? 1.1 : 0.8;
+  // Skor: taze ise 1.35 ama tek kisi ise 1.15'e sinirla (resmiyi tek basina yukseltmesin)
+  const baseScore = band === "fresh" ? 1.35 : band === "aging" ? 1.1 : 0.8;
+  const score = isSingleContributor && band === "fresh" ? 1.15 : isSingleContributor && band === "aging" ? 1.05 : baseScore;
   const statusLabel = VERIFICATION_LABELS[latest.status];
-  const people = recentCount > 1 ? `${recentCount} kişi son 3 ayda doğruladı` : "Son doğrulama";
+  const people = recentCount > 1 ? `${recentCount} doğrulama · ${distinctUids} kişi son 3 ayda` : distinctUids === 1 ? "1 kişi doğruladı" : "Son doğrulama";
+  const when = relativeDays(latest.createdAt, now);
   return {
     latestAt: latest.createdAt,
     recentCount,
     totalCount: mine.length,
+    distinctUids,
     latestStatus: latest.status,
     band,
     score,
-    label: `${people} · ${relativeDays(latest.createdAt, now)} · ${statusLabel}`,
+    label: `${people} · ${when} · ${statusLabel} — topluluk bildirimi`,
+    disclaimer: freshnessDisclaimer(latest.status, distinctUids),
+    isSingleContributor,
+    sourceDetail: freshnessSourceDetail(latest.createdAt, distinctUids, now),
   };
 }
 

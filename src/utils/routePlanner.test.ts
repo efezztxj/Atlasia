@@ -126,10 +126,14 @@ describe("Adım 14 · rota motoru tazelik tercihi", () => {
       latestAt: now - 3 * day,
       recentCount: 2,
       totalCount: 2,
+      distinctUids: 2,
       latestStatus: "still_open",
       band: "fresh",
       score: 1.35,
-      label: "2 kişi son 3 ayda doğruladı · 3 gün önce · Hâlâ açık",
+      label: "2 kişi son 3 ayda doğruladı · 3 gün önce · Hâlâ açık — topluluk bildirimi",
+      disclaimer: "Topluluk doğrulaması — resmî ücret/saat değil. Gitmeden resmî kaynaktan doğrulayın.",
+      isSingleContributor: false,
+      sourceDetail: "2 farklı gezgin · 3 gün önce",
     },
   });
   const stalePlace = place("stale", 38.419, 27.139, {
@@ -137,10 +141,14 @@ describe("Adım 14 · rota motoru tazelik tercihi", () => {
       latestAt: now - 120 * day,
       recentCount: 0,
       totalCount: 1,
+      distinctUids: 1,
       latestStatus: "still_open",
       band: "stale",
       score: 0.8,
-      label: "Son doğrulama · 4 ay önce · Hâlâ açık",
+      label: "Son doğrulama · 4 ay önce · Hâlâ açık — topluluk bildirimi",
+      disclaimer: "Topluluk bildirimi — tek kişinin katkısı resmî bilgiyi belirlemez. Resmî kaynaktan doğrulayın.",
+      isSingleContributor: true,
+      sourceDetail: "1 gezgin · 4 ay önce",
     },
   });
 

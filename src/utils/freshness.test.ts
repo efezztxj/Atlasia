@@ -58,8 +58,9 @@ describe("tazelik döngüsü", () => {
 
   it("doğrulanmamış yer için dürüst özet üretir", () => {
     const summary = summarizeFreshness("place-1", [], NOW);
-    expect(summary).toMatchObject({ latestAt: null, recentCount: 0, band: "unknown", score: 1 });
+    expect(summary).toMatchObject({ latestAt: null, recentCount: 0, band: "unknown", score: 1, distinctUids: 0, isSingleContributor: false });
     expect(summary.label).toContain("Henüz doğrulanmadı");
+    expect(summary.disclaimer).toContain("Resmî");
   });
 
   it("son doğrulama tarihini ve son 90 gündeki kişi sayısını gösterir", () => {
@@ -72,11 +73,16 @@ describe("tazelik döngüsü", () => {
     expect(summary.latestAt).toBe(NOW - 5 * DAY);
     expect(summary.recentCount).toBe(2);
     expect(summary.totalCount).toBe(3);
+    expect(summary.distinctUids).toBe(2);
     expect(summary.band).toBe("fresh");
     expect(summary.score).toBeCloseTo(1.35);
-    expect(summary.label).toContain("2 kişi son 3 ayda doğruladı");
+    expect(summary.label).toContain("2 kişi son 3 ayda");
     expect(summary.label).toContain("5 gün önce");
     expect(summary.label).toContain("Hâlâ açık");
+    expect(summary.label).toContain("topluluk bildirimi");
+    expect(summary.disclaimer).toContain("Topluluk doğrulaması");
+    expect(summary.isSingleContributor).toBe(false);
+    expect(summary.sourceDetail).toContain("2 farklı gezgin");
   });
 
   it("eski bilgiyi rota motoru için geriye düşürür", () => {
@@ -109,5 +115,22 @@ describe("tazelik döngüsü", () => {
     expect(canVerifyAgain(items[0].createdAt, "member-a", items, NOW)).toBe(false);
     expect(canVerifyAgain(items[0].createdAt, "member-b", items, NOW)).toBe(true);
     expect(canVerifyAgain(null, "member-a", [], NOW)).toBe(true);
+  });
+
+  it("tek kisinin katkisi resmi bilgiyi belirlemez ve skor sinirlanir", () => {
+    const single = summarizeFreshness("place-1", [verification({ uid: "solo", createdAt: NOW - 2 * DAY, status: "fee_changed" })], NOW);
+    expect(single.distinctUids).toBe(1);
+    expect(single.isSingleContributor).toBe(true);
+    expect(single.disclaimer).toContain("tek kişinin katkısı");
+    expect(single.label).toContain("topluluk bildirimi");
+    expect(single.label).not.toContain("resmî");
+    expect(single.score).toBeCloseTo(1.15);
+    expect(single.sourceDetail).toContain("1 gezgin");
+    const multi = summarizeFreshness("place-1", [
+      verification({ uid: "a", createdAt: NOW - 2 * DAY }),
+      verification({ uid: "b", createdAt: NOW - 3 * DAY }),
+    ], NOW);
+    expect(multi.isSingleContributor).toBe(false);
+    expect(multi.score).toBeCloseTo(1.35);
   });
 });
