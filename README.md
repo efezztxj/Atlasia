@@ -33,7 +33,8 @@ Vite, varsayılan olarak yalnız kendi güvenli host davranışını kullanır. 
 npm ci
 npm run typecheck
 npm run lint
-npm run test:run
+npm test
+npm run test:owner-index
 npm run test:rules:emulator
 npm run build
 npm run audit:check
@@ -44,6 +45,8 @@ Tüm yerel doğrulamaları sırayla çalıştırmak için:
 ```bash
 npm run check
 ```
+
+`npm run ensure:owner-places-index`, yerel `firestore.indexes.json` dosyasındaki sahip-pin bileşik indeksini ekler; Firebase'e bağlanmaz ve kimlik bilgisi istemez. Bu betiğin sahte dosya erişimli Node testleri `npm run test:owner-index` ile çalışır.
 
 Firestore Rules testi Google'ın Firestore Emulator 1.22.0 JAR'ını kullanıcı cache dizinine indirir ve sabit SHA-256 özetiyle doğrular. Emulator veya `firebase-tools` production paketine dahil edilmez.
 
@@ -68,8 +71,9 @@ Firebase web yapılandırması ve diğer `VITE_` değerleri istemci uygulamasın
 ## Veri modeli ve güvenlik kuralları
 
 - `places/{placeId}` — kullanıcı keşif pinleri
-- `posts/{postId}` — gönderi, atomik `likedBy` üyelikleri ve sınırlı gömülü yanıtlar
-- `stories/{storyId}` — 24 saatlik kullanıcı hikâyeleri
+- `posts/{postId}` — gönderi ve atomik `likedBy` üyelikleri; toplam beğeni = seed tabanı + benzersiz kullanıcılar
+- `posts/{postId}/replies/{replyId}` — yazarı kuralla doğrulanan, değiştirilemeyen yanıtlar
+- `stories/{storyId}` — 24 saatlik kullanıcı hikâyeleri; görüldü bilgisi yalnızca cihazda tutulur
 
 Emekliye ayrılan profil/XP/rozet/takip koleksiyonu uygulama şemasında tanımlı değildir ve Firestore'un varsayılan reddetme kuralı altında kapalıdır. Akış ve harita okumaları kalıcı toplam içerik tavanı kullanmaz; küçük cursor sayfaları ve harita viewport sorgularıyla ilerler. Kurallar yerelde `npm run test:rules:emulator` ile test edilir. Onaylı Firebase projesine kural/index dağıtımı, web yayınının dışında ve açık denetim kapısından sonra şu kapsamla yapılır:
 
@@ -89,4 +93,9 @@ Bu komut Firebase Hosting dağıtmaz. Web/PWA yayın hattı yalnız GitHub → C
 
 ## CI
 
-GitHub Actions her pull request ve `main` güncellemesinde üretim bağımlılığı güvenlik tabanını, typecheck'i, lint'i, birim testlerini ve production build'i çalıştırır. Bilinen açıklar `SECURITY.md` içinde kayıtlıdır; `audit:check` yeni paket/advisory veya seviye artışında CI'ı durdurur. Dependabot npm ve GitHub Actions bağımlılıklarını ayrı pull requestlerle takip eder.
+GitHub Actions her pull request, `main` ve `arena/**` branch güncellemesinde üretim bağımlılığı güvenlik tabanını, typecheck'i, lint'i, birim testlerini, Rules emulator testlerini ve production build'i çalıştırır. Bilinen açıklar `SECURITY.md` içinde kayıtlıdır; `audit:check` yeni paket/advisory veya seviye artışında CI'ı durdurur. Dependabot npm ve GitHub Actions bağımlılıklarını ayrı pull requestlerle takip eder.
+
+## Belgeler
+
+- [Kimlik doğrulama kurulumu](AUTH_SETUP.md)
+- [Sürüm değişiklik günlüğü](CHANGELOG.md)

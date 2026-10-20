@@ -9,6 +9,7 @@ import { normalize } from "../utils/text";
 import { decodePolyline } from "../utils/polyline";
 import { goldenHourWindow } from "../utils/sun";
 import { haversineKm } from "../utils/geo";
+import { dailyRainNote, fetchWeatherSeries, optimizeForRain } from "../utils/weather";
 import { fetchOpenMapPlaces, openMapRadiusKm } from "../utils/openMapPlaces";
 import { compressImage } from "../utils/image";
 import { cn } from "../utils/cn";
@@ -35,18 +36,19 @@ interface Props {
   origin: { lat: number; lng: number; label: string }; selectedPlace?: Place; hasLocation?: boolean;
   resumeRoute?: AtlasRoute | null; onPreview: (coords: [number, number][]) => void; onDraw: (coords: [number, number][]) => void;
   dockExpanded?: boolean;
+  onOpenRouteEditor: (route: AtlasRoute) => void;
   onPulse: (lng: number, lat: number) => void; onFit: (coords: [number, number][]) => void;
 }
 const coordinates = (route: AtlasRoute) => route.days.flatMap((day) => decodePolyline(day.polyline));
 
-export default function AtlasAssistant({ open, onOpen, onClose, places, view, origin, selectedPlace, hasLocation, resumeRoute, dockExpanded, onPreview, onDraw, onPulse, onFit }: Props) {
-  const { saveRoute } = useCollections();
+export default function AtlasAssistant({ open, onOpen, onClose, places, view, origin, selectedPlace, hasLocation, resumeRoute, dockExpanded, onOpenRouteEditor, onPreview, onDraw, onPulse, onFit }: Props) {
+  const { saveRoute, savedRoutes } = useCollections();
   const panelRef = usePanelAccess(open, onClose);
   const bodyRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const lock = useRef(false);
   const mounted = useRef(true);
-  const resumeId = useRef<string | null>(null);
+  const lastResumeRoute = useRef<AtlasRoute | null>(null);
   const [intro, setIntro] = useState(true);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([{ id: "welcome", role: "assistant", text: "Merhaba! Haritada bir yer seç veya aklındaki keşfi yaz. Önce yakınındaki topluluk izlerine, sonra rehber noktalarına bakarım." }]);
@@ -70,28 +72,45 @@ export default function AtlasAssistant({ open, onOpen, onClose, places, view, or
   const add = (message: Omit<Message, "id">) => setMessages((current) => [...current.slice(-39), { ...message, id: `${Date.now()}-${Math.random().toString(36).slice(2)}` }]);
 
   useEffect(() => {
-    if (!open) { resumeId.current = null; return; }
-    if (!resumeRoute || resumeId.current === resumeRoute.id) return;
-    resumeId.current = resumeRoute.id;
+    if (!open) { lastResumeRoute.current = null; return; }
+    if (!resumeRoute || lastResumeRoute.current === resumeRoute) return;
+    lastResumeRoute.current = resumeRoute;
     setRoute(resumeRoute);
     setApproved(false);
-    setSaved(true);
     const points = coordinates(resumeRoute);
     if (points.length > 1) { onPreview(points); onFit(points); }
     add({ role: "assistant", text: `“${resumeRoute.routeTitle}” kaydını açtım. Önce gözden geçir; istersen sırayı değiştir veya haritada göster.` });
   }, [open, resumeRoute, onPreview, onFit]);
 
+  useEffect(() => {
+    if (!route) { setSaved(false); return; }
+    setSaved(savedRoutes.some((savedRoute) => savedRoute.id === route.id));
+  }, [route, savedRoutes]);
+
+  // Adım 15: tek nokta yerine durakların varış saatlerine göre saatlik tahmin.
   const weather = async (center: { lat: number; lng: number }) => {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 4500);
     try {
-      const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${center.lat}&longitude=${center.lng}&current=precipitation&forecast_days=1`, { signal: controller.signal });
-      if (!response.ok) throw new Error("Weather unavailable");
-      const data = await response.json() as { current?: { precipitation?: number } };
-      if (typeof data.current?.precipitation !== "number") throw new Error("No weather data");
-      return data.current.precipitation > .2 ? "Hava modelinde mevcut yağış görünüyor. Kaygan zemin ve açık alanlar için kapalı bir mola planla; tüm durakların yağmura uygunluğu doğrulanmadı." : "Hava modelinde mevcut yağış görünmüyor. Bu, gün boyunca yağmur olmayacağı anlamına gelmez.";
-    } catch { return "Canlı hava bilgisine ulaşamadım. Yağmur ihtimalini yerel tahminden kontrol et."; }
-    finally { clearTimeout(timeout); }
+      const series = await fetchWeatherSeries([{ id: "center", lat: center.lat, lng: center.lng }]);
+      return series.center ?? [];
+    } catch {
+      return [];
+    }
+  };
+
+  const weatherForRoute = async (route: AtlasRoute) => {
+    const points = route.days.flatMap((day) => day.stops)
+      .filter((stop) => stop.pinId && Number.isFinite(stop.lat) && Number.isFinite(stop.lng))
+      .map((stop) => ({ id: stop.pinId as string, lat: stop.lat, lng: stop.lng }));
+    if (!points.length) return { route, planned: false };
+    try {
+      const series = await fetchWeatherSeries(points);
+      return { route: optimizeForRain(route, series).route, planned: true };
+    } catch {
+      return {
+        route: { ...route, weatherNote: "Durakların varış saatine göre canlı hava tahminine ulaşılamadı. Yağmur ihtimalini yerel tahminden kontrol et." },
+        planned: false,
+      };
+    }
   };
 
   const build = async (settings: RouteBrief, question: string, reference?: Place) => {
@@ -104,7 +123,7 @@ export default function AtlasAssistant({ open, onOpen, onClose, places, view, or
     setFeedback(null);
     add({ role: "user", text: question });
     const center = reference ?? (settings.start === "map" ? view : settings.start === "me" ? origin : context);
-    const forecast = settings.rain === "auto" ? weather(center) : Promise.resolve("Hava değerlendirmesi esnek bırakıldı; tahmini gitmeden kontrol et.");
+    const forecast = settings.rain === "auto" ? weather(center) : Promise.resolve(null);
     const knownNearby = nearbyPlaces(places, center, openMapRadiusKm(settings.transport));
     let openMapUnavailable = false;
     const supplemental = knownNearby.length >= 6 || !navigator.onLine
@@ -120,14 +139,22 @@ export default function AtlasAssistant({ open, onOpen, onClose, places, view, or
         setLoading(STEPS[step]);
         await new Promise((resolve) => setTimeout(resolve, 800));
       }
-      const [weatherNote, openMapPlaces] = await Promise.all([forecast, supplemental]);
+      const [centerHours, openMapPlaces] = await Promise.all([forecast, supplemental]);
+      const weatherNote = settings.rain === "auto"
+        ? dailyRainNote(centerHours ?? [])
+        : "Hava değerlendirmesi esnek bırakıldı; tahmini gitmeden kontrol et.";
       const uniqueOpenMapPlaces = openMapPlaces.filter((candidate) => !places.some((place) => {
         const distance = haversineKm(place.lat, place.lng, candidate.lat, candidate.lng);
         return distance < .12 || (distance < 1 && normalize(place.title) === normalize(candidate.title));
       }));
-      const result = planRoute([...places, ...uniqueOpenMapPlaces], center, settings, weatherNote);
+      let result = planRoute([...places, ...uniqueOpenMapPlaces], center, settings, weatherNote);
       if (!result.days.length && openMapUnavailable) {
         result.routeSummary += " Açık harita servisine şu an ulaşılamadı; bağlantı geldiğinde aynı başlangıçla tekrar deneyebilirsin.";
+      }
+      if (result.days.length && settings.rain === "auto") {
+        const planned = await weatherForRoute(result);
+        result = planned.route;
+        result.dataSources = [...(result.dataSources ?? []), "Open-Meteo"].filter((value, index, all) => all.indexOf(value) === index);
       }
       if (!mounted.current) return;
       setRoute(result);
@@ -227,7 +254,7 @@ export default function AtlasAssistant({ open, onOpen, onClose, places, view, or
         {wizard && <RouteWizard initial={brief} hasLocation={!!hasLocation} onCancel={() => setWizard(false)} onGenerate={(settings) => void build(settings, "Bu seçimlerle rota oluştur")} />}
         {loading && <div role="status" className="rounded-xl border border-sun/15 p-3"><p className="text-[13px] text-sun">{loading}</p><div className="mt-3 h-0.5 bg-white/10"><div className="h-full bg-sun transition-all duration-700" style={{ width: `${(stage + 1) * 25}%` }} /></div></div>}
         {error && <div role="alert" className="border-l-2 border-sun pl-3 text-sm text-sun"><p>{error}</p><button type="button" onClick={() => { setError(null); setWizard(true); }} className="mt-2 flex min-h-10 items-center gap-2 underline underline-offset-4"><RotateCcw size={14} />Seçimleri düzenle</button></div>}
-        {route && route.days.length > 0 && <RouteResult route={route} approved={approved} saved={saved} onConfirm={() => { onDraw(coordinates(route)); setApproved(true); }} onStop={(stop) => onPulse(stop.lng, stop.lat)} onReorder={(day, from, to) => { const next = reorderRoute(route, day, from, to); setRoute(next); if (approved) onDraw(coordinates(next)); else onPreview(coordinates(next)); }} onSave={() => { saveRoute(route); setSaved(true); }} onEdit={() => setWizard(true)} onAlternative={(prompt) => void respond(prompt)} />}
+        {route && route.days.length > 0 && <RouteResult route={route} approved={approved} saved={saved} onConfirm={() => { onDraw(coordinates(route)); setApproved(true); }} onStop={(stop) => onPulse(stop.lng, stop.lat)} onReorder={(day, from, to) => { const next = reorderRoute(route, day, from, to); setRoute(next); if (approved) onDraw(coordinates(next)); else onPreview(coordinates(next)); }} onSave={() => { saveRoute(route); setSaved(true); }} onEdit={() => setWizard(true)} onOpenRouteEditor={() => onOpenRouteEditor(route)} onAlternative={(prompt) => void respond(prompt)} />}
         {route && <div className="flex items-center gap-3 border-t border-white/10 pt-3 text-[12px]"><span className="text-mint/75">Bu öneri nasıldı?</span><button type="button" aria-label="Öneri iyi" aria-pressed={feedback === "good"} onClick={() => setFeedback("good")} className={cn("grid size-10 place-items-center rounded-full", feedback === "good" && "bg-sun/15 text-sun")}><ThumbsUp size={15} /></button><button type="button" aria-label="Öneri yetersiz" aria-pressed={feedback === "bad"} onClick={() => { setFeedback("bad"); setWizard(true); }} className={cn("grid size-10 place-items-center rounded-full", feedback === "bad" && "bg-sun/15 text-sun")}><ThumbsDown size={15} /></button>{feedback === "good" && <span className="text-sun">Teşekkürler.</span>}</div>}
       </div>
       <form onSubmit={(event) => { event.preventDefault(); void respond(input); }} className="shrink-0 border-t border-white/10 px-4 py-3"><label htmlFor="atlas-query" className="mb-2 block text-[12px] text-mint/80">Haritaya sor</label><div className="flex items-center gap-2"><button type="button" disabled={!!loading} onClick={() => fileRef.current?.click()} aria-label="Atmosfer eşleştirmesi için fotoğraf ekle" className="grid size-11 shrink-0 place-items-center rounded-full text-sun disabled:opacity-40"><ImagePlus size={19} /></button><input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(event) => void photoMatch(event.target.files?.[0])} /><input id="atlas-query" value={input} onChange={(event) => setInput(event.target.value)} maxLength={500} disabled={!!loading} placeholder="Yer, süre veya aklındaki atmosfer..." className="h-11 min-w-0 flex-1 bg-transparent text-[14px] text-mint placeholder:text-[#b6cabb]" /><button type="submit" disabled={!input.trim() || !!loading} aria-label="Soruyu gönder" className="grid size-11 shrink-0 place-items-center rounded-full bg-sun text-ink disabled:opacity-40"><Send size={16} /></button></div></form>
@@ -248,7 +275,7 @@ function RouteWizard({ initial, hasLocation, onCancel, onGenerate }: { initial: 
   </section>;
 }
 
-function RouteResult({ route, approved, saved, onConfirm, onStop, onReorder, onSave, onEdit, onAlternative }: { route: AtlasRoute; approved: boolean; saved: boolean; onConfirm: () => void; onStop: (stop: { lng: number; lat: number }) => void; onReorder: (day: number, from: number, to: number) => void; onSave: () => void; onEdit: () => void; onAlternative: (prompt: string) => void }) {
+function RouteResult({ route, approved, saved, onConfirm, onStop, onReorder, onSave, onEdit, onOpenRouteEditor, onAlternative }: { route: AtlasRoute; approved: boolean; saved: boolean; onConfirm: () => void; onStop: (stop: { lng: number; lat: number }) => void; onReorder: (day: number, from: number, to: number) => void; onSave: () => void; onEdit: () => void; onOpenRouteEditor: () => void; onAlternative: (prompt: string) => void }) {
   const [dayIndex, setDay] = useState(0);
   const [drag, setDrag] = useState<number | null>(null);
   const [shared, setShared] = useState(false);
@@ -282,11 +309,13 @@ function RouteResult({ route, approved, saved, onConfirm, onStop, onReorder, onS
     try { if (navigator.share) await navigator.share({ title: route.routeTitle, text }); else await navigator.clipboard.writeText(text); setShared(true); } catch { /* Sharing can be cancelled by the user. */ }
   };
   return <section className="rounded-2xl border border-sun/20 p-4"><p className="text-[12px] font-semibold text-sun">{approved ? "Haritada gösteriliyor" : "Soluk rota önizlemesi"}</p><h3 className="font-display mt-2 text-lg font-semibold">{route.routeTitle}</h3><p className="mt-1 flex items-center gap-1.5 text-[13px] text-mint/75"><Clock3 size={14} />≈{route.totalDurationHours} saat · ≈{route.totalDistanceKm} km</p><p className="mt-2 text-[12px] leading-relaxed text-mint/65">{route.routeSummary}</p>{route.days.length > 1 && <nav className="mt-3 flex gap-2" aria-label="Rota günleri">{route.days.map((item, i) => <button key={item.dayNumber} type="button" onClick={() => setDay(i)} className={cn("min-h-10 rounded-full border px-3 text-[13px]", i === dayIndex ? "border-sun text-sun" : "border-white/15")}>{item.dayNumber}. gün</button>)}</nav>}
-    <ol className="mt-4 space-y-2">{day.stops.map((stop, i) => <li key={`${stop.pinId}-${i}`} draggable onDragStart={() => setDrag(i)} onDragOver={(event) => event.preventDefault()} onDrop={() => { if (drag !== null) onReorder(dayIndex, drag, i); setDrag(null); }} className="rounded-xl border border-white/10 p-3"><button type="button" onClick={() => onStop(stop)} className="w-full text-left"><p className="text-[14px] font-semibold">{i + 1}. {stop.name}</p><p className="mt-1 text-[12px] text-sun">{stop.startTime} - {stop.endTime} · {stop.source === "openstreetmap" ? "Açık harita noktası" : stop.isCommunityPin ? "Topluluk izi" : "Atlasia rehberi"}</p><p className="mt-2 text-[13px] leading-relaxed text-mint/80">{stop.aiReason}</p><p className="mt-1.5 line-clamp-2 text-[12px] leading-relaxed text-mint/60">{stop.description}</p></button><div className="mt-2 flex justify-end"><button type="button" disabled={i === 0} onClick={() => onReorder(dayIndex, i, i - 1)} aria-label={`${stop.name} durağını yukarı taşı`} className="grid size-9 place-items-center disabled:opacity-30"><ArrowUp size={14} /></button><button type="button" disabled={i === day.stops.length - 1} onClick={() => onReorder(dayIndex, i, i + 1)} aria-label={`${stop.name} durağını aşağı taşı`} className="grid size-9 place-items-center disabled:opacity-30"><ArrowDown size={14} /></button></div></li>)}</ol>
+    <ol className="mt-4 space-y-2">{day.stops.map((stop, i) => <li key={`${stop.pinId}-${i}`} draggable onDragStart={() => setDrag(i)} onDragOver={(event) => event.preventDefault()} onDrop={() => { if (drag !== null) onReorder(dayIndex, drag, i); setDrag(null); }} className="rounded-xl border border-white/10 p-3"><button type="button" onClick={() => onStop(stop)} className="w-full text-left"><p className="text-[14px] font-semibold">{i + 1}. {stop.name}</p><p className="mt-1 text-[12px] text-sun">{stop.startTime} - {stop.endTime} · {stop.source === "openstreetmap" ? "Açık harita noktası" : stop.isCommunityPin ? "Topluluk izi" : "Atlasia rehberi"}</p>
+                      {stop.weather && <p className={cn("mt-1 text-[12px]", stop.weather.risk === "rainy" ? "text-red-300" : stop.weather.risk === "possible" ? "text-sun" : "text-leaf")}>Varışta: {Math.round(stop.weather.temperature)}° · {stop.weather.label} · %{Math.round(stop.weather.precipitationProbability)} yağış olasılığı</p>}<p className="mt-2 text-[13px] leading-relaxed text-mint/80">{stop.aiReason}</p><p className="mt-1.5 line-clamp-2 text-[12px] leading-relaxed text-mint/60">{stop.description}</p></button><div className="mt-2 flex justify-end"><button type="button" disabled={i === 0} onClick={() => onReorder(dayIndex, i, i - 1)} aria-label={`${stop.name} durağını yukarı taşı`} className="grid size-9 place-items-center disabled:opacity-30"><ArrowUp size={14} /></button><button type="button" disabled={i === day.stops.length - 1} onClick={() => onReorder(dayIndex, i, i + 1)} aria-label={`${stop.name} durağını aşağı taşı`} className="grid size-9 place-items-center disabled:opacity-30"><ArrowDown size={14} /></button></div></li>)}</ol>
     {route.weatherNote && <p className="mt-3 border-l-2 border-leaf/35 pl-3 text-[12px] leading-relaxed text-mint/75">{route.weatherNote}</p>}
-    <div className="mt-4 flex flex-wrap gap-2">{!approved && <button type="button" onClick={onConfirm} className="min-h-11 rounded-full bg-sun px-4 text-[13px] font-semibold text-ink">Haritada göster</button>}<button type="button" onClick={onEdit} className="min-h-11 rounded-full border border-white/20 px-4 text-[13px]">Düzenle</button><button type="button" onClick={onSave} className="flex min-h-11 items-center gap-1.5 rounded-full border border-white/20 px-4 text-[13px] text-sun">{saved ? <Check size={14} /> : <Bookmark size={14} />}{saved ? "Kaydedildi" : "Kaydet"}</button><button type="button" onClick={() => void share()} className="min-h-11 rounded-full border border-white/20 px-4 text-[13px]">{shared ? "Paylaşıldı" : "Paylaş"}</button></div>
+    <div className="mt-4 flex flex-wrap gap-2">{!approved && <button type="button" onClick={onConfirm} className="min-h-11 rounded-full bg-sun px-4 text-[13px] font-semibold text-ink">Haritada göster</button>}<button type="button" onClick={onEdit} className="min-h-11 rounded-full border border-white/20 px-4 text-[13px]">Düzenle</button><button type="button" onClick={onOpenRouteEditor} className="min-h-11 rounded-full border border-leaf/35 px-4 text-[13px] text-leaf">Yayınla / bağlantı</button><button type="button" onClick={onSave} className="flex min-h-11 items-center gap-1.5 rounded-full border border-white/20 px-4 text-[13px] text-sun">{saved ? <Check size={14} /> : <Bookmark size={14} />}{saved ? "Kaydedildi" : "Kaydet"}</button><button type="button" onClick={() => void share()} className="min-h-11 rounded-full border border-white/20 px-4 text-[13px]">{shared ? "Paylaşıldı" : "Paylaş"}</button></div>
     <div className="mt-3 flex flex-wrap gap-2">{route.alternatives.map((alternative) => <button key={alternative.label} type="button" onClick={() => onAlternative(alternative.prompt)} className="min-h-10 rounded-full border border-white/15 px-3 text-[12px] text-mint/80">{alternative.label}</button>)}</div>
     {route.dataSources?.includes("OpenStreetMap contributors") && <p className="mt-3 text-[11px] leading-relaxed text-mint/55">Açık harita durakları © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="underline underline-offset-2">OpenStreetMap katkıcıları</a>. Liste eksik veya güncelliğini yitirmiş olabilir.</p>}
+    {route.dataSources?.includes("Open-Meteo") && <p className="mt-1 text-[11px] leading-relaxed text-mint/55">Saatlik hava tahmini: <a href="https://open-meteo.com/" target="_blank" rel="noreferrer" className="underline underline-offset-2">Open-Meteo</a> (anahtarsız). Tahminler kesin değildir; varış saatleri gecikebilir.</p>}
     <div className="mt-4 flex flex-wrap gap-3 border-t border-white/10 pt-3 text-[12px]">{googleLinks.map((link, index) => <a key={link.url} href={link.url} target="_blank" rel="noreferrer" className="flex min-h-10 items-center gap-1.5 text-sun"><Navigation size={13} />Google Haritalar{googleLinks.length > 1 ? ` ${index + 1}/${googleLinks.length}` : ""} <ExternalLink size={12} /></a>)}{yandex && <a href={yandex} target="_blank" rel="noreferrer" className="flex min-h-10 items-center gap-1.5 text-sun">Yandex Haritalar <ExternalLink size={12} /></a>}{apple && <a href={apple} target="_blank" rel="noreferrer" className="flex min-h-10 items-center gap-1.5 text-mint">Apple'da ilk durak <ExternalLink size={12} /></a>}</div>{unavailableProviders.length > 0 && <ul className="mt-1 space-y-1 text-[11px] leading-relaxed text-mint/70">{unavailableProviders.map((message) => <li key={message}>{message}</li>)}</ul>}{splitNotice && <p className="mt-1 text-[11px] text-mint/70">{splitNotice}</p>}<p className="mt-1 text-[11px] text-mint/70">Yol mesafesi tahminidir.</p>{apple && <p className="mt-1 text-[11px] text-mint/70">Apple bağlantısı seçili günün ilk durağını açar.</p>}
   </section>;
 }

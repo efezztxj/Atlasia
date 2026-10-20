@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Ban,
   CornerDownRight,
   Crosshair,
+  Flag,
   Heart,
   ImagePlus,
   Loader2,
@@ -9,16 +11,18 @@ import {
   MessageCircle,
   MessagesSquare,
   Minus,
+  MoreHorizontal,
   Plus,
   Send,
   Sparkles,
   Trash2,
+  UsersRound,
   X,
 } from "lucide-react";
 
 import { formatAccuracy } from "../hooks/useGeolocation";
-import { totalLikes } from "../lib/feedMetrics";
-import type { FeedPost, Story, StoryAccent, UploadPhotoKind, ViewState } from "../types";
+import { totalLikes } from "../utils/likes";
+import type { FeedPost, FeedReply, Story, StoryAccent, UploadPhotoKind, ViewState } from "../types";
 import { mediaUrl } from "../utils/api";
 import { cn } from "../utils/cn";
 import { haversineKm } from "../utils/geo";
@@ -27,6 +31,9 @@ import { storageGet, storageSet } from "../utils/storage";
 import Avatar from "./Avatar";
 import StoryComposer from "./StoryComposer";
 import StoryViewer from "./StoryViewer";
+import ReportDialog from "./ReportDialog";
+import GroupsPanel from "./GroupsPanel";
+import { blockUser } from "../lib/moderation";
 
 const SEEN_KEY = "atlasia.feed.seen.v1";
 const NEARBY_KM = 900;
@@ -56,9 +63,14 @@ interface Props {
   onAddPost: (p: Partial<FeedPost>) => Promise<unknown> | unknown;
   onRemovePost: (id: string) => Promise<unknown> | unknown;
   onAddReply: (postId: string, author: string, text: string) => Promise<unknown> | unknown;
+  onLoadReplies: (postId: string) => Promise<FeedReply[]>;
   onToggleLike: (postId: string) => Promise<unknown> | unknown;
   onAddStory: (s: Partial<Story>) => Promise<unknown> | unknown;
   onRemoveStory: (id: string) => Promise<unknown> | unknown;
+  blockedSet: Set<string>;
+  isBlocked: (uid?: string | null) => boolean;
+  pendingGroupId?: string | null;
+  onGroupOpened?: () => void;
 }
 
 export default function SocialPanel({
@@ -84,9 +96,14 @@ export default function SocialPanel({
   onAddPost,
   onRemovePost,
   onAddReply,
+  onLoadReplies,
   onToggleLike,
   onAddStory,
   onRemoveStory,
+  blockedSet,
+  isBlocked,
+  pendingGroupId,
+  onGroupOpened,
 }: Props) {
   const [seen, setSeen] = useState<string[]>(() => {
     try {
@@ -107,8 +124,18 @@ export default function SocialPanel({
   const [replyFor, setReplyFor] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [expanded, setExpanded] = useState<string[]>([]);
+  const [repliesByPost, setRepliesByPost] = useState<Record<string, FeedReply[]>>({});
+  const [loadingReplies, setLoadingReplies] = useState<string[]>([]);
   const [storyIndex, setStoryIndex] = useState<number | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
+  const [reportPost, setReportPost] = useState<FeedPost | null>(null);
+  const [menuPostId, setMenuPostId] = useState<string | null>(null);
+  const [groupsOpen, setGroupsOpen] = useState(false);
+  useEffect(() => {
+    if (!pendingGroupId) return;
+    setGroupsOpen(true);
+    onGroupOpened?.();
+  }, [pendingGroupId, onGroupOpened]);
 
   const listRef = useRef<HTMLDivElement>(null);
   const replyInputRef = useRef<HTMLInputElement>(null);
@@ -169,6 +196,25 @@ export default function SocialPanel({
     }
   };
 
+  const loadRepliesForPost = async (postId: string) => {
+    if (loadingReplies.includes(postId)) return;
+    setLoadingReplies((current) => [...current, postId]);
+    try {
+      const fetched = await onLoadReplies(postId);
+      const legacy = posts.find((post) => post.id === postId)?.replies ?? [];
+      setRepliesByPost((current) => {
+        const unique = new Map<string, FeedReply>();
+        [...legacy, ...(current[postId] ?? []), ...fetched].forEach((reply) => unique.set(reply.id, reply));
+        return { ...current, [postId]: [...unique.values()].sort((a, b) => a.createdAt - b.createdAt) };
+      });
+    } catch (failure) {
+      console.error("[Atlasia] Yanıtlar yüklenemedi:", failure);
+      setActionError("Yanıtlar yüklenemedi. Bağlantını kontrol edip tekrar dene.");
+    } finally {
+      setLoadingReplies((current) => current.filter((id) => id !== postId));
+    }
+  };
+
   const markSeen = useCallback((id: string) => {
     setSeen((prev) => (prev.includes(id) ? prev : [...prev, id]));
   }, []);
@@ -220,6 +266,7 @@ export default function SocialPanel({
     setReplyText("");
     setReplyFor(null);
     setExpanded((prev) => (prev.includes(postId) ? prev : [...prev, postId]));
+    await loadRepliesForPost(postId);
   };
 
   const publishStory = async (data: {
@@ -289,9 +336,16 @@ export default function SocialPanel({
           <span className="text-[13px] text-mint/55">{posts.length} ipucu</span>
 
           <button
+            type="button"
+            onClick={() => setGroupsOpen(true)}
+            className="ml-auto flex min-h-9 items-center gap-1.5 rounded-full border border-leaf/25 px-3 text-[11.5px] text-leaf transition hover:bg-leaf/10"
+          >
+            <UsersRound className="size-3.5" />Gruplar
+          </button>
+          <button
             onClick={onClose}
             aria-label="İzler panelini küçült"
-            className="ml-auto grid size-11 place-items-center rounded-full text-mint/60 transition hover:bg-white/10 hover:text-white"
+            className="grid size-11 place-items-center rounded-full text-mint/60 transition hover:bg-white/10 hover:text-white"
           >
             <Minus className="size-4" />
           </button>
@@ -407,6 +461,8 @@ export default function SocialPanel({
 
           {visiblePosts.map((p) => {
             const isOpen = expanded.includes(p.id);
+            const postReplies = repliesByPost[p.id] ?? p.replies;
+            const repliesLoading = loadingReplies.includes(p.id);
             const img = mediaUrl(p.photo);
             return (
               <article key={p.id} className="group border-b border-white/[0.06] px-1.5 py-3 last:border-0">
@@ -429,6 +485,25 @@ export default function SocialPanel({
                         >
                           <Trash2 className="size-3.5" />
                         </button>
+                      )}
+                      {p.authorUid && p.authorUid !== currentUid && (
+                        <div className="relative ml-auto">
+                          <button type="button" onClick={() => setMenuPostId(menuPostId === p.id ? null : p.id)} aria-label="Gönderi menüsü" className="grid size-7 place-items-center rounded-full text-mint/40 hover:bg-white/10 hover:text-mint">
+                            <MoreHorizontal size={14} />
+                          </button>
+                          {menuPostId === p.id && (
+                            <div className="absolute right-0 top-8 z-10 w-44 rounded-xl border border-white/10 bg-[#0a221b] p-1 shadow-xl">
+                              <button type="button" onClick={() => { setMenuPostId(null); setReportPost(p); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[12px] text-mint/80 hover:bg-white/5"><Flag size={14} />Bildir</button>
+                              <button type="button" onClick={async () => {
+                                if (!p.authorUid) return;
+                                if (!confirm(`${p.author} kullanıcısını engellemek istiyor musun?`)) return;
+                                setMenuPostId(null);
+                                try { await blockUser(p.authorUid, currentUid); setActionError(`${p.author} engellendi.`); } catch (e) { setActionError((e as Error).message); }
+                              }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[12px] text-mint/80 hover:bg-white/5"><Ban size={14} />Engelle</button>
+                              <button type="button" onClick={() => setMenuPostId(null)} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[11px] text-mint/50">Kapat</button>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
 
@@ -476,6 +551,8 @@ export default function SocialPanel({
                         onClick={() => {
                           setReplyFor(replyFor === p.id ? null : p.id);
                           setReplyText("");
+                          setExpanded((prev) => (prev.includes(p.id) ? prev : [...prev, p.id]));
+                          void loadRepliesForPost(p.id);
                           requestAnimationFrame(() => replyInputRef.current?.focus());
                         }}
                         className="flex items-center gap-1.5 text-[11.5px] text-mint/50 transition hover:text-mint"
@@ -483,23 +560,26 @@ export default function SocialPanel({
                         <MessageCircle className="size-3.5" />
                         Yanıtla
                       </button>
-                      {p.replies.length > 0 && (
-                        <button
-                          onClick={() =>
-                            setExpanded((prev) =>
-                              isOpen ? prev.filter((x) => x !== p.id) : [...prev, p.id],
-                            )
-                          }
-                          className="text-[11.5px] text-leaf/80 transition hover:text-leaf"
-                        >
-                          {isOpen ? "Yanıtları gizle" : `${p.replies.length} yanıt`}
-                        </button>
-                      )}
+                      <button
+                        onClick={() => {
+                          setExpanded((prev) =>
+                            isOpen ? prev.filter((x) => x !== p.id) : [...prev, p.id],
+                          );
+                          if (!isOpen) void loadRepliesForPost(p.id);
+                        }}
+                        className="text-[11.5px] text-leaf/80 transition hover:text-leaf"
+                      >
+                        {isOpen ? "Yanıtları gizle" : postReplies.length ? `${postReplies.length} yanıt` : "Yanıtları gör"}
+                      </button>
                     </div>
 
-                    {isOpen && p.replies.length > 0 && (
+                    {isOpen && (
                       <div className="mt-2.5 space-y-2.5 border-l border-white/10 pl-3">
-                        {p.replies.map((r) => (
+                        {repliesLoading ? (
+                          <p className="text-[11px] text-mint/50">Yanıtlar yükleniyor…</p>
+                        ) : postReplies.length === 0 ? (
+                          <p className="text-[11px] text-mint/50">Henüz yanıt yok.</p>
+                        ) : postReplies.map((r) => (
                           <div key={r.id} className="flex gap-2">
                             <Avatar name={r.author} className="size-6" textClass="text-[10px]" />
                             <div className="min-w-0 flex-1">
@@ -704,6 +784,12 @@ export default function SocialPanel({
           onClose={() => setComposerOpen(false)}
           onPublish={publishStory}
         />
+      )}
+      {reportPost && (
+        <ReportDialog targetType="post" targetId={reportPost.id} targetOwnerUid={reportPost.authorUid} targetLabel={reportPost.text.slice(0,40)} reporterUid={currentUid} onClose={() => setReportPost(null)} onReported={() => setActionError("Raporun alındı, inceleyeceğiz.")} />
+      )}
+      {groupsOpen && (
+        <GroupsPanel currentUid={currentUid} currentName={author()} blockedSet={blockedSet} isBlocked={isBlocked} initialGroupId={pendingGroupId} onClose={() => setGroupsOpen(false)} />
       )}
     </>
   );

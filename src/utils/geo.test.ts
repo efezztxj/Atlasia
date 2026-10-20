@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { searchWorld } from "./geo";
+import { haversineKm, searchWorld, toSearchResult } from "./geo";
 
 describe("Photon arama sınırları", () => {
   afterEach(() => {
@@ -29,5 +29,32 @@ describe("Photon arama sınırları", () => {
 
     expect(result?.bbox).toEqual(extent);
     expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("geocoding dönüşümü extent değerini değiştirmez", () => {
+    const extent: [number, number, number, number] = [26.1, 38.2, 29.6, 40.1];
+    const result = toSearchResult({
+      geometry: { coordinates: [27.14, 38.42] },
+      properties: { osm_id: 42, osm_type: "R", name: "İzmir", extent },
+    }, "şehir");
+    expect(result.bbox).toEqual(extent);
+  });
+
+  it("İstanbul-Ankara kuş uçuşu mesafesini yaklaşık 351 km hesaplar", () => {
+    const distance = haversineKm(41.0082, 28.9784, 39.9334, 32.8597);
+    expect(Math.abs(distance - 351)).toBeLessThan(2);
+  });
+});
+
+describe("haversineKm mesafe kilidi", () => {
+  it("İstanbul → Ankara büyük daire mesafesi ≈ 349.4 km (±0.5)", () => {
+    // Regresyon kilidi: haversine formülü değiştirilirse mesafeler sessizce kayar.
+    const km = haversineKm(41.0082, 28.9784, 39.9334, 32.8597);
+    expect(km).toBeGreaterThan(348.9);
+    expect(km).toBeLessThan(349.9);
+  });
+
+  it("aynı nokta sıfır mesafedir", () => {
+    expect(haversineKm(41.0082, 28.9784, 41.0082, 28.9784)).toBe(0);
   });
 });

@@ -5,8 +5,16 @@
  * Veri modeli:
  *   places/{placeId}                  — keşif pinleri (kullanıcı üretimi)
  *   posts/{postId}                    — sosyal akış gönderileri
- *   posts/{postId}.replies[]           — gönderi yanıtları (sınırlı gömülü liste)
+ *   posts/{postId}/replies/{replyId}   — sahibi doğrulanan gönderi yanıtları
  *   stories/{storyId}                 — 24 saat ömürlü hikâyeler
+ *   verifications/{verificationId}     — tazelik doğrulamaları (Adım 14)
+ *
+ * Ürün kararı (d) BAĞLI — XP/rozet/takip fonlanmıyor:
+ * Bu katmanda XP/level yazacak istemci fonksiyonu YOKTUR ve eklenmeyecektir;
+ * puan üretimi Cloud Functions (Blaze) gerektirir. `@deprecated` niteliğindeki
+ * eski sosyal ilerleme yardımcıları varsa silinmez, çağrılmaz. Puan yerine
+ * tazelik doğrulaması bir güven sinyali olarak çalışır (bkz. utils/freshness).
+ * XP'nin gerçek işi lansman sonrası Blaze onayına ertelenmiştir.
  */
 import {
   arrayRemove,
@@ -27,6 +35,7 @@ import {
   Timestamp,
   updateDoc,
   where,
+  writeBatch,
   type DocumentData,
   type Firestore,
   type Query,
@@ -44,7 +53,7 @@ const COL_STORIES = "stories";
 
 export const FIRESTORE_LIMITS = {
   likesPerPost: 500,
-  repliesPerPost: 100,
+  postRepliesPage: 100,
 } as const;
 
 /**
@@ -225,6 +234,30 @@ function normalizePost(id: string, raw: DocumentData): FeedPost {
   };
 }
 
+function normalizeReply(id: string, raw: DocumentData): FeedReply {
+  return {
+    id,
+    author: typeof raw.author === "string" ? raw.author : "Gezgin",
+    authorUid: typeof raw.authorUid === "string" ? raw.authorUid : undefined,
+    text: typeof raw.text === "string" ? raw.text : "",
+    createdAt: toMillis(raw.createdAt),
+    likes: 0,
+    kind: "user",
+  };
+}
+
+export async function listPostReplies(postId: string): Promise<FeedReply[]> {
+  if (!db) return [];
+  const replies = collection(db, COL_POSTS, postId, "replies");
+  const snapshot = await getDocs(query(
+    replies,
+    orderBy("createdAt", "asc"),
+    orderBy(documentId(), "asc"),
+    limit(FIRESTORE_LIMITS.postRepliesPage),
+  ));
+  return snapshot.docs.map((reply) => normalizeReply(reply.id, reply.data()));
+}
+
 function normalizeStory(id: string, raw: DocumentData): Story {
   return {
     id,
@@ -237,7 +270,6 @@ function normalizeStory(id: string, raw: DocumentData): Story {
     lng: typeof raw.lng === "number" ? raw.lng : undefined,
     lat: typeof raw.lat === "number" ? raw.lat : undefined,
     photo: raw.photo,
-    seen: raw.seen === true,
     kind: raw.kind === "user" ? "user" : "seed",
   };
 }
@@ -570,7 +602,6 @@ export async function addPost(input: NewPostInput): Promise<string> {
     createdAt: serverTimestamp(),
     likes: 0,
     likedBy: [],
-    replies: [],
     kind: "user",
   };
   if (input.placeLabel) payload.placeLabel = input.placeLabel;
@@ -581,10 +612,23 @@ export async function addPost(input: NewPostInput): Promise<string> {
   return id;
 }
 
+export async function removePostInFirestore(store: Firestore, id: string): Promise<void> {
+  const repliesRef = collection(store, COL_POSTS, id, "replies");
+  // Firestore deletes do not cascade. Remove child replies in bounded batches
+  // before removing the parent so no orphaned public reply documents remain.
+  for (;;) {
+    const page = await getDocs(query(repliesRef, limit(FIRESTORE_LIMITS.postRepliesPage)));
+    if (page.empty) break;
+    const batch = writeBatch(store);
+    page.docs.forEach((reply) => batch.delete(reply.ref));
+    await batch.commit();
+  }
+  await deleteDoc(doc(store, COL_POSTS, id));
+}
+
 export async function removePost(id: string): Promise<void> {
   if (!db) return;
-  const postRef = doc(db, COL_POSTS, id);
-  await deleteDoc(postRef);
+  await removePostInFirestore(db, id);
 }
 
 export async function togglePostLikeInFirestore(
@@ -634,30 +678,19 @@ export async function addReplyInFirestore(
     throw dataError("reply/text-invalid", "Yanıt 1–1000 karakter olmalı.");
   }
 
-  const ref = doc(store, COL_POSTS, postId);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) throw dataError("post/not-found", "Gönderi bulunamadı.");
+  const postRef = doc(store, COL_POSTS, postId);
+  const post = await getDoc(postRef);
+  if (!post.exists()) throw dataError("post/not-found", "Gönderi bulunamadı.");
 
-  const rawReplies = snap.data().replies;
-  if (rawReplies !== undefined && !Array.isArray(rawReplies)) {
-    throw dataError("reply/data-invalid", "Gönderinin yanıt verisi tutarsız.");
-  }
-  const replies = (rawReplies ?? []) as FeedReply[];
-  if (replies.length >= FIRESTORE_LIMITS.repliesPerPost) {
-    throw dataError("reply/limit", "Bu gönderinin yanıt sınırına ulaşıldı.");
-  }
-
-  const next: FeedReply = {
-    id: newId("fr"),
+  const replyId = newId("fr");
+  const replyRef = doc(collection(store, COL_POSTS, postId, "replies"), replyId);
+  await setDoc(replyRef, {
     author: cleanAuthor,
     authorUid: cleanUid,
     text: cleanText,
-    createdAt: Date.now(),
-    likes: 0,
+    createdAt: serverTimestamp(),
     kind: "user",
-  };
-  // Array transformu, başka bir kullanıcının aynı anda eklediği yanıtı ezmez.
-  await updateDoc(ref, { replies: arrayUnion(next) });
+  });
 }
 
 export async function addReply(
@@ -755,7 +788,6 @@ export async function addStory(input: NewStoryInput): Promise<string> {
     text: input.text,
     accent: input.accent,
     createdAt: serverTimestamp(),
-    seen: false,
     kind: "user",
   };
   if (input.placeLabel) payload.placeLabel = input.placeLabel;

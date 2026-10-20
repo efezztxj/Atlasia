@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Bell, Bookmark, Compass, Crosshair, MapPin, MousePointerClick, Plus, UserRound, UsersRound, X } from "lucide-react";
+import { Activity, Bookmark, Compass, Crosshair, MapPin, MousePointerClick, Plus, UserRound, UsersRound, X } from "lucide-react";
 import type { BaseMapStyle, MapViewHandle } from "./components/MapView";
 import Header from "./components/Header";
 import Hero from "./components/Hero";
@@ -20,9 +20,13 @@ import MyPlacesPanel from "./components/MyPlacesPanel";
 import NearbyAudioGuide from "./components/NearbyAudioGuide";
 import LandingPage from "./components/LandingPage";
 import RecordsDock from "./components/RecordsDock";
+import TrackRecorderPanel from "./components/TrackRecorderPanel";
+import RouteEditor from "./components/RouteEditor";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { CollectionsProvider } from "./hooks/useCollections";
 import { GUIDE_PLACES } from "./data/places";
+import { EPHESUS_CENTER } from "./data/ephesusFixture";
+import { EPHESUS_TOUR } from "./data/siteTours";
 import { formatAccuracy, useGeolocation } from "./hooks/useGeolocation";
 import { useAtlasData } from "./hooks/useAtlasData";
 import { useFirestoreAtlasData } from "./hooks/useFirestoreAtlasData";
@@ -30,9 +34,15 @@ import { useTheme } from "./hooks/useTheme";
 import { useInstallApp, type InstallAppController } from "./hooks/useInstallApp";
 import { isCloudReady, firebaseConfigSummary } from "./lib/firebase";
 import type { PlaceViewport } from "./lib/firestoreData";
-import type { AtlasRoute, CategoryId, Place, ViewState } from "./types";
+import { getPublishedRoute } from "./lib/routeData";
+import type { AtlasRoute, CategoryId, Place, RouteVisibility, ViewState } from "./types";
 import { haversineKm, reverseName, type SearchResult } from "./utils/geo";
 import { storageGet, storageSet } from "./utils/storage";
+import { decodePolyline } from "./utils/polyline";
+import { useBlocks } from "./hooks/useBlocks";
+import { useFreshness } from "./hooks/useFreshness";
+import { subscribeNotifications, markNotificationRead, markAllRead, type AppNotification } from "./lib/notifications";
+import NotificationsPanel from "./components/NotificationsPanel";
 
 const MapView = lazy(() => import("./components/MapView"));
 const MAP_STYLE_KEY = "atlasia.mapStyle.v1";
@@ -111,7 +121,14 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
       console.warn("[Atlasia] Config özeti:", firebaseConfigSummary);
     }
   }, [remote.ready, remote.error]);
-  const discoveries = cloud.places;
+  const { blockedSet, isBlocked } = useBlocks(user?.uid);
+  const freshness = useFreshness(user?.uid);
+  const rawDiscoveries = cloud.places;
+  const rawPosts = cloud.posts;
+  const rawStories = cloud.stories;
+  const discoveries = rawDiscoveries.filter((pl) => !isBlocked(pl.authorUid));
+  const filteredPosts = rawPosts.filter((po) => !isBlocked(po.authorUid));
+  const filteredStories = rawStories.filter((st) => !isBlocked(st.authorUid));
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [category, setCategory] = useState<CategoryId | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -128,11 +145,15 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   const [feedOpen, setFeedOpen] = useState(false);
   const [atlasOpen, setAtlasOpen] = useState(false);
   const [recordsOpen, setRecordsOpen] = useState(false);
+  const [trackRecorderOpen, setTrackRecorderOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [myPlacesOpen, setMyPlacesOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [pendingGroupId, setPendingGroupId] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [resumeRoute, setResumeRoute] = useState<AtlasRoute | null>(null);
+  const [routeEditorRoute, setRouteEditorRoute] = useState<AtlasRoute | null>(null);
   const [smallScreen, setSmallScreen] = useState(() => window.innerWidth < 768);
   const [reducedMotion, setReducedMotion] = useState(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   const [storyPlace, setStoryPlace] = useState<Place | null>(null);
@@ -158,6 +179,24 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
 
   useEffect(() => { if (user?.displayName) storageSet("atlasia.author", user.displayName); }, [user?.displayName]);
   useEffect(() => { storageSet(MAP_STYLE_KEY, baseMap); }, [baseMap]);
+
+  useEffect(() => {
+    const routeId = new URLSearchParams(window.location.search).get("route");
+    if (!routeId) return;
+    let active = true;
+    void getPublishedRoute(routeId).then((result) => {
+      if (!active) return;
+      if (!result) { setToast("Bu rota bulunamadı veya artık paylaşılmıyor."); return; }
+      setResumeRoute(result.route);
+      setAtlasOpen(true);
+      setToast("Paylaşılan rota açıldı. Kendi kayıtlarına ekleyebilirsin.");
+    }).catch((failure: unknown) => {
+      if (active) setToast(failure instanceof Error && failure.message.includes("permission-denied")
+        ? "Bu rota özel. Yalnız sahibi açabilir."
+        : "Rota yüklenemedi. Bağlantıyı ve internetini kontrol et.");
+    });
+    return () => { active = false; };
+  }, []);
 
   const closePanels = () => {
     setDrawerOpen(false);
@@ -190,6 +229,22 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   }, []);
   const closeSettings = useCallback(() => setSettingsOpen(false), []);
 
+  useEffect(() => {
+    if (!user?.uid) { setNotifications([]); return; }
+    const unsub = subscribeNotifications(user.uid, setNotifications);
+    return () => unsub();
+  }, [user?.uid]);
+  const visibleNotifications = notifications.filter((item) => !isBlocked(item.actorUid));
+  const unreadCount = visibleNotifications.filter((n) => !n.read).length;
+  const handleMarkAllRead = () => { if (user?.uid) void markAllRead(user.uid, notifications); };
+  const handleNotificationRead = (id: string) => { if (user?.uid) void markNotificationRead(user.uid, id, true); };
+  const clearPendingGroup = useCallback(() => setPendingGroupId(null), []);
+  const openGroupFromNotification = useCallback((groupId: string) => {
+    closePanels();
+    setFeedOpen(true);
+    setPendingGroupId(groupId);
+  }, []);
+
   const precise = useMemo(
     () =>
       geo.fix
@@ -202,6 +257,12 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         : null,
     [geo.fix, preciseLabel],
   );
+
+  const activeTour = useMemo(() => {
+    if (!precise) return null;
+    const d = haversineKm(precise.lat, precise.lng, EPHESUS_CENTER.lat, EPHESUS_CENTER.lng);
+    return d <= 5 ? EPHESUS_TOUR : null;
+  }, [precise]);
 
   // Location and storage share one panel; receiving a fix does not close it.
   useEffect(() => {
@@ -271,7 +332,10 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [addMode]);
 
-  const allPlaces = useMemo(() => [...discoveries, ...GUIDE_PLACES], [discoveries]);
+  const allPlaces = useMemo(
+    () => freshness.withFreshness([...discoveries, ...GUIDE_PLACES]),
+    [discoveries, freshness],
+  );
   const canManagePlace = useCallback(
     (place: Place) => place.kind === "user" && (place.authorUid ? place.authorUid === user!.uid : !remote.ready),
     [remote.ready, user],
@@ -283,6 +347,10 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   );
 
   const activePlace = activeId ? allPlaces.find((p) => p.id === activeId) : undefined;
+  // Tazelik verisi canlı değiştiğinde açık detay paneli de güncel özeti gösterir.
+  const liveStoryPlace = storyPlace
+    ? allPlaces.find((item) => item.id === storyPlace.id) ?? storyPlace
+    : null;
   const current =
     activePlace ??
     (visiblePlaces.length ? visiblePlaces[featuredIdx % visiblePlaces.length] : undefined);
@@ -514,6 +582,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
          onOpenSearch={() => { closePanels(); setSearchOpen(true); }}
          notificationsOpen={notificationsOpen}
          profileName={user?.displayName ?? ""}
+         unreadCount={unreadCount}
        />
 
       {/* Hero - her ekranda göster, sadece mobil için özel stil */}
@@ -562,9 +631,30 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         terrain={terrain}
       />
 
+      {!trackRecorderOpen && <button
+        type="button"
+        onClick={() => setTrackRecorderOpen(true)}
+        aria-label="Yürüyüş kaydını aç"
+        className="fixed bottom-[136px] left-3 z-30 flex min-h-11 items-center gap-2 rounded-full border border-leaf/30 bg-ink/90 px-4 text-[13px] font-semibold text-mint shadow-xl backdrop-blur-xl md:bottom-24 md:left-8"
+      ><Activity size={16} className="text-sun" />Yürüyüş kaydı</button>}
+      {trackRecorderOpen && <TrackRecorderPanel
+        uid={user!.uid}
+        onClose={() => setTrackRecorderOpen(false)}
+        onPreview={(coords) => mapRef.current?.drawRoute(coords, true)}
+        onFinished={(track, route) => {
+          const coords = decodePolyline(track.polyline);
+          mapRef.current?.drawRoute(coords, false);
+          setResumeRoute(route);
+          setTrackRecorderOpen(false);
+          setAtlasOpen(true);
+          setToast("İz gizli olarak kaydedildi. Yürüyüş taslağı hazır.");
+        }}
+      />}
+
       <NearbyAudioGuide
         location={precise}
         places={GUIDE_PLACES}
+        tourRoute={activeTour}
         onOpenPlace={(place) => {
           closePanels();
           focusPlace(place, 15);
@@ -667,6 +757,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         hasLocation={!!precise}
         resumeRoute={resumeRoute}
         dockExpanded={panelOpen && dockVisible}
+        onOpenRouteEditor={(route) => setRouteEditorRoute(route)}
         origin={{
           lat: precise?.lat ?? view.lat,
           lng: precise?.lng ?? view.lng,
@@ -690,8 +781,8 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         onGoTo={handleFeedGoTo}
         precise={precise}
         onRequestPrecise={handleLocate}
-        posts={cloud.posts}
-        stories={cloud.stories}
+        posts={filteredPosts}
+        stories={filteredStories}
         hasMorePosts={cloud.hasMorePosts}
         hasMoreStories={cloud.hasMoreStories}
         loadingMorePosts={cloud.loadingMorePosts}
@@ -704,12 +795,28 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         onAddPost={cloud.addPost}
         onRemovePost={cloud.removePost}
         onAddReply={cloud.addReply}
+        onLoadReplies={cloud.loadPostReplies}
         onToggleLike={cloud.toggleLike}
         onAddStory={cloud.addStory}
         onRemoveStory={cloud.removeStory}
+        blockedSet={blockedSet}
+        isBlocked={isBlocked}
+        pendingGroupId={pendingGroupId}
+        onGroupOpened={clearPendingGroup}
       />
 
       {recordsOpen && <RecordsDock onClose={() => setRecordsOpen(false)} onPlace={(place) => { closePanels(); focusPlace(place); setStoryPlace(place); }} onRoute={(route) => { closePanels(); setResumeRoute(route); setAtlasOpen(true); }} />}
+      {routeEditorRoute && <RouteEditor
+        route={routeEditorRoute}
+        onClose={() => setRouteEditorRoute(null)}
+        onSaved={(route, visibility: RouteVisibility) => {
+          setResumeRoute(route);
+          setAtlasOpen(true);
+          const coords = route.days.flatMap((day) => decodePolyline(day.polyline));
+          if (coords.length > 1) mapRef.current?.drawRoute(coords, false);
+          setToast(visibility === "private" ? "Rota hesabında özel olarak kaydedildi." : "Rota yayımlandı. Kalıcı bağlantı hazır.");
+        }}
+      />}
       {profileOpen && <ProfilePanel onClose={() => setProfileOpen(false)} onRecords={openRecords} />}
       {myPlacesOpen && (
         <MyPlacesPanel
@@ -743,14 +850,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
       />
 
       {notificationsOpen && (
-        <aside aria-label="Bildirimler" className="mobile-notifications fixed right-3 z-40 w-[min(330px,calc(100vw-24px))] rounded-[22px] border border-leaf/30 bg-[#041d17] p-4 shadow-2xl md:hidden">
-          <header className="flex items-center justify-between gap-3">
-            <h2 className="flex items-center gap-2 font-display text-base font-semibold"><Bell className="size-4 text-sun" />Bildirimler</h2>
-            <button type="button" onClick={() => setNotificationsOpen(false)} aria-label="Bildirimleri kapat" className="grid size-10 place-items-center rounded-full text-mint/80"><X className="size-4" /></button>
-          </header>
-          <p className="mt-3 text-[14px] font-medium">Şimdilik yeni bildirimin yok.</p>
-          <p className="mt-1 text-[13px] leading-relaxed text-mint/75">Kaydettiğin yerler ve rotalar, alttaki Kaydet sekmesinde seni bekler.</p>
-        </aside>
+        <NotificationsPanel notifications={visibleNotifications} unreadCount={unreadCount} onClose={() => setNotificationsOpen(false)} onMarkAllRead={handleMarkAllRead} onMarkRead={handleNotificationRead} onOpenGroup={openGroupFromNotification} />
       )}
 
       {draft && (
@@ -802,23 +902,30 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         />
       )}
 
-      {storyPlace && (
+      {liveStoryPlace && (
         <PlaceDetails
-          place={storyPlace}
+          place={liveStoryPlace}
           onClose={() => setStoryPlace(null)}
           onStreet={() => {
-            const place = storyPlace;
+            const place = liveStoryPlace;
+            if (!place) return;
             if (smallScreen) setStoryPlace(null);
             setStreetPlace(place);
           }}
           onPlan={() => {
-            const place = storyPlace;
+            const place = liveStoryPlace;
+            if (!place) return;
             closePanels();
             focusPlace(place);
             setAtlasOpen(true);
           }}
-          canDelete={canManagePlace(storyPlace)}
-          onDelete={() => handleDelete(storyPlace)}
+          canDelete={canManagePlace(liveStoryPlace)}
+          onDelete={() => handleDelete(liveStoryPlace)}
+          onVerify={(status, note) => {
+            const target = liveStoryPlace;
+            if (!target) return Promise.resolve();
+            return freshness.verify(target.id, status, note);
+          }}
         />
       )}
       {streetPlace && !atlasOpen && (

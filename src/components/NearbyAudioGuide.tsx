@@ -1,13 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { BookOpen, MapPin, Pause, Play, RotateCcw, Volume2, X } from "lucide-react";
-import type { Place } from "../types";
+import type { Place, AtlasRoute } from "../types";
 import { STORIES } from "../data/galleries";
-import { haversineKm } from "../utils/geo";
 import { storageGet, storageSet } from "../utils/storage";
+import { initialGuideState, resolveGuidePlace, type TourGuideState } from "../utils/tourGuide";
 
 interface Props {
   location: { lat: number; lng: number; accuracy: number } | null;
   places: Place[];
+  tourRoute?: AtlasRoute | null;
   onOpenPlace: (place: Place) => void;
 }
 
@@ -26,21 +27,55 @@ function guideText(place: Place) {
   return `${place.title}. ${story}`.replace(/\s+/g, " ").trim();
 }
 
-export default function NearbyAudioGuide({ location, places, onOpenPlace }: Props) {
+export default function NearbyAudioGuide({ location, places, tourRoute, onOpenPlace }: Props) {
   const [dismissed, setDismissed] = useState<string[]>(readDismissed);
   const [speaking, setSpeaking] = useState(false);
   const [paused, setPaused] = useState(false);
   const supported = typeof window !== "undefined" && "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
+  // KARAR (e) BAĞLI: web/PWA kalır, ekran açık şartı kabul — arka plan konumu yok, rehber yalnızca sekme ön planda ve ekran açıkken tetiklenir.
+  const guideStateRef = useRef<TourGuideState>(initialGuideState());
 
   const nearby = useMemo(() => {
     if (!location) return null;
-    const thresholdMeters = Math.max(50, Math.min(120, location.accuracy + 30));
-    return places
-      .filter((place) => place.kind === "guide" && !dismissed.includes(place.id))
-      .map((place) => ({ place, meters: haversineKm(location.lat, location.lng, place.lat, place.lng) * 1000 }))
-      .filter((item) => item.meters <= thresholdMeters)
-      .sort((a, b) => a.meters - b.meters)[0] ?? null;
-  }, [dismissed, location, places]);
+
+    const isTour = !!tourRoute && tourRoute.days[0]?.stops.length > 0;
+    type Candidate = { id: string; lat: number; lng: number; order?: number; place: Place };
+    const candidates: Candidate[] = [];
+
+    if (isTour) {
+      for (const s of tourRoute.days[0].stops) {
+        if (dismissed.includes(s.pinId ?? s.name)) continue;
+        const placeForStop: Place = {
+          id: s.pinId ?? `tour-${s.order}`,
+          title: s.name,
+          region: tourRoute.routeTitle,
+          category: "history",
+          lng: s.lng,
+          lat: s.lat,
+          note: s.description,
+          story: s.description,
+          author: "Atlasia editör turu",
+          kind: "guide",
+        };
+        candidates.push({ id: placeForStop.id, lat: s.lat, lng: s.lng, order: s.order, place: placeForStop });
+      }
+    }
+
+    for (const p of places) {
+      if (p.kind !== "guide" || dismissed.includes(p.id)) continue;
+      if (isTour && candidates.some((c) => c.id === p.id)) continue;
+      candidates.push({ id: p.id, lat: p.lat, lng: p.lng, place: p });
+    }
+
+    if (candidates.length === 0) return null;
+
+    const res = resolveGuidePlace(location, candidates, guideStateRef.current, isTour);
+    guideStateRef.current = res.nextState;
+    if (!res.place) return null;
+    const match = candidates.find((c) => c.id === res.place!.id);
+    if (!match) return null;
+    return { place: match.place, meters: res.meters ?? 0 };
+  }, [dismissed, location, places, tourRoute]);
 
   useEffect(() => {
     return () => {
@@ -63,6 +98,10 @@ export default function NearbyAudioGuide({ location, places, onOpenPlace }: Prop
     const next = [...new Set([...dismissed, nearby.place.id])].slice(-30);
     setDismissed(next);
     storageSet(DISMISSED_KEY, JSON.stringify(next), "session");
+    // Histeresis durumu: kapatılan yer içerideyse temizle ki titreme olmasın
+    if (guideStateRef.current.insideId === nearby.place.id) {
+      guideStateRef.current = { insideId: null, currentIndex: guideStateRef.current.currentIndex, lastUpdateAt: Date.now() };
+    }
     setSpeaking(false);
     setPaused(false);
   };
@@ -132,7 +171,7 @@ export default function NearbyAudioGuide({ location, places, onOpenPlace }: Prop
         )}
         <button type="button" onClick={() => onOpenPlace(nearby.place)} className="flex min-h-11 items-center gap-2 rounded-full border border-leaf/30 px-4 text-[13px] text-leaf"><BookOpen size={15} />Yeri aç</button>
       </div>
-      <p className="mt-3 text-[10.5px] leading-relaxed text-mint/45">Ses yalnızca sen başlatırsan oynar. Konumun otomatik olarak paylaşılmaz.</p>
+      <p className="mt-3 text-[10.5px] leading-relaxed text-mint/45">Ses yalnızca sen başlatırsan oynar. Konumun otomatik olarak paylaşılmaz. Web/PWA sahada yalnızca ekran açıkken rehberlik eder.</p>
     </section>
   );
 }

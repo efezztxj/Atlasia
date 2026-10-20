@@ -11,6 +11,7 @@ export default tseslint.config(
       "node_modules/**",
       "satellite-map-web-application (1)/**",
       "capture.mjs",
+      "public/**",
     ],
   },
   {

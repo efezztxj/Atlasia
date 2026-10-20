@@ -19,6 +19,8 @@ const GOOGLE_TRAVEL_MODES: Record<TransportMode, string> = {
   cycling: "bicycling",
   driving: "driving",
   transit: "transit",
+  trail: "walking",
+  offroad: "walking",
 };
 
 const YANDEX_ROUTE_TYPES: Record<TransportMode, string> = {
@@ -26,6 +28,8 @@ const YANDEX_ROUTE_TYPES: Record<TransportMode, string> = {
   cycling: "bc",
   driving: "auto",
   transit: "mt",
+  trail: "pd",
+  offroad: "pd",
 };
 
 const APPLE_DIRECTION_FLAGS: Partial<Record<TransportMode, string>> = {

@@ -11,7 +11,7 @@ import {
 import openFreeMapDarkStyle from "../data/openFreeMapDarkStyle.json";
 import { KKTC_GEOMETRY, KKTC_NAME } from "../data/regions";
 import type { PlaceViewport } from "../lib/firestoreData";
-import type { Place, ViewState } from "../types";
+import type { Place, RouteLeg, ViewState } from "../types";
 
 maplibregl.setWorkerUrl(maplibreWorkerUrl);
 
@@ -27,6 +27,7 @@ export interface MapViewHandle {
   showMe: (lng: number, lat: number, accuracy?: number, fly?: boolean) => void;
   clearMe: () => void;
   drawRoute: (coords: [number, number][], preview?: boolean) => void;
+  drawRouteLegs: (legs: RouteLeg[], preview?: boolean) => void;
   clearRoute: () => void;
   pulseAt: (lng: number, lat: number) => void;
   fitCoords: (coords: [number, number][]) => void;
@@ -111,6 +112,17 @@ function openFreeMapLayers(
 }
 
 const PIN_COLORS = { guide: "#eab54f", user: "#5be0a6" } as const;
+
+// Adım 11 — bacak bazlı çizim için renk ve kesikli stil haritası (MapLibre data-driven değil, ayrı layer)
+const LEG_STYLE: Record<string, { color: string; dash?: number[]; width: number }> = {
+  walking: { color: "#F2D77C", width: 3.2 },
+  trail: { color: "#5be0a6", dash: [6, 4], width: 3 },
+  offroad: { color: "#a78bfa", dash: [2, 4], width: 2.8 },
+  descent: { color: "#f87171", dash: [4, 4], width: 3 },
+  driving: { color: "#60a5fa", width: 3.2 },
+  cycling: { color: "#fbbf24", width: 2.8 },
+  transit: { color: "#94a3b8", dash: [8, 4], width: 2.6 },
+};
 
 function baseZoom(el: HTMLElement) {
   const d = Math.min(el.clientHeight * 0.6, el.clientWidth * 0.9);
@@ -485,11 +497,59 @@ export default function MapView({
       if (map.isStyleLoaded()) paint();
       else map.once("style.load", paint);
     },
+    drawRouteLegs(legs, preview = false) {
+      const map = mapRef.current;
+      if (!map || legs.length === 0) return;
+      // önce tek çizgiyi temizle ki bacaklar görünsün
+      if (map.getLayer("atlas-route-line")) map.removeLayer("atlas-route-line");
+      if (map.getSource("atlas-route")) map.removeSource("atlas-route");
+
+      const paint = () => {
+        legs.forEach((leg, idx) => {
+          const sourceId = `atlas-leg-${idx}`;
+          const layerId = `atlas-leg-line-${idx}`;
+          const style = LEG_STYLE[leg.mode] ?? LEG_STYLE.walking;
+          const data = {
+            type: "Feature" as const,
+            properties: { mode: leg.mode },
+            geometry: { type: "LineString" as const, coordinates: leg.coords },
+          };
+          const existing = map.getSource(sourceId) as maplibregl.GeoJSONSource | undefined;
+          if (existing) {
+            existing.setData(data);
+            map.setPaintProperty(layerId, "line-opacity", preview ? 0.42 : 0.9);
+            return;
+          }
+          map.addSource(sourceId, { type: "geojson", data });
+          map.addLayer({
+            id: layerId,
+            type: "line",
+            source: sourceId,
+            paint: {
+              "line-color": style.color,
+              "line-width": preview ? style.width - 0.8 : style.width,
+              "line-opacity": preview ? 0.42 : 0.9,
+              ...(style.dash ? { "line-dasharray": style.dash } : {}),
+            },
+            layout: { "line-cap": "round", "line-join": "round" },
+          });
+        });
+      };
+      if (map.isStyleLoaded()) paint();
+      else map.once("style.load", paint);
+    },
     clearRoute() {
       const map = mapRef.current;
       if (!map) return;
       if (map.getLayer("atlas-route-line")) map.removeLayer("atlas-route-line");
       if (map.getSource("atlas-route")) map.removeSource("atlas-route");
+      // bacak katmanlarını da temizle
+      for (let i = 0; i < 20; i++) {
+        const layerId = `atlas-leg-line-${i}`;
+        const sourceId = `atlas-leg-${i}`;
+        if (map.getLayer(layerId)) map.removeLayer(layerId);
+        if (map.getSource(sourceId)) map.removeSource(sourceId);
+      }
       pulseRef.current?.remove();
       pulseRef.current = null;
     },

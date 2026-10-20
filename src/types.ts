@@ -1,3 +1,6 @@
+import type { PlaceFreshness } from "./utils/freshness";
+import type { StopWeather } from "./utils/weather";
+
 export type CategoryId =
   | "cities"
   | "beaches"
@@ -8,7 +11,11 @@ export type CategoryId =
   | "photo"
   | "routes"
   | "community"
-  | "issues";
+  | "issues"
+  | "parking"
+  | "trailhead"
+  | "descent"
+  | "water";
 
 export interface Place {
   id: string;
@@ -30,6 +37,13 @@ export interface Place {
   authorUid?: string;
   kind: "guide" | "user";
   createdAt?: number;
+  /** Veri kaynağı atıfları: ODbL (OSM) ve CC BY-SA (Wikipedia) */
+  dataSources?: string[];
+  /**
+   * Yalnız istemcide hesaplanır (Firestore alanı değil). Adım 14 tazelik döngüsü
+   * yerin bilgisinin hâlâ doğru olduğunu gösteren doğrulama özetidir.
+   */
+  freshness?: PlaceFreshness;
 }
 
 export interface ViewState {
@@ -90,11 +104,10 @@ export interface Story {
   lat?: number;
   /** Sunucudaki yol (/media/...) ya da yerel data URL */
   photo?: string;
-  seen?: boolean;
   kind: "seed" | "user";
 }
 
-export type TransportMode = "walking" | "cycling" | "driving" | "transit";
+export type TransportMode = "walking" | "cycling" | "driving" | "transit" | "trail" | "offroad";
 export type RouteTempo = "Rahat" | "Dengeli" | "Yoğun";
 export type RouteBudget = "Düşük" | "Orta" | "Yüksek";
 export type StopType =
@@ -107,7 +120,11 @@ export type StopType =
   | "beach"
   | "viewpoint"
   | "hidden_gem"
-  | "other";
+  | "other"
+  | "parking"
+  | "trailhead"
+  | "descent"
+  | "water";
 
 export interface RouteStop {
   order: number;
@@ -126,6 +143,19 @@ export interface RouteStop {
   category: string;
   imageUrl: string | null;
   source?: "atlasia" | "community" | "openstreetmap";
+  /** Adım 15: durağın varış saatindeki hava tahmini (istemcide hesaplanır). */
+  weather?: StopWeather;
+}
+
+export type LegMode = TransportMode | "descent";
+
+export interface RouteLeg {
+  id: string;
+  coords: [number, number][];
+  mode: LegMode;
+  distanceKm: number;
+  durationMinutes: number;
+  elevationGain?: number;
 }
 
 export interface RouteDay {
@@ -134,10 +164,37 @@ export interface RouteDay {
   summary: string;
   stops: RouteStop[];
   polyline: string;
+  legs?: RouteLeg[];
+}
+
+export type RouteVisibility = "private" | "unlisted" | "public";
+
+export interface AtlasTrackStop {
+  startedAt: number;
+  endedAt: number;
+  lat: number;
+  lng: number;
+  pointCount: number;
+}
+
+/** Sahibe özel ham iz: zaman bilgisi tam çözünürlüklü noktalarla kayıtta türetilir. */
+export interface AtlasTrack {
+  id: string;
+  authorUid: string;
+  startedAt: number;
+  endedAt: number;
+  distanceKm: number;
+  polyline: string;
+  stops: AtlasTrackStop[];
+  accuracy: { sampleCount: number; meanMeters: number; maxMeters: number };
+  createdAt?: number;
 }
 
 export interface AtlasRoute {
   id: string;
+  /** Rota kapağı: JPEG data URL; Firestore kuralları 180 KB üstünü reddeder. */
+  photo?: string;
+  region?: string;
   routeTitle: string;
   routeSummary: string;
   totalDurationHours: number;

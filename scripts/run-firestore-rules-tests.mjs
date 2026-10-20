@@ -122,7 +122,6 @@ function runRulesTests() {
     : process.platform === "win32"
       ? ["/d", "/s", "/c", "npm.cmd run test:rules"]
       : ["run", "test:rules"];
-
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       stdio: "inherit",

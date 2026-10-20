@@ -26,9 +26,25 @@ export function haversineKm(lat1: number, lng1: number, lat2: number, lng2: numb
   return 2 * R * Math.asin(Math.sqrt(Math.min(1, Math.max(0, a))));
 }
 
-interface PhotonFeature {
+export interface PhotonFeature {
   geometry: { coordinates: [number, number] };
   properties: { osm_id?: number; osm_type?: string; name?: string; city?: string; district?: string; state?: string; country?: string; extent?: [number, number, number, number] };
+}
+
+/** Pure Photon-to-Atlasia mapping seam; Photon extents are already west,south,east,north. */
+export function toSearchResult(feature: PhotonFeature, queryText: string, index = 0): SearchResult {
+  const [lng, lat] = feature.geometry.coordinates;
+  const properties = feature.properties;
+  return {
+    id: `osm-${properties.osm_type}-${properties.osm_id ?? index}`,
+    label: properties.name ?? properties.city ?? queryText,
+    sub: isWithinNorthernCyprus(lng, lat)
+      ? KKTC_NAME
+      : [properties.city, properties.state, properties.country].filter(Boolean).join(" · "),
+    lng,
+    lat,
+    bbox: properties.extent,
+  };
 }
 
 const endpoint = ((import.meta.env.VITE_GEOCODER_URL as string | undefined) || "https://photon.komoot.io").replace(/\/$/, "");
@@ -53,12 +69,9 @@ export async function searchWorld(q: string, signal?: AbortSignal): Promise<Sear
   if (searchCache.has(key)) return searchCache.get(key)!;
   try {
     const data = await json<{ features: PhotonFeature[] }>(`${endpoint}/api/?q=${encodeURIComponent(q)}&limit=6&lang=en`, signal);
-    const results = data.features.filter((feature) => feature.geometry?.coordinates?.every(Number.isFinite)).map((feature, i) => {
-      const [lng, lat] = feature.geometry.coordinates;
-      const p = feature.properties;
-      const b = p.extent;
-      return { id: `osm-${p.osm_type}-${p.osm_id ?? i}`, label: p.name ?? p.city ?? q, sub: isWithinNorthernCyprus(lng, lat) ? KKTC_NAME : [p.city, p.state, p.country].filter(Boolean).join(" · "), lng, lat, bbox: b };
-    });
+    const results = data.features
+      .filter((feature) => feature.geometry?.coordinates?.every(Number.isFinite))
+      .map((feature, index) => toSearchResult(feature, q, index));
     if (results.length) { searchCache.set(key, results); return results; }
   } catch (failure) { if (signal?.aborted) throw failure; }
   const fallback = await json<{ results?: { id: number; name: string; latitude: number; longitude: number; country?: string; admin1?: string }[] }>(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=6&language=tr&format=json`, signal);

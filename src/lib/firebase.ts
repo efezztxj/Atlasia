@@ -6,13 +6,15 @@
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
 import { getFirestore, type Firestore } from "firebase/firestore";
+import { appCheckConfig } from "./appCheckConfig";
+import { installAppCheckDebugToken } from "./appCheckDebug";
 
 // Firebase web kimlikleri gizli değildir. Proje yönetim API'sinden doğrulanan
 // değerleri burada sabitlemek, eski Cloudflare ortam değişkenlerinin App Check'i
 // yanlış uygulama kimliğiyle başlatmasını engeller.
 const ATLASIA_MESSAGING_SENDER_ID = "21255827476";
 const ATLASIA_FIREBASE_APP_ID = "1:21255827476:web:318093fd0d09738b3b7701";
-const ATLASIA_APP_CHECK_SITE_KEY = "6LeGMuwtAAAAACwVaaPrm8KzCa7Sw0nFdl-TMcQr";
+const ATLASIA_APP_CHECK_CONFIG = appCheckConfig();
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY as string | undefined,
@@ -50,9 +52,14 @@ if (firebaseConfigured) {
     app = getApps()[0] ?? initializeApp(firebaseConfig);
     if (typeof window !== "undefined") {
       try {
+        // Yalnız yerel geliştirme: Firebase konsolunda kayıtlı debug token'ı varsa
+        // App Check atlaması için SDK'ya sun. Üretim derlemesinde bu dal yoktur.
+        if (import.meta.env.DEV) {
+          installAppCheckDebugToken(import.meta.env.VITE_APPCHECK_DEBUG_TOKEN as string | undefined);
+        }
         initializeAppCheck(app, {
-          provider: new ReCaptchaEnterpriseProvider(ATLASIA_APP_CHECK_SITE_KEY),
-          isTokenAutoRefreshEnabled: true,
+          provider: new ReCaptchaEnterpriseProvider(ATLASIA_APP_CHECK_CONFIG.siteKey),
+          isTokenAutoRefreshEnabled: ATLASIA_APP_CHECK_CONFIG.isTokenAutoRefreshEnabled,
         });
       } catch (appCheckError) {
         // App Check henüz zorunlu tutulmadığı için doğrulama başlatılamasa bile

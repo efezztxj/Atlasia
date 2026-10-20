@@ -2,6 +2,8 @@
 
 Bu belge Atlasia web/PWA için tek yayın yolunu tanımlar: **GitHub → Cloudflare Pages**. Netlify ve paralel Workers Builds hattı yayın kaynağı değildir.
 
+> DDoS/bot/kota saldırısı sertleştirme (ücretsiz katmanlar) runbook'u: `docs/ddos-playbook.md`.
+
 ## 1. Sürüm kontrollü güvenlik politikası
 
 `public/_headers`, Vite tarafından `dist/_headers` olarak kopyalanır ve Cloudflare Pages tarafından statik yanıt politikası olarak yorumlanır.
