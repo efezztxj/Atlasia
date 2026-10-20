@@ -1,3 +1,6 @@
+import type { PlaceFreshness } from "./utils/freshness";
+import type { StopWeather } from "./utils/weather";
+
 export type CategoryId =
   | "cities"
   | "beaches"
@@ -36,6 +39,11 @@ export interface Place {
   createdAt?: number;
   /** Veri kaynağı atıfları: ODbL (OSM) ve CC BY-SA (Wikipedia) */
   dataSources?: string[];
+  /**
+   * Yalnız istemcide hesaplanır (Firestore alanı değil). Adım 14 tazelik döngüsü
+   * yerin bilgisinin hâlâ doğru olduğunu gösteren doğrulama özetidir.
+   */
+  freshness?: PlaceFreshness;
 }
 
 export interface ViewState {
@@ -136,6 +144,8 @@ export interface RouteStop {
   category: string;
   imageUrl: string | null;
   source?: "atlasia" | "community" | "openstreetmap";
+  /** Adım 15: durağın varış saatindeki hava tahmini (istemcide hesaplanır). */
+  weather?: StopWeather;
 }
 
 export type LegMode = TransportMode | "descent";

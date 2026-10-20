@@ -14,6 +14,7 @@ interface Props {
   onOpenSearch: () => void;
   notificationsOpen: boolean;
   profileName: string;
+  unreadCount: number;
 }
 
 export default function Header({
@@ -29,6 +30,7 @@ export default function Header({
   onOpenSearch,
   notificationsOpen,
   profileName,
+  unreadCount,
 }: Props) {
   return (
     <header className="mobile-explorer-header absolute inset-x-0 top-0 z-30 flex h-[68px] items-center justify-between border-b border-white/[0.08] bg-ink/90 px-3 backdrop-blur-xl md:h-[72px] md:px-6">
@@ -107,6 +109,10 @@ export default function Header({
         >
           <Plus className="size-4" strokeWidth={2.6} />
           İz bırak
+        </button>
+        <button type="button" onClick={onOpenNotifications} aria-label={`Bildirimler${unreadCount > 0 ? `: ${unreadCount} yeni` : ""}`} aria-expanded={notificationsOpen} className="relative hidden size-11 place-items-center rounded-full text-mint/80 transition hover:bg-white/5 hover:text-mint md:grid">
+          <Bell className="size-[18px] stroke-[1.9]" />
+          {unreadCount > 0 && <span aria-hidden className="absolute right-2 top-2 size-2 rounded-full bg-sun" />}
         </button>
         <button type="button" onClick={onOpenProfile} aria-label={`${profileName}: profili aç`} title="Profilim" className="hidden size-11 place-items-center rounded-full border border-leaf/25 bg-white/[0.04] font-semibold text-sun md:grid">{profileName?.[0]?.toLocaleUpperCase("tr") ?? <UserRound size={18} />}</button>
       </nav>

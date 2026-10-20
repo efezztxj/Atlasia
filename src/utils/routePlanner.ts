@@ -52,7 +52,10 @@ export function planRoute(places: Place[], origin: { lat: number; lng: number },
     const vibe = preferredByVibe.includes(place.category) ? 1.2 : 1;
     const lowBudget = brief.budget === "Düşük" && ["nature", "photo", "routes", "community", "beaches"].includes(place.category) ? 1.15 : 1;
     const weather = rainy ? (["history", "food", "cities"].includes(place.category) ? 1.25 : .7) : 1;
-    return interest * community * vibe * lowBudget * weather;
+    // Adım 14: tazelik bir güven sinyalidir. Son 30 günde doğrulanmış durak öne
+    // alınır; 90 günü aşmış bilgi geriye düşer; doğrulanmamış bilgi nötrdür.
+    const freshness = place.freshness?.score ?? 1;
+    return interest * community * vibe * lowBudget * weather * freshness;
   };
   const pool = nearbyPlaces(places, origin, radius).sort((a, b) => {
     const utility = (place: Place) => preference(place) / Math.max(.3, haversineKm(origin.lat, origin.lng, place.lat, place.lng));
@@ -90,6 +93,13 @@ export function planRoute(places: Place[], origin: { lat: number; lng: number },
       const source = sourceOf(place);
       const matchedInterest = brief.interests.find((value) => (CATEGORY_INTERESTS[value] ?? []).includes(place.category));
       const preferenceReason = matchedInterest ? `${matchedInterest} tercihinle eşleşiyor. ` : "";
+      const freshnessReason = place.freshness?.latestAt
+        ? place.freshness.band === "fresh"
+          ? `${place.freshness.label}. Taze doğrulanmış bilgi öne alındı. `
+          : place.freshness.band === "stale"
+            ? `${place.freshness.label}. Bilgi eski; gitmeden doğrula. `
+            : `${place.freshness.label}. `
+        : "Bu durağın tazelik kaydı yok; bilgi doğrulanmamış olabilir. ";
       clock += travel + breakTime;
       elapsed += travel + stay + breakTime;
       totalDistance += distance;
@@ -103,13 +113,13 @@ export function planRoute(places: Place[], origin: { lat: number; lng: number },
         endTime: time(clock + stay),
         durationMinutes: stay,
         description: place.note,
-        aiReason: source === "community"
+        aiReason: freshnessReason + (source === "community"
           ? `${preferenceReason}Topluluk izi olduğu ve önceki durağa yakın olduğu için bu sırada. Kalabalık ölçümü yapılmadı.`
           : source === "openstreetmap"
             ? `${preferenceReason}Açık harita verisindeki yakın bir nokta; önceki duraktan tahmini ${distance.toFixed(1)} km.`
             : stops.length === 0
               ? `${preferenceReason}Başlangıca yakın bir Atlasia rehber noktası.`
-              : `${preferenceReason}Önceki noktadan yaklaşık ${distance.toFixed(1)} km; geri dönüşü azaltmak için sıraya alındı.`,
+              : `${preferenceReason}Önceki noktadan yaklaşık ${distance.toFixed(1)} km; geri dönüşü azaltmak için sıraya alındı.`),
         tips: [place.note, "Saat, ücret ve erişimi gitmeden doğrula."],
         isCommunityPin: place.kind === "user",
         pinId: place.id,
