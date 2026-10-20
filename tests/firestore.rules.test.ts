@@ -547,7 +547,6 @@ describe("Firestore güvenlik kuralları", () => {
     await assertSucceeds(removeSavedRoute.commit());
   });
 
-  it("emekliye ayrılan kullanıcı profili belgesi ve üst seviye koleksiyonu kapalı tutar", async () => {
   it("grubu yalnız kurucu oluşturur, yalnız üyeler tek belge olarak okur", async () => {
     const ownerDb = testEnv.authenticatedContext("owner").firestore();
     const memberDb = testEnv.authenticatedContext("member").firestore();
