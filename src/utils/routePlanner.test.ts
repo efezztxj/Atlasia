@@ -117,3 +117,48 @@ describe("routePlanner", () => {
     });
   });
 });
+
+describe("Adım 14 · rota motoru tazelik tercihi", () => {
+  const now = Date.UTC(2026, 9, 19);
+  const day = 24 * 60 * 60 * 1000;
+  const freshPlace = place("fresh", 38.421, 27.141, {
+    freshness: {
+      latestAt: now - 3 * day,
+      recentCount: 2,
+      totalCount: 2,
+      latestStatus: "still_open",
+      band: "fresh",
+      score: 1.35,
+      label: "2 kişi son 3 ayda doğruladı · 3 gün önce · Hâlâ açık",
+    },
+  });
+  const stalePlace = place("stale", 38.419, 27.139, {
+    freshness: {
+      latestAt: now - 120 * day,
+      recentCount: 0,
+      totalCount: 1,
+      latestStatus: "still_open",
+      band: "stale",
+      score: 0.8,
+      label: "Son doğrulama · 4 ay önce · Hâlâ açık",
+    },
+  });
+
+  it("aynı mesafede taze durak bayat durağın önüne geçer", () => {
+    const route = planRoute([stalePlace, freshPlace], origin, { ...brief, duration: "day" }, null);
+    expect(route.days[0].stops.map((stop) => stop.pinId)).toEqual(["fresh", "stale"]);
+  });
+
+  it("tazelik gerekçesi kullanıcıya görünür ve dürüsttür", () => {
+    const route = planRoute([stalePlace, freshPlace], origin, { ...brief, duration: "day" }, null);
+    const [first, second] = route.days[0].stops;
+    expect(first.aiReason).toContain("Taze doğrulanmış bilgi öne alındı");
+    expect(second.aiReason).toContain("Bilgi eski; gitmeden doğrula");
+  });
+
+  it("tazelik kaydı olmayan durak nötr kalır ve bunu söyler", () => {
+    const neutral = place("neutral", 38.421, 27.141);
+    const route = planRoute([neutral], origin, { ...brief, duration: "day" }, null);
+    expect(route.days[0].stops[0].aiReason).toContain("tazelik kaydı yok");
+  });
+});

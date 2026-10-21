@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Bell, Bookmark, Compass, Crosshair, MapPin, MousePointerClick, Plus, UserRound, UsersRound, X } from "lucide-react";
+import { Bookmark, Compass, Crosshair, MapPin, MousePointerClick, Plus, UserRound, UsersRound, X } from "lucide-react";
 import type { BaseMapStyle, MapViewHandle } from "./components/MapView";
 import Header from "./components/Header";
 import Hero from "./components/Hero";
@@ -33,6 +33,10 @@ import type { PlaceViewport } from "./lib/firestoreData";
 import type { AtlasRoute, CategoryId, Place, ViewState } from "./types";
 import { haversineKm, reverseName, type SearchResult } from "./utils/geo";
 import { storageGet, storageSet } from "./utils/storage";
+import { useBlocks } from "./hooks/useBlocks";
+import { useFreshness } from "./hooks/useFreshness";
+import { subscribeNotifications, markNotificationRead, markAllRead, type AppNotification } from "./lib/notifications";
+import NotificationsPanel from "./components/NotificationsPanel";
 
 const MapView = lazy(() => import("./components/MapView"));
 const MAP_STYLE_KEY = "atlasia.mapStyle.v1";
@@ -111,7 +115,14 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
       console.warn("[Atlasia] Config özeti:", firebaseConfigSummary);
     }
   }, [remote.ready, remote.error]);
-  const discoveries = cloud.places;
+  const { blockedSet, isBlocked } = useBlocks(user?.uid);
+  const freshness = useFreshness(user?.uid);
+  const rawDiscoveries = cloud.places;
+  const rawPosts = cloud.posts;
+  const rawStories = cloud.stories;
+  const discoveries = rawDiscoveries.filter((pl) => !isBlocked(pl.authorUid));
+  const filteredPosts = rawPosts.filter((po) => !isBlocked(po.authorUid));
+  const filteredStories = rawStories.filter((st) => !isBlocked(st.authorUid));
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [category, setCategory] = useState<CategoryId | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -131,6 +142,8 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [myPlacesOpen, setMyPlacesOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [pendingGroupId, setPendingGroupId] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [resumeRoute, setResumeRoute] = useState<AtlasRoute | null>(null);
   const [smallScreen, setSmallScreen] = useState(() => window.innerWidth < 768);
@@ -189,6 +202,22 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
     setSettingsOpen(true);
   }, []);
   const closeSettings = useCallback(() => setSettingsOpen(false), []);
+
+  useEffect(() => {
+    if (!user?.uid) { setNotifications([]); return; }
+    const unsub = subscribeNotifications(user.uid, setNotifications);
+    return () => unsub();
+  }, [user?.uid]);
+  const visibleNotifications = notifications.filter((item) => !isBlocked(item.actorUid));
+  const unreadCount = visibleNotifications.filter((n) => !n.read).length;
+  const handleMarkAllRead = () => { if (user?.uid) void markAllRead(user.uid, notifications); };
+  const handleNotificationRead = (id: string) => { if (user?.uid) void markNotificationRead(user.uid, id, true); };
+  const clearPendingGroup = useCallback(() => setPendingGroupId(null), []);
+  const openGroupFromNotification = useCallback((groupId: string) => {
+    closePanels();
+    setFeedOpen(true);
+    setPendingGroupId(groupId);
+  }, []);
 
   const precise = useMemo(
     () =>
@@ -271,7 +300,10 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [addMode]);
 
-  const allPlaces = useMemo(() => [...discoveries, ...GUIDE_PLACES], [discoveries]);
+  const allPlaces = useMemo(
+    () => freshness.withFreshness([...discoveries, ...GUIDE_PLACES]),
+    [discoveries, freshness],
+  );
   const canManagePlace = useCallback(
     (place: Place) => place.kind === "user" && (place.authorUid ? place.authorUid === user!.uid : !remote.ready),
     [remote.ready, user],
@@ -283,6 +315,10 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   );
 
   const activePlace = activeId ? allPlaces.find((p) => p.id === activeId) : undefined;
+  // Tazelik verisi canlı değiştiğinde açık detay paneli de güncel özeti gösterir.
+  const liveStoryPlace = storyPlace
+    ? allPlaces.find((item) => item.id === storyPlace.id) ?? storyPlace
+    : null;
   const current =
     activePlace ??
     (visiblePlaces.length ? visiblePlaces[featuredIdx % visiblePlaces.length] : undefined);
@@ -514,6 +550,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
          onOpenSearch={() => { closePanels(); setSearchOpen(true); }}
          notificationsOpen={notificationsOpen}
          profileName={user?.displayName ?? ""}
+         unreadCount={unreadCount}
        />
 
       {/* Hero - her ekranda göster, sadece mobil için özel stil */}
@@ -690,8 +727,8 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         onGoTo={handleFeedGoTo}
         precise={precise}
         onRequestPrecise={handleLocate}
-        posts={cloud.posts}
-        stories={cloud.stories}
+        posts={filteredPosts}
+        stories={filteredStories}
         hasMorePosts={cloud.hasMorePosts}
         hasMoreStories={cloud.hasMoreStories}
         loadingMorePosts={cloud.loadingMorePosts}
@@ -707,6 +744,10 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         onToggleLike={cloud.toggleLike}
         onAddStory={cloud.addStory}
         onRemoveStory={cloud.removeStory}
+        blockedSet={blockedSet}
+        isBlocked={isBlocked}
+        pendingGroupId={pendingGroupId}
+        onGroupOpened={clearPendingGroup}
       />
 
       {recordsOpen && <RecordsDock onClose={() => setRecordsOpen(false)} onPlace={(place) => { closePanels(); focusPlace(place); setStoryPlace(place); }} onRoute={(route) => { closePanels(); setResumeRoute(route); setAtlasOpen(true); }} />}
@@ -743,14 +784,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
       />
 
       {notificationsOpen && (
-        <aside aria-label="Bildirimler" className="mobile-notifications fixed right-3 z-40 w-[min(330px,calc(100vw-24px))] rounded-[22px] border border-leaf/30 bg-[#041d17] p-4 shadow-2xl md:hidden">
-          <header className="flex items-center justify-between gap-3">
-            <h2 className="flex items-center gap-2 font-display text-base font-semibold"><Bell className="size-4 text-sun" />Bildirimler</h2>
-            <button type="button" onClick={() => setNotificationsOpen(false)} aria-label="Bildirimleri kapat" className="grid size-10 place-items-center rounded-full text-mint/80"><X className="size-4" /></button>
-          </header>
-          <p className="mt-3 text-[14px] font-medium">Şimdilik yeni bildirimin yok.</p>
-          <p className="mt-1 text-[13px] leading-relaxed text-mint/75">Kaydettiğin yerler ve rotalar, alttaki Kaydet sekmesinde seni bekler.</p>
-        </aside>
+        <NotificationsPanel notifications={visibleNotifications} unreadCount={unreadCount} onClose={() => setNotificationsOpen(false)} onMarkAllRead={handleMarkAllRead} onMarkRead={handleNotificationRead} onOpenGroup={openGroupFromNotification} />
       )}
 
       {draft && (
@@ -802,23 +836,30 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         />
       )}
 
-      {storyPlace && (
+      {liveStoryPlace && (
         <PlaceDetails
-          place={storyPlace}
+          place={liveStoryPlace}
           onClose={() => setStoryPlace(null)}
           onStreet={() => {
-            const place = storyPlace;
+            const place = liveStoryPlace;
+            if (!place) return;
             if (smallScreen) setStoryPlace(null);
             setStreetPlace(place);
           }}
           onPlan={() => {
-            const place = storyPlace;
+            const place = liveStoryPlace;
+            if (!place) return;
             closePanels();
             focusPlace(place);
             setAtlasOpen(true);
           }}
-          canDelete={canManagePlace(storyPlace)}
-          onDelete={() => handleDelete(storyPlace)}
+          canDelete={canManagePlace(liveStoryPlace)}
+          onDelete={() => handleDelete(liveStoryPlace)}
+          onVerify={(status, note) => {
+            const target = liveStoryPlace;
+            if (!target) return Promise.resolve();
+            return freshness.verify(target.id, status, note);
+          }}
         />
       )}
       {streetPlace && !atlasOpen && (

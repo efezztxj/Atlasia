@@ -195,6 +195,99 @@ service cloud.firestore {
              && hasValidOptionalPhoto(data);
     }
 
+    function validReport(data) {
+      return data.keys().hasAll(['reporterUid', 'targetType', 'targetId', 'reason', 'createdAt'])
+             && data.keys().hasOnly(['reporterUid', 'targetType', 'targetId', 'targetOwnerUid', 'reason', 'details', 'createdAt'])
+             && stringBetween(data.reporterUid, 1, 128)
+             && data.reporterUid == request.auth.uid
+             && data.targetType in ['place', 'post', 'story', 'user']
+             && stringBetween(data.targetId, 1, 200)
+             && (!('targetOwnerUid' in data) || stringBetween(data.targetOwnerUid, 1, 128))
+             && data.reason in ['spam', 'harassment', 'hate', 'misinfo', 'privacy', 'other']
+             && (!('details' in data) || stringBetween(data.details, 1, 1000))
+             && data.createdAt == request.time;
+    }
+
+    function validBlock(data) {
+      return data.keys().hasAll(['blockerUid', 'blockedUid', 'createdAt'])
+             && data.keys().hasOnly(['blockerUid', 'blockedUid', 'createdAt'])
+             && stringBetween(data.blockerUid, 1, 128)
+             && stringBetween(data.blockedUid, 1, 128)
+             && data.blockerUid == request.auth.uid
+             && data.blockedUid != request.auth.uid
+             && data.createdAt == request.time;
+    }
+
+    function validVerification(data) {
+      return data.keys().hasAll(['placeId', 'uid', 'status', 'createdAt'])
+             && data.keys().hasOnly(['placeId', 'uid', 'status', 'createdAt', 'note'])
+             && stringBetween(data.placeId, 1, 200)
+             && stringBetween(data.uid, 1, 128)
+             && data.uid == request.auth.uid
+             && data.status in ['still_open', 'fee_changed', 'road_closed', 'free_entry', 'closed']
+             && (!('note' in data) || stringBetween(data.note, 1, 280))
+             && data.createdAt == request.time;
+    }
+
+    function validGroupShape(data) {
+      return data.keys().hasAll(['name', 'ownerUid', 'memberUids', 'createdAt', 'updatedAt'])
+             && data.keys().hasOnly(['name', 'ownerUid', 'memberUids', 'createdAt', 'updatedAt', 'lastMessage'])
+             && stringBetween(data.name, 1, 80)
+             && stringBetween(data.ownerUid, 1, 128)
+             && data.ownerUid == request.auth.uid
+             && data.memberUids is list
+             && data.memberUids.size() >= 1
+             && data.memberUids.size() <= 20
+             && data.memberUids.toSet().size() == data.memberUids.size()
+             && request.auth.uid in data.memberUids
+             && data.createdAt is timestamp
+             && data.updatedAt == request.time
+             && (!('lastMessage' in data) || validLastMessage(data.lastMessage));
+    }
+
+    function validLastMessage(message) {
+      return message is map
+             && message.keys().hasAll(['text', 'senderUid', 'senderName', 'createdAt'])
+             && message.keys().hasOnly(['text', 'senderUid', 'senderName', 'createdAt'])
+             && stringBetween(message.text, 1, 200)
+             && message.senderUid == request.auth.uid
+             && stringBetween(message.senderName, 1, 100)
+             && message.createdAt == request.time;
+    }
+
+    function validGroupMessage(data) {
+      return data.keys().hasAll(['senderUid', 'senderName', 'text', 'createdAt'])
+             && data.keys().hasOnly(['senderUid', 'senderName', 'text', 'createdAt'])
+             && data.senderUid == request.auth.uid
+             && stringBetween(data.senderName, 1, 100)
+             && stringBetween(data.text, 1, 1000)
+             && data.createdAt == request.time;
+    }
+
+    function validGroupIndex(data, groupId) {
+      return data.keys().hasAll(['groupId', 'name', 'role', 'joinedAt'])
+             && data.keys().hasOnly(['groupId', 'name', 'role', 'joinedAt'])
+             && data.groupId == groupId
+             && stringBetween(data.name, 1, 80)
+             && data.role in ['owner', 'member']
+             && data.joinedAt == request.time;
+    }
+
+    function validNotification(data) {
+      return data.keys().hasAll(['recipientUid', 'actorUid', 'type', 'title', 'body', 'read', 'createdAt'])
+             && data.keys().hasOnly(['recipientUid', 'actorUid', 'type', 'title', 'body', 'read', 'createdAt', 'targetId'])
+             && stringBetween(data.recipientUid, 1, 128)
+             && stringBetween(data.actorUid, 1, 128)
+             && data.actorUid == request.auth.uid
+             && data.type in ['report_received', 'report_actioned', 'blocked', 'group_invite', 'group_message', 'system']
+             && stringBetween(data.title, 1, 200)
+             && stringBetween(data.body, 0, 500)
+             && data.read is bool
+             && data.read == false
+             && data.createdAt == request.time
+             && (!('targetId' in data) || stringBetween(data.targetId, 1, 200));
+    }
+
     match /places/{placeId} {
       allow get: if true;
       // Toplam içerik tavanı değil: her overview/viewport/sahip cursor sayfası
@@ -241,6 +334,109 @@ service cloud.firestore {
       allow update: if false;
       allow delete: if signedIn()
                     && resource.data.authorUid == request.auth.uid;
+    }
+
+    // Tazelik doğrulamaları: herkese açık okuma, yalnız kendi adına yazma.
+    // Liste isteği 50 kayıtla sınırlıdır; canlı dinleyici tek pencere tutar.
+    match /verifications/{verificationId} {
+      allow get: if true;
+      allow list: if boundedList(50);
+      allow create: if signedIn() && validVerification(request.resource.data);
+      allow update: if false;
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    match /reports/{reportId} {
+      allow get: if signedIn() && resource.data.reporterUid == request.auth.uid;
+      allow list: if signedIn() && boundedList(50);
+      allow create: if signedIn() && validReport(request.resource.data);
+      allow update: if false;
+      allow delete: if signedIn() && resource.data.reporterUid == request.auth.uid;
+    }
+
+    match /blocks/{blockId} {
+      allow get: if signedIn() && resource.data.blockerUid == request.auth.uid;
+      allow list: if signedIn() && boundedList(50);
+      allow create: if signedIn() && validBlock(request.resource.data);
+      allow update: if false;
+      allow delete: if signedIn() && resource.data.blockerUid == request.auth.uid;
+    }
+
+    // ─────────────────────────── Adım 16 · grup + sohbet ───────────────────────────
+    // Okuma sınırı: grup listesi kullanıcının kendi indeksinden (limit 20), mesajlar
+    // tek grupta en yeni 50 kayıttan okunur. Realtime Database veya üçüncü taraf yok.
+    match /groups/{groupId} {
+      allow get: if signedIn() && request.auth.uid in resource.data.memberUids;
+      // Geniş koleksiyon taraması kapalı: kullanıcı yalnız üyesi olduğu grubu tek
+      // belge olarak okur; liste kendi users/{uid}/groups indeksinden gelir.
+      allow list: if false;
+      allow create: if signedIn() && validGroupShape(request.resource.data)
+                    && request.resource.data.createdAt == request.time;
+      allow update: if signedIn()
+                    && request.auth.uid in resource.data.memberUids
+                    && (
+                      (
+                        resource.data.ownerUid == request.auth.uid
+                        && validGroupShape(request.resource.data)
+                        && request.resource.data.ownerUid == resource.data.ownerUid
+                        && request.resource.data.createdAt == resource.data.createdAt
+                      ) || (
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'updatedAt'])
+                        && validLastMessage(request.resource.data.lastMessage)
+                        && request.resource.data.name == resource.data.name
+                        && request.resource.data.ownerUid == resource.data.ownerUid
+                        && request.resource.data.memberUids == resource.data.memberUids
+                      ) || (
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberUids', 'updatedAt'])
+                        && request.resource.data.name == resource.data.name
+                        && request.resource.data.ownerUid == resource.data.ownerUid
+                        && request.resource.data.memberUids.toSet() == resource.data.memberUids.toSet().difference([request.auth.uid].toSet())
+                      )
+                    );
+      allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+
+      match /messages/{messageId} {
+        function groupMembers() {
+          return get(/databases/$(database)/documents/groups/$(groupId)).data.memberUids;
+        }
+        allow get: if signedIn() && request.auth.uid in groupMembers();
+        allow list: if signedIn() && boundedList(50) && request.auth.uid in groupMembers();
+        allow create: if signedIn()
+                      && request.auth.uid in groupMembers()
+                      && validGroupMessage(request.resource.data);
+        allow update: if false;
+        allow delete: if signedIn() && resource.data.senderUid == request.auth.uid;
+      }
+    }
+
+    // Kullanıcının kendi grup indeksi: listeleme buradan yapılır (limit 20).
+    match /users/{uid}/groups/{groupId} {
+      allow get: if signedIn() && uid == request.auth.uid;
+      allow list: if signedIn() && uid == request.auth.uid && boundedList(20);
+      allow create: if signedIn() && uid == request.auth.uid
+                    && validGroupIndex(request.resource.data, groupId);
+      allow update: if false;
+      allow delete: if signedIn() && uid == request.auth.uid;
+    }
+
+    // Notifications: kullanıcı subcollection — yalnız alıcı okur, aktör yazar (engelleme hariç)
+    match /users/{uid}/notifications/{notificationId} {
+      allow get: if signedIn() && uid == request.auth.uid;
+      allow list: if signedIn() && uid == request.auth.uid && boundedList(50);
+      allow create: if signedIn() && validNotification(request.resource.data) && request.resource.data.recipientUid == uid;
+      allow update: if signedIn() && uid == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read'])
+                    && request.resource.data.read is bool;
+      allow delete: if signedIn() && uid == request.auth.uid;
+    }
+
+    // Blocks subcollection (alternatif yol) — üstteki top-level ile aynı, uyumluluk için
+    match /users/{uid}/blocks/{blockedId} {
+      allow get: if signedIn() && uid == request.auth.uid;
+      allow list: if signedIn() && uid == request.auth.uid && boundedList(50);
+      allow create: if signedIn() && uid == request.auth.uid && request.resource.data.blockerUid == uid && request.resource.data.blockedUid == blockedId && request.resource.data.createdAt == request.time;
+      allow update: if false;
+      allow delete: if signedIn() && uid == request.auth.uid;
     }
 
     match /{document=**} {

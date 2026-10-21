@@ -394,6 +394,244 @@ describe("Firestore güvenlik kuralları", () => {
     await assertSucceeds(deleteDoc(storyRef));
   });
 
+  it("grubu yalnız kurucu oluşturur, yalnız üyeler tek belge olarak okur", async () => {
+    const ownerDb = testEnv.authenticatedContext("owner").firestore();
+    const memberDb = testEnv.authenticatedContext("member").firestore();
+    const outsiderDb = testEnv.authenticatedContext("outsider").firestore();
+    const valid = {
+      name: "Kapadokya ekibi",
+      ownerUid: "owner",
+      memberUids: ["owner", "member"],
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
+
+    await assertFails(setDoc(doc(memberDb, "groups/spoofed"), { ...valid, ownerUid: "member", memberUids: ["member"] }));
+    await assertFails(setDoc(doc(ownerDb, "groups/empty"), { ...valid, memberUids: [] }));
+    await assertFails(setDoc(doc(ownerDb, "groups/too-many"), { ...valid, memberUids: Array.from({ length: 21 }, (_, index) => `member-${index}`) }));
+    await assertFails(setDoc(doc(ownerDb, "groups/extra"), { ...valid, visibility: "public" }));
+    await assertSucceeds(setDoc(doc(ownerDb, "groups/group-1"), valid));
+
+    await assertSucceeds(getDoc(doc(ownerDb, "groups/group-1")));
+    await assertSucceeds(getDoc(doc(memberDb, "groups/group-1")));
+    await assertFails(getDoc(doc(outsiderDb, "groups/group-1")));
+    // Geniş koleksiyon taraması kapalı; listeleme kullanıcı indeksinden yapılır.
+    await assertFails(getDocs(query(collection(outsiderDb, "groups"), limit(20))));
+  });
+
+  it("grup güncellemesini sahibine bırakır, üyeye yalnız son mesajı yazdırır", async () => {
+    await seed("groups/group-1", {
+      name: "Kapadokya ekibi",
+      ownerUid: "owner",
+      memberUids: ["owner", "member"],
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
+    const ownerDb = testEnv.authenticatedContext("owner").firestore();
+    const memberDb = testEnv.authenticatedContext("member").firestore();
+    const outsiderDb = testEnv.authenticatedContext("outsider").firestore();
+
+    await assertSucceeds(updateDoc(doc(ownerDb, "groups/group-1"), {
+      name: "Kapadokya 2026",
+      updatedAt: serverTimestamp(),
+    }));
+    await assertFails(updateDoc(doc(memberDb, "groups/group-1"), { name: "Ele geçirildi", updatedAt: serverTimestamp() }));
+    await assertSucceeds(updateDoc(doc(memberDb, "groups/group-1"), {
+      lastMessage: {
+        text: "Yarın 09:00'da buluşalım.",
+        senderUid: "member",
+        senderName: "Üye",
+        createdAt: serverTimestamp(),
+      },
+      updatedAt: serverTimestamp(),
+    }));
+    await assertFails(updateDoc(doc(memberDb, "groups/group-1"), {
+      lastMessage: {
+        text: "Sahte gönderen",
+        senderUid: "owner",
+        senderName: "Üye",
+        createdAt: serverTimestamp(),
+      },
+      updatedAt: serverTimestamp(),
+    }));
+    await assertFails(updateDoc(doc(outsiderDb, "groups/group-1"), {
+      lastMessage: {
+        text: "Yetkisiz",
+        senderUid: "outsider",
+        senderName: "Yabancı",
+        createdAt: serverTimestamp(),
+      },
+      updatedAt: serverTimestamp(),
+    }));
+  });
+
+  it("sohbet mesajını yalnız grup üyesi kendi adına yazar, sınırlı okur ve kendi mesajını siler", async () => {
+    await seed("groups/group-1", {
+      name: "Kapadokya ekibi",
+      ownerUid: "owner",
+      memberUids: ["owner", "member"],
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
+    const ownerDb = testEnv.authenticatedContext("owner").firestore();
+    const memberDb = testEnv.authenticatedContext("member").firestore();
+    const outsiderDb = testEnv.authenticatedContext("outsider").firestore();
+    const valid = {
+      senderUid: "member",
+      senderName: "Üye",
+      text: "Selam, yarın görüşelim.",
+      createdAt: serverTimestamp(),
+    };
+
+    await assertFails(setDoc(doc(outsiderDb, "groups/group-1/messages/out"), valid));
+    await assertFails(setDoc(doc(memberDb, "groups/group-1/messages/spoofed"), { ...valid, senderUid: "owner" }));
+    await assertFails(setDoc(doc(memberDb, "groups/group-1/messages/empty"), { ...valid, text: "" }));
+    await assertSucceeds(setDoc(doc(memberDb, "groups/group-1/messages/m-1"), valid));
+    await assertSucceeds(setDoc(doc(ownerDb, "groups/group-1/messages/m-2"), {
+      senderUid: "owner",
+      senderName: "Kurucu",
+      text: "Görüşürüz.",
+      createdAt: serverTimestamp(),
+    }));
+
+    await assertSucceeds(getDocs(query(collection(memberDb, "groups/group-1/messages"), limit(50))));
+    await assertFails(getDocs(collection(memberDb, "groups/group-1/messages")));
+    await assertFails(getDocs(query(collection(outsiderDb, "groups/group-1/messages"), limit(50))));
+    await assertFails(updateDoc(doc(memberDb, "groups/group-1/messages/m-1"), { text: "Değiştirildi" }));
+    await assertFails(deleteDoc(doc(ownerDb, "groups/group-1/messages/m-1")));
+    await assertSucceeds(deleteDoc(doc(memberDb, "groups/group-1/messages/m-1")));
+  });
+
+  it("grup indeksini yalnız sahibi yazar ve sınırlı listeler", async () => {
+    const memberDb = testEnv.authenticatedContext("member").firestore();
+    const otherDb = testEnv.authenticatedContext("other").firestore();
+    const entry = {
+      groupId: "group-1",
+      name: "Kapadokya ekibi",
+      role: "member",
+      joinedAt: serverTimestamp(),
+    };
+
+    await assertFails(setDoc(doc(otherDb, "users/member/groups/group-1"), entry));
+    await assertFails(setDoc(doc(memberDb, "users/member/groups/group-1"), { ...entry, role: "admin" }));
+    await assertSucceeds(setDoc(doc(memberDb, "users/member/groups/group-1"), entry));
+    await assertSucceeds(getDocs(query(collection(memberDb, "users/member/groups"), limit(20))));
+    await assertFails(getDocs(query(collection(memberDb, "users/member/groups"), limit(21))));
+    await assertFails(deleteDoc(doc(otherDb, "users/member/groups/group-1")));
+    await assertSucceeds(deleteDoc(doc(memberDb, "users/member/groups/group-1")));
+  });
+
+  it("tazelik doğrulamasını yalnız kendi adına yazar, herkes sınırlı sayfada okur", async () => {
+    const memberDb = testEnv.authenticatedContext("member").firestore();
+    const otherDb = testEnv.authenticatedContext("other").firestore();
+    const guestDb = testEnv.unauthenticatedContext().firestore();
+    const valid = {
+      placeId: "place-1",
+      uid: "member",
+      status: "still_open",
+      note: "Giriş hâlâ açık.",
+      createdAt: serverTimestamp(),
+    };
+
+    await assertFails(setDoc(doc(guestDb, "verifications/guest"), valid));
+    await assertFails(setDoc(doc(memberDb, "verifications/spoofed"), { ...valid, uid: "other" }));
+    await assertFails(setDoc(doc(memberDb, "verifications/bad-status"), { ...valid, status: "harika" }));
+    await assertFails(setDoc(doc(memberDb, "verifications/extra"), { ...valid, xp: 50 }));
+    await assertSucceeds(setDoc(doc(memberDb, "verifications/vr-1"), valid));
+
+    await assertSucceeds(getDoc(doc(guestDb, "verifications/vr-1")));
+    await assertFails(getDocs(collection(guestDb, "verifications")));
+    await assertSucceeds(getDocs(query(collection(guestDb, "verifications"), limit(50))));
+    await assertFails(getDocs(query(collection(guestDb, "verifications"), limit(51))));
+    await assertFails(updateDoc(doc(memberDb, "verifications/vr-1"), { status: "closed" }));
+    await assertFails(deleteDoc(doc(otherDb, "verifications/vr-1")));
+    await assertSucceeds(deleteDoc(doc(memberDb, "verifications/vr-1")));
+  });
+
+  it("içerik bildirimini yalnız oturum sahibi adına ve sınırlı alanlarla kabul eder", async () => {
+    const memberDb = testEnv.authenticatedContext("member").firestore();
+    const otherDb = testEnv.authenticatedContext("other").firestore();
+    const guestDb = testEnv.unauthenticatedContext().firestore();
+    const valid = {
+      reporterUid: "member",
+      targetType: "post",
+      targetId: "post-1",
+      targetOwnerUid: "owner",
+      reason: "spam",
+      details: "Tekrarlanan reklam bağlantısı.",
+      createdAt: serverTimestamp(),
+    };
+
+    await assertFails(setDoc(doc(guestDb, "reports/guest-report"), valid));
+    await assertFails(setDoc(doc(memberDb, "reports/spoofed"), { ...valid, reporterUid: "other" }));
+    await assertFails(setDoc(doc(memberDb, "reports/bad-reason"), { ...valid, reason: "begenmedim" }));
+    await assertFails(setDoc(doc(memberDb, "reports/bad-target"), { ...valid, targetType: "comment" }));
+    await assertFails(setDoc(doc(memberDb, "reports/extra-field"), { ...valid, status: "approved" }));
+    await assertSucceeds(setDoc(doc(memberDb, "reports/report-1"), valid));
+
+    await assertSucceeds(getDoc(doc(memberDb, "reports/report-1")));
+    await assertFails(getDoc(doc(otherDb, "reports/report-1")));
+    await assertFails(getDocs(query(collection(memberDb, "reports"), where("reporterUid", "==", "member"))));
+    await assertSucceeds(getDocs(query(collection(memberDb, "reports"), where("reporterUid", "==", "member"), limit(50))));
+    await assertFails(updateDoc(doc(memberDb, "reports/report-1"), { reason: "other" }));
+    await assertFails(deleteDoc(doc(otherDb, "reports/report-1")));
+    await assertSucceeds(deleteDoc(doc(memberDb, "reports/report-1")));
+  });
+
+  it("engellemeyi yalnız kendi adına, kendini engellemeden yazar", async () => {
+    const memberDb = testEnv.authenticatedContext("member").firestore();
+    const otherDb = testEnv.authenticatedContext("other").firestore();
+    const valid = {
+      blockerUid: "member",
+      blockedUid: "spammer",
+      createdAt: serverTimestamp(),
+    };
+
+    await assertFails(setDoc(doc(memberDb, "blocks/spoofed"), { ...valid, blockerUid: "other" }));
+    await assertFails(setDoc(doc(memberDb, "blocks/self"), { ...valid, blockedUid: "member" }));
+    await assertFails(setDoc(doc(memberDb, "blocks/extra"), { ...valid, reason: "dislike" }));
+    await assertSucceeds(setDoc(doc(memberDb, "blocks/member_spammer"), valid));
+
+    await assertSucceeds(getDoc(doc(memberDb, "blocks/member_spammer")));
+    await assertFails(getDoc(doc(otherDb, "blocks/member_spammer")));
+    await assertFails(getDocs(query(collection(memberDb, "blocks"), where("blockerUid", "==", "member"))));
+    await assertSucceeds(getDocs(query(collection(memberDb, "blocks"), where("blockerUid", "==", "member"), limit(50))));
+    await assertFails(updateDoc(doc(memberDb, "blocks/member_spammer"), { blockedUid: "someone-else" }));
+    await assertFails(deleteDoc(doc(otherDb, "blocks/member_spammer")));
+    await assertSucceeds(deleteDoc(doc(memberDb, "blocks/member_spammer")));
+  });
+
+  it("bildirimi yalnız alıcı okur, yalnız aktör yazar ve okundu alanı dışında değiştirilemez", async () => {
+    const senderDb = testEnv.authenticatedContext("sender").firestore();
+    const recipientDb = testEnv.authenticatedContext("recipient").firestore();
+    const intruderDb = testEnv.authenticatedContext("intruder").firestore();
+    const note = {
+      recipientUid: "recipient",
+      actorUid: "sender",
+      type: "report_received",
+      title: "İçeriğin bildirildi",
+      body: "İnceleme sonrası sonuç bildirilecek.",
+      targetId: "post-1",
+      read: false,
+      createdAt: serverTimestamp(),
+    };
+
+    await assertSucceeds(setDoc(doc(senderDb, "users/recipient/notifications/note-1"), note));
+    await assertFails(setDoc(doc(intruderDb, "users/recipient/notifications/forged"), { ...note, actorUid: "intruder" }));
+    await assertFails(setDoc(doc(senderDb, "users/recipient/notifications/preloaded"), { ...note, read: true }));
+
+    await assertSucceeds(getDoc(doc(recipientDb, "users/recipient/notifications/note-1")));
+    await assertFails(getDoc(doc(senderDb, "users/recipient/notifications/note-1")));
+    await assertSucceeds(getDocs(query(collection(recipientDb, "users/recipient/notifications"), limit(50))));
+    await assertFails(getDocs(collection(recipientDb, "users/recipient/notifications")));
+
+    await assertSucceeds(updateDoc(doc(recipientDb, "users/recipient/notifications/note-1"), { read: true }));
+    await assertFails(updateDoc(doc(recipientDb, "users/recipient/notifications/note-1"), { title: "Değiştirildi" }));
+    await assertFails(updateDoc(doc(senderDb, "users/recipient/notifications/note-1"), { read: false }));
+    await assertFails(deleteDoc(doc(senderDb, "users/recipient/notifications/note-1")));
+    await assertSucceeds(deleteDoc(doc(recipientDb, "users/recipient/notifications/note-1")));
+  });
+
   it("emekliye ayrılan kullanıcı profili koleksiyonunu tamamen kapalı tutar", async () => {
     await seed("users/owner", { displayName: "Eski profil" });
     const ownerDb = testEnv.authenticatedContext("owner").firestore();

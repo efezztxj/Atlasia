@@ -264,3 +264,24 @@ export async function resetDevicePassword(inputEmail: string, recoveryCode: stri
   attempts.delete(email);
   try { sessionStorage.removeItem(SESSION_KEY); } catch { /* The existing session has already been revoked. */ }
 }
+/**
+ * Cihaz modundaki hesabı ve oturumlarını kalıcı olarak siler.
+ * Adım 13: hesap silme, verinin gerçekten kalkması demektir; yalnız çıkış yetmez.
+ */
+export async function deleteDeviceAccount(uid: string) {
+  requireBrowserSecurity();
+  const db = await openDatabase();
+  await new Promise<void>((resolve, reject) => {
+    const transaction = db.transaction(["accounts", "sessions"], "readwrite");
+    transaction.objectStore("accounts").delete(uid);
+    const cursor = transaction.objectStore("sessions").index("uid").openCursor(IDBKeyRange.only(uid));
+    cursor.onsuccess = () => {
+      const entry = cursor.result;
+      if (entry) { entry.delete(); entry.continue(); }
+    };
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(new AccountError("device/storage-unavailable"));
+    transaction.onabort = () => reject(new AccountError("device/storage-unavailable"));
+  });
+  try { sessionStorage.removeItem(SESSION_KEY); } catch { /* Session token is already unreachable when storage is blocked. */ }
+}
