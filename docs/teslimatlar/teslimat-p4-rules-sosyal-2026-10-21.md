@@ -206,3 +206,34 @@ Eski kod kanıtları yerelde alındı; dosyalar kanıttan sonra yeni haline geri
   o testi düzeltmek ve regresyon kanıtını eklemek.
 - Kontrol edilen ve sorun çıkmayan kural yapıları (dokümantasyonla): string `<` karşılaştırması (lexicographic destekli),
   `split`, `duration.value`, `timestamp + duration`, `getAfter`, nested `function` (match içinde).
+
+## Tur 4 ek durum (hesap silme, rota görünürlüğü)
+
+Taban: origin/main = b6922d1. Dal: 6888833 (merge) → 7ac0d57 → 20653a2.
+
+| Madde | Durum | Dosya / test |
+|---|---|---|
+| 11 hesap silme temizliği | Tamam (IO + rules) | src/lib/moderation.ts; moderation.io.test.ts (2 yeni test); rules "hesap silme" |
+| 2 routes get resource==null | KARAR + test | firestore.rules (değişmedi); rules "bulunmayan ve başkasının özel rotası" |
+| 9 grup hata yutma (kısmi) | Düzeltildi: `leaveOrDeleteGroups` hatası artık yutulmuyor | moderation.io.test.ts "grup üyeliği temizlenemezse" |
+| 1 CI rules hatası | AÇIK. Kök neden hâlâ bilinmiyor (log/annotation yok, yerelde emulator yok) | — |
+| 3, 4, 5, 6, 7, 8, 10, 12, 13, 14, 15 | Yapılmadı (bu turda) | — |
+
+KARAR: Hesap silme her adımı çalıştırır, hataları toplar; herhangi bir adım başarısızsa Auth hesabı silinmez. Adımlar idempotenttir, yeniden denenebilir. | GEREKÇE: Eski kod grup hatasını console.warn ile yutuyor, sonra Auth'u siliyordu (veri kalıntısı). | ALTERNATİF: Fail-fast (ilk hatada dur) | GERİ ALMA: deleteUserData'yı eski haline döndür (tek commit).
+
+KARAR: Bulunmayan ve özel rota aynı şekilde reddedilir (permission-denied). | GEREKÇE: Varlık sızdırılmaz. | ALTERNATİF: Bulunamadı ayrımı için ek kural | GERİ ALMA: routes get kuralına `resource == null` dalı.
+
+KARAR: Kayıtlı rota silinirken rota sayacı aynı batch'te düşürülür; rota yoksa yalnız kayıt silinir. | GEREKÇE: savedRouteCounterDecreased kuralı bunu zorunlu kılar. | ALTERNATİF: Sayaçsız silme (kural reddeder) | GERİ ALMA: —
+
+Açık noktalar (hesap silme):
+- Karşı tarafın `users/{arkadaş}/friends/{uid}` indeksi kuralla silinemez; UI indeksi `friendships` belgesiyle doğrulamalı.
+- Giden arkadaşlık istekleri alıcı kutusunda kalır (kural: alıcı veya gönderen silebilir; gönderen listesi yok).
+- Sahibi olunan grubun mesajları (`groups/{g}/messages`) grup silinince yetim kalır; kural mesaj silmeyi yalnız gönderene verir.
+- Başkasının özel rotası kaydedilmişse savedRoutes adımı `getDoc` izni nedeniyle başarısız olabilir; bu durumda hesap silinmez (kullanıcıya hata bildirilir).
+- `joinAttempts` (users/{uid}/joinAttempts) kaldırıldı; grup altındaki deneme kayıtları sahibi tarafından silinemez (kural).
+
+DOSYA TALEBİ: tests/firestore.rules.test.ts dışında yok. Emulator (Java 21 + firebase emulator jar) yerelde yok; rules testleri CI'da koşar.
+
+Kapı çıktıları (yerel): typecheck ✓, lint ✓, test:run 451/451 ✓, test:scripts ✓, build bütçe içinde ✓, audit:check ✓, git diff --check ✓, test:rules:emulator ÇALIŞTIRILAMADI (yerelde emulator yok; CI kanıtı bekleniyor).
+
+Teslim durumu: CI kırmızıydı (Firestore security rules tests). Bu tur kök nedeni çözmedi. CI yeşil olmadan teslim YOK.
