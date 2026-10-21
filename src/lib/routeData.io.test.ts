@@ -75,7 +75,26 @@ const h = vi.hoisted(() => {
     return null;
   };
 
-  return { store, stats, mergeUpdate, snapshotOf, docsFor, findUndefined };
+  // Gerçek SDK: "Nested arrays are not supported" — dizi içinde dizi yazılamaz.
+  const findNestedArray = (value: unknown, path = "", inArray = false): string | null => {
+    if (Array.isArray(value)) {
+      if (inArray) return path || "(kök)";
+      for (let index = 0; index < value.length; index += 1) {
+        const found = findNestedArray(value[index], `${path}[${index}]`, true);
+        if (found) return found;
+      }
+      return null;
+    }
+    if (value && typeof value === "object") {
+      for (const [key, item] of Object.entries(value)) {
+        const found = findNestedArray(item, path ? `${path}.${key}` : key, false);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
+  return { store, stats, mergeUpdate, snapshotOf, docsFor, findUndefined, findNestedArray };
 });
 
 vi.mock("./firebase", () => ({ db: {}, firebaseApp: {}, firebaseConfigured: true, isCloudReady: true }));
@@ -120,6 +139,10 @@ vi.mock("firebase/firestore", () => ({
     const undefinedPath = h.findUndefined(data);
     if (undefinedPath) {
       throw new Error(`Function setDoc() called with invalid data. Unsupported field value: undefined (found in field ${undefinedPath})`);
+    }
+    const nestedPath = h.findNestedArray(data);
+    if (nestedPath) {
+      throw new Error(`Function setDoc() called with invalid data. Nested arrays are not supported (found in field ${nestedPath})`);
     }
     h.store.set(docRef.path, data);
   },
@@ -455,6 +478,33 @@ describe("routeData üretim regresyonları (2026-10-21)", () => {
     expect("origin" in stored.route).toBe(false);
     expect(stored.saveCount).toBe(1);
     expect(h.store.get("users/u1/savedRoutes/route-yuruyus")).toEqual({ routeId: "route-yuruyus", savedAt: "SERVER_TS" });
+  });
+
+  it("P17 yürüyüş taslağı bacaklı (coords [lng,lat][]) olarak yayınlanır; okununca bacak geri açılır", async () => {
+    const coords: [number, number][] = [[27.14, 38.42], [27.1412, 38.4207], [27.143, 38.4211]];
+    const draft: AtlasRoute = {
+      ...rota("route-bacakli"),
+      days: [{
+        dayNumber: 1,
+        title: "Yürüyüş",
+        summary: "Kayıt",
+        stops: [],
+        polyline: "x",
+        legs: [{ id: "leg-1", coords, mode: "walking", distanceKm: 0.3, durationMinutes: 5 }],
+      }],
+    };
+
+    await publishRoute("u1", draft, "private");
+
+    const stored = h.store.get("routes/route-bacakli") as { route: { days: Array<{ legs: Array<Record<string, unknown>> }> } };
+    expect("coords" in stored.route.days[0].legs[0]).toBe(false);
+    expect(typeof stored.route.days[0].legs[0].coordsPolyline).toBe("string");
+
+    const read = await getPublishedRoute("route-bacakli");
+    expect(read?.route.days[0].legs?.[0]).toMatchObject({ id: "leg-1", mode: "walking", distanceKm: 0.3 });
+    expect(read?.route.days[0].legs?.[0].coords).toEqual(coords);
+    expect("coordsPolyline" in (read?.route.days[0].legs?.[0] ?? {})).toBe(false);
+    expect(draft.days[0].legs?.[0].coords).toEqual(coords); // girdi mutasyona uğramaz
   });
 
   it("publishRoute yazma izni reddinde ham Firebase metni yerine Türkçe hata verir ve cause korur", async () => {

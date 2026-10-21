@@ -1,66 +1,33 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { AtlasRoute, AtlasTrack, RouteStop } from "../types";
+import type { AtlasRoute, AtlasTrack } from "../types";
 import { createTrack } from "../lib/routeData";
 import { reverseName } from "../utils/geo";
-import { encodePolyline } from "../utils/polyline";
-import { finishDwellDetection, recordDwellPoint, simplifiedDistanceKm, simplifyTrack, type DwellState, type TrackPoint } from "../utils/track";
+import {
+  TRACK_DETECTION,
+  buildTrackDraft,
+  recordDwellPoint,
+  removeGpsSpikes,
+  simplifiedDistanceKm,
+  simplifyTrack,
+  trackRuleViolation,
+  type DwellState,
+  type SimplificationStats,
+  type TrackPoint,
+} from "../utils/track";
 
 export type TrackRecorderStatus = "idle" | "recording" | "saving" | "error";
 
 export interface FinishedTrack {
   track: AtlasTrack;
   route: AtlasRoute;
+  /** P17 sadeleştirme teşhisi (maksimum sapma, tutulan nokta). */
+  stats: SimplificationStats;
 }
 
 function makeId() {
   return typeof crypto !== "undefined" && "randomUUID" in crypto
     ? `track-${crypto.randomUUID()}`
     : `track-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
-function formatTime(timestamp: number): string {
-  return new Date(timestamp).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
-}
-
-function stopForTrack(stop: AtlasTrack["stops"][number], index: number, name: string): RouteStop {
-  const durationMinutes = Math.max(0, Math.round((stop.endedAt - stop.startedAt) / 60_000));
-  return {
-    order: index + 1,
-    name: name || `Durak ${index + 1}`,
-    type: "other",
-    lat: stop.lat,
-    lng: stop.lng,
-    startTime: formatTime(stop.startedAt),
-    endTime: formatTime(stop.endedAt),
-    durationMinutes,
-    description: `Kayıt sırasında yaklaşık ${durationMinutes} dakika burada durdun.`,
-    aiReason: `Senin kaydından: burada ${durationMinutes} dakika durdun.`,
-    tips: [],
-    isCommunityPin: false,
-    pinId: null,
-    category: "Kayıtlı iz",
-    imageUrl: null,
-    source: "atlasia",
-  };
-}
-
-async function draftRoute(track: AtlasTrack, names: Promise<string | null>[]): Promise<AtlasRoute> {
-  const stopNames = await Promise.all(names);
-  const stops = track.stops.map((stop, index) => stopForTrack(stop, index, stopNames[index] ?? `Durak ${index + 1}`));
-  return {
-    id: `route-${track.id.replace(/^track-/, "")}`,
-    routeTitle: "Kayıtlı yürüyüş",
-    routeSummary: `Yürüyüş kaydından oluşturulan özel taslak. Yaklaşık ${track.distanceKm} km; süre, çizgi ve duraklar cihaz kaydından türetildi.`,
-    totalDurationHours: Math.round((track.endedAt - track.startedAt) / 360_000) / 10,
-    totalDistanceKm: track.distanceKm,
-    transport: "walking",
-    vibe: "Yürüyüş kaydı",
-    days: [{ dayNumber: 1, title: "Yürüyüş", summary: "Kayıt sırasında tespit edilen duraklar.", stops, polyline: track.polyline }],
-    weatherNote: null,
-    alternatives: [],
-    createdAt: Date.now(),
-    origin: track.stops[0] ? { lat: track.stops[0].lat, lng: track.stops[0].lng } : undefined,
-  };
 }
 
 export function useTrackRecorder(uid: string, onPreview?: (coords: [number, number][]) => void) {
@@ -145,7 +112,8 @@ export function useTrackRecorder(uid: string, onPreview?: (coords: [number, numb
       const samples = points.current;
       setElapsedSeconds(Math.max(0, Math.floor((Date.now() - startedAt.current) / 1000)));
       setPointCount(samples.length);
-      const simplified = simplifyTrack(samples);
+      // Sıçramalar canlı önizlemeden de çıkarılır (P17).
+      const simplified = simplifyTrack(removeGpsSpikes(samples), TRACK_DETECTION.simplifyToleranceM);
       setDistanceKm(simplifiedDistanceKm(simplified));
       previewRef.current?.(simplified);
     }, 1000);
@@ -162,28 +130,21 @@ export function useTrackRecorder(uid: string, onPreview?: (coords: [number, numb
       setStatus("error");
       throw new Error("Henüz konum ölçümü alınmadı. Biraz bekleyip tekrar bitir.");
     }
-    const finishedDwell = finishDwellDetection(dwell.current);
-    const simplified = simplifyTrack(rawPoints, 7);
-    const track: AtlasTrack = {
-      id: makeId(),
-      authorUid: uid,
-      startedAt: rawPoints[0].timestamp,
-      endedAt: rawPoints[rawPoints.length - 1].timestamp,
-      distanceKm: simplifiedDistanceKm(simplified),
-      polyline: encodePolyline(simplified),
-      stops: finishedDwell.stops,
-      accuracy: {
-        sampleCount: rawPoints.length,
-        meanMeters: Math.round(rawPoints.reduce((sum, point) => sum + point.accuracy, 0) / rawPoints.length * 10) / 10,
-        maxMeters: Math.round(rawPoints.reduce((max, point) => Math.max(max, point.accuracy), 0) * 10) / 10,
-      },
-    };
     try {
+      // Önce saf taslak + kural ön denetimi + bulut kaydı; ad çözümlemesi (ağ)
+      // ancak iz güvenle yazıldıktan sonra yapılır. Aynı girdilerle ikinci
+      // çağrı aynı izi verir, yalnız durak adları dolar.
+      const input = { points: rawPoints, dwell: dwell.current, uid, trackId: makeId(), now: Date.now() };
+      const { track } = buildTrackDraft(input);
+      const violation = trackRuleViolation(track);
+      if (violation) throw new Error(violation);
       await createTrack(uid, track);
-      const names = track.stops.map((stop) => reverseName(stop.lat, stop.lng));
-      const route = await draftRoute(track, names);
+      const stopNames = await Promise.all(track.stops.map((stop) => reverseName(stop.lat, stop.lng)));
+      const { route, stats } = buildTrackDraft({ ...input, stopNames });
+      points.current = [];
+      dwell.current = { candidate: null, stops: [] };
       setStatus("idle");
-      return { track, route };
+      return { track, route, stats };
     } catch (failure) {
       setStatus("error");
       const message = failure instanceof Error ? failure.message : "İz buluta kaydedilemedi.";

@@ -1,12 +1,21 @@
 import { useMemo } from "react";
 import type { AtlasRoute, RouteLeg } from "../types";
-import { buildElevationProfile, buildProfileForPolyline } from "../utils/elevation";
+import {
+  buildElevationProfile,
+  buildProfileForPolyline,
+  type TerrainSampler,
+} from "../utils/elevation";
 
 interface Props {
   route?: AtlasRoute | null;
   legs?: RouteLeg[] | null;
   coords?: [number, number][] | null;
   className?: string;
+  /**
+   * DEM örnekleyici (MapLibre map). Verilmezse profil "bilinmiyor" görünür —
+   * P17: sahte/sıfır düz çizgi çizmek yasak, uydurma eğri göstermek yanıltıcı.
+   */
+  terrain?: TerrainSampler | null;
 }
 
 const MODE_COLOR: Record<string, string> = {
@@ -29,22 +38,40 @@ const MODE_DASH: Record<string, string | undefined> = {
   transit: "8 4",
 };
 
-export default function ElevationProfile({ route, legs, coords, className }: Props) {
+export default function ElevationProfile({ route, legs, coords, className, terrain }: Props) {
   const profile = useMemo(() => {
-    if (legs && legs.length > 0) return buildElevationProfile(legs);
-    if (route?.days[0]?.legs && route.days[0].legs.length > 0) return buildElevationProfile(route.days[0].legs);
-    if (coords && coords.length > 1) return buildProfileForPolyline(coords);
+    if (legs && legs.length > 0) return buildElevationProfile(legs, terrain);
+    if (route?.days[0]?.legs && route.days[0].legs.length > 0)
+      return buildElevationProfile(route.days[0].legs, terrain);
+    if (coords && coords.length > 1) return buildProfileForPolyline(coords, "walking", terrain);
     if (route?.days[0]?.polyline) {
       // Polyline decode edip basit profil (fallback)
       return null;
     }
     return null;
-  }, [route, legs, coords]);
+  }, [route, legs, coords, terrain]);
 
-  if (!profile || profile.samples.length < 2) {
+  // Durum 1: geometri hiç yok → hesap yapılamadı.
+  if (!profile) {
     return (
       <div className={className ?? ""} aria-label="Yükseklik profili yok">
         <p className="text-[11px] text-mint/60">Yükseklik profili bu rota için hesaplanamadı.</p>
+      </div>
+    );
+  }
+
+  // Durum 2: geometri var ama DEM örneklenemedi → "bilinmiyor" (sıfır çizgisi ÇİZİLMEZ).
+  if (!profile.reliable || profile.samples.length < 2) {
+    return (
+      <div className={className ?? ""} aria-label="Yükseklik verisi yok">
+        <p className="text-[11px] text-mint/60">
+          Yükseklik verisi yok — tırmanış ve eğim gösterilmiyor.
+        </p>
+        <p className="mt-1 text-[10.5px] text-mint/45">
+          {profile.totalDistanceKm > 0
+            ? `Rota uzunluğu ${profile.totalDistanceKm} km; yükseklik profili DEM örneklenemediği için bilinmiyor.`
+            : "Yükseklik profili DEM örneklenemediği için bilinmiyor."}
+        </p>
       </div>
     );
   }

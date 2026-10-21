@@ -116,7 +116,9 @@ describe("useTrackRecorder", () => {
     feed(38.42, 181, 5, BASE + 2);
     feed(38.42, 27.14, -1, BASE + 3);
     feed(38.42, 27.14, 15, BASE + 180_000);
-    feed(38.42, 27.15, 10, BASE + 190_000);
+    // 870 m / 5 dk ≈ 10 km/h: gerçekçi yürüyüş. (P17 öncesi 10 sn idi = 313 km/h;
+    // P17 sıçrama filtresi bunu haklı olarak GPS sıçraması sayıp atar.)
+    feed(38.42, 27.15, 10, BASE + 480_000);
 
     act(() => vi.advanceTimersByTime(1000));
 
@@ -151,7 +153,9 @@ describe("useTrackRecorder", () => {
     act(() => result.current.start());
     feed(38.42, 27.14, 5, BASE);
     feed(38.42, 27.14, 15, BASE + 180_000);
-    feed(38.42, 27.15, 10, BASE + 190_000);
+    // 870 m / 5 dk ≈ 10 km/h: gerçekçi yürüyüş. (P17 öncesi 10 sn idi = 313 km/h;
+    // P17 sıçrama filtresi bunu haklı olarak GPS sıçraması sayıp atar.)
+    feed(38.42, 27.15, 10, BASE + 480_000);
 
     let finished: FinishedTrack | undefined;
     await act(async () => {
@@ -164,7 +168,7 @@ describe("useTrackRecorder", () => {
     expect(finished?.track).toMatchObject({
       authorUid: "u1",
       startedAt: BASE,
-      endedAt: BASE + 190_000,
+      endedAt: BASE + 480_000,
       distanceKm: 0.87,
       accuracy: { sampleCount: 3, meanMeters: 10, maxMeters: 15 },
     });
@@ -221,6 +225,25 @@ describe("useTrackRecorder", () => {
     );
     expect(result.current.status).toBe("error");
     expect(h.createTrack).not.toHaveBeenCalled();
+  });
+
+  it("tek GPS sıçraması (P17) çizgi ve mesafeye girmez; kayıt sürer", async () => {
+    const { result } = renderHook(() => useTrackRecorder("u1"));
+    act(() => result.current.start());
+    feed(38.42, 27.14, 5, BASE);
+    feed(38.4245, 27.14, 5, BASE + 30_000); // 500 m / 30 sn = 60 km/h → sıçrama
+    feed(38.4202, 27.1405, 5, BASE + 60_000);
+    feed(38.4204, 27.141, 5, BASE + 90_000);
+
+    let finished: FinishedTrack | undefined;
+    await act(async () => {
+      finished = await result.current.finish();
+    });
+
+    expect(finished?.track.accuracy.sampleCount).toBe(3);
+    expect(finished?.track.distanceKm).toBeLessThan(0.15);
+    expect(decodePolyline(finished!.track.polyline).some(([, lat]) => lat > 38.424)).toBe(false);
+    expect(finished?.stats.maxDeviationM).toBeLessThanOrEqual(7);
   });
 
   it("bulut kaydı reddi hatayı aynen yüzeye çıkarır ve rota adı çözümlemesi yapmaz", async () => {
