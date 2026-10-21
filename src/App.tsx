@@ -34,7 +34,8 @@ import { useTheme } from "./hooks/useTheme";
 import { useInstallApp, type InstallAppController } from "./hooks/useInstallApp";
 import { isCloudReady, firebaseConfigSummary } from "./lib/firebase";
 import type { PlaceViewport } from "./lib/firestoreData";
-import { openPublishedRoute } from "./lib/publishedRouteOpen";
+import { ROUTE_OPEN_MESSAGES, openPublishedRoute } from "./lib/publishedRouteOpen";
+import { SHARE_LINK_PARAM, parseRouteShareLink } from "./utils/shareLink";
 import type { AtlasRoute, CategoryId, Place, RouteVisibility, ViewState } from "./types";
 import { haversineKm, reverseName, type SearchResult } from "./utils/geo";
 import { storageGet, storageSet } from "./utils/storage";
@@ -181,17 +182,34 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   useEffect(() => { storageSet(MAP_STYLE_KEY, baseMap); }, [baseMap]);
 
   useEffect(() => {
-    const routeId = new URLSearchParams(window.location.search).get("route");
-    if (!routeId) return;
+    const params = new URLSearchParams(window.location.search);
+    const routeId = params.get("route");
+    const shareToken = params.get(SHARE_LINK_PARAM);
+    if (!routeId && !shareToken) return;
     let active = true;
-    void openPublishedRoute(routeId).then((outcome) => {
-      if (!active) return;
-      if (outcome.status === "opened") {
-        setResumeRoute(outcome.route);
-        setAtlasOpen(true);
-      }
-      setToast(outcome.message);
-    });
+    if (routeId) {
+      void openPublishedRoute(routeId).then((outcome) => {
+        if (!active) return;
+        if (outcome.status === "opened") {
+          setResumeRoute(outcome.route);
+          setAtlasOpen(true);
+        }
+        setToast(outcome.message);
+      });
+    } else if (shareToken) {
+      // P20: rota bağlantının içinde gelir. Doğrulama shareLink'te; burada
+      // yalnız önizleme açılır — kaydetmek kullanıcının açık eylemidir.
+      void parseRouteShareLink(shareToken).then((outcome) => {
+        if (!active) return;
+        if (outcome.ok) {
+          setResumeRoute(outcome.route);
+          setAtlasOpen(true);
+          setToast(ROUTE_OPEN_MESSAGES.opened);
+        } else {
+          setToast(outcome.message);
+        }
+      });
+    }
     return () => { active = false; };
   }, []);
 

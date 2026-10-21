@@ -3,6 +3,7 @@ import { ImagePlus, Link2, LockKeyhole, Save, ShieldCheck, Trash2, X } from "luc
 import type { AtlasRoute, RouteVisibility } from "../types";
 import { useCollections } from "../hooks/useCollections";
 import { compressImageWithinLimit } from "../utils/image";
+import { buildRouteShareUrl, createRouteShareLink } from "../utils/shareLink";
 import { cn } from "../utils/cn";
 
 interface Props {
@@ -28,6 +29,13 @@ export default function RouteEditor({ route, onClose, onSaved }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [shareLink, setShareLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  // Paylaşım onayı: varsayılan işaretsiz; private dışı yayın ve hesapsız
+  // bağlantı bu onay olmadan gizlilik kapısından geçemez.
+  const [shareConsent, setShareConsent] = useState(false);
+  const [inlineLink, setInlineLink] = useState<string | null>(null);
+  const [inlineNote, setInlineNote] = useState<string | null>(null);
+  const [inlineCopied, setInlineCopied] = useState(false);
+  const [linkBusy, setLinkBusy] = useState(false);
 
   useEffect(() => {
     setTitle(route.routeTitle);
@@ -37,6 +45,9 @@ export default function RouteEditor({ route, onClose, onSaved }: Props) {
     setVisibility("private");
     setShareLink(null);
     setError(null);
+    setShareConsent(false);
+    setInlineLink(null);
+    setInlineNote(null);
   }, [route]);
 
   const selectPhoto = async (file: File | undefined) => {
@@ -50,21 +61,59 @@ export default function RouteEditor({ route, onClose, onSaved }: Props) {
     }
   };
 
-  const save = async () => {
-    if (!title.trim()) { setError("Rotaya bir ad ver."); return; }
-    if (summary.length > 5000) { setError("Not en fazla 5.000 karakter olabilir."); return; }
-    setBusy(true);
-    setError(null);
+  /** Düzenlenmiş rotayı kurar; ad/uzunluk denetimi hem kaydetme hem bağlantı için aynıdır. */
+  const buildUpdated = (): AtlasRoute | null => {
+    if (!title.trim()) { setError("Rotaya bir ad ver."); return null; }
+    if (summary.length > 5000) { setError("Not en fazla 5.000 karakter olabilir."); return null; }
     const updated: AtlasRoute = { ...route, routeTitle: title.trim().slice(0, 160), routeSummary: summary.trim(), region: region.trim().slice(0, 120), ...(photo ? { photo } : {}) };
     if (!photo) delete updated.photo;
+    return updated;
+  };
+
+  const save = async () => {
+    const updated = buildUpdated();
+    if (!updated) return;
+    setBusy(true);
+    setError(null);
     try {
-      await publishRoute(updated, visibility);
+      await publishRoute(updated, visibility, shareConsent);
       setShareLink(visibility === "private" ? null : `${window.location.origin}/?route=${encodeURIComponent(updated.id)}`);
       onSaved(updated, visibility);
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : "Rota kaydedilemedi. Bağlantını kontrol edip tekrar dene.");
     } finally {
       setBusy(false);
+    }
+  };
+
+  /**
+   * P20: rotayı bağlantının içinde taşıyan hesapsız paylaşım. Sunucuya
+   * yazılmaz; aynı onay kutusu ve aynı gizlilik kapısı geçerlidir.
+   */
+  const createInlineLink = async () => {
+    const updated = buildUpdated();
+    if (!updated) return;
+    setLinkBusy(true);
+    setError(null);
+    setInlineNote(null);
+    try {
+      const created = await createRouteShareLink(updated, { userInitiated: true, shareConsent });
+      if (!created.ok) {
+        setError(created.message);
+        return;
+      }
+      setInlineLink(buildRouteShareUrl(window.location.origin, created.token));
+      setInlineCopied(false);
+      const notes = [
+        ...(created.droppedPhoto ? ["Kapak fotoğrafı bağlantıya sığmadığı için eklenmedi."] : []),
+        ...created.warnings,
+      ];
+      setInlineNote(notes.length > 0 ? notes.join(" ") : null);
+    } catch (failure) {
+      console.warn("[Atlasia] Paylaşım bağlantısı üretilemedi:", failure);
+      setError("Bağlantı üretilemedi. Tekrar deneyebilirsin.");
+    } finally {
+      setLinkBusy(false);
     }
   };
 
@@ -110,6 +159,22 @@ export default function RouteEditor({ route, onClose, onSaved }: Props) {
             <span><span className="flex items-center gap-2 text-[14px] font-semibold">{option.value === "private" ? <LockKeyhole size={15} /> : <Link2 size={15} />}{option.label}</span><span className="mt-1 block text-[12px] leading-relaxed text-mint/65">{option.detail}</span></span>
           </label>)}
         </fieldset>
+
+        {visibility !== "private" && (
+          <div className="grid gap-2">
+            <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-white/10 p-3">
+              <input type="checkbox" checked={shareConsent} onChange={(event) => setShareConsent(event.currentTarget.checked)} aria-label="Paylaşım onayı" className="mt-1 accent-[#f2d77c]" />
+              <span><span className="block text-[14px] font-semibold">Paylaşmayı onaylıyorum</span><span className="mt-1 block text-[12px] leading-relaxed text-mint/65">Bu rotanın {visibility === "public" ? "herkese açık listelenmesini ve bağlantıyla açılmasını" : "bağlantısı olan herkesçe açılmasını"} kabul ediyorum. Ham yürüyüş izim paylaşılmaz; yalnız bu rota paylaşılır.</span></span>
+            </label>
+            <div className="rounded-2xl border border-white/10 p-3">
+              <p className="text-[13px] font-semibold">Hesapsız bağlantıyla paylaş</p>
+              <p className="mt-1 text-[12px] leading-relaxed text-mint/65">Rota bağlantının içinde taşınır; sunucuya yayımlanmaz, karşı tarafın hesabı olması gerekmez. Bağlantıyı alan rotayı olduğu gibi açar — kiminle paylaştığına dikkat et.</p>
+              <button type="button" disabled={linkBusy} onClick={() => void createInlineLink()} className="mt-2 flex min-h-10 items-center gap-2 rounded-full border border-leaf/30 bg-leaf/10 px-4 text-[12px] font-semibold text-leaf disabled:opacity-50"><Link2 size={14} />{linkBusy ? "Bağlantı hazırlanıyor…" : "Bağlantıyı oluştur"}</button>
+              {inlineLink && <div className="mt-2 flex gap-2"><input aria-label="Hesapsız paylaşım bağlantısı" readOnly value={inlineLink} onFocus={(event) => event.currentTarget.select()} className="min-w-0 flex-1 rounded-lg border border-white/15 bg-black/20 px-2 text-[12px]" /><button type="button" onClick={() => { void navigator.clipboard.writeText(inlineLink).then(() => setInlineCopied(true)).catch((failure: unknown) => { console.warn("[Atlasia] Bağlantı panoya kopyalanamadı:", failure); setError("Panoya kopyalanamadı. Bağlantıyı seçip elle kopyalayabilirsin."); }); }} className="min-h-10 shrink-0 rounded-full bg-leaf/15 px-3 text-[12px] font-semibold text-leaf">{inlineCopied ? "Kopyalandı" : "Kopyala"}</button></div>}
+              {inlineNote && <p role="note" className="mt-2 text-[12px] leading-relaxed text-sun">{inlineNote}</p>}
+            </div>
+          </div>
+        )}
 
         <p className="flex items-start gap-2 rounded-xl border border-leaf/20 bg-leaf/[0.06] p-3 text-[12px] leading-relaxed text-mint/75"><ShieldCheck size={15} className="mt-0.5 shrink-0 text-leaf" />Yürüyüş izleri ve taslaklar varsayılan olarak gizlidir. Bu görünürlük seçimi yalnız bu rotayı etkiler; ham iz kendiliğinden yayımlanmaz.</p>
         {error && <p role="alert" className="text-[13px] text-red-200">{error}</p>}

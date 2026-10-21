@@ -142,7 +142,7 @@ describe("useCollections (bulut modu)", () => {
     const item = route("r1");
 
     await act(async () => {
-      await result.current.publishRoute(item, "unlisted");
+      await result.current.publishRoute(item, "unlisted", true);
     });
     expect(h.publishRoute).toHaveBeenCalledWith("u1", item, "unlisted");
     expect(h.saveRouteReference).toHaveBeenCalledWith("u1", item);
@@ -152,8 +152,26 @@ describe("useCollections (bulut modu)", () => {
 
     h.publishRoute.mockRejectedValueOnce(new Error("Yayın reddedildi"));
     h.saveRouteReference.mockClear();
-    await expect(result.current.publishRoute(item, "public")).rejects.toThrow("Yayın reddedildi");
+    await expect(result.current.publishRoute(item, "public", true)).rejects.toThrow("Yayın reddedildi");
     expect(h.saveRouteReference).not.toHaveBeenCalled();
+  });
+
+  it("paylaşım onayı olmadan private dışı yayın ÇALIŞMAZ; bulut hiç çağrılmaz", async () => {
+    const { result } = renderHook(() => useCollections(), { wrapper });
+    const item = route("r-onaysiz");
+
+    await expect(result.current.publishRoute(item, "public", false))
+      .rejects.toThrow("ayrı bir onay ister");
+    await expect(result.current.publishRoute(item, "unlisted", false))
+      .rejects.toThrow("ayrı bir onay ister");
+    expect(h.publishRoute).not.toHaveBeenCalled();
+    expect(h.saveRouteReference).not.toHaveBeenCalled();
+
+    // private kayıt onay istemez: aynı çağrı onaysız da kapıdan geçer.
+    await act(async () => {
+      await result.current.publishRoute(item, "private", false);
+    });
+    expect(h.publishRoute).toHaveBeenCalledWith("u1", item, "private");
   });
 
   it("kullanıcı nesnesi değişince eski aboneliği kapatıp yeni uid ile açar", () => {

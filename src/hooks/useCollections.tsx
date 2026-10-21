@@ -19,7 +19,12 @@ interface CollectionState {
   error: string | null;
   savePlace: (place: Place) => void;
   saveRoute: (route: AtlasRoute) => void;
-  publishRoute: (route: AtlasRoute, visibility: RouteVisibility) => Promise<void>;
+  /**
+   * Yayınlama tek gizlilik kapısından geçer. `shareConsent`, çağıran arayüzün
+   * onay kutusundan gelir; private dışı görünürlükte onaysız yayın **çalışmaz**
+   * (kapı hata fırlatır). Varsayılanı yoktur: her çağıran bilinçli geçirir.
+   */
+  publishRoute: (route: AtlasRoute, visibility: RouteVisibility, shareConsent: boolean) => Promise<void>;
   removeRoute: (id: string) => void;
   isSaved: (id: string) => boolean;
 }
@@ -84,13 +89,14 @@ export function CollectionsProvider({ children }: { children: ReactNode }) {
    * yayımlanamadığı açıkça söylenir. Böylece sahte "yayınlandı" bağlantısı
    * üretilmez, ağ bağımlılığı olmayan modda hata da oluşmaz.
    */
-  const publish = async (route: AtlasRoute, visibility: RouteVisibility) => {
+  const publish = async (route: AtlasRoute, visibility: RouteVisibility, shareConsent: boolean) => {
     // Tek gizlilik kapısı: ham iz alanları taşınmaz, yayın açık kullanıcı
     // eylemiyle yapılır (bu fonksiyon yalnız "Yayınla/Kaydet" düğmesinden çağrılır).
-    const decision = resolveTrackShare(route, { userInitiated: true, visibility, shareConsent: true });
+    // Onay burada uydurulmaz; arayüzdeki onay kutusunun değeri aynen geçer.
+    const decision = resolveTrackShare(route, { userInitiated: true, visibility, shareConsent });
     if (!decision.ok) throw new Error(decision.reason);
     if (!firebaseConfigured) {
-      setSavedRoutes((current) => [route, ...current.filter((item) => item.id !== route.id)].slice(0, 40));
+      setSavedRoutes((current) => [decision.route, ...current.filter((item) => item.id !== decision.route.id)].slice(0, 40));
       throw new Error(
         "Bulut hesabı bağlı değil: rota bu cihazda kaydedildi, yayımlanamadı. Yayımlamak için bulut (e-posta) hesabıyla giriş yap.",
       );

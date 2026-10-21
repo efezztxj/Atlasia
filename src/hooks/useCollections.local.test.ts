@@ -134,7 +134,7 @@ describe("useCollections (yerel mod)", () => {
 
     let failure: unknown;
     await act(async () => {
-      failure = await result.current.publishRoute(item, "public").catch((error: unknown) => error);
+      failure = await result.current.publishRoute(item, "public", true).catch((error: unknown) => error);
     });
 
     // Bulut fonksiyonları hiç denenmez (yerelde yayın yoktur).
@@ -159,10 +159,24 @@ describe("useCollections (yerel mod)", () => {
 
     let failure: unknown;
     await act(async () => {
-      failure = await result.current.publishRoute(kirlenmis, "private").catch((error: unknown) => error);
+      failure = await result.current.publishRoute(kirlenmis, "private", false).catch((error: unknown) => error);
     });
 
     expect((failure as Error).message).toContain("Yalnız taslak rota paylaşılabilir");
+    expect(h.publishRoute).not.toHaveBeenCalled();
+    expect(result.current.savedRoutes).toEqual([]);
+  });
+
+  it("onaysız public yayın yerelde de kapıda durur; cihazda da saklanmaz", async () => {
+    const { result } = renderHook(() => useCollections(), { wrapper });
+    const item = route("r-onaysiz-yerel");
+
+    let failure: unknown;
+    await act(async () => {
+      failure = await result.current.publishRoute(item, "public", false).catch((error: unknown) => error);
+    });
+
+    expect((failure as Error).message).toContain("ayrı bir onay ister");
     expect(h.publishRoute).not.toHaveBeenCalled();
     expect(result.current.savedRoutes).toEqual([]);
   });
