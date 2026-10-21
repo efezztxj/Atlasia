@@ -16,6 +16,10 @@ createRoot(document.getElementById("root")!).render(
 
 if ("serviceWorker" in navigator && location.protocol !== "file:") {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(() => {});
+    navigator.serviceWorker.register("/sw.js").catch((error: unknown) => {
+      // SW kaydı başarısızsa uygulama çevrimdışı kabuk olmadan çevrimiçi
+      // çalışmaya devam eder; hatayı yutma, tanı için görünür bırak.
+      console.warn("Service worker kaydedilemedi; çevrimiçi modda devam ediliyor.", error);
+    });
   });
 }
