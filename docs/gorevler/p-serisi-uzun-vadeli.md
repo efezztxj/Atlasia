@@ -56,7 +56,6 @@
 
 | ID | Görev | Tahmini süre | Tip | Bağımlılık | Durum |
 |---|---|---|---|---|---|
-| P12 | Firestore Rules test kapsamını büyüt + koşucuyu çapraz platform sağlamlaştır | 1 gece (~4–6 sa) | güvenlik/test | P5 notları | 🚧 kod tamam (`teslimat-p12.md`); emulator koşumu Java 21'li ortam/CI bekliyor |
 | P13 | Harita etiket çakışması kusuru (kktc-label vs Esri) — doğrulama + kalibrasyon kilidi | ~3–4 sa | doğrulama | tarayıcı kanıtı | ⏳ bekliyor |
 | P14 | Overpass + Wikidata/Wikipedia içerik boru hattı (atıf dahil) | 1–2 gece | özellik | karar (f) seçili: 1 | ⏳ bekliyor |
 | P15 | Çevrimdışı saha paketi: tile önbelleği (lisans-güvenli kaynaklar) | 1 gece | özellik | P11 allowlist'e dokunmadan genişletme | ⏳ bekliyor |
@@ -103,3 +102,4 @@ gece yarısı kendi başına geçilmez.
 |---|---|
 | 2026-10-21 | İlk sürüm: P12–P20 tanımlandı, P1–P11 kapanış notları taşındı |
 | 2026-10-21 | P1–P4 prompt'ları ayrı dosyaya çıkarıldı, satırı ana listeden kaldırıldı; "biten görev tablodan kalkar" kuralı eklendi |
+| 2026-10-21 | P12 kapatıldı (PR #20, CI emulator kanıtlı) ve satırı kural gereği kaldırıldı; geçmişi `teslimat-p12.md` içinde |

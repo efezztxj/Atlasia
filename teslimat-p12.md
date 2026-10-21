@@ -99,6 +99,12 @@ Kilitli dosyalar: `MapView.tsx` ve `firestore.rules` değişmedi.
 - `tests/firestore.rules.test.ts` (+5 senaryo, `arrayUnion` import)
 - `docs/gorevler/…` (plan güncellemesi), `teslimat-p12.md`
 
+> **Güncelleme (2026-10-21):** Emulator doğrulaması eksikliği kapandı —
+> PR #20 CI koşumu (run 39548094085, "Firestore security rules tests" adımı,
+> setup-java 21) 24 senaryonun tamamını gerçek emulator'da çalıştırıp
+> **başarıyla** tamamladı. PR, kullanıcının açık onayı ile merge edildi;
+> bu andan itibaren P12 tamamen kapalıdır.
+
 ## Bilinen riskler / sonraki adım
 
 - Yeni rules testleri emulator'da kanıtlanana kadar P12 planda 🚧 durumda kalır; Java 21'li ilk CI koşumu bunu kapatır.
