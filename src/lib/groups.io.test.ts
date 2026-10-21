@@ -35,12 +35,19 @@ vi.mock("firebase/firestore", () => ({
   serverTimestamp: () => "SERVER_TS",
   setDoc: async (docRef: { path: string }, data: Record<string, unknown>) => { h.store.set(docRef.path, data); },
   deleteDoc: async (docRef: { path: string }) => { h.store.delete(docRef.path); },
-  getDoc: async (docRef: { path: string }) => ({
-    exists: () => h.store.has(docRef.path),
-    data: () => h.store.get(docRef.path),
-    id: docRef.path.split("/").at(-1),
-    ref: docRef,
-  }),
+  getDoc: async (docRef: { path: string }) => {
+    // "gizli-" ile başlayan grup belgesi: üye olmayanın gerçek Firestore'da
+    // alacağı permission-denied hatasını taklit et.
+    if (docRef.path.includes("gizli-")) {
+      throw Object.assign(new Error("Missing or insufficient permissions."), { code: "permission-denied" });
+    }
+    return {
+      exists: () => h.store.has(docRef.path),
+      data: () => h.store.get(docRef.path),
+      id: docRef.path.split("/").at(-1),
+      ref: docRef,
+    };
+  },
   getDocs: async (q: { path: string }) => {
     const docs = [...h.store.entries()]
       .filter(([key]) => key.startsWith(`${q.path}/`))
@@ -70,7 +77,7 @@ vi.mock("firebase/firestore", () => ({
   },
 }));
 
-import { deleteGroupMessage, sendGroupMessage, visibleMessages, type Group } from "./groups";
+import { deleteGroupMessage, joinGroup, sendGroupMessage, visibleMessages, type Group } from "./groups";
 
 const group: Group = {
   id: "group-1",
@@ -87,6 +94,35 @@ beforeEach(() => {
 });
 
 describe("grup sohbeti (iki kullanıcı)", () => {
+  it("üyesi olduğu gruba katılır ve indeksi yazılır", async () => {
+    h.store.set("groups/group-1", {
+      name: group.name,
+      ownerUid: group.ownerUid,
+      memberUids: group.memberUids,
+      createdAt: 1,
+      updatedAt: 1,
+    });
+
+    const joined = await joinGroup("group-1", "user-b");
+
+    expect(joined.id).toBe("group-1");
+    expect(h.store.get("users/user-b/groups/group-1")).toMatchObject({ groupId: "group-1", role: "member" });
+  });
+
+  it("üyesi olmadığı grupta permission hatası Türkçe ve kodlu reddedilir", async () => {
+    // "gizli-group" belgesi mock'ta permission-denied üretir (üye olmayan için gerçek davranış).
+    await expect(joinGroup("gizli-group", "user-x")).rejects.toMatchObject({
+      code: "group/not-member",
+      message: "Bu gruba eklenmemişsin. Kurucudan davet iste.",
+    });
+  });
+
+  it("var olmayan grup bulunamadı hatası verir", async () => {
+    await expect(joinGroup("olmayan-grup", "user-x")).rejects.toMatchObject({
+      code: "group/not-found",
+    });
+  });
+
   it("A'nın mesajı grupta saklanır, B'ye bildirim gider, A'ya gitmez", async () => {
     h.store.set("groups/group-1", {
       name: group.name,

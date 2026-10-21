@@ -7,6 +7,8 @@ import { firebaseConfigured } from "../lib/firebase";
 
 interface Props {
   uid: string;
+  /** İz yalnızca bulut (Firebase) hesabına yazılır; cihaz hesabı Firestore'a yazamaz. */
+  cloudAccount: boolean;
   onClose: () => void;
   onPreview: (coords: [number, number][]) => void;
   onFinished: (track: AtlasTrack, route: AtlasRoute) => void;
@@ -19,8 +21,9 @@ function durationLabel(seconds: number) {
   return [hours, minutes, remainder].map((part) => String(part).padStart(2, "0")).join(":");
 }
 
-export default function TrackRecorderPanel({ uid, onClose, onPreview, onFinished }: Props) {
+export default function TrackRecorderPanel({ uid, cloudAccount, onClose, onPreview, onFinished }: Props) {
   const recorder = useTrackRecorder(uid, onPreview);
+  const canRecord = firebaseConfigured && cloudAccount;
   const [actionError, setActionError] = useState<string | null>(null);
   const recording = recorder.status === "recording";
   const saving = recorder.status === "saving";
@@ -60,7 +63,7 @@ export default function TrackRecorderPanel({ uid, onClose, onPreview, onFinished
     {saving && <p role="status" className="mt-3 text-[12px] text-mint/75">İz güvenli biçimde buluta kaydediliyor…</p>}
 
     <div className="mt-4 flex flex-wrap gap-2">
-      {!recording && <button type="button" disabled={!firebaseConfigured || saving} onClick={() => { setActionError(null); recorder.start(); }} className={cn("flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold", firebaseConfigured ? "bg-sun text-ink hover:bg-sun/90" : "bg-white/10 text-mint/50")}><Play size={15} fill="currentColor" />{recorder.status === "error" ? "Tekrar dene" : "Kaydı başlat"}</button>}
+      {!recording && <button type="button" disabled={!canRecord || saving} onClick={() => { setActionError(null); recorder.start(); }} className={cn("flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold", canRecord ? "bg-sun text-ink hover:bg-sun/90" : "bg-white/10 text-mint/50")}><Play size={15} fill="currentColor" />{recorder.status === "error" ? "Tekrar dene" : "Kaydı başlat"}</button>}
       {recording && <button type="button" onClick={() => void finish()} className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full bg-sun px-4 text-sm font-semibold text-ink hover:bg-sun/90"><CircleStop size={16} />Bitir ve kaydet</button>}
       {(recording || recorder.pointCount > 0) && <button type="button" disabled={saving} onClick={() => { recorder.discard(); setActionError(null); }} className="flex min-h-11 items-center justify-center gap-2 rounded-full border border-white/15 px-3 text-sm text-mint/80 disabled:opacity-40" aria-label="Kaydedilmemiş izi sil"><Trash2 size={15} />Sil</button>}
     </div>

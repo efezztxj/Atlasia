@@ -639,6 +639,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
       ><Activity size={16} className="text-sun" />Yürüyüş kaydı</button>}
       {trackRecorderOpen && <TrackRecorderPanel
         uid={user!.uid}
+        cloudAccount={user!.backend === "firebase"}
         onClose={() => setTrackRecorderOpen(false)}
         onPreview={(coords) => mapRef.current?.drawRoute(coords, true)}
         onFinished={(track, route) => {

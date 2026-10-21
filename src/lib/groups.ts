@@ -216,7 +216,19 @@ export async function createGroup(input: CreateGroupInput): Promise<{ group: Gro
 }
 
 export async function joinGroup(groupId: string, uid: string): Promise<Group> {
-  const group = await fetchGroup(groupId);
+  let group: Group | null;
+  try {
+    group = await fetchGroup(groupId);
+  } catch (failure) {
+    // Üye olmayan kullanıcı grup belgesini okuyamadığı için rules bunu
+    // permission-denied ile reddeder; ham Firebase hatası yerine katılımın
+    // neden reddedildiğini kullanıcının anlayacağı dilde söyle.
+    const code = (failure as { code?: string })?.code;
+    if (code === "permission-denied") {
+      throw dataError("group/not-member", "Bu gruba eklenmemişsin. Kurucudan davet iste.");
+    }
+    throw failure;
+  }
   if (!group) throw dataError("group/not-found", "Grup bulunamadı.");
   if (!group.memberUids.includes(uid)) {
     throw dataError("group/not-member", "Bu gruba eklenmemişsin. Kurucudan davet iste.");

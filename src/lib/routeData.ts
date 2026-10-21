@@ -201,11 +201,21 @@ export async function listOwnedTracks(uid: string): Promise<AtlasTrack[]> {
 
 export async function createTrack(uid: string, track: AtlasTrack): Promise<void> {
   if (!db) throw new Error("Firestore yapılandırılmamış.");
-  await setDoc(doc(db, "tracks", track.id), {
-    ...track,
-    authorUid: uid,
-    createdAt: serverTimestamp(),
-  });
+  try {
+    await setDoc(doc(db, "tracks", track.id), {
+      ...track,
+      authorUid: uid,
+      createdAt: serverTimestamp(),
+    });
+  } catch (failure) {
+    // Ham Firebase mesajını kullanıcıya basma; izin reddi (cihaz hesabı veya
+    // uyumsuz oturum) ile diğer hata türlerini birbirinden ayır.
+    const code = (failure as { code?: string })?.code;
+    if (code === "permission-denied") {
+      throw new Error("Buluta kaydetme izni reddedildi. Yürüyüş kaydı için bulut (e-posta) hesabıyla giriş yaptığını kontrol et.", { cause: failure });
+    }
+    throw new Error("İz buluta kaydedilemedi. Bağlantını kontrol edip tekrar dene.", { cause: failure });
+  }
 }
 
 export async function deleteTrack(trackId: string): Promise<void> {
