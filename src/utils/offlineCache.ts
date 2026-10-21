@@ -18,17 +18,50 @@ export const TILE_TEMPLATES = {
   terrain: "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
 };
 
+/**
+ * Önbelleğe alınabilir tile kaynakları: tam HTTPS host + path öneki eşleşmesi.
+ * Substring eşleşmesi kullanılmaz — lookalike URL'ler (ör. izinli host adını
+ * path/query içinde taşıyan veya alt alan gibi gösteren adresler) reddedilir.
+ * Bu liste public/sw.js içindeki kopyayla birlikte değiştirilmelidir;
+ * offlineCache.test.ts iki tarafın senkronunu kilitler.
+ */
+const CACHEABLE_TILE_SOURCES: ReadonlyArray<{ host: string; pathPrefixes: readonly string[] }> = [
+  {
+    host: "tiles.openfreemap.org",
+    pathPrefixes: ["/planet", "/natural_earth/", "/fonts/", "/sprites/", "/styles/"],
+  },
+  {
+    host: "s3.amazonaws.com",
+    pathPrefixes: ["/elevation-tiles-prod/terrarium/"],
+  },
+];
+
+function parseUrl(url: string): URL | null {
+  try {
+    return new URL(url);
+  } catch (error) {
+    void error;
+    return null;
+  }
+}
+
 export function isEsriTile(url: string): boolean {
-  return url.includes("server.arcgisonline.com") || url.includes("arcgisonline.com");
+  const parsed = parseUrl(url);
+  if (!parsed) return false;
+  const host = parsed.hostname.toLowerCase();
+  return host === "arcgisonline.com" || host.endsWith(".arcgisonline.com");
 }
 
 export function isCacheableTile(url: string): boolean {
   if (isEsriTile(url)) return false;
-  return (
-    url.includes("tiles.openfreemap.org") ||
-    url.includes("elevation-tiles-prod") ||
-    url.includes("openfreemap") ||
-    url.includes("s3.amazonaws.com/elevation-tiles-prod")
+  const parsed = parseUrl(url);
+  if (!parsed) return false;
+  // Yalnız HTTPS; kullanıcı bilgisi taşıyan (userinfo) URL'leri reddet —
+  // https://izinli-host@sahte-host/ hilesini boşa çıkarır.
+  if (parsed.protocol !== "https:" || parsed.username || parsed.password) return false;
+  const host = parsed.hostname.toLowerCase();
+  return CACHEABLE_TILE_SOURCES.some(
+    (source) => source.host === host && source.pathPrefixes.some((prefix) => parsed.pathname.startsWith(prefix)),
   );
 }
 
