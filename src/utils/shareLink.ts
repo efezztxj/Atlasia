@@ -1,11 +1,15 @@
 /**
  * P20 · Link içi rota paylaşımı (Firestore'suz).
  *
- * **Karar:** Sunucu tarafı "unlisted" bağlantı (`?route=<id>`) zaten var; P20
- * onun ulaşamadığı yeri doldurur — bulut hesabı olmayan / yerel moddaki
- * kullanıcı da rota paylaşabilsin. Rota, bağlantının **içinde** taşınır:
- * `?r=v1.<base64url(zlib(JSON))>`. Hiçbir yere yazılmaz; alan kişi
- * önizlemeyi görür, kaydetmek açık eylemdir.
+ * **Karar:** Yayınlanmış rota için kalıcı bağlantı (`?route=<id>`, Adım 5)
+ * kullanılır; P20 onun ulaşamadığı yeri doldurur — yayınlanmamış /
+ * bulut hesabı olmayan kullanıcı da rota paylaşabilsin. Rota, bağlantının
+ * **fragment'ında** taşınır: `#r=v1.<base64url(zlib(JSON))>`. Fragment
+ * sunucuya hiç gitmez (erişim günlüklerine ve yönlendiren başlıklarına
+ * düşmez); hiçbir yere yazılmaz. Alan kişi önizlemeyi görür, kaydetmek
+ * açık eylemdir. İlk üretim biçimi olan `?r=` sorgusu da okunmaya devam
+ * eder (bkz. `readShareTokenFromUrl`), ama yeni bağlantılar fragment ile
+ * üretilir (Tur 4 varsayılan kararı).
  *
  * Gizlilik sözleşmesi (`trackPrivacy` ile aynı kapı):
  * - Bağlantı ancak `resolveTrackShare` onayıyla üretilir (açık eylem +
@@ -28,7 +32,7 @@ import type { AtlasRoute, LegMode, RouteDay, RouteLeg, RouteStop, StopType, Tran
 import { decodePolyline, encodePolyline } from "./polyline";
 import { resolveTrackShare, routeLeaksRawTrack } from "./trackPrivacy";
 
-/** URL sorgu parametresi. */
+/** Paylaşım parametresi adı; fragment'ta (`#r=`) taşınır, eski `?r=` de okunur. */
 export const SHARE_LINK_PARAM = "r";
 
 /**
@@ -369,7 +373,30 @@ export async function parseRouteShareLink(token: string): Promise<ShareDecodeRes
   return { ok: true, route };
 }
 
-/** Tam paylaşım URL'si: `<origin>/?r=v1.…` */
+/**
+ * Tam paylaşım URL'si: `<origin>/#r=v1.…`
+ *
+ * Yük fragment'tadır: istek satırına girmez, sunucu/CDN günlüklerine ve
+ * `Referer` başlığına düşmez. Yayınlanmış rotanın kalıcı bağlantısı
+ * (`?route=`) bundan etkilenmez.
+ */
 export function buildRouteShareUrl(origin: string, token: string): string {
-  return `${origin.replace(/\/+$/, "")}/?${SHARE_LINK_PARAM}=${token}`;
+  return `${origin.replace(/\/+$/, "")}/#${SHARE_LINK_PARAM}=${token}`;
+}
+
+/**
+ * Adres çubuğundaki paylaşım simgesini okur: önce fragment (`#r=`), yoksa
+ * eski biçim sorgu (`?r=`). İkisi de yoksa ya da adres çözülemiyorsa `null`.
+ * Yalnız simgeyi çıkarır; doğrulama `parseRouteShareLink`'indir.
+ */
+export function readShareTokenFromUrl(url: string): string | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  const fromFragment = new URLSearchParams(parsed.hash.replace(/^#/, "")).get(SHARE_LINK_PARAM);
+  if (fromFragment) return fromFragment;
+  return parsed.searchParams.get(SHARE_LINK_PARAM);
 }

@@ -9,6 +9,7 @@ import {
   createRouteShareLink,
   parseRouteShareLink,
   parseShareRoute,
+  readShareTokenFromUrl,
 } from "./shareLink";
 
 const CONSENT = { userInitiated: true, shareConsent: true } as const;
@@ -133,9 +134,40 @@ describe("P20 link içi paylaşım · gidiş-dönüş", () => {
     expect(parsed.route.photo).toBeUndefined();
   });
 
-  it("tam URL beklenen biçimde kurulur", () => {
-    expect(buildRouteShareUrl("https://atlasia.pages.dev/", "v1.ABC"))
-      .toBe("https://atlasia.pages.dev/?r=v1.ABC");
+  it("tam URL fragment biçiminde kurulur; yük sunucuya gitmez", () => {
+    const url = buildRouteShareUrl("https://atlasia.pages.dev/", "v1.ABC");
+    expect(url).toBe("https://atlasia.pages.dev/#r=v1.ABC");
+    const parsed = new URL(url);
+    expect(parsed.search).toBe(""); // sorgu yok → erişim günlüğüne düşmez
+    expect(parsed.hash).toBe("#r=v1.ABC");
+  });
+});
+
+describe("readShareTokenFromUrl — fragment + eski biçim (Tur 4)", () => {
+  it("fragment önceliklidir; eski ?r= geriye uyumlu okunur", () => {
+    expect(readShareTokenFromUrl("https://atlasia.pages.dev/#r=v1.YENI")).toBe("v1.YENI");
+    expect(readShareTokenFromUrl("https://atlasia.pages.dev/?r=v1.ESKI")).toBe("v1.ESKI");
+    expect(readShareTokenFromUrl("https://atlasia.pages.dev/?r=v1.ESKI#r=v1.YENI")).toBe("v1.YENI");
+  });
+
+  it("paylaşım yoksa ve adres bozuksa null döner; ?route= simge sanılmaz (Adım 5 ayrı)", () => {
+    expect(readShareTokenFromUrl("https://atlasia.pages.dev/")).toBeNull();
+    expect(readShareTokenFromUrl("https://atlasia.pages.dev/?route=abc123")).toBeNull();
+    expect(readShareTokenFromUrl("https://atlasia.pages.dev/#baska=birsey")).toBeNull();
+    expect(readShareTokenFromUrl("bu bir adres degil")).toBeNull();
+  });
+
+  it("üretilen fragment bağlantısı adres çubuğundan geri açılır (gidiş-dönüş)", async () => {
+    const created = await createRouteShareLink(sampleRoute(), CONSENT);
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+    const url = buildRouteShareUrl("https://atlasia.pages.dev", created.token);
+    const token = readShareTokenFromUrl(url);
+    expect(token).toBe(created.token);
+    const parsed = await parseRouteShareLink(token ?? "");
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.route.routeTitle).toBe(sampleRoute().routeTitle);
   });
 });
 

@@ -36,7 +36,7 @@ import { isCloudReady, firebaseConfigSummary } from "./lib/firebase";
 import type { PlaceViewport } from "./lib/firestoreData";
 import { ROUTE_OPEN_MESSAGES, openPublishedRoute } from "./lib/publishedRouteOpen";
 import { placeDeleteErrorMessage } from "./lib/firestoreValue";
-import { SHARE_LINK_PARAM, parseRouteShareLink } from "./utils/shareLink";
+import { parseRouteShareLink, readShareTokenFromUrl } from "./utils/shareLink";
 import type { AtlasRoute, CategoryId, Place, RouteVisibility, ViewState } from "./types";
 import { haversineKm, reverseName, type SearchResult } from "./utils/geo";
 import { storageGet, storageSet } from "./utils/storage";
@@ -177,36 +177,50 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   useEffect(() => { if (user?.displayName) storageSet("atlasia.author", user.displayName); }, [user?.displayName]);
   useEffect(() => { storageSet(MAP_STYLE_KEY, baseMap); }, [baseMap]);
 
+  const handledShareLinkRef = useRef<string | null>(null);
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const routeId = params.get("route");
-    const shareToken = params.get(SHARE_LINK_PARAM);
-    if (!routeId && !shareToken) return;
     let active = true;
-    if (routeId) {
-      void openPublishedRoute(routeId).then((outcome) => {
-        if (!active) return;
-        if (outcome.status === "opened") {
-          setResumeRoute(outcome.route);
-          setAtlasOpen(true);
-        }
-        setToast(outcome.message);
-      });
-    } else if (shareToken) {
-      // P20: rota bağlantının içinde gelir. Doğrulama shareLink'te; burada
-      // yalnız önizleme açılır — kaydetmek kullanıcının açık eylemidir.
-      void parseRouteShareLink(shareToken).then((outcome) => {
-        if (!active) return;
-        if (outcome.ok) {
-          setResumeRoute(outcome.route);
-          setAtlasOpen(true);
-          setToast(ROUTE_OPEN_MESSAGES.opened);
-        } else {
+    const openFromLocation = () => {
+      const params = new URLSearchParams(window.location.search);
+      const routeId = params.get("route");
+      // P20 fragment'tadır (#r=); eski ?r= biçimi de okunur. Yayınlanmış
+      // rotanın ?route= bağlantısı (Adım 5) öncelikli ve değişmedi.
+      const shareToken = readShareTokenFromUrl(window.location.href);
+      const linkKey = routeId ? `route:${routeId}` : shareToken ? `share:${shareToken}` : null;
+      // Aynı bağlantı iki kez açılmaz (açılış + hash değişimi çift tetiklemesin).
+      if (!linkKey || handledShareLinkRef.current === linkKey) return;
+      handledShareLinkRef.current = linkKey;
+      if (routeId) {
+        void openPublishedRoute(routeId).then((outcome) => {
+          if (!active) return;
+          if (outcome.status === "opened") {
+            setResumeRoute(outcome.route);
+            setAtlasOpen(true);
+          }
           setToast(outcome.message);
-        }
-      });
-    }
-    return () => { active = false; };
+        });
+      } else if (shareToken) {
+        // P20: rota bağlantının içinde gelir. Doğrulama shareLink'te; burada
+        // yalnız önizleme açılır — kaydetmek kullanıcının açık eylemidir.
+        void parseRouteShareLink(shareToken).then((outcome) => {
+          if (!active) return;
+          if (outcome.ok) {
+            setResumeRoute(outcome.route);
+            setAtlasOpen(true);
+            setToast(ROUTE_OPEN_MESSAGES.opened);
+          } else {
+            setToast(outcome.message);
+          }
+        });
+      }
+    };
+    openFromLocation();
+    // Uygulama açıkken adrese yapıştırılan #r= bağlantısı da açılsın.
+    window.addEventListener("hashchange", openFromLocation);
+    return () => {
+      active = false;
+      window.removeEventListener("hashchange", openFromLocation);
+    };
   }, []);
 
   const closePanels = () => {

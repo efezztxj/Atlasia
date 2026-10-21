@@ -152,7 +152,7 @@ describe("RouteEditor paylaşım onayı (shareConsent)", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: "Paylaşım onayı" }));
     fireEvent.click(screen.getByRole("button", { name: /Bağlantıyı oluştur/ }));
     const input = (await screen.findByLabelText("Hesapsız paylaşım bağlantısı")) as HTMLInputElement;
-    expect(input.value).toContain("/?r=v1.");
+    expect(input.value).toContain("/#r=v1.");
     // Sunucu yayını yapılmadı: bağlantı yolu publish'i çağırmaz.
     expect(h.publishRoute).not.toHaveBeenCalled();
   });
