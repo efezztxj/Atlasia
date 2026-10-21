@@ -194,7 +194,8 @@ Firebase + tarayıcı API'lerine bağlı, test ortamında kurulmuyor). Bunun yer
 
 | Alan | Değer |
 |---|---|
-| PR | **#34** — başlık `[P2] P17-Tur2 + P16 #1/#2` |
+| PR | **#35** — başlık `[P2] P17-Tur2 + P16 #1/#2` |
 | Gövde | `teslimat-p17-tur2.md` yolu yer alıyor |
-| CI | Bu dosya yazıldığı anda **bekleniyor**; sonuç PR sayfasında. CI yeşil olmadan görev "bitti" sayılmaz. |
+| CI | ✅ **yeşil** — `Security, typecheck, lint, test and build` **pass (58 s)**; `Cloudflare Pages` **pass** (preview) · run `39679589464` |
+| Değişen dosya sayısı | PR'da 21 dosya (20 kod/test + bu teslimat) |
 | Merge / deploy | **Yapılmadı** (kullanıcı onayı) |
