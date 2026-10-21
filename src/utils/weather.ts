@@ -35,7 +35,28 @@ export interface WeatherPoint {
 
 const ENDPOINT = "https://api.open-meteo.com/v1/forecast";
 const CACHE_TTL_MS = 10 * 60 * 1000;
-const cache = new Map<string, { at: number; data: Record<string, WeatherHour[]> }>();
+/**
+ * Nokta bazlı önbellek: anahtar yalnız koordinattır, sonuç çağıranın verdiği
+ * kimliklerle yeniden eşlenir. (Eski toplu anahtar, aynı koordinata farklı
+ * kimlikle gelen ikinci isteğe eski kimlikli veri döndürüyordu.)
+ */
+const pointCache = new Map<string, { at: number; hours: WeatherHour[] }>();
+/** Uzun oturumda bellek sınırı: en eski girdiler düşer. */
+const CACHE_MAX_POINTS = 50;
+
+function coordKey(point: WeatherPoint): string {
+  return `${point.lat.toFixed(2)},${point.lng.toFixed(2)}`;
+}
+
+function rememberPoint(key: string, hours: WeatherHour[]): void {
+  pointCache.delete(key);
+  pointCache.set(key, { at: Date.now(), hours });
+  while (pointCache.size > CACHE_MAX_POINTS) {
+    const oldest = pointCache.keys().next().value;
+    if (oldest === undefined) break;
+    pointCache.delete(oldest);
+  }
+}
 
 const WEATHER_LABELS: Record<number, string> = {
   0: "Açık",
@@ -106,6 +127,11 @@ function parseHours(raw: OpenMeteoHourly | undefined): WeatherHour[] {
 /**
  * Birden çok nokta için TEK istek: Open-Meteo virgülle ayrılmış koordinatları
  * destekler. Böylece 7 duraklı rota 7 okuma yapmaz; ücretsiz kotada kalır.
+ * Önbellekteki noktalar isteğe hiç girmez; yalnız eksikler çekilir.
+ *
+ * Hata sözleşmesi: mesajlar Türkçedir ve kullanıcıya gösterilebilir.
+ * Dışarıdan iptal (çağıranın `signal`'ı) `AbortError` olarak korunur;
+ * 8 sn'lik iç zaman aşımı ondan ayırt edilebilir bir hatayla döner.
  */
 export async function fetchWeatherSeries(
   points: WeatherPoint[],
@@ -117,37 +143,70 @@ export async function fetchWeatherSeries(
     .slice(0, 10);
   if (!unique.length) return {};
 
-  const key = unique.map((point) => `${point.lat.toFixed(2)},${point.lng.toFixed(2)}`).join("|");
-  const cached = cache.get(key);
-  if (cached && Date.now() - cached.at < CACHE_TTL_MS) return cached.data;
-
-  const controller = new AbortController();
-  const abort = () => controller.abort();
-  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
-  signal?.addEventListener("abort", abort, { once: true });
-  const timer = globalThis.setTimeout(abort, 8000);
-  const lat = unique.map((point) => point.lat.toFixed(3)).join(",");
-  const lng = unique.map((point) => point.lng.toFixed(3)).join(",");
-  const url = `${ENDPOINT}?latitude=${lat}&longitude=${lng}`
-    + "&hourly=temperature_2m,precipitation,precipitation_probability,weather_code"
-    + "&forecast_days=3&timezone=auto";
-
-  try {
-    const response = await fetch(url, { signal: controller.signal, headers: { Accept: "application/json" } });
-    if (!response.ok) throw new Error(`Weather service ${response.status}`);
-    const payload = await response.json() as OpenMeteoResponse | OpenMeteoResponse[];
-    const entries = Array.isArray(payload) ? payload : [payload];
-    const data: Record<string, WeatherHour[]> = {};
-    unique.forEach((point, index) => {
-      data[point.id] = parseHours(entries[index]?.hourly);
-    });
-    if (Object.values(data).every((hours) => hours.length === 0)) throw new Error("Weather data empty");
-    cache.set(key, { at: Date.now(), data });
-    return data;
-  } finally {
-    globalThis.clearTimeout(timer);
-    signal?.removeEventListener("abort", abort);
+  const now = Date.now();
+  const data: Record<string, WeatherHour[]> = {};
+  const misses: WeatherPoint[] = [];
+  const missKeys = new Set<string>();
+  for (const point of unique) {
+    const key = coordKey(point);
+    const cached = pointCache.get(key);
+    if (cached && now - cached.at < CACHE_TTL_MS) {
+      data[point.id] = cached.hours;
+    } else if (!missKeys.has(key)) {
+      missKeys.add(key);
+      misses.push(point);
+    }
   }
+
+  if (misses.length > 0) {
+    const controller = new AbortController();
+    const abort = () => controller.abort();
+    if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+    signal?.addEventListener("abort", abort, { once: true });
+    let timedOut = false;
+    const timer = globalThis.setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, 8000);
+    const lat = misses.map((point) => point.lat.toFixed(3)).join(",");
+    const lng = misses.map((point) => point.lng.toFixed(3)).join(",");
+    const url = `${ENDPOINT}?latitude=${lat}&longitude=${lng}`
+      + "&hourly=temperature_2m,precipitation,precipitation_probability,weather_code"
+      + "&forecast_days=3&timezone=auto";
+
+    try {
+      const response = await fetch(url, { signal: controller.signal, headers: { Accept: "application/json" } });
+      if (!response.ok) throw new Error(`Hava durumu servisi yanıt vermedi (HTTP ${response.status}).`);
+      const payload = await response.json() as OpenMeteoResponse | OpenMeteoResponse[];
+      const entries = Array.isArray(payload) ? payload : [payload];
+      misses.forEach((point, index) => {
+        rememberPoint(coordKey(point), parseHours(entries[index]?.hourly));
+      });
+    } catch (failure) {
+      if (signal?.aborted) throw failure;
+      if (timedOut) {
+        throw Object.assign(new Error("Hava durumu isteği zaman aşımına uğradı. Bağlantını kontrol edip tekrar dene."), { cause: failure });
+      }
+      if (failure instanceof Error && failure.message.startsWith("Hava durumu")) throw failure;
+      throw Object.assign(new Error("Hava durumuna ulaşılamadı. Bağlantını kontrol edip tekrar dene."), { cause: failure });
+    } finally {
+      globalThis.clearTimeout(timer);
+      signal?.removeEventListener("abort", abort);
+    }
+
+    // Bu turun eksikleri önbellekten (yeni yazıldı) kimliklere eşlenir; aynı
+    // koordinatı paylaşan ikinci kimlik de aynı seriyi alır.
+    for (const point of unique) {
+      if (data[point.id] === undefined) {
+        data[point.id] = pointCache.get(coordKey(point))?.hours ?? [];
+      }
+    }
+  }
+
+  if (Object.values(data).every((hours) => hours.length === 0)) {
+    throw new Error("Hava durumu verisi boş döndü. Biraz sonra tekrar dene.");
+  }
+  return data;
 }
 
 function addDays(isoDate: string, days: number): string {

@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AtlasRoute, RouteStop } from "../types";
 import {
   attachStopWeather,
   dailyRainNote,
+  fetchWeatherSeries,
   optimizeForRain,
   rainExposure,
   rainRisk,
@@ -140,5 +141,123 @@ describe("hava durumu derinleştirme", () => {
     expect(dailyRainNote(hours([[9, 20, 1], [10, 70, 63]]))).toContain("%70");
     expect(dailyRainNote(hours([[9, 5, 0], [10, 10, 1]]))).toContain("belirgin yağış riski görünmüyor");
     expect(dailyRainNote([])).toContain("ulaşamadım");
+  });
+});
+
+describe("fetchWeatherSeries (fixture ile; ağ yok)", () => {
+  /** Open-Meteo şekilli sahte yanıt: istenen koordinat sayısı kadar giriş. */
+  function meteoPayload(url: string) {
+    const count = new URL(url).searchParams.get("latitude")?.split(",").length ?? 1;
+    const entry = {
+      hourly: {
+        time: [`${BASE}T09:00`, `${BASE}T10:00`],
+        temperature_2m: [21, 22],
+        precipitation: [0, 0.4],
+        precipitation_probability: [10, 40],
+        weather_code: [1, 61],
+      },
+    };
+    return count === 1 ? entry : Array.from({ length: count }, () => entry);
+  }
+
+  const fetchMock = vi.fn(async (input: unknown) => ({
+    ok: true,
+    status: 200,
+    json: async () => meteoPayload(String(input)),
+  }));
+
+  beforeEach(() => {
+    fetchMock.mockClear();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  it("tek istekte birden çok noktayı kimlikleriyle döndürür", async () => {
+    const series = await fetchWeatherSeries([
+      { id: "a", lat: 40.01, lng: 29.01 },
+      { id: "b", lat: 40.02, lng: 29.02 },
+    ]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(series.a).toHaveLength(2);
+    expect(series.a[1]).toMatchObject({ precipitationProbability: 40, weatherCode: 61 });
+    expect(series.b).toHaveLength(2);
+  });
+
+  it("aynı koordinat farklı kimlikle istenirse veri yeni kimliğe eşlenir (önbellek regresyonu)", async () => {
+    await fetchWeatherSeries([{ id: "center", lat: 41.01, lng: 28.01 }]);
+    const second = await fetchWeatherSeries([{ id: "pin-7", lat: 41.01, lng: 28.01 }]);
+    expect(fetchMock).toHaveBeenCalledTimes(1); // ikinci çağrı ağa gitmez
+    expect(second["pin-7"]).toHaveLength(2); // eski davranış: undefined (eski kimlik)
+  });
+
+  it("kısmi çakışmada yalnız eksik nokta çekilir", async () => {
+    await fetchWeatherSeries([
+      { id: "a", lat: 42.01, lng: 30.01 },
+      { id: "b", lat: 42.02, lng: 30.02 },
+    ]);
+    fetchMock.mockClear();
+    const series = await fetchWeatherSeries([
+      { id: "b", lat: 42.02, lng: 30.02 },
+      { id: "c", lat: 42.03, lng: 30.03 },
+    ]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const url = String(fetchMock.mock.calls[0][0]);
+    expect(url).toContain("latitude=42.030");
+    expect(url).not.toContain("42.020");
+    expect(series.b).toHaveLength(2);
+    expect(series.c).toHaveLength(2);
+  });
+
+  it("önbellek 10 dakika sonra bayatlar ve yeniden çekilir", async () => {
+    const t0 = 1_760_000_000_000;
+    vi.spyOn(Date, "now").mockReturnValue(t0);
+    await fetchWeatherSeries([{ id: "x", lat: 43.01, lng: 31.01 }]);
+    vi.spyOn(Date, "now").mockReturnValue(t0 + 9 * 60 * 1000);
+    await fetchWeatherSeries([{ id: "x", lat: 43.01, lng: 31.01 }]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    vi.spyOn(Date, "now").mockReturnValue(t0 + 11 * 60 * 1000);
+    await fetchWeatherSeries([{ id: "x", lat: 43.01, lng: 31.01 }]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("HTTP hatası Türkçe ve durum koduyla söylenir", async () => {
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 503, json: async () => ({}) });
+    await expect(fetchWeatherSeries([{ id: "h", lat: 44.01, lng: 32.01 }]))
+      .rejects.toThrow("Hava durumu servisi yanıt vermedi (HTTP 503)");
+  });
+
+  it("ağ hatası anlaşılır mesaja çevrilir, boş veri ayrıca söylenir", async () => {
+    fetchMock.mockRejectedValueOnce(new TypeError("fetch failed"));
+    await expect(fetchWeatherSeries([{ id: "n", lat: 44.02, lng: 32.02 }]))
+      .rejects.toThrow("ulaşılamadı");
+
+    fetchMock.mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ hourly: { time: [] } }) });
+    await expect(fetchWeatherSeries([{ id: "e", lat: 44.03, lng: 32.03 }]))
+      .rejects.toThrow("boş döndü");
+  });
+
+  it("önceden iptal edilmiş sinyal AbortError verir, ağa gidilmez", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    await expect(fetchWeatherSeries([{ id: "s", lat: 45.01, lng: 33.01 }], controller.signal))
+      .rejects.toMatchObject({ name: "AbortError" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("iç zaman aşımı iptalden ayırt edilebilir hatayla döner", async () => {
+    vi.useFakeTimers();
+    fetchMock.mockImplementationOnce((_input: unknown, init?: { signal?: AbortSignal }) =>
+      new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")));
+      }));
+    const pending = fetchWeatherSeries([{ id: "t", lat: 46.01, lng: 34.01 }]);
+    const assertion = expect(pending).rejects.toThrow("zaman aşımına uğradı");
+    await vi.advanceTimersByTimeAsync(8000);
+    await assertion;
   });
 });
