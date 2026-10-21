@@ -400,6 +400,44 @@ describe("Firestore güvenlik kuralları", () => {
     await assertSucceeds(deleteDoc(storyRef));
   });
 
+  it("henüz olmayan rota belgesinin ön okuması reddedilir; yayın ön okumasız oluşturulur (2026-10-21 üretim regresyonu)", async () => {
+    // routes get kuralı resource.data okur. Belge yokken resource null olduğu için
+    // sahibi dahil herkesin ön okuması permission-denied alır. İstemci bu reddi
+    // "okunabilir rota yok" sayıp doğrudan create yazar; kurallar gevşetilmez.
+    const ownerDb = testEnv.authenticatedContext("owner").firestore();
+    await assertFails(getDoc(doc(ownerDb, "routes/route-henuz-yok")));
+
+    // Kayıtlı yer ön okuması resource.data okumadığı için belge yokken de başarılıdır.
+    await assertSucceeds(getDoc(doc(ownerDb, "users/owner/savedPlaces/yer-henuz-yok")));
+    // joinGroup indeks ön kontrolü de belge yokken okunabilir (update kapalı olduğu için gerekli).
+    await assertSucceeds(getDoc(doc(ownerDb, "users/owner/groups/grup-henuz-yok")));
+    // Eksik/kısaltılmış grup kimliği: belge yok, kural yine reddeder (istemci Türkçe mesaja çevirir).
+    await assertFails(getDoc(doc(ownerDb, "groups/Vwd76pz6")));
+
+    // Yürüyüş kaydı taslağı (durak yok, origin alanı hiç yazılmamış) bağlantılı rota olarak oluşturulabilir.
+    await assertSucceeds(setDoc(doc(ownerDb, "routes/route-yuruyus"), {
+      authorUid: "owner",
+      visibility: "unlisted",
+      route: {
+        id: "route-yuruyus",
+        routeTitle: "Kayıtlı yürüyüş",
+        routeSummary: "Yürüyüş kaydından oluşturulan özel taslak. Yaklaşık 0 km.",
+        totalDurationHours: 0,
+        totalDistanceKm: 0,
+        transport: "walking",
+        vibe: "Yürüyüş kaydı",
+        days: [{ dayNumber: 1, title: "Yürüyüş", summary: "Kayıt sırasında tespit edilen duraklar.", stops: [], polyline: "" }],
+        weatherNote: null,
+        alternatives: [],
+        createdAt: Date.now(),
+      },
+      saveCount: 0,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }));
+    await assertSucceeds(getDoc(doc(ownerDb, "routes/route-yuruyus")));
+  });
+
   it("rotaları görünürlük seçimine, izleri ise yalnız sahibine açar", async () => {
     const ownerDb = testEnv.authenticatedContext("owner").firestore();
     const otherDb = testEnv.authenticatedContext("other").firestore();

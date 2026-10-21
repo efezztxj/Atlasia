@@ -33,7 +33,14 @@ vi.mock("firebase/firestore", () => ({
   limit: (value: number) => ({ limit: value }),
   orderBy: () => ({}),
   serverTimestamp: () => "SERVER_TS",
-  setDoc: async (docRef: { path: string }, data: Record<string, unknown>) => { h.store.set(docRef.path, data); },
+  setDoc: async (docRef: { path: string }, data: Record<string, unknown>) => {
+    // Gerçek kural: users/{uid}/groups/{groupId} için update kapalı; var olan
+    // indekse ikinci setDoc permission-denied alır.
+    if (/^users\/[^/]+\/groups\/[^/]+$/.test(docRef.path) && h.store.has(docRef.path)) {
+      throw Object.assign(new Error("Missing or insufficient permissions."), { code: "permission-denied" });
+    }
+    h.store.set(docRef.path, data);
+  },
   deleteDoc: async (docRef: { path: string }) => { h.store.delete(docRef.path); },
   getDoc: async (docRef: { path: string }) => {
     // "gizli-" ile başlayan grup belgesi: üye olmayanın gerçek Firestore'da
@@ -77,7 +84,7 @@ vi.mock("firebase/firestore", () => ({
   },
 }));
 
-import { deleteGroupMessage, joinGroup, sendGroupMessage, visibleMessages, type Group } from "./groups";
+import { deleteGroupMessage, GROUP_NOT_MEMBER_MESSAGE, joinGroup, sendGroupMessage, visibleMessages, type Group } from "./groups";
 
 const group: Group = {
   id: "group-1",
@@ -113,8 +120,34 @@ describe("grup sohbeti (iki kullanıcı)", () => {
     // "gizli-group" belgesi mock'ta permission-denied üretir (üye olmayan için gerçek davranış).
     await expect(joinGroup("gizli-group", "user-x")).rejects.toMatchObject({
       code: "group/not-member",
-      message: "Bu gruba eklenmemişsin. Kurucudan davet iste.",
+      message: GROUP_NOT_MEMBER_MESSAGE,
     });
+  });
+
+  it("kimliği boşluklu yapıştırılsa da katılır; zaten listedeki gruba tekrar katılmak indeksi yeniden yazmaz", async () => {
+    h.store.set("groups/group-1", {
+      name: group.name,
+      ownerUid: group.ownerUid,
+      memberUids: group.memberUids,
+      createdAt: 1,
+      updatedAt: 1,
+    });
+
+    const first = await joinGroup("  group-1 \n", "user-b");
+    expect(first.id).toBe("group-1");
+    const index = h.store.get("users/user-b/groups/group-1");
+    expect(index).toMatchObject({ groupId: "group-1", role: "member" });
+
+    // İkinci katılım (veya kurucunun kendi grubuna katıl demesi) izin hatası üretmemeli.
+    await expect(joinGroup("group-1", "user-b")).resolves.toMatchObject({ id: "group-1" });
+    await expect(joinGroup("group-1", "user-a")).resolves.toMatchObject({ id: "group-1" });
+    await expect(joinGroup("group-1", "user-a")).resolves.toMatchObject({ id: "group-1" });
+    expect(h.store.get("users/user-b/groups/group-1")).toBe(index);
+    expect(h.store.get("users/user-a/groups/group-1")).toMatchObject({ role: "owner" });
+  });
+
+  it("boş kimlikte Firestore'a gitmeden reddeder", async () => {
+    await expect(joinGroup("   ", "user-b")).rejects.toMatchObject({ code: "group/not-found" });
   });
 
   it("var olmayan grup bulunamadı hatası verir", async () => {

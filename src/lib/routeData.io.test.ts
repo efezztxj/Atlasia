@@ -57,7 +57,25 @@ const h = vi.hoisted(() => {
     return typeof limit === "number" ? docs.slice(0, limit) : docs;
   };
 
-  return { store, stats, mergeUpdate, snapshotOf, docsFor };
+  const findUndefined = (value: unknown, path = ""): string | null => {
+    if (value === undefined) return path || "(kök)";
+    if (Array.isArray(value)) {
+      for (let index = 0; index < value.length; index += 1) {
+        const found = findUndefined(value[index], `${path}[${index}]`);
+        if (found) return found;
+      }
+      return null;
+    }
+    if (value && typeof value === "object") {
+      for (const [key, item] of Object.entries(value)) {
+        const found = findUndefined(item, path ? `${path}.${key}` : key);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
+  return { store, stats, mergeUpdate, snapshotOf, docsFor, findUndefined };
 });
 
 vi.mock("./firebase", () => ({ db: {}, firebaseApp: {}, firebaseConfigured: true, isCloudReady: true }));
@@ -80,6 +98,11 @@ vi.mock("firebase/firestore", () => ({
     if (docRef.path.endsWith("/hata-get")) {
       throw Object.assign(new Error("Firestore okuma hatası"), { code: "unavailable" });
     }
+    // Gerçek kurallar: routes/{id} get kuralı resource.data okur; belge yoksa
+    // resource null olduğundan okuma permission-denied ile reddedilir.
+    if (docRef.path.startsWith("routes/") && !h.store.has(docRef.path)) {
+      throw Object.assign(new Error("Missing or insufficient permissions."), { code: "permission-denied" });
+    }
     return h.snapshotOf(h.store, docRef.path);
   },
   getDocs: async (q: { path: string; constraints?: Array<{ field?: string; value?: unknown; limit?: number }> }) => {
@@ -87,11 +110,16 @@ vi.mock("firebase/firestore", () => ({
     return { size: docs.length, docs };
   },
   setDoc: async (docRef: { path: string }, data: Record<string, unknown>) => {
-    if (docRef.path === "tracks/izin-hatasi") {
+    if (docRef.path === "tracks/izin-hatasi" || docRef.path === "routes/izin-yok-yazma") {
       throw Object.assign(new Error("Missing or insufficient permissions."), { code: "permission-denied" });
     }
     if (docRef.path === "tracks/ag-hatasi") {
       throw Object.assign(new Error("Backend unavailable"), { code: "unavailable" });
+    }
+    // Gerçek SDK gibi: herhangi bir derinlikte undefined alan yazımı reddedilir.
+    const undefinedPath = h.findUndefined(data);
+    if (undefinedPath) {
+      throw new Error(`Function setDoc() called with invalid data. Unsupported field value: undefined (found in field ${undefinedPath})`);
     }
     h.store.set(docRef.path, data);
   },
@@ -399,6 +427,55 @@ describe("routeData kayıt/yayın yazımları", () => {
     expect(h.store.has("routes/gizli-route")).toBe(true);
     expect(h.store.get("routes/gizli-route")?.saveCount).toBe(3);
     expect(h.store.has("users/u1/savedRoutes/gizli-route")).toBe(false);
+  });
+});
+
+describe("routeData üretim regresyonları (2026-10-21)", () => {
+  it("toggleSavedPlace undefined isteğe bağlı alanları (place.image) ayıklayarak yazar", async () => {
+    const place: Place = { ...yer("p-mvi5ljx2-09z6"), image: undefined, gallery: ["a.jpg", undefined as unknown as string] };
+
+    await expect(toggleSavedPlace("u1", place)).resolves.toBeUndefined();
+
+    const written = h.store.get("users/u1/savedPlaces/p-mvi5ljx2-09z6") as { place: Record<string, unknown> };
+    expect("image" in written.place).toBe(false);
+    expect(written.place.gallery).toEqual(["a.jpg"]);
+    expect(written.place.title).toBe("Yer p-mvi5ljx2-09z6");
+    expect(place.image).toBeUndefined();
+    expect("image" in place).toBe(true);
+  });
+
+  it("yürüyüş taslağı (durak yok, origin undefined) bağlantılı rota olarak yayınlanır ve kaydedilir", async () => {
+    const draft: AtlasRoute = { ...rota("route-yuruyus"), totalDistanceKm: 0, origin: undefined };
+
+    await publishRoute("u1", draft, "unlisted");
+    await saveRouteReference("u1", draft);
+
+    const stored = h.store.get("routes/route-yuruyus") as { route: Record<string, unknown>; visibility: string; saveCount: number };
+    expect(stored.visibility).toBe("unlisted");
+    expect("origin" in stored.route).toBe(false);
+    expect(stored.saveCount).toBe(1);
+    expect(h.store.get("users/u1/savedRoutes/route-yuruyus")).toEqual({ routeId: "route-yuruyus", savedAt: "SERVER_TS" });
+  });
+
+  it("publishRoute yazma izni reddinde ham Firebase metni yerine Türkçe hata verir ve cause korur", async () => {
+    const failure = (await publishRoute("u1", rota("izin-yok-yazma"), "public").catch((error: unknown) => error)) as Error & { cause?: { code?: string } };
+
+    expect(failure.message).toContain("bu rota için yazma iznin yok");
+    expect(failure.cause?.code).toBe("permission-denied");
+  });
+
+  it("kayıtlı rotalardan biri silinmiş/okunamazsa abonelik hata vermez, o rotayı atlar", async () => {
+    h.store.set("users/u1/savedRoutes/r1", { routeId: "r1" });
+    h.store.set("users/u1/savedRoutes/silinmis", { routeId: "silinmis" });
+    h.store.set("routes/r1", rotaBelgesi("r1"));
+
+    const snapshots: SavedCollectionSnapshot[] = [];
+    const errors: Error[] = [];
+    subscribeSavedCollections("u1", (snapshot) => snapshots.push(snapshot), (error) => errors.push(error));
+
+    await vi.waitFor(() => expect(snapshots).toHaveLength(1));
+    expect(errors).toEqual([]);
+    expect(snapshots[0].routes.map((item) => item.id)).toEqual(["r1"]);
   });
 });
 

@@ -23,6 +23,7 @@ import {
   writeBatch,
   type DocumentData,
 } from "firebase/firestore";
+import { isPermissionDenied } from "./firestoreValue";
 import { db } from "./firebase";
 import { createNotification } from "./notifications";
 
@@ -215,25 +216,35 @@ export async function createGroup(input: CreateGroupInput): Promise<{ group: Gro
   };
 }
 
-export async function joinGroup(groupId: string, uid: string): Promise<Group> {
+export const GROUP_NOT_MEMBER_MESSAGE =
+  "Bu gruba katılamadın. Grup kimliğinin tamamını yazdığından emin ol; kurucunun seni grubu kurarken hesap kimliğinle eklemiş olması gerekir.";
+
+export async function joinGroup(rawGroupId: string, uid: string): Promise<Group> {
+  if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
+  const groupId = rawGroupId.trim();
+  if (!groupId) throw dataError("group/not-found", "Grup kimliğini yaz.");
   let group: Group | null;
   try {
     group = await fetchGroup(groupId);
   } catch (failure) {
-    // Üye olmayan kullanıcı grup belgesini okuyamadığı için rules bunu
-    // permission-denied ile reddeder; ham Firebase hatası yerine katılımın
-    // neden reddedildiğini kullanıcının anlayacağı dilde söyle.
-    const code = (failure as { code?: string })?.code;
-    if (code === "permission-denied") {
-      throw dataError("group/not-member", "Bu gruba eklenmemişsin. Kurucudan davet iste.");
+    // Grup kuralı resource.data okur: üye olmayan kullanıcı da, hiç olmayan
+    // (ör. eksik/kısaltılmış kimlik) grup da permission-denied ile reddedilir.
+    // Ham Firebase hatası yerine kullanıcının anlayacağı nedeni söyle.
+    if (isPermissionDenied(failure)) {
+      throw dataError("group/not-member", GROUP_NOT_MEMBER_MESSAGE);
     }
     throw failure;
   }
   if (!group) throw dataError("group/not-found", "Grup bulunamadı.");
   if (!group.memberUids.includes(uid)) {
-    throw dataError("group/not-member", "Bu gruba eklenmemişsin. Kurucudan davet iste.");
+    throw dataError("group/not-member", GROUP_NOT_MEMBER_MESSAGE);
   }
-  await writeGroupIndex(uid, group.id, group.name, group.ownerUid === uid ? "owner" : "member");
+  // users/{uid}/groups indeksinde güncelleme kapalıdır (update: false). Zaten
+  // listede olan gruba tekrar "katıl" denince ikinci yazım reddedilirdi; atla.
+  const existingIndex = await getDoc(doc(db, `users/${uid}/groups/${group.id}`));
+  if (!existingIndex.exists()) {
+    await writeGroupIndex(uid, group.id, group.name, group.ownerUid === uid ? "owner" : "member");
+  }
   return group;
 }
 

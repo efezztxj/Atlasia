@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Ban, Flag, Loader2, LogOut, MessageCircle, Plus, Send, Trash2, UsersRound, X } from "lucide-react";
+import { ArrowLeft, Ban, Copy, Flag, Loader2, LogOut, MessageCircle, Plus, Send, Trash2, UsersRound, X } from "lucide-react";
 import {
   createGroup,
   deleteGroup,
@@ -93,10 +93,35 @@ export default function GroupsPanel({ currentUid, currentName, blockedSet, isBlo
     }
   }, []);
 
+  // Davet bildiriminden veya "Katıl" alanından gelen grup: üyeyse kendi grup
+  // indeksine yazılır (listede kalıcı görünür), sonra sohbet açılır.
+  const joinAndOpen = useCallback(async (groupId: string) => {
+    const group = await joinGroup(groupId, currentUid);
+    setIndex((current) => current.some((item) => item.groupId === group.id)
+      ? current
+      : [{ groupId: group.id, name: group.name, role: group.ownerUid === currentUid ? "owner" : "member", joinedAt: Date.now() }, ...current]);
+    setOpenGroup(group);
+    return group;
+  }, [currentUid]);
+
   useEffect(() => {
     if (!initialGroupId) return;
-    void openChat(initialGroupId);
-  }, [initialGroupId, openChat]);
+    setError(null);
+    setStatus(null);
+    void joinAndOpen(initialGroupId).catch((failure: unknown) => {
+      setError((failure as Error).message || "Grup açılamadı.");
+    });
+  }, [initialGroupId, joinAndOpen]);
+
+  const copyGroupId = async (groupId: string) => {
+    try {
+      await navigator.clipboard.writeText(groupId);
+      setStatus(`Grup kimliği kopyalandı: ${groupId}`);
+    } catch (failure) {
+      console.warn("[Atlasia] Grup kimliği panoya kopyalanamadı:", failure);
+      setStatus(`Grup kimliği: ${groupId} (panoya kopyalanamadı, elle seç)`);
+    }
+  };
 
   const submitCreate = async () => {
     setBusy(true);
@@ -130,13 +155,9 @@ export default function GroupsPanel({ currentUid, currentName, blockedSet, isBlo
     setBusy(true);
     setError(null);
     try {
-      const group = await joinGroup(joinId, currentUid);
+      const group = await joinAndOpen(joinId);
       setJoinId("");
       setStatus(`“${group.name}” grubuna katıldın.`);
-      setIndex((current) => current.some((item) => item.groupId === group.id)
-        ? current
-        : [{ groupId: group.id, name: group.name, role: group.ownerUid === currentUid ? "owner" : "member", joinedAt: Date.now() }, ...current]);
-      setOpenGroup(group);
     } catch (failure) {
       setError((failure as Error).message || "Gruba katılınamadı.");
     } finally {
@@ -209,6 +230,9 @@ export default function GroupsPanel({ currentUid, currentName, blockedSet, isBlo
             <p className="text-[11px] text-mint/55">{openGroup ? `${openGroup.memberUids.length} üye · en yeni 50 mesaj` : `${index.length} grup · kişisel sohbet`}</p>
           </div>
           {openGroup && (
+            <button type="button" onClick={() => void copyGroupId(openGroup.id)} aria-label="Grup kimliğini kopyala" title="Grup kimliğini kopyala" className="grid size-10 place-items-center rounded-full hover:bg-white/5"><Copy size={16} /></button>
+          )}
+          {openGroup && (
             <button type="button" onClick={() => void removeGroup()} aria-label="Gruptan ayrıl veya grubu sil" className="grid size-10 place-items-center rounded-full text-red-200/80 hover:bg-white/5"><LogOut size={16} /></button>
           )}
           <button type="button" onClick={onClose} aria-label="Kapat" className="grid size-10 place-items-center rounded-full hover:bg-white/5"><X size={18} /></button>
@@ -246,7 +270,7 @@ export default function GroupsPanel({ currentUid, currentName, blockedSet, isBlo
                 <li key={entry.groupId}>
                   <button type="button" onClick={() => void openChat(entry.groupId)} className="flex w-full items-center gap-3 rounded-xl border border-white/10 p-3 text-left hover:border-leaf/40">
                     <span className="grid size-9 place-items-center rounded-full bg-leaf/15 text-leaf"><MessageCircle size={16} /></span>
-                    <span className="min-w-0 flex-1"><span className="block truncate text-[13px] font-semibold">{entry.name}</span><span className="text-[11px] text-mint/50">{entry.role === "owner" ? "Kurucu" : "Üye"} · {entry.groupId.slice(0, 8)}</span></span>
+                    <span className="min-w-0 flex-1"><span className="block truncate text-[13px] font-semibold">{entry.name}</span><span className="text-[11px] text-mint/50">{entry.role === "owner" ? "Kurucu" : "Üye"} · <span className="select-all break-all">{entry.groupId}</span></span></span>
                   </button>
                 </li>
               ))}
