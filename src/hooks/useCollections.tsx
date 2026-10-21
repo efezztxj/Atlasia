@@ -34,18 +34,25 @@ function read<T>(key: string, fallback: T): T {
   try { return JSON.parse(storageGet(key) ?? "null") ?? fallback; } catch { return fallback; }
 }
 
+/**
+ * Bu oturum Firestore'a gerçekten girebilir mi? Yapılandırılmış derlemede
+ * **cihaz hesabının** uid'si Firebase Auth'ta yoktur; Rules `request.auth`
+ * istediği için her okuma/yazma `permission-denied` alır. Yalnız
+ * `firebaseConfigured`a bakmak cihaz kullanıcısını sessizce ne bulut ne
+ * yerel çalışan bir durumda bırakırdı (Madde 12 bulgusu). Bulut/yerel
+ * ayrımı gereken her yer bu tek koşulu kullanır; doğruluk tablosu
+ * useCollections testleriyle kilitlidir.
+ */
+export function isCloudAccount(backend: "firebase" | "device" | undefined): boolean {
+  return firebaseConfigured && backend === "firebase";
+}
+
 export function CollectionsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const prefix = `atlasia.member.${user!.uid}`;
-  /**
-   * Bulut koleksiyonu yalnız Firebase yapılandırılmış **ve** hesap bulut
-   * hesabıysa kullanılır. Cihaz hesabının uid'si Firestore'da yetkisizdir;
-   * yalnız `firebaseConfigured`a bakmak cihaz kullanıcısının koleksiyonunu
-   * sessizce boş bırakırdı (ne bulut ne yerel). Cihaz hesabı bilinçli olarak
-   * cihazda saklanır — Karar (c) ayrımı: bulut hesabı `users/{uid}` altında
-   * eşitlenir, cihaz hesabı cihazda kalır. (Madde 12)
-   */
-  const cloudCollections = firebaseConfigured && user!.backend === "firebase";
+  // Karar (c) ayrımı: bulut hesabı `users/{uid}` altında eşitlenir,
+  // cihaz hesabı bilinçli olarak cihazda kalır. (Madde 12)
+  const cloudCollections = isCloudAccount(user!.backend);
   const [savedPlaces, setSavedPlaces] = useState<Place[]>(() => cloudCollections ? [] : read(`${prefix}.places`, []));
   const [savedRoutes, setSavedRoutes] = useState<AtlasRoute[]>(() => cloudCollections ? [] : read(`${prefix}.routes`, []));
   const [loading, setLoading] = useState(cloudCollections);

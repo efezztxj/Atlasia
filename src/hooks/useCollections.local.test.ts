@@ -27,7 +27,7 @@ vi.mock("../lib/routeData", () => ({
   subscribeSavedCollections: vi.fn(() => () => undefined),
 }));
 
-import { CollectionsProvider, useCollections } from "./useCollections";
+import { CollectionsProvider, isCloudAccount, useCollections } from "./useCollections";
 
 const wrapper = ({ children }: { children: ReactNode }) =>
   createElement(CollectionsProvider, null, children);
@@ -179,5 +179,13 @@ describe("useCollections (yerel mod)", () => {
     expect((failure as Error).message).toContain("ayrı bir onay ister");
     expect(h.publishRoute).not.toHaveBeenCalled();
     expect(result.current.savedRoutes).toEqual([]);
+  });
+});
+
+describe("isCloudAccount — yapılandırmasız derlemede hesap türü fark etmez", () => {
+  it("Firebase yoksa herkes yereldir", () => {
+    expect(isCloudAccount("firebase")).toBe(false);
+    expect(isCloudAccount("device")).toBe(false);
+    expect(isCloudAccount(undefined)).toBe(false);
   });
 });

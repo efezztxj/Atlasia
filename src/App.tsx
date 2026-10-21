@@ -23,7 +23,7 @@ import RecordsDock from "./components/RecordsDock";
 import TrackRecorderPanel from "./components/TrackRecorderPanel";
 import RouteEditor from "./components/RouteEditor";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
-import { CollectionsProvider } from "./hooks/useCollections";
+import { CollectionsProvider, isCloudAccount } from "./hooks/useCollections";
 import { GUIDE_PLACES } from "./data/places";
 import { EPHESUS_CENTER } from "./data/ephesusFixture";
 import { EPHESUS_TOUR } from "./data/siteTours";
@@ -78,15 +78,18 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
 
   // Yerel veri yalnız yapılandırmasız mod ve ilk canlı liste görünümü için yedektir.
   const local = useAtlasData(user!.uid);
+  // Cihaz hesabı Firestore'a giremez (Rules request.auth ister): okuma/yazma
+  // ancak bulut hesabıyla uzaktan olur; cihaz hesabı baştan sona yerel çalışır.
+  const cloudAccount = isCloudAccount(user!.backend);
   const remote = useFirestoreAtlasData({
     uid: user!.uid,
-    enabled: isCloudReady,
+    enabled: cloudAccount,
     viewport: mapViewport,
   });
-  // Bulut yapılandırılmışsa yazma/silme işlemleri her zaman Firestore'a gider.
+  // Bulut hesabı varsa yazma/silme işlemleri her zaman Firestore'a gider.
   // İlk canlı snapshot gelene kadar yalnız görünür liste için yerel içerik kullanılır;
   // böylece açılış anındaki hızlı bir işlem cihazda mahsur kalmaz.
-  const cloud = isCloudReady
+  const cloud = cloudAccount
     ? {
         ...remote,
         places: remote.ready ? remote.places : local.places,
@@ -107,14 +110,14 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
 
   // Kullanıcıya bulut bağlantısı durumunu bildir
   useEffect(() => {
-    if (isCloudReady && !remote.ready && remote.error) {
+    if (cloudAccount && !remote.ready && remote.error) {
       setToast("Canlı veriler yüklenemedi. Yeni işlemler için bağlantını kontrol et.");
       console.warn("[Atlasia] Config özeti:", firebaseConfigSummary);
     } else if (!isCloudReady) {
       setToast("Firebase yapılandırması eksik, yerel veri kullanılıyor.");
       console.warn("[Atlasia] Config özeti:", firebaseConfigSummary);
     }
-  }, [remote.ready, remote.error]);
+  }, [cloudAccount, remote.ready, remote.error]);
   const { blockedSet, isBlocked } = useBlocks(user?.uid);
   const freshness = useFreshness(user?.uid);
   const rawDiscoveries = cloud.places;
@@ -497,7 +500,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
     setCategory(null);
     setPanelOpen(true);
     focusPlace(created, Math.max(view.zoom, 8));
-    setToast(isCloudReady ? "İzin Atlasia haritasına eklendi." : "İzin bu cihazdaki haritana eklendi.");
+    setToast(cloudAccount ? "İzin Atlasia haritasına eklendi." : "İzin bu cihazdaki haritana eklendi.");
   };
 
   const handleDelete = async (p: Place): Promise<boolean> => {

@@ -47,7 +47,7 @@ vi.mock("../lib/routeData", () => ({
   },
 }));
 
-import { CollectionsProvider, useCollections } from "./useCollections";
+import { CollectionsProvider, isCloudAccount, useCollections } from "./useCollections";
 
 const wrapper = ({ children }: { children: ReactNode }) =>
   createElement(CollectionsProvider, null, children);
@@ -222,5 +222,13 @@ describe("useCollections (bulut modu)", () => {
     });
     expect((failure as Error).message).toContain("Bulut hesabı bağlı değil");
     expect(result.current.savedRoutes.map((item) => item.id)).toContain("r2");
+  });
+});
+
+describe("isCloudAccount — bulut/yerel ayrımının tek koşulu (yapılandırılmış derleme)", () => {
+  it("yalnız Firebase hesabı bulut sayılır; cihaz hesabı ve oturumsuz durum yereldir", () => {
+    expect(isCloudAccount("firebase")).toBe(true);
+    expect(isCloudAccount("device")).toBe(false);
+    expect(isCloudAccount(undefined)).toBe(false);
   });
 });

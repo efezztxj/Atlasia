@@ -14,17 +14,22 @@ const h = vi.hoisted(() => ({
 vi.mock("../contexts/AuthContext", () => ({
   useAuth: () => ({ user: { uid: "u1", backend: h.backend } }),
 }));
-vi.mock("../hooks/useCollections", () => ({
-  useCollections: () => ({
-    savedPlaces: [],
-    savedRoutes: [],
-    savePlace: () => undefined,
-    saveRoute: () => undefined,
-    removeRoute: () => undefined,
-    loading: false,
-    error: null,
-  }),
-}));
+vi.mock("../hooks/useCollections", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../hooks/useCollections")>();
+  return {
+    // isCloudAccount gerçek haliyle gelir; firebase mock'u yapılandırılmış derleme varsayar.
+    ...actual,
+    useCollections: () => ({
+      savedPlaces: [],
+      savedRoutes: [],
+      savePlace: () => undefined,
+      saveRoute: () => undefined,
+      removeRoute: () => undefined,
+      loading: false,
+      error: null,
+    }),
+  };
+});
 vi.mock("../lib/firebase", () => ({ firebaseConfigured: true, isCloudReady: true, db: {}, firebaseApp: {} }));
 vi.mock("../lib/routeData", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../lib/routeData")>();

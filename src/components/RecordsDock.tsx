@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, Bookmark, Compass, MapPin, Route, Trash2, X } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
-import { useCollections } from "../hooks/useCollections";
+import { isCloudAccount, useCollections } from "../hooks/useCollections";
 import {
   PUBLIC_ROUTE_PAGE_SIZE,
   deleteTrack,
@@ -13,7 +13,6 @@ import {
   type PublicRouteRecord,
   type PublicRouteSort,
 } from "../lib/routeData";
-import { firebaseConfigured } from "../lib/firebase";
 import type { AtlasRoute, AtlasTrack, Place } from "../types";
 import PlaceImage from "./PlaceImage";
 import { cn } from "../utils/cn";
@@ -36,7 +35,7 @@ export default function RecordsDock({ onClose, onPlace, onRoute }: Props) {
   // Keşif ve özel izler Firestore ister: yapılandırma yoksa ya da hesap cihaz
   // hesabıysa (Firestore'da yetkisiz uid) bu sekmeler açık mesaj gösterir;
   // sessiz boş liste ya da yabancı hata metni gösterilmez.
-  const cloudReady = firebaseConfigured && user?.backend === "firebase";
+  const cloudReady = isCloudAccount(user?.backend);
   const cloudBlocked = !cloudReady && (tab === "discover" || tab === "tracks");
 
   useEffect(() => {
