@@ -1272,6 +1272,46 @@ describe("Firestore güvenlik kuralları", () => {
     await assertSucceeds(deleteDoc(doc(aliceDb, "feedback/f-ok")));
   });
 
+  // === P4 — görünürlük matrisi (docs/denetim/gorunurluk-matrisi.md ile birebir) ===
+  it("görünürlük matrisi: profil, iz, rota, hikâye, yer, kayıt, grup, bildirim, arkadaş", async () => {
+    await seed("userProfiles/alice", { uid: "alice", displayName: "Ada", createdAt: Timestamp.now(), updatedAt: Timestamp.now() });
+    await seed("tracks/tr-alice", { authorUid: "alice" });
+    await seed("routes/rt-private", { authorUid: "alice", visibility: "private", saveCount: 0 });
+    await seed("routes/rt-unlisted", { authorUid: "alice", visibility: "unlisted", saveCount: 0 });
+    await seed("routes/rt-public", { authorUid: "alice", visibility: "public", saveCount: 0 });
+    await seed("stories/st-public", { authorUid: "alice" });
+    await seed("users/alice/savedPlaces/pl-1", { place: { id: "pl-1" }, savedAt: Timestamp.now() });
+    await seed("users/alice/notifications/nt-1", { type: "system", createdAt: Timestamp.now() });
+    await seed("users/alice/friends/bob", { friendUid: "bob" });
+    await seed("groups/grp-1", { name: "Ekip", ownerUid: "alice", memberUids: ["alice"], joinCode: "123456", createdAt: Timestamp.now(), updatedAt: Timestamp.now() });
+    const anonDb = testEnv.unauthenticatedContext().firestore();
+    const bobDb = testEnv.authenticatedContext("bob").firestore();
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+
+    // Profil: giriş yapmış herkes okur; anonim okuyamaz.
+    await assertFails(getDoc(doc(anonDb, "userProfiles/alice")));
+    await assertSucceeds(getDoc(doc(bobDb, "userProfiles/alice")));
+    // İz: yalnız sahibi (arkadaş dahil başkası okuyamaz).
+    await assertFails(getDoc(doc(bobDb, "tracks/tr-alice")));
+    await assertSucceeds(getDoc(doc(aliceDb, "tracks/tr-alice")));
+    // Rota: taslak/özel yalnız sahibi; unlisted bağlantıyla herkes; yayın herkes.
+    await assertFails(getDoc(doc(bobDb, "routes/rt-private")));
+    await assertSucceeds(getDoc(doc(aliceDb, "routes/rt-private")));
+    await assertSucceeds(getDoc(doc(anonDb, "routes/rt-unlisted")));
+    await assertSucceeds(getDoc(doc(anonDb, "routes/rt-public")));
+    // Hikâye: herkes (anonim dahil) okur.
+    await assertSucceeds(getDoc(doc(anonDb, "stories/st-public")));
+    // Kayıtlı yer ve bildirim, arkadaş listesi: yalnız sahibi.
+    await assertFails(getDoc(doc(bobDb, "users/alice/savedPlaces/pl-1")));
+    await assertFails(getDoc(doc(bobDb, "users/alice/notifications/nt-1")));
+    await assertFails(getDoc(doc(bobDb, "users/alice/friends/bob")));
+    await assertSucceeds(getDoc(doc(aliceDb, "users/alice/savedPlaces/pl-1")));
+    // Grup: yalnız üye; üye olmayan (bob) okuyamaz, anonim okuyamaz.
+    await assertFails(getDoc(doc(bobDb, "groups/grp-1")));
+    await assertFails(getDoc(doc(anonDb, "groups/grp-1")));
+    await assertSucceeds(getDoc(doc(aliceDb, "groups/grp-1")));
+  });
+
   // === C4 — userProfiles sadece displayName ve photoURL ===
   it("C4 userProfiles displayName ve photoURL dışında alan okunmuyor/yazılmıyor", async () => {
     const aliceDb = testEnv.authenticatedContext("alice").firestore();
