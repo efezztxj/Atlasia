@@ -29,6 +29,20 @@ export function withoutUndefined<T>(value: T): T {
   return value;
 }
 
+/**
+ * Yer (iz) silme hatasını kullanıcıya söylenecek metne çevirir. Kod, hata
+ * nesnesinin `code` alanından; yoksa mesajından okunur. Metinler arayüzde
+ * birebir gösterilir ve `firestoreValue.test.ts` ile kilitlidir — değiştirirken
+ * testi de güncelle.
+ */
+export function placeDeleteErrorMessage(error: unknown): string {
+  const code = (error as { code?: string })?.code ?? (error as Error)?.message ?? "";
+  if (code === "place/not-owner" || code.includes("permission-denied")) return "Bu iz başka bir hesaba ait. Yalnızca bırakan hesap silebilir.";
+  if (code === "place/owner-missing") return "Bu eski izin sahiplik kaydı eksik. Güvenli taşıma yapılmadan silinemez.";
+  if (code.includes("unavailable") || code.includes("network")) return "Bağlantı kurulamadı. İnternetini kontrol edip tekrar dene.";
+  return "İz silinemedi. Kayıt korunuyor; biraz sonra tekrar deneyebilirsin.";
+}
+
 /** Firestore Rules reddi mi? (`permission-denied` kodu) */
 export function isPermissionDenied(failure: unknown): boolean {
   return Boolean(

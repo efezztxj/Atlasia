@@ -35,6 +35,7 @@ import { useInstallApp, type InstallAppController } from "./hooks/useInstallApp"
 import { isCloudReady, firebaseConfigSummary } from "./lib/firebase";
 import type { PlaceViewport } from "./lib/firestoreData";
 import { ROUTE_OPEN_MESSAGES, openPublishedRoute } from "./lib/publishedRouteOpen";
+import { placeDeleteErrorMessage } from "./lib/firestoreValue";
 import { SHARE_LINK_PARAM, parseRouteShareLink } from "./utils/shareLink";
 import type { AtlasRoute, CategoryId, Place, RouteVisibility, ViewState } from "./types";
 import { haversineKm, reverseName, type SearchResult } from "./utils/geo";
@@ -66,14 +67,6 @@ function MapLoadingSkeleton() {
       </div>
     </div>
   );
-}
-
-function placeDeleteErrorMessage(error: unknown) {
-  const code = (error as { code?: string })?.code ?? (error as Error)?.message ?? "";
-  if (code === "place/not-owner" || code.includes("permission-denied")) return "Bu iz başka bir hesaba ait. Yalnızca bırakan hesap silebilir.";
-  if (code === "place/owner-missing") return "Bu eski izin sahiplik kaydı eksik. Güvenli taşıma yapılmadan silinemez.";
-  if (code.includes("unavailable") || code.includes("network")) return "Bağlantı kurulamadı. İnternetini kontrol edip tekrar dene.";
-  return "İz silinemedi. Kayıt korunuyor; biraz sonra tekrar deneyebilirsin.";
 }
 
 function Explorer({ installApp }: { installApp: InstallAppController }) {
@@ -549,7 +542,6 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
 
   const heroHidden = view.zoom > 3.4;
   const dockVisible = !recordsOpen && !profileOpen && !myPlacesOpen && !storyPlace && !atlasOpen && !settingsOpen && !drawerOpen && !feedOpen;
-  const discoveryPanelVisible = dockVisible;
   const mobileExplore = () => { closePanels(); setPanelOpen(true); };
   const openMyPlaces = () => { closePanels(); setMyPlacesOpen(true); };
   const mobileTab = myPlacesOpen ? "İzlerim" : recordsOpen ? "Kaydet" : feedOpen ? "Topluluk" : profileOpen ? "Profil" : "Keşfet";
@@ -733,7 +725,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         </div>
       )}
 
-      {discoveryPanelVisible && <BottomPanel
+      {dockVisible && <BottomPanel
         open={panelOpen}
         onToggle={() => setPanelOpen((v) => !v)}
         category={category}
