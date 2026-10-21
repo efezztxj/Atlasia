@@ -9,6 +9,7 @@ const h = vi.hoisted(() => ({
     async (_route: AtlasRoute, _visibility: RouteVisibility, _shareConsent: boolean) => undefined,
   ),
   fetchWeatherSeries: vi.fn(),
+  buildElevationProfileFromTiles: vi.fn(),
 }));
 
 vi.mock("../hooks/useCollections", () => ({
@@ -19,6 +20,12 @@ vi.mock("../utils/weather", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../utils/weather")>();
   // Saf değerlendirme gerçek; yalnız ağ çağrısı sahtedir (test ağı yok).
   return { ...actual, fetchWeatherSeries: h.fetchWeatherSeries };
+});
+
+vi.mock("../utils/elevation", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../utils/elevation")>();
+  // Bileşenin senkron yolları gerçek; yalnız karo akışı sahtedir.
+  return { ...actual, buildElevationProfileFromTiles: h.buildElevationProfileFromTiles };
 });
 
 import RouteEditor from "./RouteEditor";
@@ -200,5 +207,77 @@ describe("RouteEditor hava riski (Adım 15)", () => {
     renderEditor(route());
     fireEvent.click(screen.getByRole("button", { name: /Hava riskini denetle/ }));
     expect(await screen.findByText(/Belirgin risk yok/)).toBeTruthy();
+  });
+});
+
+describe("RouteEditor yükseklik profili (Adım 11)", () => {
+  const routeWithLegs = (): AtlasRoute => {
+    const base = route("route-elev-1");
+    return {
+      ...base,
+      days: base.days.map((day) => ({
+        ...day,
+        legs: [
+          {
+            id: "bacak-test",
+            coords: [[27.14, 38.42], [27.16, 38.423]] as [number, number][],
+            mode: "walking" as const,
+            distanceKm: 0,
+            durationMinutes: 0,
+          },
+        ],
+      })),
+    };
+  };
+
+  const reliable = {
+    samples: [
+      { lng: 27.14, lat: 38.42, distanceKm: 0.1, elevationM: 10, slopePercent: 0, mode: "walking" as const },
+      { lng: 27.16, lat: 38.423, distanceKm: 1.7, elevationM: 120, slopePercent: 6.5, mode: "walking" as const },
+    ],
+    totalAscentM: 110,
+    maxSlopePercent: 6.5,
+    totalDistanceKm: 1.7,
+    naismithMinutes: 31,
+    source: "terrain" as const,
+    reliable: true,
+    unsampledPoints: 0,
+  };
+
+  beforeEach(() => {
+    h.buildElevationProfileFromTiles.mockReset();
+  });
+
+  it("karo akışı başarılıysa profil (tırmanış) ekrana bağlanır; bacaklar akışa gider", async () => {
+    h.buildElevationProfileFromTiles.mockResolvedValue(reliable);
+    renderEditor(routeWithLegs());
+    fireEvent.click(screen.getByRole("button", { name: /Profili göster/ }));
+    expect(await screen.findByText(/Toplam tırmanış/)).toBeTruthy();
+    expect(h.buildElevationProfileFromTiles).toHaveBeenCalledTimes(1);
+    const legsArg = h.buildElevationProfileFromTiles.mock.calls[0][0] as Array<{ coords: unknown[] }>;
+    expect(legsArg).toHaveLength(1);
+    expect(legsArg[0].coords.length).toBeGreaterThan(1);
+  });
+
+  it("DEM bilinmiyorsa bileşen 'yükseklik verisi yok' gösterir; eğri uydurulmaz", async () => {
+    h.buildElevationProfileFromTiles.mockResolvedValue({
+      ...reliable,
+      samples: [],
+      totalAscentM: 0,
+      source: "unknown" as const,
+      reliable: false,
+      unsampledPoints: 20,
+    });
+    renderEditor(routeWithLegs());
+    fireEvent.click(screen.getByRole("button", { name: /Profili göster/ }));
+    expect(await screen.findByText(/yükseklik verisi/i)).toBeTruthy();
+    expect(screen.queryByText(/Toplam tırmanış/)).toBeNull();
+  });
+
+  it("geometri yoksa ağ çağrısı yapılmadan 'hesaplanamadı' denir", async () => {
+    renderEditor(route()); // bacaklı değil, polyline boş
+    fireEvent.click(screen.getByRole("button", { name: /Profili göster/ }));
+    expect(await screen.findByText(/hesaplanamadı/)).toBeTruthy();
+    expect(h.buildElevationProfileFromTiles).not.toHaveBeenCalled();
   });
 });

@@ -3,6 +3,7 @@ import type { AtlasRoute, RouteLeg } from "../types";
 import {
   buildElevationProfile,
   buildProfileForPolyline,
+  type ElevationProfileData,
   type TerrainSampler,
 } from "../utils/elevation";
 
@@ -16,6 +17,11 @@ interface Props {
    * P17: sahte/sıfır düz çizgi çizmek yasak, uydurma eğri göstermek yanıltıcı.
    */
   terrain?: TerrainSampler | null;
+  /**
+   * Önceden hesaplanmış profil (ör. karo tabanlı async akış). Verilirse
+   * senkron hesaplama yapılmaz; `null` açıkça "hesaplanamadı" durumudur.
+   */
+  profileData?: ElevationProfileData | null;
 }
 
 const MODE_COLOR: Record<string, string> = {
@@ -38,8 +44,9 @@ const MODE_DASH: Record<string, string | undefined> = {
   transit: "8 4",
 };
 
-export default function ElevationProfile({ route, legs, coords, className, terrain }: Props) {
-  const profile = useMemo(() => {
+export default function ElevationProfile({ route, legs, coords, className, terrain, profileData }: Props) {
+  const computed = useMemo(() => {
+    if (profileData !== undefined) return null; // hazır profil varken senkron hesaplama yok
     if (legs && legs.length > 0) return buildElevationProfile(legs, terrain);
     if (route?.days[0]?.legs && route.days[0].legs.length > 0)
       return buildElevationProfile(route.days[0].legs, terrain);
@@ -49,7 +56,8 @@ export default function ElevationProfile({ route, legs, coords, className, terra
       return null;
     }
     return null;
-  }, [route, legs, coords, terrain]);
+  }, [profileData, route, legs, coords, terrain]);
+  const profile = profileData !== undefined ? profileData : computed;
 
   // Durum 1: geometri hiç yok → hesap yapılamadı.
   if (!profile) {

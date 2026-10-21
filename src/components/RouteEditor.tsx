@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from "react";
-import { CloudSun, ImagePlus, Link2, LockKeyhole, Save, ShieldCheck, Trash2, TriangleAlert, X } from "lucide-react";
-import type { AtlasRoute, RouteDay, RouteVisibility } from "../types";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { CloudSun, ImagePlus, Link2, LockKeyhole, Mountain, Save, ShieldCheck, Trash2, TriangleAlert, X } from "lucide-react";
+import type { AtlasRoute, RouteDay, RouteLeg, RouteVisibility } from "../types";
 import { useCollections } from "../hooks/useCollections";
 import { compressImageWithinLimit } from "../utils/image";
+import { decodePolyline } from "../utils/polyline";
+import type { ElevationProfileData } from "../utils/elevation";
 import { buildRouteShareUrl, createRouteShareLink } from "../utils/shareLink";
 import {
   assessWeatherRisk,
@@ -128,6 +130,83 @@ function WeatherRiskPanel({ route }: { route: AtlasRoute }) {
             );
           })}
         </ul>
+      )}
+    </section>
+  );
+}
+
+// Profil bileşeni ve karo örnekleyici tembel yüklenir: düzenleyici
+// açılış paketinde büyümez, veri yalnız kullanıcı isterse çekilir.
+const LazyElevationProfile = lazy(() => import("./ElevationProfile"));
+
+type ElevationState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "done"; profile: ElevationProfileData | null }
+  | { status: "error"; message: string };
+
+/**
+ * Adım 11 (kalan): yükseklik profili rota düzenleyicide. Harita DEM'ine
+ * erişim olmadığından karolar doğrudan örneklenir; başarısızsa bileşen
+ * "yükseklik verisi yok" gösterir — sahte eğri çizilmez.
+ */
+function RouteElevationPanel({ route }: { route: AtlasRoute }) {
+  const [state, setState] = useState<ElevationState>({ status: "idle" });
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => () => abortRef.current?.abort(), []);
+
+  const load = async () => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setState({ status: "loading" });
+    try {
+      const legs: RouteLeg[] = route.days.flatMap((day, dayIndex) => {
+        const dayLegs = (day.legs ?? []).filter((leg) => leg.coords.length > 1);
+        if (dayLegs.length > 0) return dayLegs;
+        if (!day.polyline) return [];
+        try {
+          const coords = decodePolyline(day.polyline);
+          return coords.length > 1
+            ? [{ id: `gun-${dayIndex}-cizgi`, coords, mode: route.transport, distanceKm: 0, durationMinutes: 0 }]
+            : [];
+        } catch (failure) {
+          console.warn("[Atlasia] Gün çizgisi profil için çözülemedi:", failure);
+          return [];
+        }
+      });
+      if (legs.length === 0) {
+        setState({ status: "done", profile: null });
+        return;
+      }
+      const { buildElevationProfileFromTiles } = await import("../utils/elevation");
+      const profile = await buildElevationProfileFromTiles(legs, { signal: controller.signal });
+      setState({ status: "done", profile });
+    } catch (failure) {
+      if ((failure as { name?: string })?.name === "AbortError") return; // kapanış/yeni deneme
+      setState({ status: "error", message: failure instanceof Error ? failure.message : "Yükseklik verisi alınamadı." });
+    }
+  };
+
+  return (
+    <section aria-label="Yükseklik profili" className="rounded-2xl border border-white/10 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="flex items-center gap-2 text-[13px] font-semibold"><Mountain size={15} />Yükseklik profili</p>
+        <button type="button" disabled={state.status === "loading"} onClick={() => void load()} className="min-h-10 shrink-0 rounded-full border border-leaf/30 bg-leaf/10 px-3 text-[12px] font-semibold text-leaf disabled:opacity-50">
+          {state.status === "loading" ? "Hazırlanıyor…" : "Profili göster"}
+        </button>
+      </div>
+      {state.status === "idle" && (
+        <p className="mt-1 text-[12px] leading-relaxed text-mint/65">Tırmanış ve eğim, arazi yükseklik verisinden hesaplanır; veri örneklenemezse uydurma eğri çizilmez.</p>
+      )}
+      {state.status === "error" && <p role="alert" className="mt-2 text-[12px] leading-relaxed text-red-200">Yükseklik verisi yok. {state.message}</p>}
+      {state.status === "done" && (
+        <div className="mt-2">
+          <Suspense fallback={<p className="text-[12px] text-mint/60">Profil bileşeni yükleniyor…</p>}>
+            <LazyElevationProfile profileData={state.profile} />
+          </Suspense>
+        </div>
       )}
     </section>
   );
@@ -292,6 +371,7 @@ export default function RouteEditor({ route, onClose, onSaved }: Props) {
         )}
 
         <WeatherRiskPanel key={route.id} route={route} />
+        <RouteElevationPanel key={`${route.id}-yukseklik`} route={route} />
 
         <p className="flex items-start gap-2 rounded-xl border border-leaf/20 bg-leaf/[0.06] p-3 text-[12px] leading-relaxed text-mint/75"><ShieldCheck size={15} className="mt-0.5 shrink-0 text-leaf" />Yürüyüş izleri ve taslaklar varsayılan olarak gizlidir. Bu görünürlük seçimi yalnız bu rotayı etkiler; ham iz kendiliğinden yayımlanmaz.</p>
         {error && <p role="alert" className="text-[13px] text-red-200">{error}</p>}
