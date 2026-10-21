@@ -55,11 +55,11 @@ jobs:
       - name: Unit tests
         run: npm test
 
-      - name: Owner index script tests (no credentials)
-        run: npm run test:owner-index
+      - name: Script tests (no credentials)
+        run: npm run test:scripts
 
       - name: Firestore security rules tests
         run: npm run test:rules:emulator
 
-      - name: Production build
+      - name: Production build and bundle budget
         run: npm run build
