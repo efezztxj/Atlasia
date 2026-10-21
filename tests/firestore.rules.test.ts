@@ -1209,6 +1209,37 @@ describe("Firestore güvenlik kuralları", () => {
     await assertSucceeds(batch.commit());
   });
 
+  // === P4 — hesap silme: her sahip koleksiyonunda yalnız sahibi siler, başkası silemez ===
+  it("hesap silme: sahip olunan her belge sahibince silinir; başkasınınki silinemez", async () => {
+    const owned: Array<[string, Record<string, unknown>]> = [
+      ["places/pl-alice", { authorUid: "alice" }],
+      ["posts/po-alice", { authorUid: "alice" }],
+      ["stories/st-alice", { authorUid: "alice" }],
+      ["reports/rp-alice", { reporterUid: "alice" }],
+      ["blocks/alice_bob", { blockerUid: "alice", blockedUid: "bob" }],
+      ["verifications/vf-alice", { uid: "alice" }],
+      ["users/alice/savedPlaces/pl-x", { place: { id: "pl-x" }, savedAt: Timestamp.now() }],
+      ["users/alice/notifications/nt-1", { type: "system", createdAt: Timestamp.now() }],
+      ["users/alice/friendRequests/bob", { fromUid: "bob", toUid: "alice" }],
+      ["users/alice/groupInvites/g-1", { groupId: "g-1", invitedUid: "alice" }],
+      ["users/alice/friends/bob", { friendUid: "bob" }],
+      ["friendships/alice_bob", { users: ["alice", "bob"] }],
+      ["userProfiles/alice", { uid: "alice" }],
+    ];
+    for (const [path, data] of owned) await seed(path, data);
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    const carolDb = testEnv.authenticatedContext("carol").firestore();
+
+    // Başkası (carol) hiçbirini silemez.
+    for (const [path] of owned) {
+      await assertFails(deleteDoc(doc(carolDb, path)));
+    }
+    // Sahip hepsini siler.
+    for (const [path] of owned) {
+      await assertSucceeds(deleteDoc(doc(aliceDb, path)));
+    }
+  });
+
   // === C4 — userProfiles sadece displayName ve photoURL ===
   it("C4 userProfiles displayName ve photoURL dışında alan okunmuyor/yazılmıyor", async () => {
     const aliceDb = testEnv.authenticatedContext("alice").firestore();
