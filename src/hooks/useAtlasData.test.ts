@@ -2,6 +2,7 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FeedPost, FeedReply, Place, Story } from "../types";
+import { totalLikes } from "../utils/likes";
 
 const h = vi.hoisted(() => ({
   compressCalls: [] as Array<{ file: File; maxSize: number; quality: number }>,
@@ -195,18 +196,49 @@ describe("useAtlasData", () => {
       await result.current.toggleLike(createdPost.id);
     });
     expect(result.current.posts[0].likedBy).toEqual(["c-test"]);
-    expect(result.current.posts[0].likes).toBe(0); // Yerel mod sayaç alanını türetmez.
+    // P16 #2: sayaç UI'da `totalLikes` ile türetilir (taban `likes` + likedBy).
+    // Bu yüzden `likes` burada artmaz; artırmak aynı beğeniyi iki kez sayardı.
+    expect(result.current.posts[0].likes).toBe(0);
+    expect(totalLikes(result.current.posts[0])).toBe(1);
 
     await act(async () => {
       await result.current.toggleLike(createdPost.id);
     });
     expect(result.current.posts[0].likedBy).toEqual([]);
+    expect(result.current.posts[0].likes).toBe(0);
+    expect(totalLikes(result.current.posts[0])).toBe(0);
 
     await act(async () => {
       await result.current.removePost(createdPost.id);
     });
     expect(result.current.posts).toEqual([]);
     expect(stored<FeedPost[]>(key("posts", "u1"))).toEqual([]);
+  });
+
+  it("P16 #2: beğeni sayacı likedBy ile tutarlı kalır (seed taban + benzersiz üyelik, çift sayım yok)", async () => {
+    // Taban 5 beğeni taşıyan, bozuk/tekrarlı likedBy içeren bir gönderi.
+    seed(key("posts", "u1"), [
+      { ...post("p-eski"), likes: 5, likedBy: ["c-eski", "c-eski"] },
+    ]);
+    const { result } = await renderData("u1");
+
+    expect(totalLikes(result.current.posts[0])).toBe(6); // 5 taban + 1 benzersiz üye
+
+    await act(async () => {
+      await result.current.toggleLike("p-eski");
+    });
+    const afterFirst = result.current.posts[0];
+    expect(afterFirst.likes).toBe(5); // taban değişmez
+    expect(afterFirst.likedBy).toEqual(["c-eski", result.current.clientId]); // tekilleştirildi
+    expect(totalLikes(afterFirst)).toBe(7);
+
+    await act(async () => {
+      await result.current.toggleLike("p-eski");
+    });
+    const afterSecond = result.current.posts[0];
+    expect(afterSecond.likedBy).toEqual(["c-eski"]);
+    expect(totalLikes(afterSecond)).toBe(6);
+    expect(stored<FeedPost[]>(key("posts", "u1"))[0].likes).toBe(5);
   });
 
   it("story ekleme varsayılanlarıyla çalışır, silme kalıcıdır", async () => {

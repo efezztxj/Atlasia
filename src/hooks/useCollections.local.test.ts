@@ -128,18 +128,42 @@ describe("useCollections (yerel mod)", () => {
     ).toBe(false);
   });
 
-  it("yerel modda publish yine rota yayınlama + kayıt referansı zincirini çağırır", async () => {
+  it("P16 #1: yerel modda publish bulut zincirini ÇAĞIRMAZ; cihazda saklar ve Türkçe neden söyler", async () => {
     const { result } = renderHook(() => useCollections(), { wrapper });
     const item = route("r1");
 
+    let failure: unknown;
     await act(async () => {
-      await result.current.publishRoute(item, "public");
+      failure = await result.current.publishRoute(item, "public").catch((error: unknown) => error);
     });
 
-    expect(h.publishRoute).toHaveBeenCalledWith("u1", item, "public");
-    expect(h.saveRouteReference).toHaveBeenCalledWith("u1", item);
-    expect(h.publishRoute.mock.invocationCallOrder[0]).toBeLessThan(
-      h.saveRouteReference.mock.invocationCallOrder[0],
+    // Bulut fonksiyonları hiç denenmez (yerelde yayın yoktur).
+    expect(h.publishRoute).not.toHaveBeenCalled();
+    expect(h.saveRouteReference).not.toHaveBeenCalled();
+    // İş kaybolmaz: rota cihazda saklanır.
+    expect(result.current.savedRoutes.map((entry) => entry.id)).toEqual(["r1"]);
+    expect(
+      (JSON.parse(window.localStorage.getItem("atlasia.member.u1.routes") ?? "[]") as AtlasRoute[])
+        .map((entry) => entry.id),
+    ).toEqual(["r1"]);
+    // Sahte başarı yok: açık Türkçe mesaj.
+    expect(failure).toBeInstanceOf(Error);
+    expect((failure as Error).message).toBe(
+      "Bulut hesabı bağlı değil: rota bu cihazda kaydedildi, yayımlanamadı. Yayımlamak için bulut (e-posta) hesabıyla giriş yap.",
     );
+  });
+
+  it("ham iz alanları taşıyan rota yayına sokulmaz (yerelde de)", async () => {
+    const { result } = renderHook(() => useCollections(), { wrapper });
+    const kirlenmis = { ...route("r-kirli"), accuracy: { meanMeters: 5 } } as unknown as AtlasRoute;
+
+    let failure: unknown;
+    await act(async () => {
+      failure = await result.current.publishRoute(kirlenmis, "private").catch((error: unknown) => error);
+    });
+
+    expect((failure as Error).message).toContain("Yalnız taslak rota paylaşılabilir");
+    expect(h.publishRoute).not.toHaveBeenCalled();
+    expect(result.current.savedRoutes).toEqual([]);
   });
 });

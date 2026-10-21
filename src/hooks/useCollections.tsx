@@ -9,6 +9,7 @@ import {
   toggleSavedPlace,
 } from "../lib/routeData";
 import type { AtlasRoute, Place, RouteVisibility } from "../types";
+import { resolveTrackShare } from "../utils/trackPrivacy";
 import { storageGet, storageSet } from "../utils/storage";
 
 interface CollectionState {
@@ -77,9 +78,25 @@ export function CollectionsProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  /**
+   * P16 #1: yerel modda (`firebaseConfigured=false`) bulut zinciri **çağrılmaz**.
+   * Yerelde yayın diye bir şey yoktur; rota cihazda saklanır ve kullanıcıya
+   * yayımlanamadığı açıkça söylenir. Böylece sahte "yayınlandı" bağlantısı
+   * üretilmez, ağ bağımlılığı olmayan modda hata da oluşmaz.
+   */
   const publish = async (route: AtlasRoute, visibility: RouteVisibility) => {
-    await publishRoute(user!.uid, route, visibility);
-    await saveRouteReference(user!.uid, route);
+    // Tek gizlilik kapısı: ham iz alanları taşınmaz, yayın açık kullanıcı
+    // eylemiyle yapılır (bu fonksiyon yalnız "Yayınla/Kaydet" düğmesinden çağrılır).
+    const decision = resolveTrackShare(route, { userInitiated: true, visibility, shareConsent: true });
+    if (!decision.ok) throw new Error(decision.reason);
+    if (!firebaseConfigured) {
+      setSavedRoutes((current) => [route, ...current.filter((item) => item.id !== route.id)].slice(0, 40));
+      throw new Error(
+        "Bulut hesabı bağlı değil: rota bu cihazda kaydedildi, yayımlanamadı. Yayımlamak için bulut (e-posta) hesabıyla giriş yap.",
+      );
+    }
+    await publishRoute(user!.uid, decision.route, decision.visibility);
+    await saveRouteReference(user!.uid, decision.route);
   };
 
   const removeRoute = (id: string) => {

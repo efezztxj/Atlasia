@@ -34,7 +34,7 @@ import { useTheme } from "./hooks/useTheme";
 import { useInstallApp, type InstallAppController } from "./hooks/useInstallApp";
 import { isCloudReady, firebaseConfigSummary } from "./lib/firebase";
 import type { PlaceViewport } from "./lib/firestoreData";
-import { getPublishedRoute } from "./lib/routeData";
+import { openPublishedRoute } from "./lib/publishedRouteOpen";
 import type { AtlasRoute, CategoryId, Place, RouteVisibility, ViewState } from "./types";
 import { haversineKm, reverseName, type SearchResult } from "./utils/geo";
 import { storageGet, storageSet } from "./utils/storage";
@@ -184,16 +184,13 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
     const routeId = new URLSearchParams(window.location.search).get("route");
     if (!routeId) return;
     let active = true;
-    void getPublishedRoute(routeId).then((result) => {
+    void openPublishedRoute(routeId).then((outcome) => {
       if (!active) return;
-      if (!result) { setToast("Bu rota bulunamadı veya artık paylaşılmıyor."); return; }
-      setResumeRoute(result.route);
-      setAtlasOpen(true);
-      setToast("Paylaşılan rota açıldı. Kendi kayıtlarına ekleyebilirsin.");
-    }).catch((failure: unknown) => {
-      if (active) setToast(failure instanceof Error && failure.message.includes("permission-denied")
-        ? "Bu rota özel. Yalnız sahibi açabilir."
-        : "Rota yüklenemedi. Bağlantıyı ve internetini kontrol et.");
+      if (outcome.status === "opened") {
+        setResumeRoute(outcome.route);
+        setAtlasOpen(true);
+      }
+      setToast(outcome.message);
     });
     return () => { active = false; };
   }, []);

@@ -200,6 +200,8 @@ vi.mock("firebase/firestore", () => ({
 }));
 
 import type { AtlasRoute, AtlasTrack, Place } from "../types";
+import { buildTrackDraft, recordDwellPoint, type DwellState } from "../utils/track";
+import { resolveTrackShare, routeLeaksRawTrack } from "../utils/trackPrivacy";
 import {
   createTrack,
   deleteTrack,
@@ -596,5 +598,59 @@ describe("routeData okuma/listeler ve track işlemleri", () => {
     expect(networkError.message).toContain("İz buluta kaydedilemedi");
     expect(networkError.cause?.code).toBe("unavailable");
     expect(h.store.size).toBe(0);
+  });
+});
+
+describe("P17-Tur2 · yürüyüş taslağı yayın → geri okuma (uçtan uca)", () => {
+  it("gerçek taslak yayınlanır, ham iz paylaşılmaz, bacaklar coordsPolyline ile geri açılır", async () => {
+    // 1) Kayıttan taslak üret (ağ yok): iki nokta arası 5 dk yürüyüş + 4 dk mola.
+    const points = [
+      { lng: 27.14, lat: 38.42, accuracy: 5, timestamp: 1_700_000_000_000 },
+      { lng: 27.14001, lat: 38.42001, accuracy: 5, timestamp: 1_700_000_060_000 },
+      { lng: 27.14002, lat: 38.42, accuracy: 5, timestamp: 1_700_000_240_000 },
+      { lng: 27.142, lat: 38.4206, accuracy: 5, timestamp: 1_700_000_300_000 },
+      { lng: 27.144, lat: 38.4212, accuracy: 6, timestamp: 1_700_000_360_000 },
+    ];
+    const dwell = points.reduce(recordDwellPoint, { candidate: null, stops: [] } as DwellState);
+    const { track, route } = buildTrackDraft({
+      points,
+      dwell,
+      uid: "u1",
+      trackId: "track-p17-uctan-uca",
+      stopNames: ["Kordon"],
+      now: 1_700_000_500_000,
+    });
+
+    // 2) Paylaşım kararı: ham iz değil, taslak rota.
+    const decision = resolveTrackShare(route, { userInitiated: true, visibility: "unlisted", shareConsent: true });
+    expect(decision.ok).toBe(true);
+    if (!decision.ok) return;
+    expect(routeLeaksRawTrack(decision.route)).toEqual([]);
+
+    // 3) Yayınla + kayıt referansı (gerçek fonksiyonlar, sahte Firestore).
+    await publishRoute("u1", decision.route, decision.visibility);
+    await saveRouteReference("u1", decision.route);
+
+    // 4) Belge ham iz taşımaz; bacaklar `coordsPolyline` metnine çevrilmiş.
+    const stored = h.store.get(`routes/${route.id}`) as {
+      route: { days: Array<{ legs?: Array<Record<string, unknown>>; stops: Array<Record<string, unknown>> }> };
+      visibility: string;
+      saveCount: number;
+    };
+    expect(stored.visibility).toBe("unlisted");
+    expect(stored.saveCount).toBe(1);
+    expect(stored.route.days[0].legs?.[0].coords).toBeUndefined();
+    expect(typeof stored.route.days[0].legs?.[0].coordsPolyline).toBe("string");
+    expect(routeLeaksRawTrack(stored.route)).toEqual([]);
+
+    // 5) Geri oku: bacak koordinatları açılır ve yayınlanan geometriyle aynıdır.
+    const read = await getPublishedRoute(route.id);
+    expect(read?.route.id).toBe(route.id);
+    expect(read?.route.days[0].legs?.[0].coords).toEqual(decision.route.days[0].legs?.[0].coords);
+    expect(read?.route.days[0].legs?.[0].mode).toBe("walking");
+    expect(read?.route.days[0].stops.map((stop) => stop.name)).toEqual(["Kordon"]);
+    expect(track.stops).toHaveLength(1);
+    // Ham iz koleksiyonuna hiçbir şey yazılmadı.
+    expect([...h.store.keys()].some((key) => key.startsWith("tracks/"))).toBe(false);
   });
 });
