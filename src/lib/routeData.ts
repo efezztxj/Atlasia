@@ -211,10 +211,10 @@ export async function createTrack(uid: string, track: AtlasTrack): Promise<void>
     // Ham Firebase mesajını kullanıcıya basma; izin reddi (cihaz hesabı veya
     // uyumsuz oturum) ile diğer hata türlerini birbirinden ayır.
     const code = (failure as { code?: string })?.code;
-    if (code === "permission-denied") {
-      throw new Error("Buluta kaydetme izni reddedildi. Yürüyüş kaydı için bulut (e-posta) hesabıyla giriş yaptığını kontrol et.", { cause: failure });
-    }
-    throw new Error("İz buluta kaydedilemedi. Bağlantını kontrol edip tekrar dene.", { cause: failure });
+    const message = code === "permission-denied"
+      ? "Buluta kaydetme izni reddedildi. Yürüyüş kaydı için bulut (e-posta) hesabıyla giriş yaptığını kontrol et."
+      : "İz buluta kaydedilemedi. Bağlantını kontrol edip tekrar dene.";
+    throw Object.assign(new Error(message), { cause: failure });
   }
 }
 
