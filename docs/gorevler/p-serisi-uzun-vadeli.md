@@ -62,7 +62,7 @@
 | P16 | Testsiz modül kapsama maratonu (utils/lib/hooks) | 1 gece+ | test | yok | ✅ tamamlandı — utils/lib/hooks envanterinin tamamında ilişkili test var; kapanış: `teslimat-p16.md` (73 dosya / 399 test) |
 | P17 | track → taslak rota boru hattı (durak tespiti + sadeleştirme) | 1–2 gece | özellik | ROADMAP Adım 4 | ⏳ bekliyor |
 | P18 | Erişilebilirlik denetimi (klavye/odak/kontrast, tema çiftleri) | 1 gece | kalite | AGENTS tema kararı | ⏳ bekliyor |
-| P19 | Bundle bütçesi + lazy-loading derin taraması (ölçüm, iddia yok) | ~3–5 sa | perf-araç | `lazyLoading.test.ts` | ⏳ bekliyor |
+| P19 | Bundle bütçesi + lazy-loading derin taraması (ölçüm, iddia yok) | ~3–5 sa | perf-araç | `lazyLoading.test.ts` | ✅ tamamlandı — Auth preload sızıntısı kapatıldı, bundle bütçesi kilitlendi; kapanış: `teslimat-p19.md` |
 | P20 | Rota paylaşım linki (yalnız istemci içi kodlama, Firestore'suz) | 1 gece | özellik | karar (c) ⛔ — buluta geçmeden | ⏳ bekliyor |
 
 "Sabaha kadar" hedefi: bir gecede tek görev; biterse teslimat yazılır, tablo
@@ -103,3 +103,4 @@ gece yarısı kendi başına geçilmez.
 | 2026-10-21 | İlk sürüm: P12–P20 tanımlandı, P1–P11 kapanış notları taşındı |
 | 2026-10-21 | P1–P4 prompt'ları ayrı dosyaya çıkarıldı, satırı ana listeden kaldırıldı; "biten görev tablodan kalkar" kuralı eklendi |
 | 2026-10-21 | P12 kapatıldı (PR #20, CI emulator kanıtlı) ve satırı kural gereği kaldırıldı; geçmişi `teslimat-p12.md` içinde |
+| 2026-10-21 | P19 kapatıldı — Firebase Auth preload sızıntısı düzeltildi ve `scripts/bundle-budget.mjs` ile üretim bundle bütçesi kilitlendi; ayrıntı `teslimat-p19.md` içinde |

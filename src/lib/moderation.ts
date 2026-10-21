@@ -19,7 +19,6 @@ import {
   where,
   writeBatch,
 } from "firebase/firestore";
-import { deleteUser } from "firebase/auth";
 import { db, firebaseApp } from "./firebase";
 import { getAtlasAuth } from "./auth";
 import { createNotification } from "./notifications";
@@ -400,5 +399,8 @@ export async function deleteAccount(uid: string): Promise<void> {
   const auth = await getAtlasAuth();
   const current = auth.currentUser;
   if (!current || current.uid !== uid) throw dataError("auth/session-expired", "Oturumun doğrulanamadı, yeniden giriş yap.");
+  // Auth SDK'sı yalnız hesap silme gibi seyrek işlemlerde yüklenir; statik
+  // import, moderasyonu kullanan her ekranı başlangıç grafiğine bağlar.
+  const { deleteUser } = await import("firebase/auth");
   await deleteUser(current);
 }
