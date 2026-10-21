@@ -97,7 +97,10 @@ adımının tam logunu paylaşın. Log yoksa şu yerel komutu bir Java 21 makine
 
 ## 8. CI sonucu
 
-Push sonrası doldurulacak (bkz. §9).
+- Son koşu: run 39688953859, job 119530037342 — **KIRMIZI**. Başarısız adım: "Firestore security rules tests".
+  Diğer adımlar (typecheck, lint, test, build, audit) bu koşuda sonuçlandı; yalnız rules adımı başarısız.
+- Kök neden bu turda da bulunamadı (log erişimi yok; §1). PR #40 bu hâliyle teslim edilebilir DEĞİL.
+- Önceki koşular: run 39687807381 / job 119526569430 (aynı adım kırmızı).
 
 ## 9. ROADMAP / CHANGELOG önerisi
 
