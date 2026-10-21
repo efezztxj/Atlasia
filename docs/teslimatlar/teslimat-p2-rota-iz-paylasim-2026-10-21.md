@@ -132,5 +132,5 @@ CHANGELOG (kullanıcı dili):
 
 ## PR / CI
 
-- PR: (açılınca numarası buraya işlenecek)
-- CI: (sonucu buraya işlenecek; kırmızıysa teslim tamamlanmış sayılmaz)
+- PR: **#43** — "[P2] Rota, iz, paylaşım ve yerel mod bütünlüğü" (https://github.com/efezztxj/Atlasia/pull/43)
+- CI: **Yeşil.** "Security, typecheck, lint, test and build" geçti (1m15s); Cloudflare Pages önizleme derlemesi geçti. Merge kararı kullanıcıda.
