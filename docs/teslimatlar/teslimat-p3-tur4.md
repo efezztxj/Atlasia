@@ -48,8 +48,9 @@
 - `npm run audit:check`: geçti — production bağımlılıklarında bilinen açık yok.
 - `npm run test:rules:emulator`: yerelde çalıştırılamadı; Java 21+ gerekli. PR CI Java 21 ile doğrulanacak.
 - `node --check public/sw.js`, `node --check scripts/content/harvest.mjs`: geçti.
-- `git diff --check`: geçti (deliverable stage edilmeden önce).
-- PR: #38 aynı PR açık tutuldu; istenen Tur 4 başlığına güncellendi. En son PR CI sonucu bu başlık değişikliği ve teslimat commit'inden sonra tekrar kontrol edilecek.
+- `git diff --check`: geçti (exit 0); son `git status --short` kontrolünde çalışma ağacı temizdi.
+- `gh pr checks 38`: Cloudflare Pages `pass`; Security, typecheck, lint, test and build `pass` (53 s), Actions run `39688171879`, job `119527764626`.
+- PR #38 aynı PR açık tutuldu; istenen Tur 4 başlığına güncellendi. #38 kapatılmadı, merge/deploy yapılmadı. CI run `39688171879` kod ve teslimat commit'i `c4fec6a` için yeşil; bu rapor güncellemesi dokümantasyon-only commit olacak.
 
 ## Dosya talebi / açık kalanlar
 
