@@ -31,7 +31,7 @@
 |---|---|---|
 | P5 | `run-firestore-rules-tests.mjs` locale | Emulator JVM'e İngilizce locale eklendi. Windows'ta son hâli **henüz yeniden çalıştırılmadı** — çalışan doğrulama yoksa "doğrulandı" denmez (→ P12 bunu kapsıyor) |
 | P10 | `MapView.tsx` spin | Spin döngüsü **15 FPS `setTimeout`** kullanıyor; rAF varsayma. Profil yokken performans iddiası yok. ⚠️ **Denetim şerhi (2026-10-21, `arena/c064e040-atlasia`):** bu ağaçta spin `requestAnimationFrame` kullanıyor (MapView.tsx:655-657); P10 işi bu dalda yok — bkz. `denetim-p1-p4-2026-10-21.md` |
-| P11 | Offline cache allowlist | `offlineCache.ts` + `public/sw.js` tam HTTPS host/path; LRU güncellendi; lookalike URL testleri var. **Cache allowlist işi bitti, yeniden açma.** ⚠️ **Denetim şerhi (2026-10-21, `arena/c064e040-atlasia`):** bu ağaçta `isCacheableTile` hâlâ `url.includes(...)` substring eşleşmesi kullanıyor (offlineCache.ts:25-31, sw.js:19-22); tam host/path daraltması bu dalda yok — bkz. `denetim-p1-p4-2026-10-21.md` |
+| P11 | Offline cache allowlist | `offlineCache.ts` + `public/sw.js` tam HTTPS host/path; LRU güncellendi; lookalike URL testleri var. **Cache allowlist işi bitti, yeniden açma.** ✅ **2026-10-22: main'de doğrulandı** — `f3c28e5` main'in atası; `offlineCache.ts` ve `sw.js` `host === … && pathname.startsWith(…)` kullanıyor. (Eski şerh tarihsel:) ⚠️ **Denetim şerhi (2026-10-21, `arena/c064e040-atlasia`):** bu ağaçta `isCacheableTile` hâlâ `url.includes(...)` substring eşleşmesi kullanıyor (offlineCache.ts:25-31, sw.js:19-22); tam host/path daraltması bu dalda yok — bkz. `denetim-p1-p4-2026-10-21.md` |
 
 ## 2. Kalıcı kısıtlar (her görevde geçerli)
 
@@ -60,10 +60,24 @@
 | P14 | Overpass + Wikidata/Wikipedia içerik boru hattı (atıf dahil) | 1–2 gece | özellik | karar (f) seçili: 1 | ⏳ bekliyor |
 | P15 | Çevrimdışı saha paketi: tile önbelleği (lisans-güvenli kaynaklar) | 1 gece | özellik | P11 allowlist'e dokunmadan genişletme | ⏳ bekliyor |
 | P16 | Testsiz modül kapsama maratonu (utils/lib/hooks) | 1 gece+ | test | yok | ✅ tamamlandı — utils/lib/hooks envanterinin tamamında ilişkili test var; kapanış: `teslimat-p16.md` (73 dosya / 399 test) |
-| P17 | track → taslak rota boru hattı (durak tespiti + sadeleştirme) | 1–2 gece | özellik | ROADMAP Adım 4 | ⏳ bekliyor |
+| P17 | track → taslak rota boru hattı (durak tespiti + sadeleştirme) | 1–2 gece | özellik | ROADMAP Adım 4 | ✅ çekirdek tamamlandı — PR #32 (`6a4d2aa`, main `38dfa3a`); `teslimat-p17-kurtarma-2026-10-21.md`. Onaylı kaydet akışı PR #35'te sürüyor (işaretlenmedi) |
 | P18 | Erişilebilirlik denetimi (klavye/odak/kontrast, tema çiftleri) | 1 gece | kalite | AGENTS tema kararı | ⏳ bekliyor |
 | P19 | Bundle bütçesi + lazy-loading derin taraması (ölçüm, iddia yok) | ~3–5 sa | perf-araç | `lazyLoading.test.ts` | ✅ tamamlandı — Auth preload sızıntısı kapatıldı, bundle bütçesi kilitlendi; kapanış: `teslimat-p19.md` |
 | P20 | Rota paylaşım linki (yalnız istemci içi kodlama, Firestore'suz) | 1 gece | özellik | karar (c) ⛔ — buluta geçmeden | ⏳ bekliyor |
+
+### 3.1 Tamamlanan ek işler (P serisi dışı, 2026-10-21/22)
+
+| İş | PR / commit | Durum |
+|---|---|---|
+| Üretim izin düzeltmesi (rota yayını/kaydı, undefined alan, grup katılımı) | #31 · `d393b4c` | ✅ tamamlandı — `teslimat-uretim-izin-2026-10-21.md` |
+| P17 kurtarma + bacaklı rota Firestore serileştirmesi | #32 · `38dfa3a` | ✅ tamamlandı — `teslimat-p17-kurtarma-2026-10-21.md` |
+| T1-AUTH: telefon bayrağı (varsayılan kapalı) + üretim env kapısı | #33 · `447fbaa` | ✅ tamamlandı — `teslimat-t1-auth.md` |
+| P1 hijyen: PR triyajı, çalışma kuralları, CHANGELOG/ROADMAP | #36 · `0ad774f` | ✅ tamamlandı — `teslimat-p1-hijyen.md` |
+| P11 tile allowlist (tam host/path) | `f3c28e5` | ✅ main'de doğrulandı |
+| PR #30 (eski P17) | — | ✅ kapatıldı (#32 ile yerine geçildi) |
+| PR #34 (P1 ilk teslim) | — | ✅ kapatıldı (#36 ile yerine geçildi) |
+
+> Süren işler işaretlenmedi: PR #35 (P2 P17-Tur2), PR #37 (P4 T1-SOSYAL), PR #38 (P3 tazelik), ayrıca P1–P4'e verilmiş güncel görev metinleri.
 
 "Sabaha kadar" hedefi: bir gecede tek görev; biterse teslimat yazılır, tablo
 güncellenir ve **durulur** — kullanıcı talimatı olmadan sıradaki göreve
@@ -103,4 +117,5 @@ gece yarısı kendi başına geçilmez.
 | 2026-10-21 | İlk sürüm: P12–P20 tanımlandı, P1–P11 kapanış notları taşındı |
 | 2026-10-21 | P1–P4 prompt'ları ayrı dosyaya çıkarıldı, satırı ana listeden kaldırıldı; "biten görev tablodan kalkar" kuralı eklendi |
 | 2026-10-21 | P12 kapatıldı (PR #20, CI emulator kanıtlı) ve satırı kural gereği kaldırıldı; geçmişi `teslimat-p12.md` içinde |
+| 2026-10-22 | Tamamlananlar işaretlendi: P17 çekirdeği ✅, P11 main doğrulaması ✅, §3.1 ek işler tablosu (#31, #32, #33, #36); süren işler işaretlenmedi |
 | 2026-10-21 | P19 kapatıldı — Firebase Auth preload sızıntısı düzeltildi ve `scripts/bundle-budget.mjs` ile üretim bundle bütçesi kilitlendi; ayrıntı `teslimat-p19.md` içinde |
