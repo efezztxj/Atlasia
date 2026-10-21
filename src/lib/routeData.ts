@@ -18,7 +18,8 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { isPermissionDenied, withoutUndefined } from "./firestoreValue";
-import type { AtlasRoute, AtlasTrack, Place, RouteVisibility } from "../types";
+import type { AtlasRoute, AtlasTrack, Place, RouteLeg, RouteVisibility } from "../types";
+import { decodePolyline, encodePolyline } from "../utils/polyline";
 
 const SAVED_PAGE_SIZE = 100;
 const ROUTE_PAGE_SIZE = 40;
@@ -32,6 +33,38 @@ export interface PublicRouteRecord {
   route: AtlasRoute;
   authorUid: string;
   saveCount: number;
+}
+
+/**
+ * Firestore iç içe dizileri (dizi içinde dizi) desteklemez. `RouteLeg.coords`
+ * `[lng, lat][]` olduğu için bacaklar yazılırken koordinatlar encoded polyline
+ * metnine çevrilir, okunurken geri açılır. Bacaksız rotalar aynen kalır.
+ */
+type StoredLeg = Omit<RouteLeg, "coords"> & { coordsPolyline: string };
+
+export function toFirestoreRoute(route: AtlasRoute): Record<string, unknown> {
+  const days = route.days.map((day) => {
+    if (!day.legs) return day;
+    const legs: StoredLeg[] = day.legs.map(({ coords, ...leg }) => ({ ...leg, coordsPolyline: encodePolyline(coords) }));
+    return { ...day, legs };
+  });
+  return withoutUndefined({ ...route, id: route.id, days }) as unknown as Record<string, unknown>;
+}
+
+export function fromFirestoreRoute(raw: unknown): AtlasRoute | null {
+  if (!raw || typeof raw !== "object") return null;
+  const route = raw as AtlasRoute;
+  if (!Array.isArray(route.days)) return route;
+  const days = route.days.map((day) => {
+    if (!Array.isArray(day.legs)) return day;
+    const legs = (day.legs as Array<RouteLeg & { coordsPolyline?: unknown }>).map((leg) => {
+      if (Array.isArray(leg.coords)) return leg;
+      const { coordsPolyline, ...rest } = leg;
+      return { ...rest, coords: typeof coordsPolyline === "string" ? decodePolyline(coordsPolyline) : [] } as RouteLeg;
+    });
+    return { ...day, legs };
+  });
+  return { ...route, days };
 }
 
 /**
@@ -87,8 +120,8 @@ export function subscribeSavedCollections(
         // Sahibi silmiş ya da özele çekmiş rota tüm koleksiyonu düşürmesin; yalnız atlanır.
         const routeSnapshot = await readRouteIfVisible(doc(firestore, "routes", saved.id));
         const data = routeSnapshot?.data();
-        if (!data || !data.route || typeof data.route !== "object") return null;
-        return data.route as AtlasRoute;
+        if (!data) return null;
+        return fromFirestoreRoute(data.route);
       }));
       routes = found.filter((route): route is AtlasRoute => route !== null);
       routesReady = true;
@@ -189,7 +222,7 @@ export async function publishRoute(uid: string, route: AtlasRoute, visibility: R
   const ref = doc(db, "routes", route.id);
   const existing = await readRouteIfVisible(ref);
   const existingData = existing?.data();
-  const routeData = withoutUndefined({ ...route, id: route.id });
+  const routeData = toFirestoreRoute(route);
   try {
     await setDoc(ref, {
       authorUid: uid,
@@ -211,8 +244,9 @@ export async function getPublishedRoute(routeId: string): Promise<{ route: Atlas
   if (!snapshot) return null;
   const data = snapshot.data();
   if (!data) return null;
-  if (!data.route || typeof data.route !== "object") return null;
-  return { route: data.route as AtlasRoute, authorUid: data.authorUid as string, visibility: data.visibility as RouteVisibility };
+  const route = fromFirestoreRoute(data.route);
+  if (!route) return null;
+  return { route, authorUid: data.authorUid as string, visibility: data.visibility as RouteVisibility };
 }
 
 export async function listPublicRoutes(): Promise<PublicRouteRecord[]> {
@@ -222,9 +256,10 @@ export async function listPublicRoutes(): Promise<PublicRouteRecord[]> {
   ));
   return snapshot.docs.flatMap((item) => {
     const data = item.data();
-    if (!data.route || typeof data.route !== "object") return [];
+    const route = fromFirestoreRoute(data.route);
+    if (!route) return [];
     return [{
-      route: data.route as AtlasRoute,
+      route,
       authorUid: typeof data.authorUid === "string" ? data.authorUid : "",
       saveCount: typeof data.saveCount === "number" ? data.saveCount : 0,
     }];
