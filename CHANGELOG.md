@@ -1,5 +1,12 @@
 # Atlasia Update
 
+## 2026-10-21 — P17 + T1-AUTH + P1 kapanış
+
+- **#32 P17 kurtarma:** `routes/{id}` yayın/kayıt `permission-denied` düzeltildi (Firestore Rules `resource` null + `getAfter` okuma), `withoutUndefined` serileştiricisi ve `toFirestoreRoute`/`fromFirestoreRoute` ile iç içe dizi (legs.coords) Firestore yasağı aşıldı — bacaklı rota artık yayınlanıp kaydedilebiliyor. `src/lib/firestoreValue.ts` + `routeData.ts` çekirdek bitti, onaylı kaydet akışı açık. Taban `origin/main` 38dfa3a.
+- **#31 izin/undefined/grup katılımı:** `routes/{id}` okunabilirlik, `undefined` alan yazımı (`withoutUndefined` zorunlu), grup katılım kodu akışı düzeltmeleri (PR #31 merge d393b4c, fix 7df4ffb).
+- **T1-AUTH (P1, 298f02f → 6809bb9):** `VITE_PHONE_AUTH_ENABLED` bayrağı (yalnız `true` açık, varsayılan kapalı), telefon düğmesi kapalıyken render edilmez; üretim build kapısı `scripts/verify-env.mjs` yalnız `CF_PAGES=1 && BRANCH=main` iken eksik `VITE_FIREBASE_*` adlarını yazıp build'i kırar (değer yazmaz). `docs/firebase-uretim-kontrol-listesi.md` eklendi.
+- **P1 hijyen:** depo hijyeni, env `VITE_` 6→8, CI `test:scripts` + `bundle-budget`, kalite kapısı yeşil (PR #33).
+
 ## Giriş ve Kayıt Düzeltmesi
 
 - Firebase bilgileri verilmediğinden tek giriş yolu kullanılamıyordu. E-posta/şifre formu eklendi; eksik yapılandırmada açıkça bu cihaza özel hesap modu çalışır.

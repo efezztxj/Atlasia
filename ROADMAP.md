@@ -3,8 +3,8 @@
 > Bu dosya, Atlasia'ya eklenecek işlerin **bağımlılık sırasıdır**; özellik listesi değil.
 > Ajanlar için yazıldı: her adımın amacı, girdisi, dosya yolları, "bitti kanıtı" komutu ve riski var.
 >
-> - **Son güncelleme:** 2026-10-20 (P1 · TEMEL & KAPANIŞ)
-> - **Durum:** Adım 0–2 ve kapanış uygulandı; Arena CI run `39333404281` tüm gate'lerde geçti (Rules emulator dahil). Yerel sandbox'ta Java 21 yok; yerel emulator komutu bu yüzden başlamaz. Kanıtlar `teslimat-p1.md` içinde. Karar (a) alt koleksiyon olarak seçildi; (b–g) açık.
+> - **Son güncelleme:** 2026-10-21 (P1 hijyen + T1-AUTH + P17 çekirdek)
+> - **Durum:** P1 kapanış + T1-AUTH (telefon bayrağı + env kapısı) + P17 çekirdek (bacaklı rota serileştirmesi, `withoutUndefined`/`toFirestoreRoute`, onaylı kaydet akışı) bitti; `origin/main` 447fbaa. P14 (tazelik), P15 (hava), P18 (erişim tipi duraklar), P20 (çevrimdışı) açık. Karar (a) alt koleksiyon; (b–g) açık.
 > - **Kural:** ⛔ işaretli adımlarda insan onayı olmadan kod yazılmaz.
 > - **v1'e göre değişiklik:** ürün tezi netleşti (topluluk uygulaması) → sosyal katman silinmiyor, fonlanıyor; `routes`/`tracks` nesneleri eklendi; içerik boru hattı ayrı faz oldu.
 
@@ -402,7 +402,7 @@ Wikidata / Wikipedia geosearch  →  tarihçe metni
 | Bağımsız aynı-candidate audit bekliyor | kullanıcı no-deploy/no-bypass gate | üretim dağıtımı veya audit bypass yapılmadı |
 | Eski gömülü reply verisi Firestore'da kalabilir | yeni kontrat alt koleksiyon | normalize edilir; bu işin otomatik prod veri migrasyonu/deploy'u yok |
 | Yol çizgileri yol navigasyonu değildir | routePlanner mevcut davranışı | kullanıcıya gerçek yol/navigasyon gibi sunulmamalı |
-| Rotalar ve kayıtlı koleksiyonlar localStorage'dadır | Adım 3 bekliyor | başka cihaza senkron olmaz |
+| Rotalar ve kayıtlı koleksiyonlar localStorage'dadır | Adım 3 bekliyor → P17 ile çekirdek bitti (`withoutUndefined`/`toFirestoreRoute`), onaylı kaydet akışı açık (2026-10-21 main 447fbaa) | başka cihaza senkron olmaz |
 | Moderasyon yok | Adım 13 eksikse | grup/sohbet açılamaz |
 | Sokak/topoda çakışan etiket riski | doğrulanmadı | aynı bölge iki adla yazılabilir |
 
@@ -412,3 +412,4 @@ Wikidata / Wikipedia geosearch  →  tarihçe metni
 |---|---|---|
 | 2026-10-14 | v1 | İlk sürüm: denetim/onarım eksenli sıra (Adım 0–8), kanıtlanmış durum tablosu |
 | 2026-10-14 | v2 | Ürün tezi netleşti (topluluk uygulaması): sosyal katman silinmiyor, fonlanıyor. `routes`/`tracks` nesneleri, iz kaydı (arz motoru), site ölçeği, içerik boru hattı (Overpass+Wikidata), erişim bacakları, çevrimdışı saha paketi, moderasyon ve sohbet eklendi. Antipattern listesi, sert kısıtlar ve 7 karar maddesi çıkarıldı |
+| 2026-10-21 | v3 | P1 hijyen + T1-AUTH (telefon bayrağı `VITE_PHONE_AUTH_ENABLED`, üretim env kapısı `verify-env.mjs`) + P17 çekirdek (`firestoreValue`/`routeData` bacak serileştirmesi) bitti; P17 çekirdek bitti/onaylı kaydet açık, P14 tazelik açık, P15 hava açık, P18 erişim açık, P20 çevrimdışı açık |
