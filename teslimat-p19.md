@@ -1,9 +1,9 @@
 # Teslimat P19 — Bundle bütçesi + lazy-loading derin taraması
 
-**Tarih:** 2026-10-21 (Europe/Istanbul)  
-**Branch:** `arena/29ca9ab0-atlasia`  
-**Taban commit:** `7074315` (PR #28 merge)  
-**Kod commit'leri:** `a8f8a45`, `e928eaa` (bu teslimatın doküman commit'i hariç)  
+**Tarih:** 2026-10-21 (Europe/Istanbul)
+**Branch:** `arena/29ca9ab0-atlasia`
+**Taban commit:** `7074315` (PR #28 merge)
+**Kod commit'leri:** `a8f8a45`, `e928eaa` (bu teslimatın doküman commit'i hariç)
 **Durum:** Tamamlandı. Ölçüm yalnız üretim dosyalarının ham/gzip baytlarına dayanır; tarayıcı zamanlaması veya milisaniye iyileşmesi iddia edilmez.
 
 ---
