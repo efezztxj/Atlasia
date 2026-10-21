@@ -22,7 +22,13 @@ import type { AtlasRoute, AtlasTrack, Place, RouteLeg, RouteVisibility } from ".
 import { decodePolyline, encodePolyline } from "../utils/polyline";
 
 const SAVED_PAGE_SIZE = 100;
-const ROUTE_PAGE_SIZE = 40;
+/**
+ * Keşif sayfası üst sınırı: sorgu `limit` ile **sınırlı** kalır (ücretsiz
+ * kota). İmleçli sayfalama bileşik indeks ister (`firestore.indexes.json`
+ * P4'ündür); o yüzden tek sınırlı sayfa + istemci sıralama/filtre uygulanır
+ * ve sınır dolduğunda arayüz bunu açıkça söyler.
+ */
+export const PUBLIC_ROUTE_PAGE_SIZE = 40;
 
 export interface SavedCollectionSnapshot {
   places: Place[];
@@ -252,9 +258,9 @@ export async function getPublishedRoute(routeId: string): Promise<{ route: Atlas
 export async function listPublicRoutes(): Promise<PublicRouteRecord[]> {
   if (!db) throw new Error("Firestore yapılandırılmamış.");
   const snapshot = await getDocs(query(
-    collection(db, "routes"), where("visibility", "==", "public"), limit(ROUTE_PAGE_SIZE),
+    collection(db, "routes"), where("visibility", "==", "public"), limit(PUBLIC_ROUTE_PAGE_SIZE),
   ));
-  return snapshot.docs.flatMap((item) => {
+  const records = snapshot.docs.flatMap((item) => {
     const data = item.data();
     const route = fromFirestoreRoute(data.route);
     if (!route) return [];
@@ -263,7 +269,50 @@ export async function listPublicRoutes(): Promise<PublicRouteRecord[]> {
       authorUid: typeof data.authorUid === "string" ? data.authorUid : "",
       saveCount: typeof data.saveCount === "number" ? data.saveCount : 0,
     }];
-  }).sort((left, right) => right.saveCount - left.saveCount);
+  });
+  return sortPublicRoutes(records, "saved");
+}
+
+/* ─────────── Keşif yüzeyi: saf sıralama/filtre (sınırlı sayfa üzerinde) ─────────── */
+
+export type PublicRouteSort = "saved" | "newest" | "shortest" | "longest";
+export type PublicRouteDurationFilter = "all" | "short" | "day" | "multi";
+
+export interface PublicRouteFilters {
+  region: string;
+  duration: PublicRouteDurationFilter;
+  theme: string;
+}
+
+export function durationMatchesFilter(hours: number, filter: PublicRouteDurationFilter): boolean {
+  if (filter === "short") return hours <= 4;
+  if (filter === "day") return hours > 4 && hours <= 12;
+  if (filter === "multi") return hours > 12;
+  return true;
+}
+
+/** Bölge/süre/tema filtresi; girdi dizisi değiştirilmez, sıra korunur. */
+export function filterPublicRoutes(records: readonly PublicRouteRecord[], filters: PublicRouteFilters): PublicRouteRecord[] {
+  return records.filter(({ route }) =>
+    (filters.region === "all" || route.region === filters.region)
+    && durationMatchesFilter(route.totalDurationHours, filters.duration)
+    && (filters.theme === "all" || route.vibe === filters.theme));
+}
+
+/**
+ * Keşif sıralaması. Varsayılan "saved" (kaydetme sayısı) ROADMAP Adım 6'nın
+ * ölçütüdür ve `listPublicRoutes` çıktısının tarihsel sırasıdır. Eşitlikte
+ * ikincil anahtar en yeni rotayı öne alır; sıralama kararlıdır.
+ */
+export function sortPublicRoutes(records: readonly PublicRouteRecord[], sort: PublicRouteSort): PublicRouteRecord[] {
+  const byNewest = (a: PublicRouteRecord, b: PublicRouteRecord) => b.route.createdAt - a.route.createdAt;
+  const comparators: Record<PublicRouteSort, (a: PublicRouteRecord, b: PublicRouteRecord) => number> = {
+    saved: (a, b) => (b.saveCount - a.saveCount) || byNewest(a, b),
+    newest: byNewest,
+    shortest: (a, b) => (a.route.totalDurationHours - b.route.totalDurationHours) || byNewest(a, b),
+    longest: (a, b) => (b.route.totalDurationHours - a.route.totalDurationHours) || byNewest(a, b),
+  };
+  return [...records].sort(comparators[sort]);
 }
 
 export async function listOwnedTracks(uid: string): Promise<AtlasTrack[]> {
