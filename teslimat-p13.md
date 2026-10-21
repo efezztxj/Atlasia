@@ -1,8 +1,8 @@
-# Teslimat P13 — Harita etiket çakışması (ROADMAP §2.4 kusur #9): doğrulama + kilit
+# Teslimat P13 — Harita etiket çakışması (ROADMAP §2.4 kusur #9): doğrulama + kilit + B düzeltmesi
 
 **Tarih:** 2026-10-21 (Europe/Istanbul)
-**Branch:** `arena/1ec59f65-atlasia`
-**Durum:** Doğrulama + kalibrasyon kilidi tamam. **Düzeltme kısmı kullanıcı kararı bekliyor** (gerekçe aşağıda). MapView.tsx'e dokunulmadı (dokunma listesi).
+**Branch:** doğrulama `arena/1ec59f65-atlasia`; düzeltme `arena/4c96a101-atlasia` (`d037194`)
+**Durum:** ✅ Tamamlandı. Kullanıcı önerilen **B seçeneğini** onayladı; düzeltme uygulandı ve kilit düzeltilmiş sözleşmeye güncellendi. İlk doğrulama aşamasında MapView.tsx'e dokunulmamıştı; düzeltme onayı sonrasında yalnız görünürlük koşulu değiştirildi.
 
 ---
 
@@ -54,3 +54,29 @@ karar kullanıcıda:
 - `npm run typecheck` ✅ · `npm run lint` ✅ · `npm run test:run` 53 dosya / **268 test** ✅ · `npm run build` ✅ · `git diff --check` ✅
 - Değişen: `src/config/mapLabelVisibility.test.ts` (yeni), bu teslimat, plan tablosu güncellemesi.
 - Kilitli dosyalar: `MapView.tsx`, `firestore.rules` değişmedi.
+
+
+## 5. Düzeltme tamamlandı — B seçeneği (2026-10-21)
+
+- `MapView.tsx` içine `kktcLabelVisible(labels, baseMap)` yardımcısı eklendi:
+  etiket yalnız `labels && (dark || satellite)` iken görünür.
+- Aynı koşul hem ilk stil kurulumunda hem güncelleme efektinde kullanılır.
+- `kktc-outline` davranışı değişmedi: her altlıkta yalnız `labels` bayrağına
+  bağlıdır. Böylece sınır vurgusu korunurken street/topographic altlıklarında
+  Esri'nin gömülü etiketiyle metin çakışması biter.
+- `mapLabelVisibility.test.ts`, kusurun varlığını kilitleyen testten
+  düzeltilmiş matrisi kilitleyen sözleşmeye çevrildi.
+
+Güncel matris:
+
+| Katman ailesi | dark | satellite | street (Esri) | topographic (Esri) |
+|---|---|---|---|---|
+| OpenFreeMap symbol | labels | labels | gizli | gizli |
+| OpenFreeMap symbol olmayan | görünür | gizli | gizli | gizli |
+| `kktc-outline` | labels | labels | labels | labels |
+| `kktc-label` | labels | labels | **gizli** | **gizli** |
+
+Hedefli doğrulama: `mapLabelVisibility + mapLabelCalibration +
+darkMapSource` = 3 dosya / 13 test ✅; ayrıca dalın tam kapısı
+`typecheck`, `lint`, 73 dosya / 399 test ve `build` ile yeşildir
+(dal toplamı P16 testlerini de içerir).

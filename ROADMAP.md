@@ -100,7 +100,7 @@ Hiçbir moderasyon yapısı yok: `report`, `şikayet`, `block`, `ban` araması g
 | 6 | Eski sosyal katman yardımcıları | gerçek `src/` taraması | eski `awardXp`/`followUser` ailesi bu checkout'ta mevcut değil; yeniden tanıtılırsa deprecated işaretle ve finansman kararı bekle |
 | 7 | Story `seen` alanı global dokümanda | `types.ts`, `firestoreData.ts`, rules | tamamlandı: Firestore şemasından çıkarıldı; UI yalnız cihaz bazlı `atlasia.feed.seen.v1` kullanır |
 | 8 | Reply veri yolu sözleşmesi | `firestoreData.ts`, README, rules | tamamlandı: başlık, yazma/okuma, rules ve doküman aynı alt koleksiyon modelini kullanır |
-| 9 | Sokak/topoğrafik altlıklarda `kktc-label` ile Esri'nin gömülü etiketleri **üst üste gelebilir** | `MapView.tsx` efektler | aynı bölge iki farklı adla yazılabilir — tarayıcıda gözle doğrulanmalı |
+| 9 | Sokak/topoğrafik altlıklarda `kktc-label` ile Esri'nin gömülü etiketleri üst üste gelebiliyordu | `MapView.tsx` efektler | tamamlandı (2026-10-21, B seçeneği): `kktc-outline` korunur, `kktc-label` yalnız dark/satellite altlıklarında görünür; sözleşme `mapLabelVisibility.test.ts` ile kilitli |
 
 ## 3. Vizyon → kod boşluk haritası
 
