@@ -132,7 +132,8 @@ describe("moderasyon yazımı ve hesap verisi silme", () => {
     h.store.set("groups/g1/messages/m1", { senderUid: "u1", text: "Benim mesajım" });
     h.store.set("groups/g1/messages/m2", { senderUid: "u2", text: "Arkadaşımın mesajı" });
 
-    const counts = await deleteUserData("u1");
+    const report = await deleteUserData("u1");
+    const counts = Object.fromEntries(report.steps.map((item) => [item.step, item.deleted]));
 
     expect(counts).toMatchObject({ places: 1, posts: 1, stories: 1, reports: 1, blocks: 1 });
     expect([...h.store.keys()].filter((key) => key.startsWith("places/"))).toEqual(["places/p2"]);
@@ -170,7 +171,7 @@ describe("moderasyon yazımı ve hesap verisi silme", () => {
     h.failure.failCollection = "verifications";
     await expect(deleteUserData("u1")).rejects.toMatchObject({
       code: "data/delete-incomplete",
-      failures: [{ step: "verifications", code: "permission-denied" }],
+      steps: expect.arrayContaining([{ step: "verifications", deleted: 0, failed: true, error: "permission-denied" }]),
     });
     expect(h.store.has("verifications/v1")).toBe(true);
   });
@@ -182,7 +183,7 @@ describe("moderasyon yazımı ve hesap verisi silme", () => {
     h.failure.failCollection = "users/u1/groups";
     await expect(deleteUserData("u1")).rejects.toMatchObject({
       code: "data/delete-incomplete",
-      failures: [{ step: "groups", code: "permission-denied" }],
+      steps: expect.arrayContaining([{ step: "groups", deleted: 0, failed: true, error: "permission-denied" }]),
     });
   });
 
@@ -200,11 +201,14 @@ describe("moderasyon yazımı ve hesap verisi silme", () => {
 
     const report = await deleteUserData("u1");
 
-    expect(report.routes).toBe(1);
-    expect(report.tracks).toBe(1);
-    expect(report["users/savedRoutes"]).toBe(1);
-    expect(report["users/friends+friendships"]).toBe(1);
-    expect(report.userProfiles).toBe(1);
+    expect(report.ok).toBe(true);
+    const deleted = Object.fromEntries(report.steps.map((item) => [item.step, item.deleted]));
+    expect(deleted.routes).toBe(1);
+    expect(deleted.tracks).toBe(1);
+    expect(deleted["users/savedRoutes"]).toBe(1);
+    expect(deleted["users/friends+friendships"]).toBe(1);
+    expect(deleted.userProfiles).toBe(1);
+    expect(report.steps.every((item) => item.failed === false)).toBe(true);
     expect(h.store.has("routes/r1")).toBe(false);
     expect(h.store.has("tracks/t1")).toBe(false);
     expect(h.store.has("users/u1/savedRoutes/r9")).toBe(false);

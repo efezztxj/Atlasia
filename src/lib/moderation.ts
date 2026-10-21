@@ -387,17 +387,24 @@ async function leaveOrDeleteGroups(uid: string): Promise<number> {
   return cleaned;
 }
 
-export interface AccountDataDeletionFailure {
+/** Her adımın sonucu: silinen belge sayısı, başarısızlık ve hata kodu. */
+export interface AccountDataDeletionStep {
   step: string;
-  code: string;
+  deleted: number;
+  failed: boolean;
+  error?: string;
 }
 
-export type AccountDataDeletionReport = Record<string, number>;
+export interface AccountDataDeletionReport {
+  ok: boolean;
+  steps: AccountDataDeletionStep[];
+}
 
 /**
- * Tüm kullanıcı verisini siler. Dönüş: adım → silinen belge sayısı.
- * Herhangi bir adım başarısızsa hata fırlatır (`failures` alanıyla); çağıran
- * Auth hesabını silmemelidir.
+ * Tüm kullanıcı verisini adım adım siler. Hiçbir adımın hatası yutulmaz.
+ * Herhangi bir adım başarısızsa `data/delete-incomplete` fırlatılır; hata
+ * nesnesinde `steps` tam raporu taşır. Çağıran Auth hesabını silmemelidir.
+ * Tekrar çağrı güvenlidir (idempotent): silinmiş belgeler atlanır.
  */
 export async function deleteUserData(uid: string): Promise<AccountDataDeletionReport> {
   requireDb();
@@ -423,28 +430,28 @@ export async function deleteUserData(uid: string): Promise<AccountDataDeletionRe
     { name: "userProfiles", run: () => deleteOwnProfile(cleanUid) },
   ];
 
-  const report: AccountDataDeletionReport = {};
-  const failures: AccountDataDeletionFailure[] = [];
+  const report: AccountDataDeletionStep[] = [];
   for (const step of steps) {
     try {
-      report[step.name] = await step.run();
+      report.push({ step: step.name, deleted: await step.run(), failed: false });
     } catch (error) {
       const code = typeof (error as { code?: unknown })?.code === "string"
         ? (error as { code: string }).code
         : "unknown";
-      failures.push({ step: step.name, code });
+      report.push({ step: step.name, deleted: 0, failed: true, error: code });
     }
   }
-  if (failures.length > 0) {
-    const names = failures.map((item) => `${item.step} (${item.code})`).join(", ");
+  const failed = report.filter((item) => item.failed);
+  if (failed.length > 0) {
+    const names = failed.map((item) => `${item.step} (${item.error})`).join(", ");
     const err = dataError(
       "data/delete-incomplete",
-      `Bazı veriler silinemedi: ${names}. Hesap silinmedi; tekrar dene.`,
-    ) as Error & { code: string; failures: AccountDataDeletionFailure[] };
-    err.failures = failures;
+      `Silme tamamlanamadı: ${names}. Hesabın silinmedi; tekrar dene.`,
+    ) as Error & { code: string; steps: AccountDataDeletionStep[] };
+    err.steps = report;
     throw err;
   }
-  return report;
+  return { ok: true, steps: report };
 }
 
 export async function deleteAccount(uid: string): Promise<void> {
