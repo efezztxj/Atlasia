@@ -1,4 +1,4 @@
-export type LegalDocumentType = "privacy" | "terms";
+export type LegalDocumentType = "privacy" | "terms" | "kvkk";
 
 export interface LegalSection {
   title: string;
@@ -183,8 +183,61 @@ export const termsDocument: LegalDocument = {
   ordered: true,
 };
 
+/*
+ * KVKK aydınlatma metni (Aydınlatma Yükümlülüğü — KVKK m.10): kayıt akışında
+ * "okudum" bilgilendirmesiyle ayrı gösterilir; onay kutusu DEĞİLDİR. Açık rıza
+ * gerektiren işlemler (herkese açık paylaşım, konum izni) kendi anlarında ve
+ * kendi metinleriyle toplanır; burada yeniden bir rıza kutusu kurulmaz.
+ * Künye alanları bilinçli olarak yer tutucudur (LEGAL_PLACEHOLDERS) — gerçek
+ * veri sorumlusu bilgisi avukat onayıyla doldurulur.
+ */
+export const kvkkNoticeDocument: LegalDocument = {
+  type: "kvkk",
+  shortTitle: "KVKK aydınlatma metni",
+  title: "KVKK Aydınlatma Metni",
+  updatedLine: "Son güncelleme: [TARİH] · Sürüm 2.0",
+  intro: [
+    "Bu metin, 6698 sayılı Kişisel Verilerin Korunması Kanunu (\"KVKK\") m.10 uyarınca veri sorumlusunun aydınlatma yükümlülüğünü yerine getirmek için hazırlanmıştır. Kişisel verilerinin hangi amaçla ve hukuki sebebe dayanarak işlendiğinin, kimlere aktarılabildiğinin ve haklarının özeti aşağıdadır; ayrıntılı açıklama Gizlilik açıklaması belgesindedir.",
+  ],
+  sections: [
+    {
+      title: "1. VERİ SORUMLUSU",
+      paragraphs: [
+        "Veri sorumlusu: [AD SOYAD / UNVAN]. Aydınlatma ve başvuru adresi: [E-POSTA].",
+      ],
+    },
+    {
+      title: "2. İŞLEME AMAÇLARI",
+      paragraphs: [
+        "Kişisel verilerin; hesabını oluşturmak ve kimliğini doğrulamak, profilini ve içeriklerini (izler, rotalar, hikâyeler, fotoğraflar) sunmak, konum tabanlı özellikleri izninle çalıştırmak, hizmet güvenliği ve kötüye kullanımı önlemek, hukuki yükümlülüklerimizi yerine getirmek ve taleplerine yanıt vermek amaçlarıyla işlenir. Amaç bazında ayrıntılı döküm Gizlilik açıklaması'nın \"İŞLEDİĞİMİZ VERİLER, KAYNAKLARI VE AMAÇLARI\" bölümündedir.",
+      ],
+    },
+    {
+      title: "3. HUKUKİ SEBEPLER",
+      paragraphs: [
+        "İşleme; sözleşmenin kurulması ve ifası (KVKK m.5/2-c), hukuki yükümlülüğümüz (m.5/2-ç), hakkın tesisi/korunması ve meşru menfaat (m.5/2-f) ile yalnızca gerektiren işlemlerde açık rızana (m.5/1) dayanır. Açık rıza gerektirenler: herkese açık içerik paylaşımı ve konum iznine bağlı özellikler; bunlar o anlarda ayrıca açıklanır ve istenir.",
+      ],
+    },
+    {
+      title: "4. VERİLERİN AKTARIMI",
+      paragraphs: [
+        "Verilerin; hizmetin çalışması için Google Firebase, Cloudflare ve harita/yazı tipi sağlayıcılarıyla (Esri, OpenFreeMap/OpenMapTiles, Google Fonts), yurt dışında bulunan sunucular dâhil aktarılır; hukuka uygun talep hâlinde yetkili kurumlarla paylaşılabilir. Satış/pazarlama amacıyla aktarım yapılmaz. Ayrıntı Gizlilik açıklaması'nın \"VERİLERİ KİMLERLE, NEDEN PAYLAŞIYORUZ\" ve \"YURT DIŞI AKTARIM\" bölümlerindedir.",
+      ],
+    },
+    {
+      title: "5. HAKLARIN VE BAŞVURU",
+      paragraphs: [
+        "KVKK m.11 uyarınca; verilerinin işlenip işlenmediğini öğrenme, bilgi talep etme, düzeltilmesini/silinmesini isteme, aktarılan üçüncü kişilere bildirim talep etme, otomatik analiz sonucuna itiraz ve zararın giderilmesini talep etme haklarına sahipsin. Başvuru: [E-POSTA]. Bu metin [TARİH] tarihi itibarıyla taslaktır; künye ve avukat onayı beklenir.",
+      ],
+    },
+  ],
+  ordered: false,
+};
+
 export function getLegalDocument(type: LegalDocumentType): LegalDocument {
-  return type === "privacy" ? privacyDocument : termsDocument;
+  if (type === "privacy") return privacyDocument;
+  if (type === "kvkk") return kvkkNoticeDocument;
+  return termsDocument;
 }
 
 export function legalDocumentText(document: LegalDocument): string {
