@@ -37,20 +37,29 @@ function read<T>(key: string, fallback: T): T {
 export function CollectionsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const prefix = `atlasia.member.${user!.uid}`;
-  const [savedPlaces, setSavedPlaces] = useState<Place[]>(() => firebaseConfigured ? [] : read(`${prefix}.places`, []));
-  const [savedRoutes, setSavedRoutes] = useState<AtlasRoute[]>(() => firebaseConfigured ? [] : read(`${prefix}.routes`, []));
-  const [loading, setLoading] = useState(firebaseConfigured);
+  /**
+   * Bulut koleksiyonu yalnız Firebase yapılandırılmış **ve** hesap bulut
+   * hesabıysa kullanılır. Cihaz hesabının uid'si Firestore'da yetkisizdir;
+   * yalnız `firebaseConfigured`a bakmak cihaz kullanıcısının koleksiyonunu
+   * sessizce boş bırakırdı (ne bulut ne yerel). Cihaz hesabı bilinçli olarak
+   * cihazda saklanır — Karar (c) ayrımı: bulut hesabı `users/{uid}` altında
+   * eşitlenir, cihaz hesabı cihazda kalır. (Madde 12)
+   */
+  const cloudCollections = firebaseConfigured && user!.backend === "firebase";
+  const [savedPlaces, setSavedPlaces] = useState<Place[]>(() => cloudCollections ? [] : read(`${prefix}.places`, []));
+  const [savedRoutes, setSavedRoutes] = useState<AtlasRoute[]>(() => cloudCollections ? [] : read(`${prefix}.routes`, []));
+  const [loading, setLoading] = useState(cloudCollections);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!firebaseConfigured) {
+    if (!cloudCollections) {
       storageSet(`${prefix}.places`, JSON.stringify(savedPlaces));
       storageSet(`${prefix}.routes`, JSON.stringify(savedRoutes));
     }
-  }, [prefix, savedPlaces, savedRoutes]);
+  }, [cloudCollections, prefix, savedPlaces, savedRoutes]);
 
   useEffect(() => {
-    if (!firebaseConfigured) return;
+    if (!cloudCollections) return;
     setLoading(true);
     setError(null);
     return subscribeSavedCollections(user!.uid, (snapshot) => {
@@ -61,10 +70,10 @@ export function CollectionsProvider({ children }: { children: ReactNode }) {
       setError(failure.message);
       setLoading(false);
     });
-  }, [user]);
+  }, [cloudCollections, user]);
 
   const savePlace = (place: Place) => {
-    if (!firebaseConfigured) {
+    if (!cloudCollections) {
       setSavedPlaces((current) => current.some((item) => item.id === place.id) ? current.filter((item) => item.id !== place.id) : [place, ...current]);
       return;
     }
@@ -74,7 +83,7 @@ export function CollectionsProvider({ children }: { children: ReactNode }) {
   };
 
   const saveRoute = (route: AtlasRoute) => {
-    if (!firebaseConfigured) {
+    if (!cloudCollections) {
       setSavedRoutes((current) => [route, ...current.filter((item) => item.id !== route.id)].slice(0, 40));
       return;
     }
@@ -84,10 +93,11 @@ export function CollectionsProvider({ children }: { children: ReactNode }) {
   };
 
   /**
-   * P16 #1: yerel modda (`firebaseConfigured=false`) bulut zinciri **çağrılmaz**.
-   * Yerelde yayın diye bir şey yoktur; rota cihazda saklanır ve kullanıcıya
-   * yayımlanamadığı açıkça söylenir. Böylece sahte "yayınlandı" bağlantısı
-   * üretilmez, ağ bağımlılığı olmayan modda hata da oluşmaz.
+   * P16 #1: yerel modda (`firebaseConfigured=false` veya cihaz hesabı) bulut
+   * zinciri **çağrılmaz**. Yerelde yayın diye bir şey yoktur; rota cihazda
+   * saklanır ve kullanıcıya yayımlanamadığı açıkça söylenir. Böylece sahte
+   * "yayınlandı" bağlantısı üretilmez, ağ bağımlılığı olmayan modda hata da
+   * oluşmaz.
    */
   const publish = async (route: AtlasRoute, visibility: RouteVisibility, shareConsent: boolean) => {
     // Tek gizlilik kapısı: ham iz alanları taşınmaz, yayın açık kullanıcı
@@ -95,7 +105,7 @@ export function CollectionsProvider({ children }: { children: ReactNode }) {
     // Onay burada uydurulmaz; arayüzdeki onay kutusunun değeri aynen geçer.
     const decision = resolveTrackShare(route, { userInitiated: true, visibility, shareConsent });
     if (!decision.ok) throw new Error(decision.reason);
-    if (!firebaseConfigured) {
+    if (!cloudCollections) {
       setSavedRoutes((current) => [decision.route, ...current.filter((item) => item.id !== decision.route.id)].slice(0, 40));
       throw new Error(
         "Bulut hesabı bağlı değil: rota bu cihazda kaydedildi, yayımlanamadı. Yayımlamak için bulut (e-posta) hesabıyla giriş yap.",
@@ -106,7 +116,7 @@ export function CollectionsProvider({ children }: { children: ReactNode }) {
   };
 
   const removeRoute = (id: string) => {
-    if (!firebaseConfigured) {
+    if (!cloudCollections) {
       setSavedRoutes((current) => current.filter((route) => route.id !== id));
       return;
     }
