@@ -17,6 +17,7 @@ describe("ağır istemci modüllerinin tembel yüklenmesi", () => {
       "src/lib/auth.ts",
       "src/contexts/AuthContext.tsx",
       "src/components/AccountAccess.tsx",
+      "src/lib/moderation.ts",
     ];
     for (const path of runtimeFiles) {
       const source = read(path);
