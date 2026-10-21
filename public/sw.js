@@ -9,17 +9,43 @@ const SHELL = [
   "/images/atlasia-earth-hero.jpg",
 ];
 
+// Tam HTTPS host + path öneki eşleşmesi (substring değil) — lookalike URL reddi.
+// src/utils/offlineCache.ts içindeki CACHEABLE_TILE_SOURCES ile senkron tutulmalı;
+// offlineCache.test.ts iki tarafın eşitliğini kilitler.
+const CACHEABLE_TILE_SOURCES = [
+  {
+    host: "tiles.openfreemap.org",
+    pathPrefixes: ["/planet", "/natural_earth/", "/fonts/", "/sprites/", "/styles/"],
+  },
+  {
+    host: "s3.amazonaws.com",
+    pathPrefixes: ["/elevation-tiles-prod/terrarium/"],
+  },
+];
+
+function parseTileUrl(url) {
+  try {
+    return new URL(url);
+  } catch {
+    return null;
+  }
+}
+
 function isEsriTile(url) {
-  return url.includes("server.arcgisonline.com") || url.includes("arcgisonline.com");
+  const parsed = parseTileUrl(url);
+  if (!parsed) return false;
+  const host = parsed.hostname.toLowerCase();
+  return host === "arcgisonline.com" || host.endsWith(".arcgisonline.com");
 }
 
 function isCacheableTile(url) {
   if (isEsriTile(url)) return false;
-  return (
-    url.includes("tiles.openfreemap.org") ||
-    url.includes("elevation-tiles-prod") ||
-    url.includes("openfreemap") ||
-    url.includes("s3.amazonaws.com/elevation-tiles-prod")
+  const parsed = parseTileUrl(url);
+  if (!parsed) return false;
+  if (parsed.protocol !== "https:" || parsed.username || parsed.password) return false;
+  const host = parsed.hostname.toLowerCase();
+  return CACHEABLE_TILE_SOURCES.some(
+    (source) => source.host === host && source.pathPrefixes.some((prefix) => parsed.pathname.startsWith(prefix)),
   );
 }
 
@@ -44,7 +70,7 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys.filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE).map((key) => caches.delete(key))));
+    await Promise.all(keys.filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE).map((key) => caches.delete(key)));
     // Eski tile cache temizliği: yalnız mevcut TILE_CACHE korunur, eski versiyonlar silinir
     await Promise.all(keys.filter((key) => key.startsWith("atlasia-tiles-") && key !== TILE_CACHE).map((key) => caches.delete(key)));
     if (self.registration.navigationPreload) await self.registration.navigationPreload.enable();
