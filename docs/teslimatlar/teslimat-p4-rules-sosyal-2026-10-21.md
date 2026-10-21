@@ -38,7 +38,7 @@ rules tests` adımı) API üzerinden alınamadı; kök neden kodu okuyarak bulun
 Durum: CI job `Security, typecheck, lint, test and build` → **failure** yalnız `Firestore security rules tests` adımında
 (önceki adımlar yeşil; `main` aynı adımda yeşil). Log indirilemedi.
 
-**Aday kök neden (KARAR: düzeltildi, CI ile doğrulanacak):** `firestore.rules` içinde `match /friendships/{friendshipId}`
+**Aday kök neden (uygulandı ama CI'da yetmedi):** `firestore.rules` içinde `match /friendships/{friendshipId}`
 wildcard değişkeni, aynı adlı `friendshipId(a, b)` fonksiyonunu gölgeliyor
 (`friendshipId == friendshipId(...)`). Bu, rules değerlendirmesinde çağrının değişkene bağlanmasına yol açabilir;
 C1 testinin meşru kabul batch'i (`okBatch`) bu yüzden reddedilmiş olabilir. Değişken `fid` olarak yeniden adlandırıldı.
@@ -51,7 +51,7 @@ Bu kesin neden değildir; PR'ın CI sonucu bunu doğrulayacak. Kırmızı kalır
 | # | Madde | Dosya / test | Durum |
 |---|---|---|---|
 | 0 | PR #37 dala alındı, "Supersedes #37" PR | merge `e35d8e9`; PR bu turda açıldı (aşağıda) | ✅ |
-| 1a | CI rules hatası | `firestore.rules` (`fid`); aday kök neden | ⚠️ aday, CI bekliyor |
+| 1a | CI rules hatası | `firestore.rules` (`fid`); PR #40 CI'da hâlâ kırmızı; hangi test olduğu log erişilemediği için belirsiz | ❌ çözülmedi |
 | 1b | Okumasız katılma / davet | `src/lib/groups.ts` `joinGroupWithCode`, `acceptGroupInvite`; IO testleri | ✅ |
 | 1c | Sunucu zorunlu deneme sayacı | `firestore.rules` `groups/{g}/joinAttempts/{uid}`; `tests/firestore.rules.test.ts` 4 yeni test | ✅ kural + test yazıldı, ⚠️ CI bekliyor |
 | 1c' | `lockedUntil`, istemci `attempts`, `"000000"`, `users/{uid}/joinAttempts` kaldırıldı | `firestore.rules`, `groups.ts` | ✅ |
@@ -192,7 +192,17 @@ Eski kod kanıtları yerelde alındı; dosyalar kanıttan sonra yeni haline geri
 5. PR #19'u kapatmak için: yeni PR birleşince kapat (`gh pr close 19`). Şu an kapatılmadı.
 6. Emulator'ı yerelde çalıştırmak istersen Java 21 kur; ardından `npm run test:rules:emulator`.
 
-## 12) PR
+## 12) PR ve CI sonucu
 
-PR başlığı: `[P4] Rules, okumasız grup katılımı, deneme sayacı (Supersedes #37)` — açıldıktan sonra numarası ve CI sonucu
-bu dosyanın sonuna eklenecek.
+- PR: **#40** — `[P4] Rules, okumasız grup katılımı, deneme sayacı (Supersedes #37)` (base `main`, head `arena/f80b0256-atlasia`). Birleştirilmedi.
+- CI (run `39682859064`, job `119509451685`): **KIRMIZI**. Yalnız `Firestore security rules tests` adımı başarısız;
+  diğer tüm adımlar (typecheck, lint, unit, script, bütçe öncesi) yeşil.
+- Cloudflare Pages önizleme: geçti.
+- **Log okunamadı:** GitHub log uç noktası sandbox'tan erişilemiyor (`results-receiver` EOF). Hangi rules testinin düştüğü
+  bu yüzden **doğrulanamadı**.
+- Uygulanan olası düzeltme (friendships `fid`) tek başına yetmedi. Bu turda CI kırmızı teslim ediliyor; kapı
+  "CI kırmızıyken teslim yok" kuralını karşılamıyor. Açık iş: kırmızı rules adımının test adını bulmak.
+  Doğrulama yolu: GitHub Actions sayfasında job loglarını açıp başarısız `it(...)` adını bu dosyaya eklemek; ardından
+  o testi düzeltmek ve regresyon kanıtını eklemek.
+- Kontrol edilen ve sorun çıkmayan kural yapıları (dokümantasyonla): string `<` karşılaştırması (lexicographic destekli),
+  `split`, `duration.value`, `timestamp + duration`, `getAfter`, nested `function` (match içinde).
