@@ -27,7 +27,6 @@
     "test:rules:emulator": "node scripts/run-firestore-rules-tests.mjs"
   },
   "dependencies": {
-    "@types/suncalc": "^1.9.2",
     "@types/tz-lookup": "^6.1.2",
     "clsx": "2.1.1",
     "fflate": "^0.8.3",
@@ -36,7 +35,7 @@
     "maplibre-gl": "6.4.1",
     "react": "19.2.6",
     "react-dom": "19.2.6",
-    "suncalc": "^1.9.0",
+    "suncalc": "^2.1.1",
     "tailwind-merge": "3.7.0",
     "tz-lookup": "^6.1.25"
   },
