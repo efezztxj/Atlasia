@@ -1015,10 +1015,12 @@ describe("Firestore güvenlik kuralları", () => {
     );
   });
 
-  it("C2 joinAttempts deneme sınırı ve kilit penceresi; sınır aşılınca reddedilir", async () => {
-    const _aliceDb = testEnv.authenticatedContext("alice").firestore();
+  // C2/#37-düzeltme: okumasız katılma. İstemci gerçek yazım sırasını izler:
+  // 1) kendi deneme belgesini ayrı commit eder (yanlış kodda da kalır),
+  // 2) grubu yalnız memberUids arrayUnion ile günceller (grup okuması yok).
+  it("C2 okumasız kod katılması: yanlış kod attempts artırır, doğru kod katılır; 6. deneme ve geri yazma reddedilir", async () => {
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
     const bobDb = testEnv.authenticatedContext("bob").firestore();
-    const charlieDb = testEnv.authenticatedContext("charlie").firestore();
     await seed("groups/group-code", {
       name: "KodGrubu",
       ownerUid: "alice",
@@ -1027,35 +1029,75 @@ describe("Firestore güvenlik kuralları", () => {
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     });
-    // Yanlış kodla grup güncellemesi (getAfter eşleşmez) → FAIL
-    const badAttempt = writeBatch(bobDb);
-    badAttempt.set(doc(bobDb, "groups/group-code/joinAttempts/bob"), { code: "999999", at: serverTimestamp(), attempts: 1 });
-    badAttempt.update(doc(bobDb, "groups/group-code"), { memberUids: ["alice", "bob"], updatedAt: serverTimestamp() });
-    await assertFails(badAttempt.commit());
-    // Doğru kodla katılma → SUCCEED
-    const goodAttempt = writeBatch(bobDb);
-    goodAttempt.set(doc(bobDb, "groups/group-code/joinAttempts/bob"), { code: "123456", at: serverTimestamp(), attempts: 1 });
-    goodAttempt.set(doc(bobDb, "users/bob/joinAttempts/group-code"), { code: "123456", at: serverTimestamp(), attempts: 1, groupId: "group-code" });
-    goodAttempt.update(doc(bobDb, "groups/group-code"), { memberUids: ["alice", "bob"], updatedAt: serverTimestamp() });
-    await assertSucceeds(goodAttempt.commit());
-    // Kilit: 5 hatalı deneme sonrası lockedUntil
+    const attemptRef = doc(bobDb, "groups/group-code/joinAttempts/bob");
+    const groupRef = doc(bobDb, "groups/group-code");
+    const join = () => updateDoc(groupRef, { memberUids: arrayUnion("bob"), updatedAt: serverTimestamp() });
+
+    // Yanlış kod: deneme belgesi ayrı yazılır (SUCCEED), grup güncellemesi reddedilir (FAIL)
+    await assertSucceeds(setDoc(attemptRef, { code: "999999", at: serverTimestamp(), attempts: 1, windowStart: serverTimestamp() }));
+    await assertFails(join());
+    // Sayaç geri yazılamaz: attempts 1'e düşürme (pencere açıkken) → FAIL
+    await assertFails(setDoc(attemptRef, { code: "123456", at: serverTimestamp(), attempts: 1, windowStart: Timestamp.now() }));
+    // Doğru kod: sayaç 2 olur (önceki windowStart korunur) → SUCCEED; katılım → SUCCEED
+    const prev = (await getDoc(attemptRef)).data()!;
+    await assertSucceeds(setDoc(attemptRef, { code: "123456", at: serverTimestamp(), attempts: 2, windowStart: prev.windowStart }));
+    await assertSucceeds(join());
+    const groupAfter = await getDoc(doc(aliceDb, "groups/group-code"));
+    expect(groupAfter.data()!.memberUids).toContain("bob");
+    // Kendi deneme kaydını silemez → FAIL; başkası bob'un denemesini yazamaz → FAIL
+    await assertFails(deleteDoc(attemptRef));
+    const charlieDb = testEnv.authenticatedContext("charlie").firestore();
+    await assertFails(setDoc(doc(charlieDb, "groups/group-code/joinAttempts/bob"), { code: "123456", at: serverTimestamp(), attempts: 1, windowStart: serverTimestamp() }));
+  });
+
+  it("C2 pencere içinde 6. deneme FAIL; pencere dolunca sayaç 1'e döner ve doğru kod SUCCEED", async () => {
+    const bobDb = testEnv.authenticatedContext("bob").firestore();
     await seed("groups/group-lock", { name: "KilitGrubu", ownerUid: "alice", memberUids: ["alice"], joinCode: "654321", createdAt: Timestamp.now(), updatedAt: Timestamp.now() });
-    await seed("groups/group-lock/joinAttempts/charlie", {
+    const attemptRef = doc(bobDb, "groups/group-lock/joinAttempts/bob");
+    const groupRef = doc(bobDb, "groups/group-lock");
+    // Pencere açık, 5 deneme dolmuş → 6. deneme (attempts 6) reddedilir
+    await seed("groups/group-lock/joinAttempts/bob", {
       code: "000000",
       at: Timestamp.now(),
       attempts: 5,
-      lockedUntil: Timestamp.fromDate(new Date(Date.now() + 900000)),
+      windowStart: Timestamp.now(),
     });
-    await seed("users/charlie/joinAttempts/group-lock", {
+    const prev = (await getDoc(attemptRef)).data()!;
+    await assertFails(setDoc(attemptRef, { code: "654321", at: serverTimestamp(), attempts: 6, windowStart: prev.windowStart }));
+    // Sayaç 5'te: bu pencerede yeni sayaç 1'e sıfırlanamaz (pencere açık) → FAIL
+    await assertFails(setDoc(attemptRef, { code: "654321", at: serverTimestamp(), attempts: 1, windowStart: serverTimestamp() }));
+    // Pencere dolmuş (16 dk önce başladı) → sayaç 1, doğru kod SUCCEED, katılım SUCCEED
+    await seed("groups/group-lock/joinAttempts/bob", {
       code: "000000",
       at: Timestamp.now(),
       attempts: 5,
-      groupId: "group-lock",
-      lockedUntil: Timestamp.fromDate(new Date(Date.now() + 900000)),
+      windowStart: Timestamp.fromDate(new Date(Date.now() - 16 * 60 * 1000)),
     });
-    // Kilitliyken yeni deneme → FAIL
-    await assertFails(setDoc(doc(charlieDb, "groups/group-lock/joinAttempts/charlie"), { code: "654321", at: serverTimestamp(), attempts: 1 }));
-    await assertFails(setDoc(doc(charlieDb, "users/charlie/joinAttempts/group-lock"), { code: "654321", at: serverTimestamp(), attempts: 1, groupId: "group-lock" }));
+    await assertSucceeds(setDoc(attemptRef, { code: "654321", at: serverTimestamp(), attempts: 1, windowStart: serverTimestamp() }));
+    await assertSucceeds(updateDoc(groupRef, { memberUids: arrayUnion("bob"), updatedAt: serverTimestamp() }));
+  });
+
+  it("C2 bayat deneme (2 dakikadan eski) ile katılım reddedilir; üye olmayan grup belgesini okuyamaz", async () => {
+    const bobDb = testEnv.authenticatedContext("bob").firestore();
+    const charlieDb = testEnv.authenticatedContext("charlie").firestore();
+    await seed("groups/group-stale", { name: "Bayat", ownerUid: "alice", memberUids: ["alice"], joinCode: "246810", createdAt: Timestamp.now(), updatedAt: Timestamp.now() });
+    await seed("groups/group-stale/joinAttempts/bob", {
+      code: "246810",
+      at: Timestamp.fromDate(new Date(Date.now() - 3 * 60 * 1000)),
+      attempts: 1,
+      windowStart: Timestamp.fromDate(new Date(Date.now() - 3 * 60 * 1000)),
+    });
+    await assertFails(updateDoc(doc(bobDb, "groups/group-stale"), { memberUids: arrayUnion("bob"), updatedAt: serverTimestamp() }));
+    // Üye olmayan grup belgesini okuma → permission-denied (okumasız katılma bunu gerektirmez)
+    await assertFails(getDoc(doc(charlieDb, "groups/group-stale")));
+  });
+
+  it("C2 deneme kaydı yalnız kendi uid'iyle, kod biçimi 6–8 hane ve bilinmeyen alan olmadan yazılır", async () => {
+    const bobDb = testEnv.authenticatedContext("bob").firestore();
+    await assertFails(setDoc(doc(bobDb, "groups/group-x/joinAttempts/bob"), { code: "1234", at: serverTimestamp(), attempts: 1, windowStart: serverTimestamp() }));
+    await assertFails(setDoc(doc(bobDb, "groups/group-x/joinAttempts/bob"), { code: "123456", at: serverTimestamp(), attempts: 2, windowStart: serverTimestamp() }));
+    await assertFails(setDoc(doc(bobDb, "groups/group-x/joinAttempts/bob"), { code: "123456", at: serverTimestamp(), attempts: 1, windowStart: serverTimestamp(), lockedUntil: Timestamp.now() }));
+    await assertSucceeds(setDoc(doc(bobDb, "groups/group-x/joinAttempts/bob"), { code: "123456", at: serverTimestamp(), attempts: 1, windowStart: serverTimestamp() }));
   });
 
   // === Eski gruplarla uyum: joinCode isteğe bağlı ===
