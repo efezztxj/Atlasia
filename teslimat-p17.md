@@ -9,6 +9,7 @@
 | Karşılaştırma tabanı | `origin/main` = **`a25e87e`** (`Merge pull request #29`) |
 | Taban ilişkisi | `ab29018`, `origin/main`'in **atası değil** (`git merge-base --is-ancestor` → yok). Birleştirme **yapılmadı** — gerekçe §1 |
 | Kapılar | typecheck 0 · lint 0 · **53 dosya / 386 test** · `test:owner-index` 7/7 · build ✓ 10,28 sn · `audit:check` temiz · `verify:social-metadata` ✓ · `git diff --check` temiz |
+| Paylaşılan dal | Push sırasında dalda başka ajanların 4 commit'i vardı; geçici bir worktree'de birleştirildi (§11). Çalışma ağacındaki hiçbir dosya değişmedi (199 dosya sha256 ile doğrulandı) |
 | Koşulamayan | `test:rules:emulator` (Java 21 yok) · gerçek cihaz GPS yürüyüşü · DEM (MapLibre terrain) canlı örneklemesi → §9 |
 | Commit / push / PR | Mantıksal commit'ler + dal push + PR açıldı; **merge kullanıcıya bırakıldı** |
 
@@ -183,31 +184,44 @@ veriyor), `MapView.tsx`, `App.tsx`, `types.ts`, `package.json`/`package-lock.jso
 | Bu dal `main`'in atası değil; PR tüm ağaç farkını gösterir | İnceleme gürültüsü | §1; P17 farkı 8 dosya; merge kullanıcıya bırakıldı |
 | DEM yok → tur panelinde yükseklik yok | Özellik gerilemesi gibi görünür | §8/3; sahte eğriden iyidir; tek satırlık `terrain` bağlantısı bekliyor |
 
-## 11. Commit'ler
+## 11. Commit'ler ve paylaşılan dal
+
+İlk `git push` reddedildi: `origin/arena/f5d256c1-atlasia` bu arada **başka ajanların 4 commit'i**
+kadar ilerlemişti (dal paylaşımlı; 4 ajan aynı dalda çalışıyor). Bu çalışma ağacında merge
+yapılamazdı: uzak dalın dokunduğu 32 dosyanın **tamamı** burada commit'siz ve daha yeni
+(`git diff --numstat origin/… -- <32 dosya>` → 26 dosyada fark var); ağaçta merge, diğer
+ajanların yazdığı kodu ezerdi.
+
+Uygulanan yol (force-push / rebase / reset **yok**):
+
+1. `git worktree add --detach /tmp/p17-wt HEAD` — ayrı geçici çalışma alanı.
+2. `git merge --no-ff origin/arena/f5d256c1-atlasia` → **çakışmasız** merge commit'i `0beec37`.
+3. `git push origin HEAD:refs/heads/arena/f5d256c1-atlasia` → `0a96a86..0beec37` (fast-forward).
+4. Ana ağaçta yalnız **ref + index** hizalandı (`git update-ref`, `git read-tree HEAD`);
+   hiçbir dosyaya yazılmadı. Doğrulama: 199 dosyanın sha256'sı işlem öncesi/sonrası **aynı**.
+5. Geçici worktree kaldırıldı.
 
 | Commit | Kapsam |
 |---|---|
-| `feat(track): P17 durak tespiti ve sadeleştirme çekirdeği` | `track.ts`, `fixtures/trackFixtures.ts`, `track.test.ts` |
-| `feat(track): taslak rota üretimi + kayıt paneli uyumu` | `useTrackRecorder.ts`, `TrackRecorderPanel.tsx` |
-| `fix(elevation): DEM yoksa "bilinmiyor" — sentetik profil kaldırıldı` | `elevation.ts`, `elevation.test.ts`, `ElevationProfile.tsx` |
-| `docs: P17 teslimatı` | `teslimat-p17.md` |
+| `20da54e` `feat(track): P17 durak tespiti ve sadeleştirme çekirdeği` | `track.ts`, `fixtures/trackFixtures.ts`, `track.test.ts` |
+| `8a47663` `feat(track): taslak rota üretimi ve kayıt paneli uyumu` | `useTrackRecorder.ts`, `TrackRecorderPanel.tsx` |
+| `d2b2bad` `fix(elevation): DEM yoksa "bilinmiyor" — sentetik profil kaldırıldı` | `elevation.ts`, `elevation.test.ts`, `ElevationProfile.tsx` |
+| `dcbb767` `docs: P17 teslimatı` | `teslimat-p17.md` |
+| `0beec37` `Merge origin/arena/f5d256c1-atlasia` | diğer ajanların commit'leriyle birleşme (çakışma yok) |
 
 ## 12. Teslim anındaki ağaç durumu
 
 `git diff --check` → **çıktı yok** (temiz, `exit 0`).
 
-`git status --short` → 118 satır; P17'ye ait olanlar (commit sonrası temizlenir):
+`git status --short` → **91 satır**. P17 dosyalarının **tamamı temiz** (commit edildi):
 
 ```
-?? src/components/ElevationProfile.tsx
-?? src/components/TrackRecorderPanel.tsx
-?? src/hooks/useTrackRecorder.ts
-?? src/utils/elevation.test.ts
-?? src/utils/elevation.ts
-?? src/utils/fixtures/
-?? src/utils/track.test.ts
-?? src/utils/track.ts
+$ git status --short -- src/utils/track.ts src/utils/elevation.ts src/utils/fixtures \
+    src/hooks/useTrackRecorder.ts src/components/TrackRecorderPanel.tsx \
+    src/components/ElevationProfile.tsx teslimat-p17.md
+(çıktı yok)
 ```
 
-Kalan 110 satır bu oturuma ait değildir (başka ajanların commit'siz işleri + `ab29018`
-tabanının `origin/main`'den geride olması). Tam liste için `git status --short`.
+Kalan 91 satır bu oturuma ait değildir: paylaşılan ağaçta diğer ajanların commit'siz işleri
+(`M`/`??`). Birleşme sonrası sayı 118 → 91'e düştü; çünkü uzak daldan gelen commit'ler artık
+HEAD'de. Tam liste için `git status --short`.
