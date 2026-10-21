@@ -3,8 +3,8 @@
 > Bu dosya, Atlasia'ya eklenecek işlerin **bağımlılık sırasıdır**; özellik listesi değil.
 > Ajanlar için yazıldı: her adımın amacı, girdisi, dosya yolları, "bitti kanıtı" komutu ve riski var.
 >
-> - **Son güncelleme:** 2026-10-22 (tamamlanan işler işaretlendi — bkz. §2.5)
-> - **Durum:** main `0ad774f`. Bitti: P1 kapanış, T1-AUTH (#33), P17 çekirdeği (#32; onaylı kaydet akışı **açık**), üretim izin düzeltmesi (#31). Açık: P14 (Overpass + Wikidata içerik hattı), P15 (çevrimdışı saha paketi), P18 (erişilebilirlik), P20 (paylaşım linki, karar bekliyor), T1-SOSYAL (P4, düzeltme bekliyor). Karar (a) alt koleksiyon; (b–g) açık.
+> - **Son güncelleme:** 2026-10-22 (P1 Tur 4: durum satırı `b6922d1`'e çekildi; §8(c)/§9 düzeltildi; Adım 11/15 kısmi notları)
+> - **Durum:** main `b6922d1`. Bitti: P1 kapanış, T1-AUTH (#33), P17 çekirdeği (#32; onaylı kaydet akışı **açık**), üretim izin düzeltmesi (#31). Açık: P14 (Overpass + Wikidata içerik hattı), P15 (çevrimdışı saha paketi), P18 (erişilebilirlik — P1 Tur 4 denetimi `docs/denetim/p18-erisilebilirlik.md`), P20 (paylaşım linki, karar bekliyor), T1-SOSYAL (P4, düzeltme bekliyor). Karar (a) alt koleksiyon; (c) uygulandı ama kullanıcı onayı bekliyor; (b, d–g) açık.
 > - **Kural:** ⛔ işaretli adımlarda insan onayı olmadan kod yazılmaz.
 > - **v1'e göre değişiklik:** ürün tezi netleşti (topluluk uygulaması) → sosyal katman silinmiyor, fonlanıyor; `routes`/`tracks` nesneleri eklendi; içerik boru hattı ayrı faz oldu.
 
@@ -61,7 +61,7 @@ Env: `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJEC
 | `posts/{id}/replies/{replyId}` | tek yanıt belgesi | bounded public read; yazar UID ile doğrulanır; değiştirilemez |
 | `stories/{id}` | 24 saat ömürlü | görüldü durumu cihaz bazlı localStorage'da; Firestore `seen` yok |
 | `users/{uid}` | profil | `xp`/`level` istemciden yazılamaz |
-| — | **rotalar** | **yalnız localStorage** (`atlasia.member.{uid}`) |
+| `routes/{id}`, `users/{uid}/savedPlaces\|savedRoutes` | **rotalar + kayıtlı koleksiyonlar** | Firestore'da (görünürlüklü yayın + kayıt); yalnız Firebase yapılandırması yoksa localStorage (`atlasia.member.{uid}`) |
 | — | **grup / mesaj** | **hiç yok** |
 | — | **iz kaydı** | **hiç yok** |
 
@@ -350,6 +350,7 @@ Wikidata / Wikipedia geosearch  →  tarihçe metni
 **Neden ucuz:** `terrain` raster-dem kaynağı **zaten var**, rota motoruna bağlanmamış.
 **Yapılacak:** Rota boyunca örnekleme → toplam tırmanış, en dik eğim, Naismith süresi. `drawRoute` şu an tek çizgi (`#F2D77C`, 3.2); `coords[]` yerine **bacak listesi** alır, her bacağa `mode` özelliği koyar, MapLibre data-driven styling ile patika kesikli / yol düz.
 **Bitti kanıtı:** Profil grafiği + haritada mod ayrımı görünüyor.
+**Durum (2026-10-22, P1 Tur 4): İlk sürüm kısmi; kalan:** `ElevationProfile`'ın ekrana bağlanması (bileşen var, hiçbir yüzeyde render edilmiyor), `drawRoute`'un bacak listesiyle mod-ayrımlı çizimi (patika kesikli / yol düz), Naismith süresi hesabı. Kanıt: `src/utils/elevation.ts` + testleri main'de; `grep ElevationProfile src/App.tsx` boş.
 
 ## Adım 12 · Çevrimdışı saha paketi
 **2 gün · bağımlılık: Adım 2**
@@ -384,6 +385,7 @@ Wikidata / Wikipedia geosearch  →  tarihçe metni
 **Mevcut:** `AtlasAssistant` tek nokta için `current=precipitation` çekiyor, 4,5 sn timeout.
 **Yapılacak:** Saatlik + günlük (open-meteo, keyless), **her durağın varış saatindeki** hava, harita katmanı, uyarı. `RouteBrief.rain: "auto"` ve `ROUTE_ALTERNATIVES`'teki "Yağmur planı" zaten tanımlı ama kullanılmıyor.
 **Bitti kanıtı:** Rota duraklarında varış saatine göre hava görünüyor; yağmur planı çalışıyor.
+**Durum (2026-10-22, P1 Tur 4): İlk sürüm kısmi; kalan:** harita hava katmanı, durak varış saati hava rozeti/uyarısı (`attachStopWeather`/`weatherAtClock` çıktılarının UI'a bağlanması; bugün yalnız `AtlasAssistant` içinde `optimizeForRain`/`dailyRainNote` kullanılıyor), `RouteBrief.rain: "auto"` akışının açılması.
 
 ## Adım 16 · Grup + sohbet *(en son)*
 **⛔ karar (g) gerekli · 4+ gün · bağımlılık: Adım 13**
@@ -414,7 +416,7 @@ Wikidata / Wikipedia geosearch  →  tarihçe metni
 |---|---|---|---|---|
 | a | Yanıtlar: dizi mi alt koleksiyon mu | **Seçildi:** `posts/{id}/replies` | 1, 7 | orta — uygulandı; eski gömülü değerler yalnız okuma uyumluluğu |
 | b | Fotoğraf depolama | (1) data URL kalır (2) nesne depolamaya geç | 3, 6, 12 | yüksek — feed sorgusu + kural + yükleme birlikte değişir |
-| c | Koleksiyon senkronu | (1) cihazda kalır (2) `users/{uid}` altında buluta | 3, 6 | orta — veri biriktikçe pahalanır |
+| c | Koleksiyon senkronu | **Uygulandı (2):** `useCollections` + `subscribeSavedCollections`, `users/{uid}/savedPlaces\|savedRoutes` — **kullanıcı onayı bekliyor** | 3, 6 | orta — veri biriktikçe pahalanır |
 | d | XP/rozet/takip | (1) silinir (2) Adım 14'te Cloud Functions ile fonlanır | 14 | yüksek — ölü kod her okumada yanlış izlenim verir |
 | e | Saha rehberi | (1) web/PWA kalır, ekran açık şartı kabul (2) native/Capacitor sarmalayıcı | 9, 12 | yüksek — arka plan konumu web'de yok |
 | f | İçerik kaynağı | (1) Overpass + Wikidata/Wikipedia (2) elle içerik (3) LLM özeti | 7, 9, 14 | orta — lisans/atıf yükümlülüğü doğar |
@@ -428,7 +430,7 @@ Wikidata / Wikipedia geosearch  →  tarihçe metni
 | Bağımsız aynı-candidate audit bekliyor | kullanıcı no-deploy/no-bypass gate | üretim dağıtımı veya audit bypass yapılmadı |
 | Eski gömülü reply verisi Firestore'da kalabilir | yeni kontrat alt koleksiyon | normalize edilir; bu işin otomatik prod veri migrasyonu/deploy'u yok |
 | Yol çizgileri yol navigasyonu değildir | routePlanner mevcut davranışı | kullanıcıya gerçek yol/navigasyon gibi sunulmamalı |
-| Rotalar ve kayıtlı koleksiyonlar localStorage'dadır | Adım 3 bekliyor | başka cihaza senkron olmaz |
+| ~~Rotalar ve kayıtlı koleksiyonlar localStorage'da~~ ✅ | Adım 3 uygulandı (`routes`, `users/{uid}/savedPlaces\|savedRoutes`) | Firebase yapılandırmasında cihazlar arası senkron çalışır; yalnız yerel modda localStorage yedeği kalır |
 | ~~Moderasyon yok~~ ✅ | Adım 13 uygulandı (`0e36583`) | bildir/engelle/hesap silme main'de |
 | Sokak/topoda çakışan etiket riski | doğrulanmadı | aynı bölge iki adla yazılabilir |
 
