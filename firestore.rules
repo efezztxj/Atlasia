@@ -316,10 +316,11 @@ service cloud.firestore {
 
     function validGroupShape(data) {
       return data.keys().hasAll(['name', 'ownerUid', 'memberUids', 'createdAt', 'updatedAt'])
-             && data.keys().hasOnly(['name', 'ownerUid', 'memberUids', 'createdAt', 'updatedAt', 'lastMessage'])
+             && data.keys().hasOnly(['name', 'ownerUid', 'memberUids', 'joinCode', 'createdAt', 'updatedAt', 'lastMessage'])
              && stringBetween(data.name, 1, 80)
              && stringBetween(data.ownerUid, 1, 128)
              && data.ownerUid == request.auth.uid
+             && (!('joinCode' in data) || data.joinCode.matches('[0-9]{6,8}'))
              && data.memberUids is list
              && data.memberUids.size() >= 1
              && data.memberUids.size() <= 20
@@ -328,6 +329,96 @@ service cloud.firestore {
              && data.createdAt is timestamp
              && data.updatedAt == request.time
              && (!('lastMessage' in data) || validLastMessage(data.lastMessage));
+    }
+
+    function validGroupCreateShape(data) {
+      return validGroupShape(data)
+             && data.memberUids.size() == 1
+             && data.memberUids[0] == request.auth.uid
+             && data.createdAt == request.time
+             && 'joinCode' in data && data.joinCode.matches('[0-9]{6,8}');
+    }
+
+    function validGroupInvite(data, groupId, invitedUid) {
+      return data.keys().hasAll(['invitedUid', 'inviterUid', 'groupId', 'groupName', 'createdAt'])
+             && data.keys().hasOnly(['invitedUid', 'inviterUid', 'groupId', 'groupName', 'createdAt'])
+             && data.invitedUid == invitedUid
+             && stringBetween(data.invitedUid, 1, 128)
+             && stringBetween(data.inviterUid, 1, 128)
+             && data.inviterUid == request.auth.uid
+             && data.groupId == groupId
+             && stringBetween(data.groupName, 1, 80)
+             && data.createdAt == request.time;
+    }
+
+    function validFriendRequest(data, uid, requesterUid) {
+      return data.keys().hasAll(['fromUid', 'fromName', 'toUid', 'createdAt'])
+             && data.keys().hasOnly(['fromUid', 'fromName', 'toUid', 'createdAt'])
+             && data.fromUid == requesterUid
+             && data.toUid == uid
+             && data.fromUid == request.auth.uid
+             && data.fromUid != data.toUid
+             && stringBetween(data.fromUid, 1, 128)
+             && stringBetween(data.toUid, 1, 128)
+             && stringBetween(data.fromName, 2, 100)
+             && data.createdAt == request.time;
+    }
+
+    function validFriendship(data) {
+      return data.keys().hasAll(['users', 'requesterUid', 'recipientUid', 'status', 'createdAt', 'updatedAt'])
+             && data.keys().hasOnly(['users', 'requesterUid', 'recipientUid', 'status', 'createdAt', 'updatedAt'])
+             && data.users is list
+             && data.users.size() == 2
+             && data.users.toSet().size() == 2
+             && request.auth.uid in data.users
+             && stringBetween(data.requesterUid, 1, 128)
+             && stringBetween(data.recipientUid, 1, 128)
+             && data.requesterUid in data.users
+             && data.recipientUid in data.users
+             && data.requesterUid != data.recipientUid
+             && data.status == 'accepted'
+             && data.createdAt == request.time
+             && data.updatedAt == request.time;
+    }
+
+    function validFriendIndex(data, friendUid) {
+      return data.keys().hasAll(['friendUid', 'friendName', 'since'])
+             && data.keys().hasOnly(['friendUid', 'friendName', 'since'])
+             && data.friendUid == friendUid
+             && stringBetween(data.friendUid, 1, 128)
+             && stringBetween(data.friendName, 2, 100)
+             && data.since == request.time;
+    }
+
+    function friendshipId(uidA, uidB) {
+      return uidA < uidB ? uidA + "_" + uidB : uidB + "_" + uidA;
+    }
+
+    function reverseFriendshipId(fid) {
+      let parts = fid.split("_");
+      return parts[1] + "_" + parts[0];
+    }
+
+    function isAcceptedFriendship(uid, friendUid) {
+      let fid = friendshipId(uid, friendUid);
+      let path = /databases/$(database)/documents/friendships/$(fid);
+      return (exists(path) && get(path).data.status == "accepted" && get(path).data.users.hasAll([uid, friendUid]))
+             || (existsAfter(path) && getAfter(path).data.status == "accepted" && getAfter(path).data.users.hasAll([uid, friendUid]));
+    }
+
+    function pendingFriendRequestExists(requesterUid, recipientUid) {
+      return exists(/databases/$(database)/documents/users/$(recipientUid)/friendRequests/$(requesterUid));
+    }
+
+    function validUserProfile(data, uid) {
+      return data.keys().hasAll(['uid', 'displayName', 'createdAt', 'updatedAt'])
+             && data.keys().hasOnly(['uid', 'displayName', 'photoURL', 'createdAt', 'updatedAt'])
+             && data.uid == uid
+             && data.uid == request.auth.uid
+             && stringBetween(data.displayName, 2, 40)
+             && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 500 && data.photoURL.matches('https?://.*')))
+             && data.createdAt == request.time
+             && data.updatedAt == request.time;
     }
 
     function validLastMessage(message) {
@@ -364,7 +455,7 @@ service cloud.firestore {
              && stringBetween(data.recipientUid, 1, 128)
              && stringBetween(data.actorUid, 1, 128)
              && data.actorUid == request.auth.uid
-             && data.type in ['report_received', 'report_actioned', 'blocked', 'group_invite', 'group_message', 'system']
+             && data.type in ['report_received', 'report_actioned', 'blocked', 'group_invite', 'group_message', 'friend_request', 'friend_accepted', 'friend_declined', 'system']
              && stringBetween(data.title, 1, 200)
              && stringBetween(data.body, 0, 500)
              && data.read is bool
@@ -548,27 +639,74 @@ service cloud.firestore {
       // Geniş koleksiyon taraması kapalı: kullanıcı yalnız üyesi olduğu grubu tek
       // belge olarak okur; liste kendi users/{uid}/groups indeksinden gelir.
       allow list: if false;
-      allow create: if signedIn() && validGroupShape(request.resource.data)
-                    && request.resource.data.createdAt == request.time;
+      allow create: if signedIn()
+                    && validGroupCreateShape(request.resource.data);
       allow update: if signedIn()
-                    && request.auth.uid in resource.data.memberUids
                     && (
+                      // Kurucu metadata gunceller (isim/kod) — uye listesi degismez
                       (
                         resource.data.ownerUid == request.auth.uid
-                        && validGroupShape(request.resource.data)
                         && request.resource.data.ownerUid == resource.data.ownerUid
                         && request.resource.data.createdAt == resource.data.createdAt
+                        && request.resource.data.memberUids == resource.data.memberUids
+                        && request.resource.data.joinCode.matches('[0-9]{6,8}')
+                        && validGroupShape(request.resource.data)
                       ) || (
-                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'updatedAt'])
+                        // Eski gruba kod ekleme: joinCode yoksa kurucu ekleyebilir (backward compat)
+                        resource.data.ownerUid == request.auth.uid
+                        && !('joinCode' in resource.data)
+                        && 'joinCode' in request.resource.data
+                        && request.resource.data.joinCode.matches('[0-9]{6,8}')
+                        && request.resource.data.ownerUid == resource.data.ownerUid
+                        && request.resource.data.createdAt == resource.data.createdAt
+                        && request.resource.data.memberUids == resource.data.memberUids
+                        && validGroupShape(request.resource.data)
+                      ) || (
+                        // Uye son mesaji yazar
+                        request.auth.uid in resource.data.memberUids
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'updatedAt'])
                         && validLastMessage(request.resource.data.lastMessage)
                         && request.resource.data.name == resource.data.name
                         && request.resource.data.ownerUid == resource.data.ownerUid
+                        && ((!('joinCode' in resource.data) && !('joinCode' in request.resource.data)) || request.resource.data.joinCode == resource.data.joinCode)
                         && request.resource.data.memberUids == resource.data.memberUids
                       ) || (
-                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberUids', 'updatedAt'])
+                        // Uye ayrilir — yalniz kendini cikarir
+                        request.auth.uid in resource.data.memberUids
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberUids', 'updatedAt'])
                         && request.resource.data.name == resource.data.name
                         && request.resource.data.ownerUid == resource.data.ownerUid
+                        && ((!('joinCode' in resource.data) && !('joinCode' in request.resource.data)) || request.resource.data.joinCode == resource.data.joinCode)
                         && request.resource.data.memberUids.toSet() == resource.data.memberUids.toSet().difference([request.auth.uid].toSet())
+                        && request.resource.data.updatedAt == request.time
+                      ) || (
+                        // Davetli kabul — yalniz kendini ekler, davet varligi kanitli
+                        !(request.auth.uid in resource.data.memberUids)
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberUids', 'updatedAt'])
+                        && request.resource.data.memberUids.toSet() == resource.data.memberUids.toSet().union([request.auth.uid].toSet())
+                        && request.resource.data.memberUids.size() == resource.data.memberUids.size() + 1
+                        && request.resource.data.memberUids.size() <= 20
+                        && request.resource.data.name == resource.data.name
+                        && request.resource.data.ownerUid == resource.data.ownerUid
+                        && ((!('joinCode' in resource.data) && !('joinCode' in request.resource.data)) || request.resource.data.joinCode == resource.data.joinCode)
+                        && request.resource.data.createdAt == resource.data.createdAt
+                        && request.resource.data.updatedAt == request.time
+                        && exists(/databases/$(database)/documents/groups/$(groupId)/invites/$(request.auth.uid))
+                      ) || (
+                        // Kod ile katılma: üye olmayan yalnız kendini ekler ve katılma
+                        // kodunu aynı batch'teki joinAttempts yazısıyla kanıtlar (getAfter). Eski grup kodsuzsa bu dal calismaz.
+                        !(request.auth.uid in resource.data.memberUids)
+                        && 'joinCode' in resource.data
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberUids', 'updatedAt'])
+                        && request.resource.data.memberUids.toSet() == resource.data.memberUids.toSet().union([request.auth.uid].toSet())
+                        && request.resource.data.memberUids.size() == resource.data.memberUids.size() + 1
+                        && request.resource.data.memberUids.size() <= 20
+                        && request.resource.data.name == resource.data.name
+                        && request.resource.data.ownerUid == resource.data.ownerUid
+                        && request.resource.data.joinCode == resource.data.joinCode
+                        && request.resource.data.createdAt == resource.data.createdAt
+                        && request.resource.data.updatedAt == request.time
+                        && getAfter(/databases/$(database)/documents/groups/$(groupId)/joinAttempts/$(request.auth.uid)).data.code == resource.data.joinCode
                       )
                     );
       allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
@@ -585,6 +723,63 @@ service cloud.firestore {
         allow update: if false;
         allow delete: if signedIn() && resource.data.senderUid == request.auth.uid;
       }
+
+      // Katılma kodu doğrulama izi: yalnız yazan okur/siler; asıl denetim grup
+      // güncelleme kuralında getAfter ile bu kaydın kodu üzerinden yapılır.
+      // Kod denemesi: 6-8 hane, kilit sayaci (5 hatada 15 dk). Eski gruplarda kod yoksa grup okuma/mesaj bozulmaz.
+      match /joinAttempts/{joinId} {
+        allow get: if signedIn() && joinId == request.auth.uid;
+        allow list: if false;
+        allow create: if signedIn()
+                      && joinId == request.auth.uid
+                      && request.resource.data.keys().hasAll(['code', 'at', 'attempts'])
+                      && request.resource.data.keys().hasOnly(['code', 'at', 'attempts', 'lockedUntil', 'groupId'])
+                      && request.resource.data.code.matches('[0-9]{6,8}')
+                      && request.resource.data.at == request.time
+                      && request.resource.data.attempts is number
+                      && request.resource.data.attempts >= 1
+                      && request.resource.data.attempts <= 5
+                      && (!('lockedUntil' in request.resource.data) || request.resource.data.lockedUntil is timestamp)
+                      && (resource == null || !('lockedUntil' in resource.data) || request.time >= resource.data.lockedUntil);
+        allow update: if signedIn()
+                      && joinId == request.auth.uid
+                      && request.resource.data.code.matches('[0-9]{6,8}')
+                      && request.resource.data.at == request.time
+                      && request.resource.data.attempts is number
+                      && request.resource.data.attempts >= 1
+                      && request.resource.data.attempts <= 5
+                      && (!('lockedUntil' in request.resource.data) || request.resource.data.lockedUntil is timestamp)
+                      && (resource == null || !('lockedUntil' in resource.data) || request.time >= resource.data.lockedUntil);
+        allow delete: if signedIn() && joinId == request.auth.uid;
+      }
+
+      // Grup davetleri: yalniz kurucu davet edebilir, yalniz davetli gorebilir/kabul edebilir
+      match /invites/{invitedUid} {
+        allow get: if signedIn()
+                   && (invitedUid == request.auth.uid
+                       || request.auth.uid == get(/databases/$(database)/documents/groups/$(groupId)).data.ownerUid
+                       || request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.memberUids);
+        allow list: if signedIn()
+                    && boundedList(50)
+                    && (resource.data.invitedUid == request.auth.uid
+                        || resource.data.inviterUid == request.auth.uid);
+        allow create: if signedIn()
+                      && validGroupInvite(request.resource.data, groupId, invitedUid)
+                      && (
+                        (exists(/databases/$(database)/documents/groups/$(groupId)) && get(/databases/$(database)/documents/groups/$(groupId)).data.ownerUid == request.auth.uid)
+                        || (existsAfter(/databases/$(database)/documents/groups/$(groupId)) && getAfter(/databases/$(database)/documents/groups/$(groupId)).data.ownerUid == request.auth.uid)
+                      )
+                      && (
+                        (exists(/databases/$(database)/documents/groups/$(groupId)) && !(invitedUid in get(/databases/$(database)/documents/groups/$(groupId)).data.memberUids))
+                        || (existsAfter(/databases/$(database)/documents/groups/$(groupId)) && !(invitedUid in getAfter(/databases/$(database)/documents/groups/$(groupId)).data.memberUids))
+                      )
+                      && isAcceptedFriendship(request.auth.uid, invitedUid);
+        allow update: if false;
+        allow delete: if signedIn()
+                      && (resource.data.invitedUid == request.auth.uid
+                          || resource.data.inviterUid == request.auth.uid
+                          || get(/databases/$(database)/documents/groups/$(groupId)).data.ownerUid == request.auth.uid);
+      }
     }
 
     // Kullanıcının kendi grup indeksi: listeleme buradan yapılır (limit 20).
@@ -594,6 +789,56 @@ service cloud.firestore {
       allow create: if signedIn() && uid == request.auth.uid
                     && validGroupIndex(request.resource.data, groupId);
       allow update: if false;
+      allow delete: if signedIn() && uid == request.auth.uid;
+    }
+
+    // Grup davet aynası: kullanıcının kendi davet kutusu (UI icin)
+    match /users/{uid}/groupInvites/{groupId} {
+      allow get: if signedIn() && uid == request.auth.uid;
+      allow list: if signedIn() && uid == request.auth.uid && boundedList(50);
+      allow create: if signedIn()
+                    && request.resource.data.invitedUid == uid
+                    && request.resource.data.inviterUid == request.auth.uid
+                    && request.resource.data.groupId == groupId
+                    && validGroupInvite(request.resource.data, groupId, uid)
+                    && (
+                      (exists(/databases/$(database)/documents/groups/$(groupId)) && get(/databases/$(database)/documents/groups/$(groupId)).data.ownerUid == request.auth.uid)
+                      || (existsAfter(/databases/$(database)/documents/groups/$(groupId)) && getAfter(/databases/$(database)/documents/groups/$(groupId)).data.ownerUid == request.auth.uid)
+                    )
+                    && (
+                      (exists(/databases/$(database)/documents/groups/$(groupId)) && !(uid in get(/databases/$(database)/documents/groups/$(groupId)).data.memberUids))
+                      || (existsAfter(/databases/$(database)/documents/groups/$(groupId)) && !(uid in getAfter(/databases/$(database)/documents/groups/$(groupId)).data.memberUids))
+                    )
+                    && isAcceptedFriendship(request.auth.uid, uid);
+      allow update: if false;
+      allow delete: if signedIn() && (uid == request.auth.uid || resource.data.inviterUid == request.auth.uid || get(/databases/$(database)/documents/groups/$(groupId)).data.ownerUid == request.auth.uid);
+    }
+
+    // Kullanici-bazli katilma denemesi aynasi (per-group+per-user kilit icin)
+    match /users/{uid}/joinAttempts/{groupId} {
+      allow get: if signedIn() && uid == request.auth.uid;
+      allow list: if false;
+      allow create: if signedIn()
+                    && uid == request.auth.uid
+                    && request.resource.data.keys().hasAll(['code', 'at', 'attempts', 'groupId'])
+                    && request.resource.data.keys().hasOnly(['code', 'at', 'attempts', 'lockedUntil', 'groupId'])
+                    && request.resource.data.code.matches('[0-9]{6,8}')
+                    && request.resource.data.at == request.time
+                    && request.resource.data.groupId == groupId
+                    && request.resource.data.attempts is number
+                    && request.resource.data.attempts >= 1
+                    && request.resource.data.attempts <= 5
+                    && (!('lockedUntil' in request.resource.data) || request.resource.data.lockedUntil is timestamp)
+                    && (resource == null || !('lockedUntil' in resource.data) || request.time >= resource.data.lockedUntil);
+      allow update: if signedIn()
+                    && uid == request.auth.uid
+                    && request.resource.data.code.matches('[0-9]{6,8}')
+                    && request.resource.data.groupId == groupId
+                    && request.resource.data.attempts is number
+                    && request.resource.data.attempts >= 1
+                    && request.resource.data.attempts <= 5
+                    && (!('lockedUntil' in request.resource.data) || request.resource.data.lockedUntil is timestamp)
+                    && (resource == null || !('lockedUntil' in resource.data) || request.time >= resource.data.lockedUntil);
       allow delete: if signedIn() && uid == request.auth.uid;
     }
 
@@ -616,6 +861,57 @@ service cloud.firestore {
       allow update: if false;
       allow delete: if signedIn() && uid == request.auth.uid;
     }
+
+    match /userProfiles/{uid} {
+      allow get: if signedIn();
+      allow list: if signedIn() && boundedList(20);
+      allow create: if signedIn() && validUserProfile(request.resource.data, uid);
+      allow update: if signedIn() && validUserProfile(request.resource.data, uid) && resource.data.uid == request.auth.uid && request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    match /users/{uid}/friendRequests/{requesterUid} {
+      allow get: if signedIn() && uid == request.auth.uid;
+      allow list: if signedIn() && uid == request.auth.uid && boundedList(50);
+      allow create: if signedIn()
+                    && validFriendRequest(request.resource.data, uid, requesterUid)
+                    && requesterUid == request.resource.data.fromUid
+                    && !exists(/databases/$(database)/documents/friendships/$(friendshipId(uid, requesterUid)))
+                    && !exists(/databases/$(database)/documents/users/$(request.auth.uid)/friendRequests/$(uid));
+      allow delete: if signedIn() && (uid == request.auth.uid || resource.data.fromUid == request.auth.uid);
+      allow update: if false;
+    }
+
+    // C1: sadece kendi friend-listene yazabilirsin; baska kullanici listesi yasak — valid friendship gerekli
+    match /users/{uid}/friends/{friendUid} {
+      allow get: if signedIn() && uid == request.auth.uid;
+      allow list: if signedIn() && uid == request.auth.uid && boundedList(100);
+      allow create: if signedIn()
+                    && uid == request.auth.uid
+                    && validFriendIndex(request.resource.data, friendUid)
+                    && isAcceptedFriendship(uid, friendUid);
+      allow update: if false;
+      allow delete: if signedIn() && uid == request.auth.uid;
+    }
+
+    // Kabul edilmis arkadasliklar (atomik): yalniz users icinde olanlar okur/siler
+    // Gercek bekleyen istegin alici tarafindan kabul edildigini Rules'ta kanitla — kurallari gevseltme
+    // C1: ayni batch'te karsilikli onay — pending istek getAfter ile yok olmali, writeBatch ile atomik
+    match /friendships/{friendshipId} {
+      allow get: if signedIn() && request.auth.uid in resource.data.users;
+      allow list: if false;
+      allow create: if signedIn()
+                    && validFriendship(request.resource.data)
+                    && request.auth.uid in request.resource.data.users
+                    && request.resource.data.recipientUid == request.auth.uid
+                    && request.resource.data.users.hasAll([request.resource.data.requesterUid, request.resource.data.recipientUid])
+                    && friendshipId == friendshipId(request.resource.data.requesterUid, request.resource.data.recipientUid)
+                    && pendingFriendRequestExists(request.resource.data.requesterUid, request.resource.data.recipientUid)
+                    && !existsAfter(/databases/$(database)/documents/users/$(request.resource.data.recipientUid)/friendRequests/$(request.resource.data.requesterUid));
+      allow update: if false;
+      allow delete: if signedIn() && request.auth.uid in resource.data.users;
+    }
+
 
     match /{document=**} {
       allow read, write: if false;

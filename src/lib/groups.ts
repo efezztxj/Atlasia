@@ -7,36 +7,51 @@
  *   - her sohbet tek sorguda en yeni 50 mesaj,
  *   - grup dokümanı yalnız üyeye tek `get` ile açık,
  *   - geniş koleksiyon taraması (limitsiz list) kurallarla kapalı.
+ *   - gruplarda 6-8 haneli katılma kodu (JOIN_CODE_MIN/MAX) — C2: 4 hane brute-force zayıf, en az 6 hane 1M uzay
+ *   - kilit: 5 hatalı denemede 15 dk kilit (grup başına ve kullanıcı başına)
+ *   - davet akışı: kurucu + bekleyen davet, sadece davetli kendini ekler
  */
 import {
   collection,
   deleteDoc,
   doc,
+  documentId,
   getDoc,
+  getDocs,
   limit,
   onSnapshot,
   orderBy,
   query,
+  runTransaction,
   serverTimestamp,
   setDoc,
+  startAfter,
   updateDoc,
   writeBatch,
   type DocumentData,
+  type QueryDocumentSnapshot,
 } from "firebase/firestore";
-import { isPermissionDenied } from "./firestoreValue";
 import { db } from "./firebase";
+import { withoutUndefined, isPermissionDenied } from "./firestoreValue";
 import { createNotification } from "./notifications";
 
-export const GROUPS_LIMIT = 20;
-export const GROUP_MEMBERS_MAX = 20;
-export const MESSAGES_LIMIT = 50;
-export const MESSAGE_TEXT_MAX = 1000;
+import {
+  GROUPS_LIMIT,
+  GROUP_MEMBERS_MAX,
+  MESSAGES_LIMIT,
+  MESSAGE_TEXT_MAX,
+  JOIN_CODE_MIN,
+  JOIN_CODE_MAX,
+  JOIN_ATTEMPTS_LIMIT,
+  JOIN_ATTEMPTS_LOCK_MS,
+} from "../config/firestoreLimits";
 
 export interface Group {
   id: string;
   name: string;
   ownerUid: string;
   memberUids: string[];
+  joinCode?: string;
   createdAt: number;
   updatedAt: number;
   lastMessage?: { text: string; senderUid: string; senderName: string; createdAt: number };
@@ -57,6 +72,15 @@ export interface GroupMessage {
   createdAt: number;
 }
 
+export interface GroupInvite {
+  id: string;
+  invitedUid: string;
+  inviterUid: string;
+  groupId: string;
+  groupName: string;
+  createdAt: number;
+}
+
 function toMillis(v: unknown): number {
   if (typeof v === "number") return v;
   if (v && typeof v === "object" && "toMillis" in v && typeof (v as { toMillis: () => number }).toMillis === "function") {
@@ -67,6 +91,49 @@ function toMillis(v: unknown): number {
 
 function dataError(code: string, message: string): Error & { code: string } {
   return Object.assign(new Error(message), { code });
+}
+
+function isLocked(attemptData: Record<string, unknown> | undefined): boolean {
+  if (!attemptData || !attemptData.lockedUntil) return false;
+  const lockedUntil = toMillis(attemptData.lockedUntil);
+  return lockedUntil > Date.now();
+}
+
+async function recordFailedAttempt(groupId: string, uid: string): Promise<void> {
+  if (!db) return;
+  const now = Date.now();
+  const groupRef = doc(db, `groups/${groupId}/joinAttempts/${uid}`);
+  const userRef = doc(db, `users/${uid}/joinAttempts/${groupId}`);
+  const snap = await getDoc(groupRef);
+  const prev = snap.exists() ? (snap.data() as Record<string, unknown>) : undefined;
+  const prevAttempts = typeof prev?.attempts === "number" ? (prev.attempts as number) : 0;
+  const attempts = Math.min(prevAttempts + 1, JOIN_ATTEMPTS_LIMIT);
+  const lockedUntil = attempts >= JOIN_ATTEMPTS_LIMIT ? now + JOIN_ATTEMPTS_LOCK_MS : prev?.lockedUntil ? toMillis(prev.lockedUntil) : 0;
+  const payload: Record<string, unknown> = {
+    code: "000000", // placeholder, gerçek kod kurallarca zaten denetlendi
+    at: serverTimestamp(),
+    attempts,
+  };
+  if (lockedUntil) payload.lockedUntil = new Date(lockedUntil);
+  // Her iki perspektifte de kaydet (grup başına ve kullanıcı başına)
+  await setDoc(groupRef, payload, { merge: true });
+  await setDoc(userRef, { ...payload, groupId }, { merge: true });
+}
+
+async function clearJoinAttempts(groupId: string, uid: string): Promise<void> {
+  if (!db) return;
+  try {
+    await deleteDoc(doc(db, `groups/${groupId}/joinAttempts/${uid}`));
+  } catch (error) {
+    console.warn("[Atlasia] Grup joinAttempts temizlenemedi:", error);
+    throw error;
+  }
+  try {
+    await deleteDoc(doc(db, `users/${uid}/joinAttempts/${groupId}`));
+  } catch (error) {
+    console.warn("[Atlasia] Kullanici joinAttempts temizlenemedi:", error);
+    // Kullanici izi temizlenemezse de grup basarisi etkilenmez, sadece log
+  }
 }
 
 /** Davet listesini temizler: kendi UID'i, boşlukları ve tekrarları ayıklar. */
@@ -84,6 +151,24 @@ export function validateGroupName(name: string): string | null {
   return null;
 }
 
+export function validateJoinCode(code: string): string | null {
+  const clean = code.trim();
+  if (clean.length < JOIN_CODE_MIN || clean.length > JOIN_CODE_MAX) return "group/join-code-length";
+  if (!/^\d+$/.test(clean)) return "group/join-code-digits";
+  return null;
+}
+
+export function generateJoinCode(): string {
+  const digits = JOIN_CODE_MIN;
+  const values = new Uint8Array(digits);
+  if (typeof globalThis.crypto?.getRandomValues === "function") {
+    globalThis.crypto.getRandomValues(values);
+  } else {
+    for (let index = 0; index < digits; index += 1) values[index] = Math.floor(Math.random() * 256);
+  }
+  return Array.from(values, (value) => String(value % 10)).join("");
+}
+
 export function normalizeGroup(id: string, raw: DocumentData): Group {
   const last = raw.lastMessage as Record<string, unknown> | undefined;
   return {
@@ -91,6 +176,7 @@ export function normalizeGroup(id: string, raw: DocumentData): Group {
     name: typeof raw.name === "string" ? raw.name : "Grup",
     ownerUid: typeof raw.ownerUid === "string" ? raw.ownerUid : "",
     memberUids: Array.isArray(raw.memberUids) ? (raw.memberUids as string[]) : [],
+    joinCode: typeof raw.joinCode === "string" ? raw.joinCode : "",
     createdAt: toMillis(raw.createdAt),
     updatedAt: toMillis(raw.updatedAt),
     lastMessage: last && typeof last.text === "string"
@@ -123,6 +209,17 @@ export function normalizeGroupIndex(groupId: string, raw: DocumentData): GroupIn
   };
 }
 
+export function normalizeGroupInvite(id: string, raw: DocumentData): GroupInvite {
+  return {
+    id,
+    invitedUid: typeof raw.invitedUid === "string" ? raw.invitedUid : id,
+    inviterUid: typeof raw.inviterUid === "string" ? raw.inviterUid : "",
+    groupId: typeof raw.groupId === "string" ? raw.groupId : "",
+    groupName: typeof raw.groupName === "string" ? raw.groupName : "Grup",
+    createdAt: toMillis(raw.createdAt),
+  };
+}
+
 /** Yalnız kullanıcının kendi index'i; limit 20. */
 export function subscribeMyGroups(
   uid: string,
@@ -142,14 +239,61 @@ export function subscribeMyGroups(
   );
 }
 
+export function subscribeMyGroupInvites(
+  uid: string,
+  onChange: (invites: GroupInvite[]) => void,
+  onError?: (error: Error) => void,
+): () => void {
+  if (!db || !uid.trim()) return () => {};
+  const q = query(
+    collection(db, `users/${uid}/groupInvites`),
+    orderBy("createdAt", "desc"),
+    limit(50),
+  );
+  return onSnapshot(
+    q,
+    (snap) => onChange(snap.docs.map((item) => normalizeGroupInvite(item.id, item.data()))),
+    onError,
+  );
+}
+
+export function subscribeGroupInvites(
+  uid: string,
+  onChange: (invites: GroupInvite[]) => void,
+  onError?: (error: Error) => void,
+): () => void {
+  return subscribeMyGroupInvites(uid, onChange, onError);
+}
+
+export function subscribeGroupInvitesForGroup(
+  groupId: string,
+  onChange: (invites: GroupInvite[]) => void,
+  onError?: (error: Error) => void,
+): () => void {
+  if (!db || !groupId.trim()) return () => {};
+  const q = query(
+    collection(db, `groups/${groupId}/invites`),
+    orderBy("createdAt", "desc"),
+    limit(50),
+  );
+  return onSnapshot(
+    q,
+    (snap) => onChange(snap.docs.map((item) => normalizeGroupInvite(item.id, item.data()))),
+    onError,
+  );
+}
+
 async function writeGroupIndex(uid: string, groupId: string, name: string, role: "owner" | "member") {
-  if (!db) return;
-  await setDoc(doc(db, `users/${uid}/groups/${groupId}`), {
-    groupId,
-    name: name.slice(0, 80),
-    role,
-    joinedAt: serverTimestamp(),
-  });
+  if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
+  await setDoc(
+    doc(db, `users/${uid}/groups/${groupId}`),
+    withoutUndefined({
+      groupId,
+      name: name.slice(0, 80),
+      role,
+      joinedAt: serverTimestamp(),
+    }),
+  );
 }
 
 /** Grup dokümanını yalnız üye okuyabilir; üye değilse Firestore reddeder. */
@@ -165,6 +309,7 @@ export interface CreateGroupInput {
   ownerUid: string;
   ownerName: string;
   memberUids: string[];
+  joinCode?: string;
 }
 
 export async function createGroup(input: CreateGroupInput): Promise<{ group: Group; invited: number }> {
@@ -172,29 +317,61 @@ export async function createGroup(input: CreateGroupInput): Promise<{ group: Gro
   const invalid = validateGroupName(input.name);
   if (invalid) throw dataError(invalid, "Grup adı 2–80 karakter olmalı.");
   const name = input.name.trim();
-  const memberUids = normalizeMemberUids(input.ownerUid, input.memberUids);
-  if (memberUids.length < 1) throw dataError("group/member-required", "Grup için en az bir üye gerekli.");
+  // Grup ilk olusturuldugunda yalniz kurucu uye olsun. Arkadaslar bekleyen davet olarak kaydedilsin.
+  const joinCode = (input.joinCode ?? generateJoinCode()).trim();
+  const invalidCode = validateJoinCode(joinCode);
+  if (invalidCode) throw dataError(invalidCode, `Katılma kodu ${JOIN_CODE_MIN}–${JOIN_CODE_MAX} hane olmalı (yalnız rakam).`);
+  const invitedUids = [...new Set(input.memberUids.map((uid) => uid.trim()).filter((uid) => uid && uid !== input.ownerUid && uid.length <= 128))].slice(0, GROUP_MEMBERS_MAX - 1);
 
   const ref = doc(collection(db, "groups"));
-  await setDoc(ref, {
-    name,
-    ownerUid: input.ownerUid,
-    memberUids,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  });
+  const batch = writeBatch(db);
+  batch.set(
+    ref,
+    withoutUndefined({
+      name,
+      ownerUid: input.ownerUid,
+      memberUids: [input.ownerUid],
+      joinCode,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }),
+  );
+  for (const invitedUid of invitedUids) {
+    const inviteRef = doc(db, `groups/${ref.id}/invites/${invitedUid}`);
+    batch.set(
+      inviteRef,
+      withoutUndefined({
+        invitedUid,
+        inviterUid: input.ownerUid,
+        groupId: ref.id,
+        groupName: name.slice(0, 80),
+        createdAt: serverTimestamp(),
+      }),
+    );
+    const mirrorRef = doc(db, `users/${invitedUid}/groupInvites/${ref.id}`);
+    batch.set(
+      mirrorRef,
+      withoutUndefined({
+        invitedUid,
+        inviterUid: input.ownerUid,
+        groupId: ref.id,
+        groupName: name.slice(0, 80),
+        createdAt: serverTimestamp(),
+      }),
+    );
+  }
+  await batch.commit();
   await writeGroupIndex(input.ownerUid, ref.id, name, "owner");
 
   let invited = 0;
-  for (const memberUid of memberUids) {
-    if (memberUid === input.ownerUid) continue;
+  for (const memberUid of invitedUids) {
     try {
       await createNotification({
         recipientUid: memberUid,
         actorUid: input.ownerUid,
         type: "group_invite",
         title: "Grup daveti",
-        body: `${input.ownerName} seni “${name}” grubuna ekledi. Gruplar bölümünden açabilirsin.`,
+        body: `${input.ownerName} seni “${name}” grubuna davet etti. Daveti kabul ederek katılabilirsin.`,
         targetId: ref.id,
       });
       invited += 1;
@@ -208,12 +385,150 @@ export async function createGroup(input: CreateGroupInput): Promise<{ group: Gro
       id: ref.id,
       name,
       ownerUid: input.ownerUid,
-      memberUids,
+      memberUids: [input.ownerUid],
+      joinCode,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     },
     invited,
   };
+}
+
+/**
+ * Davet kabul: yalniz davetli kendi davetini kabul ederek kendini ekleyebilir.
+ * Davetsiz ve ucuncu kullanici senaryolarini Rules reddeder.
+ * Uyelik, grup indeksi ve davet silme tutarli — kismi basarisizlik sessizce basari gibi gosterilmez.
+ */
+export async function acceptGroupInvite(groupId: string, uid: string): Promise<Group> {
+  if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
+  const cleanId = groupId.trim();
+  const cleanUid = uid.trim();
+  if (!cleanId || !cleanUid) throw dataError("group/id-invalid", "Grup kimliği geçersiz.");
+  const groupRef = doc(db, "groups", cleanId);
+  const inviteRef = doc(db, `groups/${cleanId}/invites/${cleanUid}`);
+  const groupSnap = await getDoc(groupRef);
+  if (!groupSnap.exists()) throw dataError("group/not-found", "Grup bulunamadı.");
+  const current = normalizeGroup(cleanId, groupSnap.data()!);
+  if (current.memberUids.includes(cleanUid)) {
+    await writeGroupIndex(cleanUid, current.id, current.name, current.ownerUid === cleanUid ? "owner" : "member");
+    return current;
+  }
+  // Invite var mi kontrol (kurallar da dogrular, ancak erken hata icin istemci kontrolu)
+  const inviteSnap = await getDoc(inviteRef);
+  if (!inviteSnap.exists()) throw dataError("group/invite-not-found", "Bu gruba davetin yok. Kurucudan davet iste veya katılma kodunu kullan.");
+
+  const batch = writeBatch(db);
+  batch.update(groupRef, {
+    memberUids: [...current.memberUids, cleanUid],
+    updatedAt: serverTimestamp(),
+  });
+  batch.delete(inviteRef);
+  batch.delete(doc(db, `users/${cleanUid}/groupInvites/${cleanId}`));
+  await batch.commit();
+
+  // Grup indeksini yaz — tutarli olmali; basarisiz olursa hata firlat, sessizce basari gosterme
+  await writeGroupIndex(cleanUid, current.id, current.name, current.ownerUid === cleanUid ? "owner" : "member");
+  const fresh = await fetchGroup(cleanId);
+  if (!fresh || !fresh.memberUids.includes(cleanUid)) throw dataError("group/join-failed", "Gruba katılırken bir sorun oluştu.");
+  return fresh;
+}
+
+/**
+ * Kod ile katılma: aynı batch'te gizli doğrulama yazısı + üyelik güncellemesi.
+ * Kural, `groups/{id}/joinAttempts/{uid}` içindeki kodun `joinCode` ile eşleşmesini
+ * getAfter ile atomik denetler; kod yanlışsa tüm batch reddedilir.
+ */
+export async function joinGroupWithCode(groupId: string, code: string, uid: string): Promise<Group> {
+  if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
+  const clean = code.trim();
+  const invalidCode = validateJoinCode(clean);
+  if (invalidCode) throw dataError(invalidCode, `Katılma kodu ${JOIN_CODE_MIN}–${JOIN_CODE_MAX} hane olmalı (yalnız rakam).`);
+  const cleanUid = uid.trim();
+  const cleanId = groupId.trim();
+  const group = await fetchGroup(cleanId);
+  if (group && group.memberUids.includes(cleanUid)) {
+    await writeGroupIndex(cleanUid, group.id, group.name, group.ownerUid === cleanUid ? "owner" : "member");
+    return group;
+  }
+
+  // C2: kilit kontrolü — 5 hatalı denemede 15 dk kilit (kurallar da zorlar)
+  const attemptRef = doc(db, `groups/${cleanId}/joinAttempts/${cleanUid}`);
+  const userAttemptRef = doc(db, `users/${cleanUid}/joinAttempts/${cleanId}`);
+  let existingAttempt: Awaited<ReturnType<typeof getDoc>> | null = null;
+  try {
+    existingAttempt = await getDoc(attemptRef);
+  } catch {
+    existingAttempt = null;
+  }
+  if (existingAttempt?.exists()) {
+    const data = existingAttempt.data() as Record<string, unknown>;
+    if (isLocked(data)) {
+      throw dataError("group/locked", "Çok fazla hatalı deneme. 15 dakika sonra tekrar deneyin.");
+    }
+  }
+
+  const groupRef = doc(db, "groups", cleanId);
+  try {
+    await runTransaction(db, async (transaction) => {
+      const snapshot = await transaction.get(groupRef);
+      if (!snapshot.exists()) throw dataError("group/not-found", "Grup bulunamadı.");
+      const current = normalizeGroup(cleanId, snapshot.data()!);
+      if (current.memberUids.includes(cleanUid)) return;
+      if (current.memberUids.length >= GROUP_MEMBERS_MAX) {
+        throw dataError("group/full", "Grup dolu (en fazla 20 üye).");
+      }
+      // Deneme sayacı: mevcut denemeleri oku, rule kilidi de denetleyecek
+      const prevSnap = await getDoc(attemptRef);
+      const prev = prevSnap.exists() ? (prevSnap.data() as Record<string, unknown>) : undefined;
+      const prevAttempts = typeof prev?.attempts === "number" ? (prev.attempts as number) : 0;
+      const attempts = Math.min(prevAttempts + 1, JOIN_ATTEMPTS_LIMIT);
+      const payload: Record<string, unknown> = {
+        code: clean,
+        at: serverTimestamp(),
+        attempts,
+      };
+      if (attempts >= JOIN_ATTEMPTS_LIMIT) {
+        payload.lockedUntil = new Date(Date.now() + JOIN_ATTEMPTS_LOCK_MS);
+      }
+      transaction.set(attemptRef, payload);
+      transaction.set(userAttemptRef, { ...payload, groupId: cleanId });
+      transaction.update(groupRef, {
+        memberUids: [...current.memberUids, cleanUid],
+        updatedAt: serverTimestamp(),
+      });
+    });
+  } catch (error) {
+    const codeText = (error as { code?: string }).code ?? "";
+    if (codeText.includes("permission-denied")) {
+      await recordFailedAttempt(cleanId, cleanUid);
+      throw dataError("group/bad-code", "Katılma kodu yanlış.");
+    }
+    const msg = (error as Error).message ?? "";
+    if (msg.includes("permission") || msg.includes("Missing or insufficient permissions")) {
+      await recordFailedAttempt(cleanId, cleanUid);
+      throw dataError("group/bad-code", "Katılma kodu yanlış.");
+    }
+    throw error;
+  }
+  // Başarılı — deneme izlerini temizle (hatalar görünsün, yutulmasın)
+  await clearJoinAttempts(cleanId, cleanUid);
+
+  const fresh = await fetchGroup(cleanId);
+  if (!fresh || !fresh.memberUids.includes(cleanUid)) throw dataError("group/not-found", "Grup bulunamadı.");
+  // Davet kabulunde oldugu gibi, uyelik ve grup indeksi tutarli olsun — kismi basarisizlik sessizce basari gosterilmesin
+  await writeGroupIndex(cleanUid, fresh.id, fresh.name, fresh.ownerUid === cleanUid ? "owner" : "member");
+  return fresh;
+}
+
+/** Kurucu katılma kodunu yeniler (kod paylaşıldıysa eskisi geçersizleşir). */
+export async function rotateGroupCode(groupId: string, uid: string): Promise<string> {
+  if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
+  const group = await fetchGroup(groupId);
+  if (!group) throw dataError("group/not-found", "Grup bulunamadı.");
+  if (group.ownerUid !== uid) throw dataError("group/not-owner", "Yalnız grup sahibi kodu yenileyebilir.");
+  const joinCode = generateJoinCode();
+  await updateDoc(doc(db, "groups", groupId), { joinCode, updatedAt: serverTimestamp() });
+  return joinCode;
 }
 
 export const GROUP_NOT_MEMBER_MESSAGE =
@@ -227,9 +542,6 @@ export async function joinGroup(rawGroupId: string, uid: string): Promise<Group>
   try {
     group = await fetchGroup(groupId);
   } catch (failure) {
-    // Grup kuralı resource.data okur: üye olmayan kullanıcı da, hiç olmayan
-    // (ör. eksik/kısaltılmış kimlik) grup da permission-denied ile reddedilir.
-    // Ham Firebase hatası yerine kullanıcının anlayacağı nedeni söyle.
     if (isPermissionDenied(failure)) {
       throw dataError("group/not-member", GROUP_NOT_MEMBER_MESSAGE);
     }
@@ -239,8 +551,6 @@ export async function joinGroup(rawGroupId: string, uid: string): Promise<Group>
   if (!group.memberUids.includes(uid)) {
     throw dataError("group/not-member", GROUP_NOT_MEMBER_MESSAGE);
   }
-  // users/{uid}/groups indeksinde güncelleme kapalıdır (update: false). Zaten
-  // listede olan gruba tekrar "katıl" denince ikinci yazım reddedilirdi; atla.
   const existingIndex = await getDoc(doc(db, `users/${uid}/groups/${group.id}`));
   if (!existingIndex.exists()) {
     await writeGroupIndex(uid, group.id, group.name, group.ownerUid === uid ? "owner" : "member");
@@ -248,27 +558,58 @@ export async function joinGroup(rawGroupId: string, uid: string): Promise<Group>
   return group;
 }
 
-export async function leaveGroup(groupId: string, uid: string): Promise<void> {
+export async function declineGroupInvite(groupId: string, uid: string): Promise<void> {
   if (!db) return;
+  const cleanId = groupId.trim();
+  const cleanUid = uid.trim();
+  if (!cleanId || !cleanUid) throw dataError("group/id-invalid", "Grup kimliği geçersiz.");
+  const batch = writeBatch(db);
+  batch.delete(doc(db, `groups/${cleanId}/invites/${cleanUid}`));
+  batch.delete(doc(db, `users/${cleanUid}/groupInvites/${cleanId}`));
+  await batch.commit();
+}
+
+export async function cancelGroupInvite(groupId: string, ownerUid: string, invitedUid: string): Promise<void> {
+  if (!db) return;
+  const cleanId = groupId.trim();
+  const cleanOwner = ownerUid.trim();
+  const cleanInvited = invitedUid.trim();
+  if (!cleanId || !cleanOwner || !cleanInvited) throw dataError("group/id-invalid", "Grup kimliği geçersiz.");
+  const group = await fetchGroup(cleanId);
+  if (!group || group.ownerUid !== cleanOwner) throw dataError("group/not-owner", "Yalnız kurucu daveti iptal edebilir.");
+  const batch = writeBatch(db);
+  batch.delete(doc(db, `groups/${cleanId}/invites/${cleanInvited}`));
+  batch.delete(doc(db, `users/${cleanInvited}/groupInvites/${cleanId}`));
+  await batch.commit();
+}
+
+export async function leaveGroup(groupId: string, uid: string): Promise<void> {
+  if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
   const group = await fetchGroup(groupId);
-  if (!group) return;
+  if (!group) throw dataError("group/not-found", "Grup bulunamadı.");
   if (group.ownerUid === uid) {
     throw dataError("group/owner-leave", "Grup sahibi önce grubu silmeli veya devretmelidir.");
   }
-  await updateDoc(doc(db, "groups", groupId), {
-    memberUids: group.memberUids.filter((member) => member !== uid),
+  if (!group.memberUids.includes(uid)) throw dataError("group/not-member", "Bu grubun üyesi değilsin.");
+  const updated = group.memberUids.filter((member) => member !== uid);
+  const batch = writeBatch(db);
+  batch.update(doc(db, "groups", groupId), {
+    memberUids: updated,
     updatedAt: serverTimestamp(),
   });
-  await deleteDoc(doc(db, `users/${uid}/groups/${groupId}`));
+  batch.delete(doc(db, `users/${uid}/groups/${groupId}`));
+  await batch.commit();
 }
 
 export async function deleteGroup(groupId: string, uid: string): Promise<void> {
-  if (!db) return;
+  if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
   const group = await fetchGroup(groupId);
   if (!group) return;
   if (group.ownerUid !== uid) throw dataError("group/not-owner", "Yalnız grup sahibi silebilir.");
-  await deleteDoc(doc(db, "groups", groupId));
-  await deleteDoc(doc(db, `users/${uid}/groups/${groupId}`));
+  const batch = writeBatch(db);
+  batch.delete(doc(db, "groups", groupId));
+  batch.delete(doc(db, `users/${uid}/groups/${groupId}`));
+  await batch.commit();
 }
 
 /** En yeni 50 mesaj; sohbet başına tek canlı dinleyici. */
@@ -380,12 +721,42 @@ export async function sendGroupMessage(
   };
 }
 
+/** Mesaj sayfalama: en yeni 50 canlı, daha eskisi cursor ile. */
+type FirestoreCursor = QueryDocumentSnapshot<DocumentData>;
+
+export interface MessagesPage {
+  items: GroupMessage[];
+  cursor: FirestoreCursor | null;
+  hasMore: boolean;
+}
+
+function messagesPageQuery(groupId: string, cursor?: FirestoreCursor) {
+  if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
+  return query(
+    collection(db, `groups/${groupId}/messages`),
+    orderBy("createdAt", "desc"),
+    orderBy(documentId(), "desc"),
+    ...(cursor ? [startAfter(cursor)] : []),
+    limit(MESSAGES_LIMIT),
+  );
+}
+
+export async function listMessagesPage(groupId: string, cursor?: FirestoreCursor): Promise<MessagesPage> {
+  if (!groupId.trim()) throw dataError("group/id-invalid", "Grup kimliği geçersiz.");
+  const snap = await getDocs(messagesPageQuery(groupId.trim(), cursor));
+  return {
+    items: snap.docs.map((d) => normalizeGroupMessage(d.id, d.data())),
+    cursor: (snap.docs.at(-1) as unknown as FirestoreCursor) ?? null,
+    hasMore: snap.size === MESSAGES_LIMIT,
+  };
+}
+
 /** Engellenen kullanıcıların mesajları görünümden düşer. */
 export function visibleMessages(messages: GroupMessage[], blockedUids: Set<string>): GroupMessage[] {
   return messages.filter((message) => !blockedUids.has(message.senderUid));
 }
 
 export async function deleteGroupMessage(groupId: string, messageId: string): Promise<void> {
-  if (!db) return;
+  if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
   await deleteDoc(doc(db, `groups/${groupId}/messages/${messageId}`));
 }
