@@ -112,11 +112,10 @@ describe("useFreshness", () => {
     expect(warn).toHaveBeenCalledTimes(1);
   });
 
-  it("uid yoksa verify yazmaya çalışmadan giriş hatası verir", async () => {
+  it("uid yoksa Firestore okuma aboneliği açmaz ve verify yazmaya çalışmadan hata verir", async () => {
     const { result } = renderHook(() => useFreshness(undefined));
 
-    // Mevcut sözleşme: okuma aboneliği uid olmasa da kurulur; yazma kapısı ayrıdır.
-    expect(h.calls).toHaveLength(1);
+    expect(h.calls).toHaveLength(0);
     await expect(result.current.verify("p1", "still_open")).rejects.toThrow(
       "Doğrulama için giriş gerekli.",
     );

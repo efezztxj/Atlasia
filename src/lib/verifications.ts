@@ -18,6 +18,7 @@ import {
 import { db } from "./firebase";
 import {
   validateVerificationInput,
+  VERIFICATION_STATUSES,
   type PlaceVerification,
   type VerificationStatus,
 } from "../utils/freshness";
@@ -37,11 +38,15 @@ function newId(): string {
 }
 
 export function normalizeVerification(id: string, raw: Record<string, unknown>): PlaceVerification {
+  const status = typeof raw.status === "string" &&
+    (VERIFICATION_STATUSES as readonly string[]).includes(raw.status)
+    ? raw.status as VerificationStatus
+    : "still_open";
   return {
     id,
     placeId: typeof raw.placeId === "string" ? raw.placeId : "",
     uid: typeof raw.uid === "string" ? raw.uid : "",
-    status: (raw.status as VerificationStatus) ?? "still_open",
+    status,
     note: typeof raw.note === "string" ? raw.note : undefined,
     createdAt: toMillis(raw.createdAt),
   };
