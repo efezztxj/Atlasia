@@ -49,4 +49,5 @@ Bu istek 11 geniş özelliği kapsıyor; bu commit yalnız tazelik regresyonlar�
 
 - Gerçek cihazda uçak modu doğrulaması: yapılmadı; offline paket özelliği bu PR'da yok.
 - Kullanıcının elle yapacakları: Rules emulator'ı Java 21+ ortamında/CI'da doğrulatmak; P15 tamamlandığında gerçek cihazda uçak modu checklist'ini uygulamak.
-- PR / CI: henüz açılmadı; bu kayıt yazılırken değişiklikler doğrulanıyor.
+- PR: #38 — https://github.com/efezztxj/Atlasia/pull/38 (`[P3] Tazelik aboneliği ve status normalizasyonu`).
+- CI: PR run `39682131276` yeşil; typecheck, lint, test, scripts, Firestore Rules emulator ve build/budget geçti. Cloudflare Pages önizleme kontrolü de geçti; üretim deploy/merge yapılmadı.
