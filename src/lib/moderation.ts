@@ -333,23 +333,19 @@ async function leaveOrDeleteGroups(uid: string): Promise<number> {
 }
 
 async function deleteOwnedVerifications(uid: string): Promise<number> {
-  // Adım 14'te eklenir; yoksa sessizce 0 döner
+  // KARAR: hata yutulmaz. Doğrulama silinemezse hesap Auth'tan silinmez (veri kalıntısı sessiz kalmaz).
   if (!db) return 0;
-  try {
-    const q = query(collection(db, "verifications"), where("uid", "==", uid), limit(50));
-    let deleted = 0;
-    let snap = await getDocs(q);
-    while (snap.size > 0) {
-      const batch = writeBatch(db);
-      snap.docs.forEach((d) => batch.delete(d.ref));
-      await batch.commit();
-      deleted += snap.size;
-      snap = await getDocs(q);
-    }
-    return deleted;
-  } catch {
-    return 0;
+  const q = query(collection(db, "verifications"), where("uid", "==", uid), limit(50));
+  let deleted = 0;
+  let snap = await getDocs(q);
+  while (snap.size > 0) {
+    const batch = writeBatch(db);
+    snap.docs.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+    deleted += snap.size;
+    snap = await getDocs(q);
   }
+  return deleted;
 }
 
 export async function deleteUserData(uid: string): Promise<{ places: number; posts: number; stories: number; reports: number; blocks: number; verifications: number }> {

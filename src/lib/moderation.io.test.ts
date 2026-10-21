@@ -17,7 +17,9 @@ const h = vi.hoisted(() => {
       .map(([key, data]) => ({ id: key.slice(path.length + 1), ref: ref(key), data: () => data }));
     return { size: docs.length, docs };
   };
-  return { store, ref, snapOf };
+  // Bir koleksiyonun okuması permission-denied ile düşürülür (hata yutulmamalı testi).
+  const failure: { failCollection: string | null } = { failCollection: null };
+  return { store, ref, snapOf, failure };
 });
 
 vi.mock("./firebase", () => ({ db: {}, firebaseApp: {}, firebaseConfigured: true, isCloudReady: true }));
@@ -42,7 +44,12 @@ vi.mock("firebase/firestore", () => ({
     data: () => h.store.get(docRef.path),
     ref: docRef,
   }),
-  getDocs: async (q: { path: string; filters?: Array<{ field: string; value: unknown }> }) => h.snapOf(q.path, q.filters ?? []),
+  getDocs: async (q: { path: string; filters?: Array<{ field: string; value: unknown }> }) => {
+    if (h.failure.failCollection && q.path === h.failure.failCollection) {
+      throw Object.assign(new Error("Missing or insufficient permissions."), { code: "permission-denied" });
+    }
+    return h.snapOf(q.path, q.filters ?? []);
+  },
   setDoc: async (docRef: { path: string }, data: Record<string, unknown>) => { h.store.set(docRef.path, data); },
   deleteDoc: async (docRef: { path: string }) => { h.store.delete(docRef.path); },
   updateDoc: async (docRef: { path: string }, data: Record<string, unknown>) => {
@@ -69,6 +76,7 @@ vi.mock("firebase/firestore", () => ({
 import { createReport, deleteUserData } from "./moderation";
 
 beforeEach(() => {
+  h.failure.failCollection = null;
   h.store.clear();
 });
 
@@ -155,5 +163,12 @@ describe("moderasyon yazımı ve hesap verisi silme", () => {
     expect(h.store.has("groups/g1")).toBe(true);
     expect(h.store.get("groups/g1")?.memberUids).toEqual(["u1"]);
     expect(h.store.has("users/u2/groups/g1")).toBe(false);
+  });
+
+  it("doğrulama kayıtları silinemezse hesap silme hata verir; sessizce 0 dönüp Auth'u silmez", async () => {
+    h.store.set("verifications/v1", { uid: "u1", placeId: "p1", status: "still_open" });
+    h.failure.failCollection = "verifications";
+    await expect(deleteUserData("u1")).rejects.toMatchObject({ code: "permission-denied" });
+    expect(h.store.has("verifications/v1")).toBe(true);
   });
 });
