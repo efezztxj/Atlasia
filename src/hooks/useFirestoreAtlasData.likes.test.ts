@@ -167,12 +167,21 @@ const rt = vi.hoisted(() => {
 
 // ─── Firebase sınırı: bellek içi Firestore taklidi ───
 const fsim = vi.hoisted(() => {
-  type Data = Record<string, any>;
+  type Data = Record<string, unknown>;
   type Ref = { path: string; id: string; col: string };
   type Item = { id: string; data: Data };
+  type FieldSpec = string | { t: "docId" };
+  type DocSnap = { id: string; ref: Ref; data: () => Data; __data: Data };
+  type FakeSnapshot = { docs: DocSnap[]; size: number; empty: boolean };
+  type Constraint =
+    | { t: "orderBy"; field: FieldSpec; dir: "asc" | "desc" }
+    | { t: "where"; field: string; op: string; value: unknown }
+    | { t: "limit"; n: number }
+    | { t: "startAfter"; snap: DocSnap };
+  type FakeQuery = { col: string; cs: Constraint[] };
   interface Listener {
-    q: any;
-    onNext: (s: any) => void;
+    q: FakeQuery;
+    onNext: (s: FakeSnapshot) => void;
   }
   interface PendingWrite {
     ref: Ref;
@@ -197,49 +206,60 @@ const fsim = vi.hoisted(() => {
     return m;
   };
 
-  const snapOf = (col: string, item: Item) => ({
+  const snapOf = (col: string, item: Item): DocSnap => ({
     id: item.id,
     ref: { path: `${col}/${item.id}`, id: item.id, col },
     data: () => ({ ...item.data }),
     __data: item.data,
   });
-  const snapshotOf = (col: string, items: Item[]) => {
+  const snapshotOf = (col: string, items: Item[]): FakeSnapshot => {
     const docs = items.map((it) => snapOf(col, it));
     return { docs, size: docs.length, empty: docs.length === 0 };
   };
 
-  const sortValue = (it: Item, field: any) =>
-    field && typeof field === "object" && field.t === "docId" ? it.id : it.data[field as string];
+  const sortValue = (it: Item, field: FieldSpec): unknown =>
+    typeof field === "string" ? it.data[field] : it.id;
 
-  const evaluate = (q: any): Item[] => {
+  const isConstraint = <K extends Constraint["t"]>(kind: K) =>
+    (c: Constraint): c is Extract<Constraint, { t: K }> => c.t === kind;
+
+  const compareValues = (a: unknown, b: unknown): number => {
+    // Sahte katmanda sıralanan alanlar tutarlı tiptedir (sayı ya da metin);
+    // karşılaştırmayı üstü kapalı tür zorlaması olmadan açıkça yap.
+    if (typeof a === "number" && typeof b === "number") return a < b ? -1 : a > b ? 1 : 0;
+    const sa = String(a ?? "");
+    const sb = String(b ?? "");
+    return sa < sb ? -1 : sa > sb ? 1 : 0;
+  };
+
+  const evaluate = (q: FakeQuery): Item[] => {
     const m = colMap(q.col);
     let items: Item[] = [...m.entries()].map(([id, data]) => ({ id, data: { ...data } }));
-    const orders = q.cs.filter((c: any) => c.t === "orderBy");
+    const orders = q.cs.filter(isConstraint("orderBy"));
     const cmp = (a: Item, b: Item) => {
       for (const o of orders) {
         const va = sortValue(a, o.field);
         const vb = sortValue(b, o.field);
         if (va === vb) continue;
-        const r = (va as any) > (vb as any) ? 1 : -1;
-        return o.dir === "desc" ? -r : r;
+        const r = compareValues(va, vb);
+        if (r !== 0) return o.dir === "desc" ? -r : r;
       }
       return 0;
     };
     items.sort(cmp);
-    for (const w of q.cs.filter((c: any) => c.t === "where")) {
+    for (const w of q.cs.filter(isConstraint("where"))) {
       items = items.filter((it) => {
         const v = it.data[w.field];
         if (w.op === ">=") return (v as number) >= (w.value as { toMillis: () => number }).toMillis();
         return v === w.value;
       });
     }
-    const after = q.cs.find((c: any) => c.t === "startAfter");
+    const after = q.cs.find(isConstraint("startAfter"));
     if (after) {
-      const cur = after.snap.__data as Data;
-      const curItem: Item = { id: after.snap.id, data: cur };
+      const curItem: Item = { id: after.snap.id, data: after.snap.__data };
       items = items.filter((it) => cmp(it, curItem) > 0);
     }
-    const lim = q.cs.find((c: any) => c.t === "limit");
+    const lim = q.cs.find(isConstraint("limit"));
     if (lim) items = items.slice(0, lim.n);
     return items;
   };
@@ -249,11 +269,12 @@ const fsim = vi.hoisted(() => {
     if (!data) throw new Error("fake-firestore: belge yok");
     for (const [key, value] of Object.entries(patch)) {
       if (value && typeof value === "object" && "fieldOp" in value) {
-        const cur: unknown[] = Array.isArray(data[key]) ? [...data[key]] : [];
-        if (value.fieldOp === "union") {
-          for (const v of value.vals) if (!cur.includes(v)) cur.push(v);
+        const op = value as { fieldOp: string; vals: unknown[] };
+        const cur: unknown[] = Array.isArray(data[key]) ? [...(data[key] as unknown[])] : [];
+        if (op.fieldOp === "union") {
+          for (const v of op.vals) if (!cur.includes(v)) cur.push(v);
         } else {
-          const next = cur.filter((v) => !value.vals.includes(v));
+          const next = cur.filter((v) => !op.vals.includes(v));
           cur.length = 0;
           cur.push(...next);
         }
@@ -269,13 +290,13 @@ const fsim = vi.hoisted(() => {
     arrayRemove: (...vals: unknown[]) => ({ fieldOp: "remove", vals }),
     collection: (_db: unknown, name: string) => ({ name }),
     doc: (_db: unknown, col: string, id: string): Ref => ({ path: `${col}/${id}`, id, col }),
-    documentId: () => ({ t: "docId" }),
-    orderBy: (field: unknown, dir: "asc" | "desc" = "asc") => ({ t: "orderBy", field, dir }),
-    limit: (n: number) => ({ t: "limit", n }),
-    startAfter: (snap: unknown) => ({ t: "startAfter", snap }),
-    where: (field: string, op: string, value: unknown) => ({ t: "where", field, op, value }),
-    query: (col: { name: string }, ...cs: any[]) => ({ col: col.name, cs }),
-    getDocs: (q: any) => Promise.resolve(snapshotOf(q.col, evaluate(q))),
+    documentId: (): FieldSpec => ({ t: "docId" }),
+    orderBy: (field: unknown, dir: "asc" | "desc" = "asc"): Constraint => ({ t: "orderBy", field: field as FieldSpec, dir }),
+    limit: (n: number): Constraint => ({ t: "limit", n }),
+    startAfter: (snap: unknown): Constraint => ({ t: "startAfter", snap: snap as DocSnap }),
+    where: (field: string, op: string, value: unknown): Constraint => ({ t: "where", field, op, value }),
+    query: (col: { name: string }, ...cs: Constraint[]): FakeQuery => ({ col: col.name, cs }),
+    getDocs: (q: FakeQuery) => Promise.resolve(snapshotOf(q.col, evaluate(q))),
     getDoc: (ref: Ref) => {
       const data = colMap(ref.col).get(ref.id);
       return Promise.resolve({
