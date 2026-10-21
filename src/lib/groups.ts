@@ -22,7 +22,7 @@ import {
   onSnapshot,
   orderBy,
   query,
-  runTransaction,
+  arrayUnion,
   serverTimestamp,
   setDoc,
   startAfter,
@@ -43,7 +43,7 @@ import {
   JOIN_CODE_MIN,
   JOIN_CODE_MAX,
   JOIN_ATTEMPTS_LIMIT,
-  JOIN_ATTEMPTS_LOCK_MS,
+  JOIN_ATTEMPTS_WINDOW_MS,
 } from "../config/firestoreLimits";
 
 export interface Group {
@@ -93,46 +93,37 @@ function dataError(code: string, message: string): Error & { code: string } {
   return Object.assign(new Error(message), { code });
 }
 
-function isLocked(attemptData: Record<string, unknown> | undefined): boolean {
-  if (!attemptData || !attemptData.lockedUntil) return false;
-  const lockedUntil = toMillis(attemptData.lockedUntil);
-  return lockedUntil > Date.now();
-}
+const LOCKED_MESSAGE = "Çok fazla hatalı deneme. Birkaç dakika sonra tekrar dene.";
+const BAD_CODE_MESSAGE = "Katılma kodu yanlış ya da bu gruba şu an katılınamıyor.";
 
-async function recordFailedAttempt(groupId: string, uid: string): Promise<void> {
-  if (!db) return;
-  const now = Date.now();
-  const groupRef = doc(db, `groups/${groupId}/joinAttempts/${uid}`);
-  const userRef = doc(db, `users/${uid}/joinAttempts/${groupId}`);
-  const snap = await getDoc(groupRef);
+/**
+ * Katılma denemesini yazar (kendi belgesi; izinli). Pencere 15 dk: pencere
+ * içinde attempts +1 (en fazla 5), pencere dolmuşsa 1'e döner. Sayaç kuralda
+ * zorlanır; buradaki kontrol yalnızca gereksiz ağ yazımını önler.
+ * Bu yazım AYRI commit'tir: yanlış kodda grup güncellemesi reddedilse bile
+ * sayaç kalıcı olarak artmış olur.
+ */
+async function writeJoinAttempt(groupId: string, uid: string, code: string): Promise<void> {
+  if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
+  const ref = doc(db, `groups/${groupId}/joinAttempts/${uid}`);
+  const snap = await getDoc(ref);
   const prev = snap.exists() ? (snap.data() as Record<string, unknown>) : undefined;
+  const prevStart = prev ? toMillis(prev.windowStart) : 0;
   const prevAttempts = typeof prev?.attempts === "number" ? (prev.attempts as number) : 0;
-  const attempts = Math.min(prevAttempts + 1, JOIN_ATTEMPTS_LIMIT);
-  const lockedUntil = attempts >= JOIN_ATTEMPTS_LIMIT ? now + JOIN_ATTEMPTS_LOCK_MS : prev?.lockedUntil ? toMillis(prev.lockedUntil) : 0;
-  const payload: Record<string, unknown> = {
-    code: "000000", // placeholder, gerçek kod kurallarca zaten denetlendi
-    at: serverTimestamp(),
-    attempts,
-  };
-  if (lockedUntil) payload.lockedUntil = new Date(lockedUntil);
-  // Her iki perspektifte de kaydet (grup başına ve kullanıcı başına)
-  await setDoc(groupRef, payload, { merge: true });
-  await setDoc(userRef, { ...payload, groupId }, { merge: true });
-}
-
-async function clearJoinAttempts(groupId: string, uid: string): Promise<void> {
-  if (!db) return;
-  try {
-    await deleteDoc(doc(db, `groups/${groupId}/joinAttempts/${uid}`));
-  } catch (error) {
-    console.warn("[Atlasia] Grup joinAttempts temizlenemedi:", error);
-    throw error;
+  const windowOpen = prevStart > 0 && Date.now() < prevStart + JOIN_ATTEMPTS_WINDOW_MS;
+  if (windowOpen && prevAttempts >= JOIN_ATTEMPTS_LIMIT) {
+    throw dataError("group/locked", LOCKED_MESSAGE);
   }
   try {
-    await deleteDoc(doc(db, `users/${uid}/joinAttempts/${groupId}`));
-  } catch (error) {
-    console.warn("[Atlasia] Kullanici joinAttempts temizlenemedi:", error);
-    // Kullanici izi temizlenemezse de grup basarisi etkilenmez, sadece log
+    if (windowOpen) {
+      await setDoc(ref, { code, at: serverTimestamp(), attempts: prevAttempts + 1, windowStart: prev!.windowStart });
+    } else {
+      await setDoc(ref, { code, at: serverTimestamp(), attempts: 1, windowStart: serverTimestamp() });
+    }
+  } catch (failure) {
+    // Kural reddi: sayaç sınırı (pencere içi 6. deneme) ya da geri yazma girişimi.
+    if (isPermissionDenied(failure)) throw dataError("group/locked", LOCKED_MESSAGE);
+    throw failure;
   }
 }
 
@@ -395,48 +386,46 @@ export async function createGroup(input: CreateGroupInput): Promise<{ group: Gro
 }
 
 /**
- * Davet kabul: yalniz davetli kendi davetini kabul ederek kendini ekleyebilir.
- * Davetsiz ve ucuncu kullanici senaryolarini Rules reddeder.
- * Uyelik, grup indeksi ve davet silme tutarli — kismi basarisizlik sessizce basari gibi gosterilmez.
+ * Davet kabulü — okumasız: grup belgesi okunmaz. Grup adı davet aynasından
+ * (users/{uid}/groupInvites/{g}) alınır. Üyelik, davet silme ve aynanın silinmesi
+ * tek batch'te; grup yalnız katılımdan SONRA okunur.
  */
 export async function acceptGroupInvite(groupId: string, uid: string): Promise<Group> {
   if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
   const cleanId = groupId.trim();
   const cleanUid = uid.trim();
   if (!cleanId || !cleanUid) throw dataError("group/id-invalid", "Grup kimliği geçersiz.");
-  const groupRef = doc(db, "groups", cleanId);
-  const inviteRef = doc(db, `groups/${cleanId}/invites/${cleanUid}`);
-  const groupSnap = await getDoc(groupRef);
-  if (!groupSnap.exists()) throw dataError("group/not-found", "Grup bulunamadı.");
-  const current = normalizeGroup(cleanId, groupSnap.data()!);
-  if (current.memberUids.includes(cleanUid)) {
-    await writeGroupIndex(cleanUid, current.id, current.name, current.ownerUid === cleanUid ? "owner" : "member");
-    return current;
+  const mirrorRef = doc(db, `users/${cleanUid}/groupInvites/${cleanId}`);
+  const mirrorSnap = await getDoc(mirrorRef);
+  if (!mirrorSnap.exists()) {
+    throw dataError("group/invite-not-found", "Bu gruba davetin yok. Kurucudan davet iste veya katılma kodunu kullan.");
   }
-  // Invite var mi kontrol (kurallar da dogrular, ancak erken hata icin istemci kontrolu)
-  const inviteSnap = await getDoc(inviteRef);
-  if (!inviteSnap.exists()) throw dataError("group/invite-not-found", "Bu gruba davetin yok. Kurucudan davet iste veya katılma kodunu kullan.");
-
+  const invite = normalizeGroupInvite(cleanId, mirrorSnap.data()!);
   const batch = writeBatch(db);
-  batch.update(groupRef, {
-    memberUids: [...current.memberUids, cleanUid],
+  batch.update(doc(db, "groups", cleanId), {
+    memberUids: arrayUnion(cleanUid),
     updatedAt: serverTimestamp(),
   });
-  batch.delete(inviteRef);
-  batch.delete(doc(db, `users/${cleanUid}/groupInvites/${cleanId}`));
-  await batch.commit();
-
-  // Grup indeksini yaz — tutarli olmali; basarisiz olursa hata firlat, sessizce basari gosterme
-  await writeGroupIndex(cleanUid, current.id, current.name, current.ownerUid === cleanUid ? "owner" : "member");
+  batch.delete(doc(db, `groups/${cleanId}/invites/${cleanUid}`));
+  batch.delete(mirrorRef);
+  try {
+    await batch.commit();
+  } catch (failure) {
+    if (isPermissionDenied(failure)) throw dataError("group/join-failed", "Gruba katılırken bir sorun oluştu.");
+    throw failure;
+  }
+  await writeGroupIndex(cleanUid, cleanId, invite.groupName, "member");
   const fresh = await fetchGroup(cleanId);
   if (!fresh || !fresh.memberUids.includes(cleanUid)) throw dataError("group/join-failed", "Gruba katılırken bir sorun oluştu.");
   return fresh;
 }
 
 /**
- * Kod ile katılma: aynı batch'te gizli doğrulama yazısı + üyelik güncellemesi.
- * Kural, `groups/{id}/joinAttempts/{uid}` içindeki kodun `joinCode` ile eşleşmesini
- * getAfter ile atomik denetler; kod yanlışsa tüm batch reddedilir.
+ * Kod ile katılma — okumasız: gruba hiçbir `get`/`transaction.get` yapılmaz.
+ * 1) Kendi deneme belgesi ayrı commit (sayaç kalıcı).
+ * 2) Tek batch: yalnız memberUids arrayUnion + updatedAt. Kural kodu ve sayacı
+ *    kendi deneme belgesinden okur.
+ * 3) Katılımdan sonra grup okunur ve indeks yazılır.
  */
 export async function joinGroupWithCode(groupId: string, code: string, uid: string): Promise<Group> {
   if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
@@ -445,77 +434,28 @@ export async function joinGroupWithCode(groupId: string, code: string, uid: stri
   if (invalidCode) throw dataError(invalidCode, `Katılma kodu ${JOIN_CODE_MIN}–${JOIN_CODE_MAX} hane olmalı (yalnız rakam).`);
   const cleanUid = uid.trim();
   const cleanId = groupId.trim();
-  const group = await fetchGroup(cleanId);
-  if (group && group.memberUids.includes(cleanUid)) {
-    await writeGroupIndex(cleanUid, group.id, group.name, group.ownerUid === cleanUid ? "owner" : "member");
-    return group;
-  }
+  if (!cleanId || !cleanUid) throw dataError("group/id-invalid", "Grup kimliği geçersiz.");
 
-  // C2: kilit kontrolü — 5 hatalı denemede 15 dk kilit (kurallar da zorlar)
-  const attemptRef = doc(db, `groups/${cleanId}/joinAttempts/${cleanUid}`);
-  const userAttemptRef = doc(db, `users/${cleanUid}/joinAttempts/${cleanId}`);
-  let existingAttempt: Awaited<ReturnType<typeof getDoc>> | null = null;
-  try {
-    existingAttempt = await getDoc(attemptRef);
-  } catch {
-    existingAttempt = null;
-  }
-  if (existingAttempt?.exists()) {
-    const data = existingAttempt.data() as Record<string, unknown>;
-    if (isLocked(data)) {
-      throw dataError("group/locked", "Çok fazla hatalı deneme. 15 dakika sonra tekrar deneyin.");
-    }
-  }
+  // Kendi grup indeksi (kendi belgesi; grup belgesi değil): zaten üyeyse kod denemesi gerekmez.
+  const ownIndex = await getDoc(doc(db, `users/${cleanUid}/groups/${cleanId}`));
+  if (ownIndex.exists()) throw dataError("group/already-member", "Bu gruptasın.");
 
-  const groupRef = doc(db, "groups", cleanId);
+  await writeJoinAttempt(cleanId, cleanUid, clean);
+
+  const batch = writeBatch(db);
+  batch.update(doc(db, "groups", cleanId), {
+    memberUids: arrayUnion(cleanUid),
+    updatedAt: serverTimestamp(),
+  });
   try {
-    await runTransaction(db, async (transaction) => {
-      const snapshot = await transaction.get(groupRef);
-      if (!snapshot.exists()) throw dataError("group/not-found", "Grup bulunamadı.");
-      const current = normalizeGroup(cleanId, snapshot.data()!);
-      if (current.memberUids.includes(cleanUid)) return;
-      if (current.memberUids.length >= GROUP_MEMBERS_MAX) {
-        throw dataError("group/full", "Grup dolu (en fazla 20 üye).");
-      }
-      // Deneme sayacı: mevcut denemeleri oku, rule kilidi de denetleyecek
-      const prevSnap = await getDoc(attemptRef);
-      const prev = prevSnap.exists() ? (prevSnap.data() as Record<string, unknown>) : undefined;
-      const prevAttempts = typeof prev?.attempts === "number" ? (prev.attempts as number) : 0;
-      const attempts = Math.min(prevAttempts + 1, JOIN_ATTEMPTS_LIMIT);
-      const payload: Record<string, unknown> = {
-        code: clean,
-        at: serverTimestamp(),
-        attempts,
-      };
-      if (attempts >= JOIN_ATTEMPTS_LIMIT) {
-        payload.lockedUntil = new Date(Date.now() + JOIN_ATTEMPTS_LOCK_MS);
-      }
-      transaction.set(attemptRef, payload);
-      transaction.set(userAttemptRef, { ...payload, groupId: cleanId });
-      transaction.update(groupRef, {
-        memberUids: [...current.memberUids, cleanUid],
-        updatedAt: serverTimestamp(),
-      });
-    });
-  } catch (error) {
-    const codeText = (error as { code?: string }).code ?? "";
-    if (codeText.includes("permission-denied")) {
-      await recordFailedAttempt(cleanId, cleanUid);
-      throw dataError("group/bad-code", "Katılma kodu yanlış.");
-    }
-    const msg = (error as Error).message ?? "";
-    if (msg.includes("permission") || msg.includes("Missing or insufficient permissions")) {
-      await recordFailedAttempt(cleanId, cleanUid);
-      throw dataError("group/bad-code", "Katılma kodu yanlış.");
-    }
-    throw error;
+    await batch.commit();
+  } catch (failure) {
+    if (isPermissionDenied(failure)) throw dataError("group/bad-code", BAD_CODE_MESSAGE);
+    throw failure;
   }
-  // Başarılı — deneme izlerini temizle (hatalar görünsün, yutulmasın)
-  await clearJoinAttempts(cleanId, cleanUid);
 
   const fresh = await fetchGroup(cleanId);
   if (!fresh || !fresh.memberUids.includes(cleanUid)) throw dataError("group/not-found", "Grup bulunamadı.");
-  // Davet kabulunde oldugu gibi, uyelik ve grup indeksi tutarli olsun — kismi basarisizlik sessizce basari gosterilmesin
   await writeGroupIndex(cleanUid, fresh.id, fresh.name, fresh.ownerUid === cleanUid ? "owner" : "member");
   return fresh;
 }
