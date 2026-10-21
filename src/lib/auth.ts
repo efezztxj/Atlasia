@@ -138,7 +138,7 @@ export async function signInSocial(method: "google" | "apple") {
 export function authErrorMessage(error: unknown) {
   const code = authErrorCode(error);
   const messages: Record<string, string> = {
-    "auth/not-configured": "Google, Apple ve SMS girişi için sağlayıcı bağlantısı henüz kurulmamış. E-posta ve şifreyle bu cihaza özel hesabını kullanabilirsin.",
+    "auth/not-configured": "Google ve Apple girişi için sağlayıcı bağlantısı henüz kurulmamış. E-posta ve şifreyle bu cihaza özel hesabını kullanabilirsin.",
     "auth/invalid-email": "Geçerli bir e-posta adresi yaz.",
     "auth/email-already-in-use": "Bu e-posta adresiyle bir hesap var. Giriş yap veya şifreni sıfırla.",
     "auth/invalid-credential": "E-posta veya şifre doğru değil. Bilgilerini kontrol et.",

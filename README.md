@@ -63,7 +63,8 @@ Zorunlu Firebase web değişkenleri:
 İsteğe bağlı:
 
 - `VITE_GEOCODER_URL` — varsayılan Photon adresinin yerine kullanılacak geocoder kökü
-- `VITE_APPLE_AUTH_ENABLED` — Apple sağlayıcısı tamamen yapılandırıldığında `true`
+- `VITE_APPLE_AUTH_ENABLED` — Apple sağlayıcısı tamamen yapılandırıldığında `true` (varsayılan kapalı)
+- `VITE_PHONE_AUTH_ENABLED` — Telefon sağlayıcısı Firebase Console'da etkinleştirildiğinde `true` (varsayılan kapalı)
 - `VITE_GOOGLE_MAPS_EMBED_KEY` — Street Peek gömüsü; HTTP referrer ve API kısıtları zorunludur
 
 Firebase web yapılandırması ve diğer `VITE_` değerleri istemci uygulamasında görünür. Üretim erişimi Firestore Rules, Authentication, App Check ve sağlayıcı tarafındaki domain/API kısıtlarıyla sınırlandırılmalıdır. Yönetici anahtarı veya servis hesabı hiçbir zaman Vite değişkenine konmamalıdır.

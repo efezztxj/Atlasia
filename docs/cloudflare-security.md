@@ -67,6 +67,7 @@ Cloudflare üretim ve preview ortamlarında gerçek değerler yalnız şifreli p
 - `VITE_FIREBASE_PROJECT_ID`
 - isteğe bağlı `VITE_GEOCODER_URL`
 - isteğe bağlı `VITE_APPLE_AUTH_ENABLED`
+- isteğe bağlı `VITE_PHONE_AUTH_ENABLED`
 - isteğe bağlı `VITE_GOOGLE_MAPS_EMBED_KEY`
 
 `VITE_` değişkenlerinin tarayıcı paketinde görüneceğini varsay. Yönetici SDK anahtarı, servis hesabı JSON'u, PAT veya özel sunucu sırrı hiçbir zaman `VITE_` değişkenine konmaz.
