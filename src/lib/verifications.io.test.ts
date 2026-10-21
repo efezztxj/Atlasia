@@ -112,6 +112,15 @@ describe("ziyaret doğrulaması IO sözleşmesi", () => {
     });
   });
 
+  it("bilinmeyen status değerlerini bilinen güvenli duruma normalize eder", () => {
+    expect(normalizeVerification("v-unknown", {
+      placeId: "p1", uid: "u1", status: "unexpected-status", createdAt: 1,
+    }).status).toBe("still_open");
+    expect(normalizeVerification("v-known", {
+      placeId: "p1", uid: "u1", status: "closed", createdAt: 1,
+    }).status).toBe("closed");
+  });
+
   it("ekleme kimlikleri/notu kırpar ve sunucu zamanıyla tek belge yazar", async () => {
     const created = await addPlaceVerification({
       placeId: "  manavgat-şelalesi  ",

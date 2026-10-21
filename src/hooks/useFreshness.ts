@@ -27,6 +27,8 @@ export function useFreshness(uid: string | undefined): FreshnessController {
 
   useEffect(() => {
     setReady(false);
+    setVerifications([]);
+    if (!uid) return;
     const unsubscribe = subscribeRecentVerifications(
       (items) => {
         setVerifications(items);
