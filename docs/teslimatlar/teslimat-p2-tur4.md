@@ -154,4 +154,6 @@ Mevcut 5 test aynen geçer (+1).
 ## PR / CI
 
 - PR: #43 — "[P2] Tur 4 — hava uyarısı + yükseklik profili + P20 (Supersedes #35)"
-- CI: (bu tur push sonrası işlenecek; kırmızıysa teslim sayılmaz)
+  (https://github.com/efezztxj/Atlasia/pull/43)
+- CI: **Yeşil** (`gh pr checks 43`): "Security, typecheck, lint, test and build"
+  geçti (run 39695998268, 1m12s); Cloudflare Pages önizlemesi geçti. Merge denetçide.
