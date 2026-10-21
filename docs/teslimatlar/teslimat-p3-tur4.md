@@ -50,7 +50,7 @@
 - `node --check public/sw.js`, `node --check scripts/content/harvest.mjs`: geçti.
 - `git diff --check`: geçti (exit 0); son `git status --short` kontrolünde çalışma ağacı temizdi.
 - `gh pr checks 38`: Cloudflare Pages `pass`; Security, typecheck, lint, test and build `pass` (53 s), Actions run `39688171879`, job `119527764626`.
-- PR #38 aynı PR açık tutuldu; istenen Tur 4 başlığına güncellendi. #38 kapatılmadı, merge/deploy yapılmadı. CI run `39688171879` kod ve teslimat commit'i `c4fec6a` için yeşil; bu rapor güncellemesi dokümantasyon-only commit olacak.
+- PR #38 aynı PR açık tutuldu; istenen Tur 4 başlığına güncellendi. #38 kapatılmadı, merge/deploy yapılmadı. Raporun bu güncellemesinden hemen önce final dal `8a31f0a` için push CI `39688419495` ve PR checks CI `39688426533` yeşildi; Cloudflare Pages önizleme de `pass` verdi. Bu kayıt değişikliği yalnız dokümantasyon commit'idir; CI tekrar tetiklenir.
 
 ## Dosya talebi / açık kalanlar
 
