@@ -1,4 +1,5 @@
 import type { AtlasRoute, RouteVisibility } from "../types";
+import { firebaseConfigured } from "./firebase";
 import { getPublishedRoute } from "./routeData";
 
 /**
@@ -8,11 +9,16 @@ import { getPublishedRoute } from "./routeData";
  * rotası" durumlarında **null** döner; `permission-denied` artık bir hata
  * değildir. Bu yüzden eski `permission-denied` dalı ölü koddur ve buradan
  * kaldırılmıştır. Kullanıcıya görünen metinler değişmedi.
+ *
+ * Tur 4: yapılandırmasız (yerel) derlemede bağlantı açılamaz; eskiden bu
+ * durum genel "internetini kontrol et" hatasına düşüyordu (yanlış gerekçe).
+ * Artık ağ çağrısı bile yapılmadan gerçek sebep söylenir.
  */
 export const ROUTE_OPEN_MESSAGES = {
   missing: "Bu rota bulunamadı veya artık paylaşılmıyor.",
   error: "Rota yüklenemedi. Bağlantıyı ve internetini kontrol et.",
   opened: "Paylaşılan rota açıldı. Kendi kayıtlarına ekleyebilirsin.",
+  unconfigured: "Paylaşılan rotalar bu sürümde açılamaz (bulut yapılandırılmamış). Bağlantıyı gönderen kişiden hesapsız paylaşım bağlantısı isteyebilirsin.",
 } as const;
 
 export type PublishedRouteLookup = (routeId: string) => Promise<{
@@ -24,12 +30,17 @@ export type PublishedRouteLookup = (routeId: string) => Promise<{
 export type PublishedRouteOutcome =
   | { status: "opened"; route: AtlasRoute; message: string }
   | { status: "missing"; message: string }
-  | { status: "error"; message: string };
+  | { status: "error"; message: string }
+  | { status: "unavailable"; message: string };
 
 export async function openPublishedRoute(
   routeId: string,
   lookup: PublishedRouteLookup = getPublishedRoute,
+  cloudConfigured: boolean = firebaseConfigured,
 ): Promise<PublishedRouteOutcome> {
+  if (!cloudConfigured) {
+    return { status: "unavailable", message: ROUTE_OPEN_MESSAGES.unconfigured };
+  }
   try {
     const found = await lookup(routeId);
     if (!found) return { status: "missing", message: ROUTE_OPEN_MESSAGES.missing };

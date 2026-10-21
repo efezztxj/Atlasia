@@ -24,7 +24,7 @@ describe("openPublishedRoute · kullanıcı mesajları (#31 sonrası ölü dal k
       visibility: "unlisted" as const,
     }));
 
-    const outcome = await openPublishedRoute("route-paylasilan", lookup);
+    const outcome = await openPublishedRoute("route-paylasilan", lookup, true);
 
     expect(lookup).toHaveBeenCalledWith("route-paylasilan");
     expect(outcome).toEqual({
@@ -36,7 +36,7 @@ describe("openPublishedRoute · kullanıcı mesajları (#31 sonrası ölü dal k
 
   it("rota yoksa/silinmişse 'bulunamadı' mesajı verir (izin reddi artık hata değil)", async () => {
     // #31: kurallar okunamayan rotada permission-denied fırlatır, routeData bunu null'a çevirir.
-    const outcome = await openPublishedRoute("yok", async () => null);
+    const outcome = await openPublishedRoute("yok", async () => null, true);
     expect(outcome).toEqual({
       status: "missing",
       message: "Bu rota bulunamadı veya artık paylaşılmıyor.",
@@ -50,7 +50,7 @@ describe("openPublishedRoute · kullanıcı mesajları (#31 sonrası ölü dal k
 
     const outcome = await openPublishedRoute("route-x", async () => {
       throw failure;
-    });
+    }, true);
 
     expect(outcome).toEqual({
       status: "error",
@@ -65,7 +65,7 @@ describe("openPublishedRoute · kullanıcı mesajları (#31 sonrası ölü dal k
     // #31 öncesi App.tsx bu hatayı "Bu rota özel. Yalnız sahibi açabilir." diye gösteriyordu.
     const outcome = await openPublishedRoute("route-gizli", async () => {
       throw Object.assign(new Error("Missing or insufficient permissions."), { code: "permission-denied" });
-    });
+    }, true);
 
     expect(outcome.status).toBe("error");
     expect(outcome.message).toBe("Rota yüklenemedi. Bağlantıyı ve internetini kontrol et.");
@@ -73,11 +73,25 @@ describe("openPublishedRoute · kullanıcı mesajları (#31 sonrası ölü dal k
     warn.mockRestore();
   });
 
+  it("yapılandırmasız derlemede gerçek sebep söylenir; sorgu hiç yapılmaz (Tur 4)", async () => {
+    const lookup = vi.fn<PublishedRouteLookup>(async () => ({ route, authorUid: "u1", visibility: "unlisted" as const }));
+
+    const outcome = await openPublishedRoute("route-paylasilan", lookup, false);
+
+    expect(lookup).not.toHaveBeenCalled();
+    expect(outcome.status).toBe("unavailable");
+    expect(outcome.message).toContain("bulut yapılandırılmamış");
+    // Yanlış gerekçe yok: ne "bulunamadı" ne "internetini kontrol et".
+    expect(outcome.message).not.toContain("bulunamadı");
+    expect(outcome.message).not.toContain("internetini");
+  });
+
   it("mesaj sabitleri değişmez: kullanıcıya görünen metin aynı kalır", () => {
     expect(ROUTE_OPEN_MESSAGES).toEqual({
       missing: "Bu rota bulunamadı veya artık paylaşılmıyor.",
       error: "Rota yüklenemedi. Bağlantıyı ve internetini kontrol et.",
       opened: "Paylaşılan rota açıldı. Kendi kayıtlarına ekleyebilirsin.",
+      unconfigured: "Paylaşılan rotalar bu sürümde açılamaz (bulut yapılandırılmamış). Bağlantıyı gönderen kişiden hesapsız paylaşım bağlantısı isteyebilirsin.",
     });
     // Ölü dalın metni ("Bu rota özel. Yalnız sahibi açabilir.") artık hiçbir yerde yok.
     expect(Object.values(ROUTE_OPEN_MESSAGES).join(" ")).not.toContain("Yalnız sahibi açabilir");
