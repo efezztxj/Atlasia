@@ -22,6 +22,7 @@ import { useCollections } from "../hooks/useCollections";
 import { authErrorMessage } from "../lib/auth";
 import { usePanelAccess } from "../hooks/usePanelAccess";
 import { deleteAccount } from "../lib/moderation";
+import FeedbackDialog from "./FeedbackDialog";
 
 interface Props {
   onClose: () => void;
@@ -40,6 +41,7 @@ export default function ProfilePanel({ onClose, onRecords }: Props) {
   const [verificationBusy, setVerificationBusy] = useState<"send" | "check" | null>(null);
   const [verificationSent, setVerificationSent] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const needsEmailVerification = user?.backend === "firebase" && !!user.email && !user.emailVerified;
 
@@ -224,6 +226,9 @@ export default function ProfilePanel({ onClose, onRecords }: Props) {
           <Route size={15} className="mt-1 shrink-0" />
           Kaydettiğin yerler ve rotalar bu cihazda, hesabına özel tutulur.
         </p>
+        <button type="button" onClick={() => setFeedbackOpen(true)} className="mt-6 flex min-h-10 items-center gap-2 rounded-full border border-sun/30 px-4 text-[12px] font-semibold text-sun">
+          Geri bildirim gönder
+        </button>
         <section aria-labelledby="danger-title" className="mt-6 rounded-2xl border border-red-300/20 bg-red-400/5 p-4">
           <h3 id="danger-title" className="flex items-center gap-2 text-[13px] font-semibold text-red-200"><Trash2 size={14} />Tehlikeli alan</h3>
           <p className="mt-1 text-[12px] leading-relaxed text-mint/60">Hesabını silersen tüm izlerin, gönderilerin, hikâyelerin ve engelleme listelerin kalıcı olarak kalkar. Bu işlem geri alınamaz.</p>
@@ -232,6 +237,7 @@ export default function ProfilePanel({ onClose, onRecords }: Props) {
           </button>
         </section>
       </div>
+      {feedbackOpen && <FeedbackDialog uid={user?.uid ?? null} onClose={() => setFeedbackOpen(false)} />}
 
       <footer className="shrink-0 border-t border-white/10 bg-ink-2 px-6 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] md:pb-4">
         <button

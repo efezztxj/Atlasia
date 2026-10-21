@@ -244,6 +244,8 @@ const OWNED_TOP_LEVEL: Array<{ collectionName: string; uidField: string }> = [
   { collectionName: "reports", uidField: "reporterUid" },
   { collectionName: "blocks", uidField: "blockerUid" },
   { collectionName: "verifications", uidField: "uid" },
+  // KARAR: geri bildirim hesapla birlikte silinir (kurallar yalnız sahibine liste/silme verir).
+  { collectionName: "feedback", uidField: "uid" },
 ];
 
 // users/{uid}/... altında yalnız sahibin silebildiği koleksiyonlar.

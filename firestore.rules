@@ -603,6 +603,28 @@ service cloud.firestore {
                     && savedRouteCounterDecreased(routeId);
     }
 
+    // P4 geri bildirim kanalı. KARAR: yalnız giriş yapmış kullanıcı en fazla
+    // dar şemalı kayıt yazar. get/update yok. Liste ve silme yalnız sahibine
+    // açıktır; bu, hesap silmenin kendi geri bildirimini silebilmesi içindir.
+    // Konum ve cihaz parmak izi alanı kabul edilmez (hasOnly).
+    match /feedback/{feedbackId} {
+      allow get: if false;
+      allow list: if signedIn() && resource.data.uid == request.auth.uid && boundedList(50);
+      allow create: if signedIn()
+                    && request.resource.data.keys().hasOnly(['uid', 'category', 'message', 'appVersion', 'createdAt'])
+                    && request.resource.data.keys().hasAll(['uid', 'category', 'message', 'appVersion', 'createdAt'])
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.category in ['bug', 'idea', 'other']
+                    && request.resource.data.message is string
+                    && request.resource.data.message.size() >= 1
+                    && request.resource.data.message.size() <= 1000
+                    && request.resource.data.appVersion is string
+                    && request.resource.data.appVersion.size() <= 40
+                    && request.resource.data.createdAt == request.time;
+      allow update: if false;
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+
     // Tazelik doğrulamaları: herkese açık okuma, yalnız kendi adına yazma.
     // Liste isteği 50 kayıtla sınırlıdır; canlı dinleyici tek pencere tutar.
     match /verifications/{verificationId} {

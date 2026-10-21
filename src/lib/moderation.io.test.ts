@@ -197,6 +197,8 @@ describe("moderasyon yazımı ve hesap verisi silme", () => {
     h.store.set("friendships/u1_u2", { users: ["u1", "u2"] });
     h.store.set("friendships/u3_u9", { users: ["u3", "u9"] });
     h.store.set("userProfiles/u1", { uid: "u1", displayName: "Ada" });
+    h.store.set("feedback/fb1", { uid: "u1", category: "bug", message: "x", appVersion: "0.1.0" });
+    h.store.set("feedback/fb9", { uid: "u9", category: "bug", message: "y", appVersion: "0.1.0" });
     h.store.set("userProfiles/u9", { uid: "u9", displayName: "Can" });
 
     const report = await deleteUserData("u1");
@@ -220,5 +222,7 @@ describe("moderasyon yazımı ve hesap verisi silme", () => {
     expect(h.store.has("tracks/t9")).toBe(true);
     expect(h.store.has("friendships/u3_u9")).toBe(true);
     expect(h.store.has("userProfiles/u9")).toBe(true);
+    expect(h.store.has("feedback/fb1")).toBe(false);
+    expect(h.store.has("feedback/fb9")).toBe(true);
   });
 });

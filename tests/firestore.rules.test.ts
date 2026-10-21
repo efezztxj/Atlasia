@@ -1240,6 +1240,38 @@ describe("Firestore güvenlik kuralları", () => {
     }
   });
 
+  // === P4 — geri bildirim kanalı: dar şema, yalnız sahibi listeler/siler ===
+  it("geri bildirim: giriş yapmış kullanıcı dar şemayla yazar; okuma/güncelleme yok; yalnız sahibi listeler ve siler", async () => {
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    const bobDb = testEnv.authenticatedContext("bob").firestore();
+    const anonDb = testEnv.unauthenticatedContext().firestore();
+    const valid = {
+      uid: "alice",
+      category: "bug",
+      message: "Harita açılışta donuyor.",
+      appVersion: "0.1.0",
+      createdAt: serverTimestamp(),
+    };
+
+    await assertSucceeds(setDoc(doc(aliceDb, "feedback/f-ok"), valid));
+    await assertFails(setDoc(doc(anonDb, "feedback/f-anon"), valid));
+    await assertFails(setDoc(doc(aliceDb, "feedback/f-cat"), { ...valid, category: "spam" }));
+    await assertFails(setDoc(doc(aliceDb, "feedback/f-empty"), { ...valid, message: "" }));
+    await assertFails(setDoc(doc(aliceDb, "feedback/f-long"), { ...valid, message: "a".repeat(1001) }));
+    await assertFails(setDoc(doc(aliceDb, "feedback/f-extra"), { ...valid, lat: 38.4 }));
+    await assertFails(setDoc(doc(aliceDb, "feedback/f-spoof"), { ...valid, uid: "bob" }));
+    await assertFails(setDoc(doc(aliceDb, "feedback/f-time"), { ...valid, createdAt: Timestamp.now() }));
+    await assertFails(setDoc(doc(aliceDb, "feedback/f-ver"), { ...valid, appVersion: "x".repeat(41) }));
+
+    await assertFails(getDoc(doc(aliceDb, "feedback/f-ok")));
+    await assertFails(updateDoc(doc(aliceDb, "feedback/f-ok"), { message: "değişti" }));
+    await assertSucceeds(getDocs(query(collection(aliceDb, "feedback"), where("uid", "==", "alice"), limit(20))));
+    await assertFails(getDocs(collection(aliceDb, "feedback")));
+    await assertFails(getDocs(query(collection(bobDb, "feedback"), where("uid", "==", "alice"), limit(20))));
+    await assertFails(deleteDoc(doc(bobDb, "feedback/f-ok")));
+    await assertSucceeds(deleteDoc(doc(aliceDb, "feedback/f-ok")));
+  });
+
   // === C4 — userProfiles sadece displayName ve photoURL ===
   it("C4 userProfiles displayName ve photoURL dışında alan okunmuyor/yazılmıyor", async () => {
     const aliceDb = testEnv.authenticatedContext("alice").firestore();
