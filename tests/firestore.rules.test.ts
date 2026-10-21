@@ -6,6 +6,7 @@ import {
   type RulesTestEnvironment,
 } from "@firebase/rules-unit-testing";
 import {
+  arrayUnion,
   collection,
   deleteDoc,
   doc,
@@ -760,6 +761,130 @@ describe("Firestore güvenlik kuralları", () => {
     await assertFails(updateDoc(doc(senderDb, "users/recipient/notifications/note-1"), { read: false }));
     await assertFails(deleteDoc(doc(senderDb, "users/recipient/notifications/note-1")));
     await assertSucceeds(deleteDoc(doc(recipientDb, "users/recipient/notifications/note-1")));
+  });
+
+  it("beğeni güncellemesi yalnız kendi UID'sidir; sayaç ve metin müdahaleleri reddedilir", async () => {
+    await seed("posts/post-1", {
+      ...validPost("owner"),
+      createdAt: Timestamp.now(),
+    });
+    const ownerDb = testEnv.authenticatedContext("owner").firestore();
+    const memberDb = testEnv.authenticatedContext("member").firestore();
+    const guestDb = testEnv.unauthenticatedContext().firestore();
+
+    // Başkası adına beğeni eklenemez, beğeni sayacı doğrudan yazılamaz.
+    await assertFails(updateDoc(doc(memberDb, "posts/post-1"), { likedBy: arrayUnion("other") }));
+    await assertFails(updateDoc(doc(memberDb, "posts/post-1"), { likes: 42 }));
+    // Tam bir liste ezmesi (birden fazla üyelik değişimi) transform yerine geçmez.
+    await assertFails(updateDoc(doc(memberDb, "posts/post-1"), { likedBy: ["member", "other"] }));
+    // Update yalnız likedBy etkileşimidir: sahibi bile metni değiştiremez.
+    await assertFails(updateDoc(doc(ownerDb, "posts/post-1"), { text: "Sonradan değiştirildi" }));
+    // Oturumsuz beğeni yok; kendi adına tek ekleme serbest.
+    await assertFails(updateDoc(doc(guestDb, "posts/post-1"), { likedBy: arrayUnion("guest") }));
+    await assertSucceeds(updateDoc(doc(memberDb, "posts/post-1"), { likedBy: arrayUnion("member") }));
+  });
+
+  it("var olmayan gönderiye yanıt yazılamaz; yanıt silmede sahiplik matrisi geçerlidir", async () => {
+    const ownerDb = testEnv.authenticatedContext("owner").firestore();
+    const memberDb = testEnv.authenticatedContext("member").firestore();
+    const otherDb = testEnv.authenticatedContext("other").firestore();
+    const reply = {
+      author: "Üye",
+      authorUid: "member",
+      text: "Yanıt metni.",
+      createdAt: serverTimestamp(),
+      kind: "user",
+    };
+
+    await assertFails(setDoc(doc(memberDb, "posts/yok/replies/reply-1"), reply));
+    await assertFails(getDocs(query(collection(memberDb, "posts/yok/replies"), limit(10))));
+
+    await seed("posts/post-1", {
+      ...validPost("owner"),
+      createdAt: Timestamp.now(),
+    });
+    await seed("posts/post-1/replies/reply-1", {
+      ...reply,
+      createdAt: Timestamp.now(),
+    });
+    // Üçüncü kişi silemez; gönderi sahibi moderasyon için silebilir.
+    await assertFails(deleteDoc(doc(otherDb, "posts/post-1/replies/reply-1")));
+    await assertSucceeds(deleteDoc(doc(ownerDb, "posts/post-1/replies/reply-1")));
+  });
+
+  it("kullanıcı altındaki engelleme listesi özeldir ve kimlik eşleşmesi zorunludur", async () => {
+    const memberDb = testEnv.authenticatedContext("member").firestore();
+    const otherDb = testEnv.authenticatedContext("other").firestore();
+    const valid = {
+      blockerUid: "member",
+      blockedUid: "spammer",
+      createdAt: serverTimestamp(),
+    };
+
+    await assertSucceeds(setDoc(doc(memberDb, "users/member/blocks/spammer"), valid));
+    // Belge kimliği engellenen kişiyle aynı olmalı; başkası adına blok yazılamaz.
+    await assertFails(setDoc(doc(memberDb, "users/member/blocks/yanlis-id"), valid));
+    await assertFails(setDoc(doc(otherDb, "users/member/blocks/biri"), {
+      blockerUid: "member",
+      blockedUid: "biri",
+      createdAt: serverTimestamp(),
+    }));
+    await assertFails(getDoc(doc(otherDb, "users/member/blocks/spammer")));
+    await assertFails(getDocs(query(collection(memberDb, "users/member/blocks"), limit(51))));
+    await assertFails(updateDoc(doc(memberDb, "users/member/blocks/spammer"), { createdAt: serverTimestamp() }));
+    await assertSucceeds(deleteDoc(doc(memberDb, "users/member/blocks/spammer")));
+  });
+
+  it("kayıtlı yerler çapraz UID ile yazılamaz; place.id belge kimliğiyle eşleşmek zorundadır", async () => {
+    const ownerDb = testEnv.authenticatedContext("owner").firestore();
+    const otherDb = testEnv.authenticatedContext("other").firestore();
+
+    await assertFails(setDoc(doc(otherDb, "users/owner/savedPlaces/p1"), {
+      place: { id: "p1", title: "Sahte" },
+      savedAt: serverTimestamp(),
+    }));
+    await assertFails(setDoc(doc(ownerDb, "users/owner/savedPlaces/p1"), {
+      place: { id: "baska-id", title: "Uyumsuz" },
+      savedAt: serverTimestamp(),
+    }));
+    await assertSucceeds(setDoc(doc(ownerDb, "users/owner/savedPlaces/p1"), {
+      place: { id: "p1", title: "Kordon" },
+      savedAt: serverTimestamp(),
+    }));
+    await assertFails(getDocs(query(collection(ownerDb, "users/owner/savedPlaces"), limit(101))));
+    await assertFails(deleteDoc(doc(otherDb, "users/owner/savedPlaces/p1")));
+  });
+
+  it("grup üyesi yalnız kendisini çıkarır; tanımsız koleksiyonlar varsayılan olarak kapalıdır", async () => {
+    await seed("groups/group-1", {
+      name: "Kapadokya ekibi",
+      ownerUid: "owner",
+      memberUids: ["owner", "member", "third"],
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
+    const memberDb = testEnv.authenticatedContext("member").firestore();
+    const guestDb = testEnv.unauthenticatedContext().firestore();
+
+    // Başkasını çıkarmak veya yeni üye eklemek üye yetkisinin dışındadır.
+    await assertFails(updateDoc(doc(memberDb, "groups/group-1"), {
+      memberUids: ["owner", "member"],
+      updatedAt: serverTimestamp(),
+    }));
+    await assertFails(updateDoc(doc(memberDb, "groups/group-1"), {
+      memberUids: ["owner", "member", "third", "invited"],
+      updatedAt: serverTimestamp(),
+    }));
+    await assertSucceeds(updateDoc(doc(memberDb, "groups/group-1"), {
+      memberUids: ["owner", "third"],
+      updatedAt: serverTimestamp(),
+    }));
+
+    // match /{document=**} kapısı: tanımlanmamış her koleksiyon kapalıdır.
+    await assertFails(getDoc(doc(memberDb, "admin/config")));
+    await assertFails(setDoc(doc(memberDb, "admin/config"), { role: "admin" }));
+    await assertFails(getDoc(doc(guestDb, "admin/config")));
+    await assertFails(getDocs(query(collection(memberDb, "bilinmeyen"), limit(1))));
   });
 
   it("emekliye ayrılan kullanıcı profili koleksiyonunu tamamen kapalı tutar", async () => {

@@ -165,6 +165,12 @@ const emulatorLog = openSync(emulatorLogPath, "w");
 const emulator = spawn(
   "java",
   [
+    // Emulator, sistem locale'i Türkçe vb. olduğunda bazı platformlarda
+    // (özellikle Windows) hatalı davranabiliyor; JVM locale'i her platformda
+    // aynı şekilde İngilizceye sabitle. Kullanıcı ortamı değişmez, yalnız
+    // bu child process'in JVM argümanları etkilenir.
+    "-Duser.language=en",
+    "-Duser.country=US",
     "-jar",
     emulatorPath,
     "--host",
