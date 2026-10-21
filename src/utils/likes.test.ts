@@ -83,3 +83,57 @@ describe("toggleLikedBy · üyelik tekilleştirme (P16 #2)", () => {
     expect(totalLikes(after) - totalLikes(before)).toBe(1);
   });
 });
+
+/**
+ * Tur 4 · Madde 1 — seed + üyelik birleşimi ve snapshot tekrarı.
+ *
+ * Bulut akışı iyimser sayaç kullanmaz: `togglePostLikeInFirestore` önce
+ * yazar (arrayUnion/arrayRemove), dönen üyelik listesi görünüme **yer
+ * değiştirerek** uygulanır (`applyPostLikedBy`). Ardından aynı kümeyi
+ * taşıyan bir snapshot gelirse sonuç değişmemelidir (birleşim değil,
+ * atama). Bu blok o akışı saf fonksiyonlarla aynalar.
+ */
+describe("Tur 4 · seed birleşimi + snapshot atama tekdüzeliği", () => {
+  const applySnapshot = (
+    post: { likes: number; likedBy: string[] },
+    snapshotLikedBy: string[],
+  ) => ({ ...post, likedBy: [...snapshotLikedBy] });
+
+  it("aynı snapshot iki kez uygulanırsa toplam değişmez (sıra/kopya farkı etkisiz)", () => {
+    // Beğeni yazıldı, sunucu listesi uygulandı.
+    let post = { likes: 0, likedBy: ["u2"] };
+    post = { ...post, likedBy: toggleLikedBy(post.likedBy, "u1") };
+    expect(totalLikes(post)).toBe(2);
+    // Aynı kümeyi başka sırada + kopyayla taşıyan snapshot tekrar uygulanır.
+    post = applySnapshot(post, ["u1", "u2", "u1"]);
+    expect(totalLikes(post)).toBe(2);
+    post = applySnapshot(post, ["u2", "u1"]);
+    expect(totalLikes(post)).toBe(2);
+  });
+
+  it("snapshot arada başkasının beğenisini de taşısa herkes bir kez sayılır", () => {
+    let post = { likes: 0, likedBy: toggleLikedBy([], "u1") }; // u1 beğendi
+    // Snapshot, eşzamanlı beğenen u2'yi de içeriyor: atama ikisini de korur.
+    post = applySnapshot(post, ["u1", "u2"]);
+    expect(totalLikes(post)).toBe(2);
+    // u1 beğeniyi geri alır: u2 kalır, u1 bir kez düşer.
+    post = { ...post, likedBy: toggleLikedBy(post.likedBy, "u1") };
+    expect(totalLikes(post)).toBe(1);
+  });
+
+  it("seed tabanı varken uid üyeliği toplamı tabanın altına indiremez", () => {
+    let post = { likes: 3, likedBy: [] as string[] }; // eski kayıt: kimliksiz taban
+    post = { ...post, likedBy: toggleLikedBy(post.likedBy, "u1") };
+    expect(totalLikes(post)).toBe(4); // taban 3 + u1 bir kez
+    post = { ...post, likedBy: toggleLikedBy(post.likedBy, "u1") };
+    expect(totalLikes(post)).toBe(3); // yalnız üyelik düşer; taban erimez
+  });
+
+  it("bozuk üyelik değerleri sayacı şişiremez (boş metin / metin dışı)", () => {
+    const post = {
+      likes: 0,
+      likedBy: ["u1", "", "   ", 42, null, "u1"] as unknown as string[],
+    };
+    expect(totalLikes(post)).toBe(1);
+  });
+});
