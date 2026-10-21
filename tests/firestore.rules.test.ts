@@ -1176,6 +1176,39 @@ describe("Firestore güvenlik kuralları", () => {
     await assertSucceeds(acceptBatch.commit());
   });
 
+  // === P4 — rota görünürlüğü: bulunmayan ve özel rota aynı şekilde reddedilir (KARAR: varlık sızdırılmaz) ===
+  it("bulunmayan ve başkasının özel rotası aynı şekilde okunamaz; sahibi okuyabilir", async () => {
+    await seed("routes/private-1", { authorUid: "alice", visibility: "private", saveCount: 0 });
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    const bobDb = testEnv.authenticatedContext("bob").firestore();
+
+    await assertFails(getDoc(doc(bobDb, "routes/missing")));
+    await assertFails(getDoc(doc(bobDb, "routes/private-1")));
+    await assertSucceeds(getDoc(doc(aliceDb, "routes/private-1")));
+  });
+
+  // === P4 — hesap silme: sahip olunan veri ve kayıtlı rota sayacı kurala uygun silinir ===
+  it("hesap silme: kendi rota/iz kaydını siler, başkasınınkini silemez; kayıtlı rota yalnız sayaç düşürülerek silinir", async () => {
+    await seed("routes/r-del", { authorUid: "bob", visibility: "public", saveCount: 1 });
+    await seed("routes/r-mine", { authorUid: "alice", visibility: "public", saveCount: 0 });
+    await seed("tracks/t-alice", { authorUid: "alice" });
+    await seed("users/alice/savedRoutes/r-del", { routeId: "r-del", savedAt: Timestamp.now() });
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    const bobDb = testEnv.authenticatedContext("bob").firestore();
+
+    await assertFails(deleteDoc(doc(aliceDb, "routes/r-del")));
+    await assertFails(deleteDoc(doc(bobDb, "tracks/t-alice")));
+    await assertSucceeds(deleteDoc(doc(aliceDb, "routes/r-mine")));
+    await assertSucceeds(deleteDoc(doc(aliceDb, "tracks/t-alice")));
+
+    // Sayaç düşürülmeden kayıt silinemez.
+    await assertFails(deleteDoc(doc(aliceDb, "users/alice/savedRoutes/r-del")));
+    const batch = writeBatch(aliceDb);
+    batch.delete(doc(aliceDb, "users/alice/savedRoutes/r-del"));
+    batch.update(doc(aliceDb, "routes/r-del"), { saveCount: 0, updatedAt: serverTimestamp() });
+    await assertSucceeds(batch.commit());
+  });
+
   // === C4 — userProfiles sadece displayName ve photoURL ===
   it("C4 userProfiles displayName ve photoURL dışında alan okunmuyor/yazılmıyor", async () => {
     const aliceDb = testEnv.authenticatedContext("alice").firestore();
