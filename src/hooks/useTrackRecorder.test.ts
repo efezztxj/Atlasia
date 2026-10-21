@@ -173,6 +173,7 @@ describe("useTrackRecorder", () => {
       accuracy: { sampleCount: 3, meanMeters: 10, maxMeters: 15 },
     });
     expect(finished?.track.id).toMatch(/^track-/);
+    // İki köşeli sadeleşmiş çizgide durağın aralığı ilk köşeye iner.
     expect(finished?.track.stops).toEqual([
       {
         startedAt: BASE,
@@ -180,6 +181,8 @@ describe("useTrackRecorder", () => {
         lat: 38.42,
         lng: 27.14,
         pointCount: 2,
+        startPointIndex: 0,
+        endPointIndex: 0,
       },
     ]);
     expect(decodePolyline(finished!.track.polyline)).toEqual([

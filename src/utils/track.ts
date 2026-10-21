@@ -288,10 +288,13 @@ function segmentDistanceMeters(point: [number, number], start: [number, number],
   return Math.hypot(px - (sx + projection * dx), py - (sy + projection * dy));
 }
 
-/** Douglas–Peucker sadeleştirmesi; aralık metre cinsinden ve uç noktalar korunur. */
-export function simplifyTrack(points: TrackPoint[], toleranceMeters: number = TRACK_DETECTION.simplifyToleranceM): [number, number][] {
-  if (points.length <= 2) return points.map((point): [number, number] => [point.lng, point.lat]);
+/** DP'nin tutma maskesi: hangi kaynak noktalar sadeleşmiş çizgide köşe olur. */
+function douglasPeuckerKeep(points: TrackPoint[], toleranceMeters: number): Uint8Array {
   const keep = new Uint8Array(points.length);
+  if (points.length <= 2) {
+    keep.fill(1);
+    return keep;
+  }
   keep[0] = 1;
   keep[points.length - 1] = 1;
   const stack: [number, number][] = [[0, points.length - 1]];
@@ -316,6 +319,12 @@ export function simplifyTrack(points: TrackPoint[], toleranceMeters: number = TR
       stack.push([startIndex, farthest], [farthest, endIndex]);
     }
   }
+  return keep;
+}
+
+/** Douglas–Peucker sadeleştirmesi; aralık metre cinsinden ve uç noktalar korunur. */
+export function simplifyTrack(points: TrackPoint[], toleranceMeters: number = TRACK_DETECTION.simplifyToleranceM): [number, number][] {
+  const keep = douglasPeuckerKeep(points, toleranceMeters);
   return points.flatMap((point, index) => keep[index] ? [[point.lng, point.lat] as [number, number]] : []);
 }
 
@@ -332,6 +341,12 @@ export function simplifiedDistanceKm(coords: [number, number][]): number {
 /** Sadeleştirmenin ölçülebilir sözleşmesi: kaç nokta atıldı, sapma ne kadar? */
 export interface SimplificationStats {
   coords: [number, number][];
+  /**
+   * `coords[k]` köşesinin kaynak noktalar dizisindeki indeksi (`keptIndices[k]`).
+   * Zaman bilgisi polyline'da taşınmadığı için durak → köşe eşlemesi ancak bu
+   * karşılıkla yapılabilir (durak bazlı bacak bölme).
+   */
+  keptIndices: number[];
   keptCount: number;
   removedCount: number;
   /** Atılan noktaların sadeleşmiş çizgiye en büyük dik uzaklığı (m). */
@@ -368,7 +383,15 @@ export function simplifyTrackWithStats(
   points: TrackPoint[],
   toleranceMeters: number = TRACK_DETECTION.simplifyToleranceM,
 ): SimplificationStats {
-  const coords = simplifyTrack(points, toleranceMeters);
+  const keep = douglasPeuckerKeep(points, toleranceMeters);
+  const keptIndices: number[] = [];
+  const coords: [number, number][] = [];
+  points.forEach((point, index) => {
+    if (keep[index]) {
+      keptIndices.push(index);
+      coords.push([point.lng, point.lat]);
+    }
+  });
   const kept = new Set(coords.map((coord) => `${coord[0].toFixed(7)},${coord[1].toFixed(7)}`));
   let maxDeviationM = 0;
   let removedCount = 0;
@@ -384,6 +407,7 @@ export function simplifyTrackWithStats(
   ), 0) * 100) / 100;
   return {
     coords,
+    keptIndices,
     keptCount: coords.length,
     removedCount,
     maxDeviationM: Math.round(maxDeviationM * 10) / 10,
@@ -443,12 +467,114 @@ export interface TrackDraftResult {
 }
 
 /**
+ * Bir durağın sadeleşmiş köşelerdeki aralığı. Köşe zamanları `keptTimes`
+ * (köşenin kaynak ölçümünün zaman damgası); durak penceresiyle kesişen ilk ve
+ * son köşe aralığı verir. Pencereye hiç köşe düşmüyorsa (sadeleştirme duruş
+ * sırasındaki tüm köşeleri atmış olabilir) zamanca en yakın köşe seçilir;
+ * aralık tek köşeye iner ama bacak sınırı yine de tanımlı kalır.
+ *
+ * GPS saati monoton olmayabilir; bu yüzden ikili arama yerine doğrusal tarama
+ * ile ilk/son eşleşme bulunur.
+ */
+export function vertexRangeForStop(
+  stop: Pick<AtlasTrackStop, "startedAt" | "endedAt">,
+  keptTimes: readonly number[],
+): { startPointIndex: number; endPointIndex: number } | null {
+  if (keptTimes.length === 0) return null;
+  let first = -1;
+  let last = -1;
+  keptTimes.forEach((time, index) => {
+    if (time >= stop.startedAt && time <= stop.endedAt) {
+      if (first < 0) first = index;
+      last = index;
+    }
+  });
+  if (first >= 0) return { startPointIndex: first, endPointIndex: last };
+  const middle = (stop.startedAt + stop.endedAt) / 2;
+  let nearest = 0;
+  keptTimes.forEach((time, index) => {
+    if (Math.abs(time - middle) < Math.abs(keptTimes[nearest] - middle)) nearest = index;
+  });
+  return { startPointIndex: nearest, endPointIndex: nearest };
+}
+
+/**
+ * Durak-durak bacak bölme: sadeleşmiş geometri, durakların **bitiş**
+ * köşelerinden bölünür. Ardışık bacaklar sınır köşesini paylaşır; çizgi
+ * kesintisiz kalır ve bacak mesafelerinin toplamı toplam mesafeye eşittir.
+ * Bacak süresi plan katsayısıyla değil, kayıttaki gerçek zamanlardan ölçülür
+ * (önceki durağın bitişi → sonraki durağın başlangıcı; uçlarda iz penceresi).
+ *
+ * İndeks aralığı taşımayan (eski) duraklar bölme noktası üretmez; duraksız
+ * izde tek bacak çıkar — eski davranışla birebir aynı.
+ */
+export function buildStopLegs(
+  coords: [number, number][],
+  stops: readonly AtlasTrackStop[],
+  windowMs: { startedAt: number; endedAt: number },
+  trackId: string,
+): RouteLeg[] {
+  if (coords.length === 0) return [];
+  const lastIndex = coords.length - 1;
+  const ranged = stops.filter(
+    (stop): stop is AtlasTrackStop & { endPointIndex: number } =>
+      typeof stop.endPointIndex === "number" && Number.isFinite(stop.endPointIndex),
+  );
+  // Sınırlar: artan, tekil, [0, son) aralığında. Son köşedeki sınır bacak üretmez.
+  const boundaries: { at: number; stopIndex: number }[] = [];
+  ranged.forEach((stop, stopIndex) => {
+    const at = Math.max(0, Math.min(lastIndex, Math.round(stop.endPointIndex)));
+    if (at >= lastIndex && lastIndex > 0) return;
+    if (boundaries.some((boundary) => boundary.at === at)) return;
+    boundaries.push({ at, stopIndex });
+  });
+  boundaries.sort((a, b) => a.at - b.at);
+
+  const legs: RouteLeg[] = [];
+  let from = 0;
+  let fromTime = windowMs.startedAt;
+  const pushLeg = (to: number, toTime: number) => {
+    const slice = coords.slice(from, to + 1);
+    if (slice.length >= 2) {
+      legs.push({
+        id: `leg-${trackId}-${legs.length + 1}`,
+        coords: slice,
+        mode: "walking",
+        distanceKm: simplifiedDistanceKm(slice),
+        durationMinutes: Math.max(0, Math.round((toTime - fromTime) / 60_000)),
+      });
+    }
+    from = to;
+    fromTime = toTime;
+  };
+  boundaries.forEach(({ at, stopIndex }) => {
+    pushLeg(at, ranged[stopIndex].startedAt);
+    // Sonraki bacak durağın bitişinde başlar: duruş süresi bacağa yazılmaz.
+    fromTime = ranged[stopIndex].endedAt;
+  });
+  pushLeg(lastIndex, windowMs.endedAt);
+
+  if (legs.length === 0) {
+    // 2'den az köşe: çizilebilecek bacak yok; eski tek-bacak şekli korunur.
+    return [{
+      id: `leg-${trackId}`,
+      coords,
+      mode: "walking",
+      distanceKm: simplifiedDistanceKm(coords),
+      durationMinutes: Math.max(1, Math.round((windowMs.endedAt - windowMs.startedAt) / 60_000)),
+    }];
+  }
+  // Tek bacak kaldıysa eski kimlik biçimi korunur (geriye uyum).
+  if (legs.length === 1) legs[0] = { ...legs[0], id: `leg-${trackId}` };
+  return legs;
+}
+
+/**
  * Kayıt sonu: özel `tracks` belgesi + dürüst metinli taslak rota.
  *
- * Not (P17): duraklar ve **bacak** aynı rota modeline dönüşür; bacak, sadeleşmiş
- * geometrinin tamamını taşıyan tek `walking` bacağıdır. Durak bazlı bacak bölmek
- * `AtlasTrackStop`'a indeks aralığı alanı eklemeyi gerektirir (`types.ts` bu
- * görevin dosya listesinde yok) — açık nokta olarak teslimata yazıldı.
+ * Duraklar, sadeleşmiş köşelerdeki indeks aralıklarıyla saklanır ve rota
+ * **durak-durak bacaklara** bölünür (`buildStopLegs`). Eski izler aralık
+ * taşımaz; bu fonksiyon yeni kayıtlara aralığı her zaman yazar.
  */
 export function buildTrackDraft(input: TrackDraftInput): TrackDraftResult {
   const { points, uid, trackId } = input;
@@ -467,10 +593,14 @@ export function buildTrackDraft(input: TrackDraftInput): TrackDraftResult {
   if (polyline.length > TRACK_MAX_POLYLINE_CHARS) {
     throw new Error("İz çok uzun; sadeleştirilmiş çizgi kayıt sınırını aşıyor.");
   }
-  const stops = capTrackStops(dwell.stops);
+  // Durak → köşe aralığı: köşe zamanları kaynak ölçümlerden gelir (keptIndices).
+  const keptTimes = stats.keptIndices.map((index) => usedPoints[index]?.timestamp ?? Number.NaN);
+  const stops = capTrackStops(dwell.stops).map((stop) => {
+    const range = vertexRangeForStop(stop, keptTimes);
+    return range ? { ...stop, ...range } : stop;
+  });
   const meanMeters = Math.round((usedPoints.reduce((sum, point) => sum + point.accuracy, 0) / usedPoints.length) * 10) / 10;
   const maxMeters = Math.round(usedPoints.reduce((max, point) => Math.max(max, point.accuracy), 0) * 10) / 10;
-  const durationMinutes = Math.max(1, Math.round((endedAt - startedAt) / 60_000));
 
   const track: AtlasTrack = {
     id: trackId,
@@ -483,13 +613,7 @@ export function buildTrackDraft(input: TrackDraftInput): TrackDraftResult {
     accuracy: { sampleCount: usedPoints.length, meanMeters, maxMeters },
   };
 
-  const leg: RouteLeg = {
-    id: `leg-${trackId}`,
-    coords: stats.coords,
-    mode: "walking",
-    distanceKm: stats.simplifiedLengthKm,
-    durationMinutes,
-  };
+  const legs = buildStopLegs(stats.coords, stops, { startedAt, endedAt }, trackId);
 
   const routeStops = stops.map((stop, index) => stopToRouteStop(stop, index, input.stopNames?.[index] ?? null));
   const route: AtlasRoute = {
@@ -506,7 +630,7 @@ export function buildTrackDraft(input: TrackDraftInput): TrackDraftResult {
       summary: "Kayıt sırasında tespit edilen duraklar.",
       stops: routeStops,
       polyline,
-      legs: [leg],
+      legs,
     }],
     weatherNote: null,
     alternatives: [],

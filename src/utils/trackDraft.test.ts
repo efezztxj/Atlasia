@@ -7,6 +7,7 @@ const stats: SimplificationStats = {
     [27.1, 38.4],
     [27.11, 38.4],
   ],
+  keptIndices: [0, 159],
   keptCount: 2,
   removedCount: 159,
   maxDeviationM: 5.94,
