@@ -59,7 +59,7 @@
 | P13 | Harita etiket çakışması kusuru (kktc-label vs Esri) — doğrulama + kalibrasyon kilidi | ~3–4 sa | doğrulama | tarayıcı kanıtı | ⏳ bekliyor |
 | P14 | Overpass + Wikidata/Wikipedia içerik boru hattı (atıf dahil) | 1–2 gece | özellik | karar (f) seçili: 1 | ⏳ bekliyor |
 | P15 | Çevrimdışı saha paketi: tile önbelleği (lisans-güvenli kaynaklar) | 1 gece | özellik | P11 allowlist'e dokunmadan genişletme | ⏳ bekliyor |
-| P16 | Testsiz modül kapsama maratonu (utils/lib/hooks) | 1 gece+ | test | yok | ⏳ bekliyor |
+| P16 | Testsiz modül kapsama maratonu (utils/lib/hooks) | 1 gece+ | test | yok | 🚧 1. tur tamam (utils; `teslimat-fix-ve-p16-2026-10-21.md`) — lib/hooks ve fetch karakterizasyonu 2. tura kaldı |
 | P17 | track → taslak rota boru hattı (durak tespiti + sadeleştirme) | 1–2 gece | özellik | ROADMAP Adım 4 | ⏳ bekliyor |
 | P18 | Erişilebilirlik denetimi (klavye/odak/kontrast, tema çiftleri) | 1 gece | kalite | AGENTS tema kararı | ⏳ bekliyor |
 | P19 | Bundle bütçesi + lazy-loading derin taraması (ölçüm, iddia yok) | ~3–5 sa | perf-araç | `lazyLoading.test.ts` | ⏳ bekliyor |
