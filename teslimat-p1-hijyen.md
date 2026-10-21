@@ -151,7 +151,8 @@ Sayılar gerçek komut çıktısından — başarısız kontrol geçmiş gibi su
 ## PR
 
 - **Başlık:** `[P1] Depo hijyeni + T1-AUTH` — PR gövdesinde `teslimat-p1-hijyen.md`
-- **Numara:** (push sonrası gh pr create çıktısında) — CI `Atlasia CI` verify job'u (typecheck/lint/test/test:scripts/rules emulator/build) yeşil olmadan bitti denmedi.
+- **Numara:** #34 — https://github.com/efezztxj/Atlasia/pull/34
+- **CI:** `Atlasia CI` — push 39679120773 success (53s), PR 39679136371 success (59s) — verify (typecheck/lint/test/test:scripts/rules emulator/build + bundle budget) + Cloudflare Pages success — yeşil, bitti denebilir.
 
 ## Notlar
 
