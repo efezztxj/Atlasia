@@ -163,7 +163,9 @@ export function useGeolocation() {
           if (requestId !== generation.current) return;
           generation.current += 1;
           dispose();
-          setStatus("ready");
+          // ready ⇒ fix var sözleşmesi: pencere hiç geçerli ölçüm görmeden
+          // dolarsa (geçersiz ilk ölçüm akışı) durum "unavailable" olur (P16 #5).
+          setStatus(fixRef.current ? "ready" : "unavailable");
         }, REFINE_MS);
       },
       onError,
