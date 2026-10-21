@@ -1,0 +1,473 @@
+/**
+ * P16 — rota/track veri katmanı IO karakterizasyonu.
+ *
+ * Sahte Firestore; sorgu filtre/limiti, increment ve transaction atomikliğini
+ * de uygular. Özellikle sayaç tutarlılığı, sahiplik yarışı ve orphan kayıt
+ * temizliği gerçek üretim fonksiyonlarıyla kilitlenir.
+ */
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const h = vi.hoisted(() => {
+  const store = new Map<string, Record<string, unknown>>();
+  const stats = { unsubscribes: 0 };
+
+  const isIncrement = (value: unknown): value is { __increment: number } =>
+    Boolean(
+      value &&
+        typeof value === "object" &&
+        "__increment" in value &&
+        typeof (value as { __increment: unknown }).__increment === "number",
+    );
+
+  const mergeUpdate = (
+    current: Record<string, unknown>,
+    data: Record<string, unknown>,
+  ): Record<string, unknown> => {
+    const next = { ...current };
+    Object.entries(data).forEach(([field, value]) => {
+      next[field] = isIncrement(value)
+        ? (typeof current[field] === "number" ? current[field] : 0) + value.__increment
+        : value;
+    });
+    return next;
+  };
+
+  const snapshotOf = (
+    source: Map<string, Record<string, unknown>>,
+    path: string,
+    dataOverride?: Record<string, unknown>,
+  ) => ({
+    id: path.split("/").at(-1) ?? "",
+    exists: () => dataOverride !== undefined || source.has(path),
+    data: () => dataOverride ?? source.get(path),
+    ref: { path },
+  });
+
+  const docsFor = (
+    path: string,
+    constraints: Array<{ field?: string; value?: unknown; limit?: number }> = [],
+  ) => {
+    let docs = [...store.entries()]
+      .filter(([key]) => key.startsWith(`${path}/`))
+      .filter(([key]) => key.slice(path.length + 1).split("/").length === 1)
+      .map(([key, data]) => ({ id: key.slice(path.length + 1), ref: { path: key }, data: () => data }));
+    const filters = constraints.filter((item) => typeof item.field === "string");
+    docs = docs.filter((item) => filters.every((filter) => item.data()[filter.field!] === filter.value));
+    const limit = constraints.find((item) => typeof item.limit === "number")?.limit;
+    return typeof limit === "number" ? docs.slice(0, limit) : docs;
+  };
+
+  return { store, stats, mergeUpdate, snapshotOf, docsFor };
+});
+
+vi.mock("./firebase", () => ({ db: {}, firebaseApp: {}, firebaseConfigured: true, isCloudReady: true }));
+vi.mock("firebase/firestore", () => ({
+  collection: (_db: unknown, ...segments: string[]) => ({ path: segments.join("/") }),
+  doc: (_db: unknown, ...segments: string[]) => ({ path: segments.join("/") }),
+  query: (
+    target: { path: string },
+    ...constraints: Array<{ field?: string; value?: unknown; limit?: number }>
+  ) => ({ path: target.path, constraints }),
+  where: (field: string, _op: string, value: unknown) => ({ field, value }),
+  limit: (value: number) => ({ limit: value }),
+  orderBy: () => ({}),
+  serverTimestamp: () => "SERVER_TS",
+  increment: (value: number) => ({ __increment: value }),
+  getDoc: async (docRef: { path: string }) => {
+    if (docRef.path.endsWith("/gizli-route")) {
+      throw Object.assign(new Error("Missing or insufficient permissions."), { code: "permission-denied" });
+    }
+    if (docRef.path.endsWith("/hata-get")) {
+      throw Object.assign(new Error("Firestore okuma hatası"), { code: "unavailable" });
+    }
+    return h.snapshotOf(h.store, docRef.path);
+  },
+  getDocs: async (q: { path: string; constraints?: Array<{ field?: string; value?: unknown; limit?: number }> }) => {
+    const docs = h.docsFor(q.path, q.constraints ?? []);
+    return { size: docs.length, docs };
+  },
+  setDoc: async (docRef: { path: string }, data: Record<string, unknown>) => {
+    if (docRef.path === "tracks/izin-hatasi") {
+      throw Object.assign(new Error("Missing or insufficient permissions."), { code: "permission-denied" });
+    }
+    if (docRef.path === "tracks/ag-hatasi") {
+      throw Object.assign(new Error("Backend unavailable"), { code: "unavailable" });
+    }
+    h.store.set(docRef.path, data);
+  },
+  deleteDoc: async (docRef: { path: string }) => {
+    h.store.delete(docRef.path);
+  },
+  runTransaction: async (
+    _db: unknown,
+    callback: (transaction: {
+      get: (docRef: { path: string }) => Promise<ReturnType<typeof h.snapshotOf>>;
+      set: (docRef: { path: string }, data: Record<string, unknown>) => void;
+      update: (docRef: { path: string }, data: Record<string, unknown>) => void;
+      delete: (docRef: { path: string }) => void;
+    }) => Promise<unknown>,
+  ) => {
+    const txStore = new Map(h.store);
+    const transaction = {
+      get: async (docRef: { path: string }) => {
+        if (docRef.path === "routes/yaris-route") {
+          return h.snapshotOf(txStore, docRef.path, {
+            ...(txStore.get(docRef.path) ?? {}),
+            authorUid: "baskasi",
+          });
+        }
+        return h.snapshotOf(txStore, docRef.path);
+      },
+      set: (docRef: { path: string }, data: Record<string, unknown>) => {
+        txStore.set(docRef.path, data);
+      },
+      update: (docRef: { path: string }, data: Record<string, unknown>) => {
+        const current = txStore.get(docRef.path);
+        if (!current) {
+          throw Object.assign(new Error("No document to update."), { code: "not-found" });
+        }
+        txStore.set(docRef.path, h.mergeUpdate(current, data));
+      },
+      delete: (docRef: { path: string }) => {
+        txStore.delete(docRef.path);
+      },
+    };
+    const result = await callback(transaction);
+    h.store.clear();
+    txStore.forEach((value, key) => h.store.set(key, value));
+    return result;
+  },
+  onSnapshot: (
+    q: { path: string; constraints?: Array<{ field?: string; value?: unknown; limit?: number }> },
+    onChange: (snapshot: { docs: ReturnType<typeof h.docsFor> }) => unknown,
+  ) => {
+    void onChange({ docs: h.docsFor(q.path, q.constraints ?? []) });
+    return () => {
+      h.stats.unsubscribes += 1;
+    };
+  },
+}));
+
+import type { AtlasRoute, AtlasTrack, Place } from "../types";
+import {
+  createTrack,
+  deleteTrack,
+  getPublishedRoute,
+  listOwnedTracks,
+  listPublicRoutes,
+  publishRoute,
+  removeRouteFromLibrary,
+  removeSavedRoute,
+  saveRouteReference,
+  subscribeSavedCollections,
+  toggleSavedPlace,
+  type SavedCollectionSnapshot,
+} from "./routeData";
+
+const yer = (id: string): Place => ({
+  id,
+  title: `Yer ${id}`,
+  region: "İzmir",
+  category: "history",
+  lng: 27.14,
+  lat: 38.42,
+  note: "Şğİı karakterli not",
+  author: "efe",
+  kind: "user",
+});
+
+const rota = (id: string): AtlasRoute => ({
+  id,
+  routeTitle: `Rota ${id}`,
+  routeSummary: "Özet",
+  totalDurationHours: 3,
+  totalDistanceKm: 12.5,
+  transport: "walking",
+  vibe: "sakin",
+  days: [],
+  weatherNote: null,
+  alternatives: [],
+  createdAt: 42,
+});
+
+const iz = (id: string): AtlasTrack => ({
+  id,
+  authorUid: "eski-yazar",
+  startedAt: 1_000,
+  endedAt: 2_000,
+  distanceKm: 4.2,
+  polyline: "abc",
+  stops: [],
+  accuracy: { sampleCount: 3, meanMeters: 5, maxMeters: 9 },
+  createdAt: 777,
+});
+
+const rotaBelgesi = (id: string, extra: Record<string, unknown> = {}): Record<string, unknown> => ({
+  authorUid: "yazar-1",
+  visibility: "private",
+  route: rota(id),
+  saveCount: 0,
+  createdAt: 111,
+  updatedAt: 222,
+  ...extra,
+});
+
+beforeEach(() => {
+  h.store.clear();
+  h.stats.unsubscribes = 0;
+});
+
+describe("routeData kayıtlı koleksiyon aboneliği", () => {
+  it("iki alt koleksiyon hazır olunca geçerli yer/rota çiftini tek snapshot verir", async () => {
+    h.store.set("users/u1/savedPlaces/p1", { place: yer("p1") });
+    h.store.set("users/u1/savedPlaces/bozuk", { place: "nesne değil" });
+    h.store.set("users/u1/savedRoutes/r1", { routeId: "r1" });
+    h.store.set("users/u1/savedRoutes/kayip", { routeId: "kayip" });
+    h.store.set("users/u1/savedRoutes/bozuk", { routeId: "bozuk" });
+    h.store.set("routes/r1", rotaBelgesi("r1"));
+    h.store.set("routes/bozuk", { route: "nesne değil" });
+
+    const snapshots: SavedCollectionSnapshot[] = [];
+    const errors: Error[] = [];
+    const unsubscribe = subscribeSavedCollections(
+      "u1",
+      (snapshot) => snapshots.push(snapshot),
+      (error) => errors.push(error),
+    );
+
+    await vi.waitFor(() => expect(snapshots).toHaveLength(1));
+    expect(errors).toEqual([]);
+    expect(snapshots[0].places.map((item) => item.id)).toEqual(["p1"]);
+    expect(snapshots[0].routes.map((item) => item.id)).toEqual(["r1"]);
+    unsubscribe();
+    expect(h.stats.unsubscribes).toBe(2);
+  });
+
+  it("rota belgesi okunamazsa hatayı onError'a taşır, yarım koleksiyon yayınlamaz", async () => {
+    h.store.set("users/u1/savedPlaces/p1", { place: yer("p1") });
+    h.store.set("users/u1/savedRoutes/hata-get", { routeId: "hata-get" });
+
+    const snapshots: SavedCollectionSnapshot[] = [];
+    const errors: Error[] = [];
+    subscribeSavedCollections(
+      "u1",
+      (snapshot) => snapshots.push(snapshot),
+      (error) => errors.push(error),
+    );
+
+    await vi.waitFor(() => expect(errors).toHaveLength(1));
+    expect(errors[0].message).toBe("Firestore okuma hatası");
+    expect(snapshots).toEqual([]);
+  });
+});
+
+describe("routeData kayıt/yayın yazımları", () => {
+  it("toggleSavedPlace ilk dokunuşta yazar, ikinci dokunuşta kaldırır", async () => {
+    const place = yer("p1");
+
+    await toggleSavedPlace("u1", place);
+    expect(h.store.get("users/u1/savedPlaces/p1")).toEqual({ place, savedAt: "SERVER_TS" });
+
+    await toggleSavedPlace("u1", place);
+    expect(h.store.has("users/u1/savedPlaces/p1")).toBe(false);
+  });
+
+  it("publishRoute yeni rotada sayaç/zamanları başlatır; güncellerken geçerli sayacı ve createdAt'i korur", async () => {
+    const route = rota("r-yeni");
+
+    await publishRoute("yazar-9", route, "unlisted");
+    expect(h.store.get("routes/r-yeni")).toEqual({
+      authorUid: "yazar-9",
+      visibility: "unlisted",
+      route,
+      saveCount: 0,
+      createdAt: "SERVER_TS",
+      updatedAt: "SERVER_TS",
+    });
+
+    h.store.set("routes/r-eski", { saveCount: 7, createdAt: 111, route: rota("r-eski") });
+    await publishRoute("yazar-9", rota("r-eski"), "public");
+    expect(h.store.get("routes/r-eski")).toMatchObject({
+      authorUid: "yazar-9",
+      visibility: "public",
+      saveCount: 7,
+      createdAt: 111,
+      updatedAt: "SERVER_TS",
+    });
+
+    h.store.set("routes/r-bozuk-sayac", { saveCount: "çok", createdAt: "eski-zaman", route: rota("r-bozuk-sayac") });
+    await publishRoute("yazar-9", rota("r-bozuk-sayac"), "private");
+    expect(h.store.get("routes/r-bozuk-sayac")).toMatchObject({
+      saveCount: 0,
+      createdAt: "eski-zaman",
+    });
+  });
+
+  it("saveRouteReference yayınlanmamış rotayı önce private yayımlar, sonra sayacı 1 yapar", async () => {
+    const route = rota("r1");
+
+    await saveRouteReference("okuyucu-1", route);
+
+    expect(h.store.get("routes/r1")).toMatchObject({
+      authorUid: "okuyucu-1",
+      visibility: "private",
+      saveCount: 1,
+    });
+    expect(h.store.get("users/okuyucu-1/savedRoutes/r1")).toEqual({
+      routeId: "r1",
+      savedAt: "SERVER_TS",
+    });
+  });
+
+  it("saveRouteReference zaten kayıtlıysa sayacı ikinci kez artırmaz", async () => {
+    h.store.set("routes/r1", rotaBelgesi("r1", { saveCount: 4 }));
+    h.store.set("users/u1/savedRoutes/r1", { routeId: "r1", savedAt: 10, marker: "dokunma" });
+
+    await saveRouteReference("u1", rota("r1"));
+
+    expect(h.store.get("routes/r1")?.saveCount).toBe(4);
+    expect(h.store.get("users/u1/savedRoutes/r1")).toMatchObject({ marker: "dokunma", savedAt: 10 });
+  });
+
+  it("saveRouteReference geçersiz sayaçta kayıt yazmadan reddeder", async () => {
+    h.store.set("routes/r1", rotaBelgesi("r1", { saveCount: 1.5 }));
+
+    await expect(saveRouteReference("u1", rota("r1"))).rejects.toThrow(
+      "Rota kayıt sayacı geçersiz.",
+    );
+    expect(h.store.has("users/u1/savedRoutes/r1")).toBe(false);
+    expect(h.store.get("routes/r1")?.saveCount).toBe(1.5);
+  });
+
+  it("removeSavedRoute kaydı kaldırıp sayacı bir azaltır; kayıt yoksa dokunmaz", async () => {
+    h.store.set("routes/r1", rotaBelgesi("r1", { saveCount: 3 }));
+    h.store.set("users/u1/savedRoutes/r1", { routeId: "r1" });
+
+    await removeSavedRoute("u1", "r1");
+    expect(h.store.has("users/u1/savedRoutes/r1")).toBe(false);
+    expect(h.store.get("routes/r1")).toMatchObject({ saveCount: 2, updatedAt: "SERVER_TS" });
+
+    await removeSavedRoute("u1", "r1");
+    expect(h.store.get("routes/r1")?.saveCount).toBe(2);
+  });
+
+  it("removeSavedRoute ana rota silinmişse orphan kaydı yine kaldırır", async () => {
+    h.store.set("users/u1/savedRoutes/r-kayip", { routeId: "r-kayip" });
+
+    await expect(removeSavedRoute("u1", "r-kayip")).resolves.toBeUndefined();
+    expect(h.store.has("users/u1/savedRoutes/r-kayip")).toBe(false);
+  });
+
+  it("removeRouteFromLibrary sahibin rotasını ve kendi kaydını birlikte siler", async () => {
+    h.store.set("routes/r1", rotaBelgesi("r1", { authorUid: "u1", saveCount: 9 }));
+    h.store.set("users/u1/savedRoutes/r1", { routeId: "r1" });
+
+    await removeRouteFromLibrary("u1", "r1");
+
+    expect(h.store.has("routes/r1")).toBe(false);
+    expect(h.store.has("users/u1/savedRoutes/r1")).toBe(false);
+  });
+
+  it("removeRouteFromLibrary başkasının rotasında yalnız kaydı/sayacı düşürür", async () => {
+    h.store.set("routes/r1", rotaBelgesi("r1", { authorUid: "yazar-2", saveCount: 3 }));
+    h.store.set("users/u1/savedRoutes/r1", { routeId: "r1" });
+
+    await removeRouteFromLibrary("u1", "r1");
+
+    expect(h.store.has("routes/r1")).toBe(true);
+    expect(h.store.get("routes/r1")?.saveCount).toBe(2);
+    expect(h.store.has("users/u1/savedRoutes/r1")).toBe(false);
+  });
+
+  it("removeRouteFromLibrary sahiplik transaction içinde değişmişse silme yapmaz", async () => {
+    h.store.set("routes/yaris-route", rotaBelgesi("yaris-route", { authorUid: "u1", saveCount: 5 }));
+    h.store.set("users/u1/savedRoutes/yaris-route", { routeId: "yaris-route" });
+
+    await expect(removeRouteFromLibrary("u1", "yaris-route")).rejects.toThrow(
+      "Rota sahipliği değişti; silme yapılmadı.",
+    );
+    expect(h.store.has("routes/yaris-route")).toBe(true);
+    expect(h.store.has("users/u1/savedRoutes/yaris-route")).toBe(true);
+  });
+
+  it("removeRouteFromLibrary permission-denied'da güvenli kayıt kaldırma yoluna düşer", async () => {
+    h.store.set("routes/gizli-route", rotaBelgesi("gizli-route", { authorUid: "yazar-2", saveCount: 4 }));
+    h.store.set("users/u1/savedRoutes/gizli-route", { routeId: "gizli-route" });
+
+    await removeRouteFromLibrary("u1", "gizli-route");
+
+    expect(h.store.has("routes/gizli-route")).toBe(true);
+    expect(h.store.get("routes/gizli-route")?.saveCount).toBe(3);
+    expect(h.store.has("users/u1/savedRoutes/gizli-route")).toBe(false);
+  });
+});
+
+describe("routeData okuma/listeler ve track işlemleri", () => {
+  it("getPublishedRoute geçerli belgeyi açar; eksik/bozuk belgede null döner", async () => {
+    const route = rota("r1");
+    h.store.set("routes/r1", { route, authorUid: "yazar-1", visibility: "public" });
+    h.store.set("routes/bozuk", { route: 42, authorUid: "yazar-1", visibility: "private" });
+
+    await expect(getPublishedRoute("r1")).resolves.toEqual({
+      route,
+      authorUid: "yazar-1",
+      visibility: "public",
+    });
+    await expect(getPublishedRoute("bozuk")).resolves.toBeNull();
+    await expect(getPublishedRoute("yok")).resolves.toBeNull();
+  });
+
+  it("listPublicRoutes yalnız public geçerli rotaları saveCount azalan sıralar", async () => {
+    h.store.set("routes/r1", rotaBelgesi("r1", { visibility: "public", saveCount: 2, authorUid: "a1" }));
+    h.store.set("routes/r2", rotaBelgesi("r2", { visibility: "private", saveCount: 99 }));
+    h.store.set("routes/r3", { visibility: "public", route: "bozuk", saveCount: 50 });
+    h.store.set("routes/r4", { visibility: "public", route: rota("r4") });
+    h.store.set("routes/r5", rotaBelgesi("r5", { visibility: "public", saveCount: 5, authorUid: "a5" }));
+
+    const result = await listPublicRoutes();
+
+    expect(result.map((item) => item.route.id)).toEqual(["r5", "r1", "r4"]);
+    expect(result.at(-1)).toMatchObject({ authorUid: "", saveCount: 0 });
+  });
+
+  it("listOwnedTracks yalnız sahibin izlerini belge kimliğiyle döndürür", async () => {
+    h.store.set("tracks/t1", { ...iz("yanlis-id"), authorUid: "u1" });
+    h.store.set("tracks/t2", { ...iz("t2"), authorUid: "u2" });
+    h.store.set("tracks/t3", { ...iz("t3"), authorUid: "u1" });
+
+    const result = await listOwnedTracks("u1");
+
+    expect(result.map((item) => item.id)).toEqual(["t1", "t3"]);
+    expect(result.every((item) => item.authorUid === "u1")).toBe(true);
+  });
+
+  it("createTrack yazar kimliğini oturumla ve zamanı sunucuyla ezerek yazar; deleteTrack kaldırır", async () => {
+    const track = iz("t1");
+
+    await createTrack("u-yeni", track);
+    expect(h.store.get("tracks/t1")).toMatchObject({
+      id: "t1",
+      authorUid: "u-yeni",
+      polyline: "abc",
+      createdAt: "SERVER_TS",
+    });
+
+    await deleteTrack("t1");
+    expect(h.store.has("tracks/t1")).toBe(false);
+  });
+
+  it("createTrack izin ve diğer Firestore hatalarını cause korunarak Türkçeleştirir", async () => {
+    const permissionError = (await createTrack("u1", iz("izin-hatasi")).catch(
+      (error: unknown) => error,
+    )) as Error & { cause?: { code?: string } };
+    expect(permissionError.message).toContain("Buluta kaydetme izni reddedildi");
+    expect(permissionError.cause?.code).toBe("permission-denied");
+
+    const networkError = (await createTrack("u1", iz("ag-hatasi")).catch(
+      (error: unknown) => error,
+    )) as Error & { cause?: { code?: string } };
+    expect(networkError.message).toContain("İz buluta kaydedilemedi");
+    expect(networkError.cause?.code).toBe("unavailable");
+    expect(h.store.size).toBe(0);
+  });
+});
