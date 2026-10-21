@@ -12,9 +12,12 @@ import {
   serverTimestamp,
   setDoc,
   where,
+  type DocumentReference,
+  type DocumentSnapshot,
   type Unsubscribe,
 } from "firebase/firestore";
 import { db } from "./firebase";
+import { isPermissionDenied, withoutUndefined } from "./firestoreValue";
 import type { AtlasRoute, AtlasTrack, Place, RouteVisibility } from "../types";
 
 const SAVED_PAGE_SIZE = 100;
@@ -29,6 +32,31 @@ export interface PublicRouteRecord {
   route: AtlasRoute;
   authorUid: string;
   saveCount: number;
+}
+
+/**
+ * `routes/{id}` kuralları `resource.data` okur. Belge yoksa `resource` null olur ve
+ * Firestore okumayı `permission-denied` ile reddeder; başkasının özel rotası da aynı
+ * cevabı verir. Bu iki durumda "bu hesap için okunabilir rota yok" (null) döner,
+ * diğer hatalar aynen yükselir. Kurallar gevşetilmez.
+ */
+async function readRouteIfVisible(ref: DocumentReference): Promise<DocumentSnapshot | null> {
+  try {
+    const snapshot = await getDoc(ref);
+    return snapshot.exists() ? snapshot : null;
+  } catch (failure) {
+    if (isPermissionDenied(failure)) return null;
+    throw failure;
+  }
+}
+
+function routeWriteError(failure: unknown): Error {
+  const message = isPermissionDenied(failure)
+    ? "Rota kaydedilemedi: bu rota için yazma iznin yok. Rota başka bir hesaba ait olabilir; bulut (e-posta) hesabıyla giriş yaptığını da kontrol et."
+    : failure instanceof Error && failure.message
+      ? failure.message
+      : "Rota kaydedilemedi. Bağlantını kontrol edip tekrar dene.";
+  return Object.assign(new Error(message), { cause: failure });
 }
 
 export function subscribeSavedCollections(
@@ -56,10 +84,10 @@ export function subscribeSavedCollections(
   const stopRoutes = onSnapshot(routesQuery, async (snapshot) => {
     try {
       const found = await Promise.all(snapshot.docs.map(async (saved) => {
-        const routeSnapshot = await getDoc(doc(firestore, "routes", saved.id));
-        if (!routeSnapshot.exists()) return null;
-        const data = routeSnapshot.data();
-        if (!data.route || typeof data.route !== "object") return null;
+        // Sahibi silmiş ya da özele çekmiş rota tüm koleksiyonu düşürmesin; yalnız atlanır.
+        const routeSnapshot = await readRouteIfVisible(doc(firestore, "routes", saved.id));
+        const data = routeSnapshot?.data();
+        if (!data || !data.route || typeof data.route !== "object") return null;
         return data.route as AtlasRoute;
       }));
       routes = found.filter((route): route is AtlasRoute => route !== null);
@@ -77,7 +105,7 @@ export async function toggleSavedPlace(uid: string, place: Place): Promise<void>
   const ref = doc(db, "users", uid, "savedPlaces", place.id);
   const existing = await getDoc(ref);
   if (existing.exists()) await deleteDoc(ref);
-  else await setDoc(ref, { place, savedAt: serverTimestamp() });
+  else await setDoc(ref, { place: withoutUndefined(place), savedAt: serverTimestamp() });
 }
 
 export async function saveRouteReference(uid: string, route: AtlasRoute): Promise<void> {
@@ -85,20 +113,25 @@ export async function saveRouteReference(uid: string, route: AtlasRoute): Promis
   const firestore = db;
   const savedRef = doc(firestore, "users", uid, "savedRoutes", route.id);
   const routeRef = doc(firestore, "routes", route.id);
-  const published = await getDoc(routeRef);
-  if (!published.exists()) await publishRoute(uid, route, "private");
-  await runTransaction(firestore, async (transaction) => {
-    const saved = await transaction.get(savedRef);
-    if (saved.exists()) return;
-    const currentRoute = await transaction.get(routeRef);
-    if (!currentRoute.exists()) throw new Error("Rota kaydı bulunamadı; yeniden yayınlamayı dene.");
-    const saveCount = currentRoute.data().saveCount;
-    if (typeof saveCount !== "number" || !Number.isInteger(saveCount) || saveCount < 0) {
-      throw new Error("Rota kayıt sayacı geçersiz.");
-    }
-    transaction.set(savedRef, { routeId: route.id, savedAt: serverTimestamp() });
-    transaction.update(routeRef, { saveCount: saveCount + 1, updatedAt: serverTimestamp() });
-  });
+  const published = await readRouteIfVisible(routeRef);
+  if (!published) await publishRoute(uid, route, "private");
+  try {
+    await runTransaction(firestore, async (transaction) => {
+      const saved = await transaction.get(savedRef);
+      if (saved.exists()) return;
+      const currentRoute = await transaction.get(routeRef);
+      if (!currentRoute.exists()) throw new Error("Rota kaydı bulunamadı; yeniden yayınlamayı dene.");
+      const saveCount = currentRoute.data().saveCount;
+      if (typeof saveCount !== "number" || !Number.isInteger(saveCount) || saveCount < 0) {
+        throw new Error("Rota kayıt sayacı geçersiz.");
+      }
+      transaction.set(savedRef, { routeId: route.id, savedAt: serverTimestamp() });
+      transaction.update(routeRef, { saveCount: saveCount + 1, updatedAt: serverTimestamp() });
+    });
+  } catch (failure) {
+    if (isPermissionDenied(failure)) throw routeWriteError(failure);
+    throw failure;
+  }
 }
 
 export async function removeSavedRoute(uid: string, routeId: string): Promise<void> {
@@ -154,23 +187,30 @@ export async function removeRouteFromLibrary(uid: string, routeId: string): Prom
 export async function publishRoute(uid: string, route: AtlasRoute, visibility: RouteVisibility): Promise<void> {
   if (!db) throw new Error("Firestore yapılandırılmamış.");
   const ref = doc(db, "routes", route.id);
-  const existing = await getDoc(ref);
-  const routeData = { ...route, id: route.id };
-  await setDoc(ref, {
-    authorUid: uid,
-    visibility,
-    route: routeData,
-    saveCount: existing.exists() && typeof existing.data().saveCount === "number" ? existing.data().saveCount : 0,
-    createdAt: existing.exists() ? existing.data().createdAt : serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  }, { merge: false });
+  const existing = await readRouteIfVisible(ref);
+  const existingData = existing?.data();
+  const routeData = withoutUndefined({ ...route, id: route.id });
+  try {
+    await setDoc(ref, {
+      authorUid: uid,
+      visibility,
+      route: routeData,
+      saveCount: existingData && typeof existingData.saveCount === "number" ? existingData.saveCount : 0,
+      createdAt: existingData ? existingData.createdAt : serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }, { merge: false });
+  } catch (failure) {
+    throw routeWriteError(failure);
+  }
 }
 
 export async function getPublishedRoute(routeId: string): Promise<{ route: AtlasRoute; authorUid: string; visibility: RouteVisibility } | null> {
   if (!db) throw new Error("Firestore yapılandırılmamış.");
-  const snapshot = await getDoc(doc(db, "routes", routeId));
-  if (!snapshot.exists()) return null;
+  // Silinmiş, hiç olmamış veya başkasının özel rotası: hepsi "açılamaz" (null).
+  const snapshot = await readRouteIfVisible(doc(db, "routes", routeId));
+  if (!snapshot) return null;
   const data = snapshot.data();
+  if (!data) return null;
   if (!data.route || typeof data.route !== "object") return null;
   return { route: data.route as AtlasRoute, authorUid: data.authorUid as string, visibility: data.visibility as RouteVisibility };
 }
@@ -203,7 +243,7 @@ export async function createTrack(uid: string, track: AtlasTrack): Promise<void>
   if (!db) throw new Error("Firestore yapılandırılmamış.");
   try {
     await setDoc(doc(db, "tracks", track.id), {
-      ...track,
+      ...withoutUndefined(track),
       authorUid: uid,
       createdAt: serverTimestamp(),
     });
