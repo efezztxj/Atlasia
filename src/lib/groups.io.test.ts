@@ -91,6 +91,7 @@ const group: Group = {
   name: "Kapadokya ekibi",
   ownerUid: "user-a",
   memberUids: ["user-a", "user-b"],
+  joinCode: "123456",
   createdAt: 1,
   updatedAt: 1,
 };

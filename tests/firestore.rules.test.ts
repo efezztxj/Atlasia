@@ -568,7 +568,8 @@ describe("Firestore güvenlik kuralları", () => {
     const valid = {
       name: "Kapadokya ekibi",
       ownerUid: "owner",
-      memberUids: ["owner", "member"],
+      memberUids: ["owner"],
+      joinCode: "123456",
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
@@ -592,6 +593,7 @@ describe("Firestore güvenlik kuralları", () => {
       name: "Kapadokya ekibi",
       ownerUid: "owner",
       memberUids: ["owner", "member"],
+      joinCode: "123456",
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     });
@@ -638,6 +640,7 @@ describe("Firestore güvenlik kuralları", () => {
       name: "Kapadokya ekibi",
       ownerUid: "owner",
       memberUids: ["owner", "member"],
+      joinCode: "123456",
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     });
@@ -935,5 +938,239 @@ describe("Firestore güvenlik kuralları", () => {
     await assertFails(setDoc(doc(ownerDb, "users/new"), { displayName: "Yeni profil" }));
     await assertFails(updateDoc(profileRef, { displayName: "Değiştirilemez" }));
     await assertFails(deleteDoc(profileRef));
+  });
+
+  // === C1 — Karşılıklı rıza: friendships create yalnız bekleyen friendRequest varken ===
+  it("C1 arkadaslik istek olmadan kabul edilmiş arkadaşlık → FAIL; başkasının listesine kendini yazma → FAIL; meşru kabul → SUCCEED", async () => {
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    const bobDb = testEnv.authenticatedContext("bob").firestore();
+    const charlieDb = testEnv.authenticatedContext("charlie").firestore();
+    // Bekleyen istek yokken friendships create reddedilir
+    const valid = {
+      users: ["alice", "bob"],
+      requesterUid: "alice",
+      recipientUid: "bob",
+      status: "accepted",
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    } as const;
+    await assertFails(setDoc(doc(bobDb, "friendships/alice_bob"), valid));
+    // Bekleyen istek oluştur
+    await seed("users/bob/friendRequests/alice", { fromUid: "alice", fromName: "Alice", toUid: "bob", createdAt: Timestamp.now() });
+    // Gönderen kabul edemez (recipientUid != auth)
+    await assertFails(setDoc(doc(aliceDb, "friendships/alice_bob"), valid));
+    // Meşru kabul: alıcı batch ile friendships create + request delete (getAfter)
+    const okBatch = writeBatch(bobDb);
+    okBatch.set(doc(bobDb, "friendships/alice_bob"), valid);
+    okBatch.delete(doc(bobDb, "users/bob/friendRequests/alice"));
+    await assertSucceeds(okBatch.commit());
+    await assertSucceeds(getDoc(doc(bobDb, "friendships/alice_bob")));
+    await assertSucceeds(getDoc(doc(aliceDb, "friendships/alice_bob")));
+    await assertFails(getDoc(doc(charlieDb, "friendships/alice_bob")));
+    // Başkasının arkadaş listesine kendini ekleme → FAIL (C1)
+    await seed("friendships/alice_bob", { users: ["alice", "bob"], requesterUid: "alice", recipientUid: "bob", status: "accepted", createdAt: Timestamp.now(), updatedAt: Timestamp.now() });
+    await assertFails(setDoc(doc(aliceDb, "users/bob/friends/alice"), { friendUid: "alice", friendName: "Alice", since: serverTimestamp() }));
+    // Kendi listene valid friendship ile → SUCCEED
+    await assertSucceeds(setDoc(doc(aliceDb, "users/alice/friends/bob"), { friendUid: "bob", friendName: "Bob", since: serverTimestamp() }));
+    await assertSucceeds(setDoc(doc(bobDb, "users/bob/friends/alice"), { friendUid: "alice", friendName: "Alice", since: serverTimestamp() }));
+    // Yetkisiz okuma → FAIL
+    await assertFails(getDoc(doc(bobDb, "users/alice/friends/bob")));
+  });
+
+  // === C2 — Katılma kodu en az 6 hane + deneme sınırı ve kilit ===
+  it("C2 kod en az 6 hane olmalı; yeni grup kodlu oluşur, 4 hane reddedilir", async () => {
+    const ownerDb = testEnv.authenticatedContext("owner").firestore();
+    // 4 haneli kod ile oluşturma → FAIL
+    await assertFails(
+      setDoc(doc(ownerDb, "groups/short-code"), {
+        name: "Kısa Kod",
+        ownerUid: "owner",
+        memberUids: ["owner"],
+        joinCode: "1234",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }),
+    );
+    // 6 haneli kod ile oluşturma → SUCCEED
+    await assertSucceeds(
+      setDoc(doc(ownerDb, "groups/good-code"), {
+        name: "İyi Kod",
+        ownerUid: "owner",
+        memberUids: ["owner"],
+        joinCode: "123456",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }),
+    );
+    // 8 hane de geçerli
+    await assertSucceeds(
+      setDoc(doc(ownerDb, "groups/good-code-8"), {
+        name: "8 Hane",
+        ownerUid: "owner",
+        memberUids: ["owner"],
+        joinCode: "12345678",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }),
+    );
+  });
+
+  it("C2 joinAttempts deneme sınırı ve kilit penceresi; sınır aşılınca reddedilir", async () => {
+    const _aliceDb = testEnv.authenticatedContext("alice").firestore();
+    const bobDb = testEnv.authenticatedContext("bob").firestore();
+    const charlieDb = testEnv.authenticatedContext("charlie").firestore();
+    await seed("groups/group-code", {
+      name: "KodGrubu",
+      ownerUid: "alice",
+      memberUids: ["alice"],
+      joinCode: "123456",
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
+    // Yanlış kodla grup güncellemesi (getAfter eşleşmez) → FAIL
+    const badAttempt = writeBatch(bobDb);
+    badAttempt.set(doc(bobDb, "groups/group-code/joinAttempts/bob"), { code: "999999", at: serverTimestamp(), attempts: 1 });
+    badAttempt.update(doc(bobDb, "groups/group-code"), { memberUids: ["alice", "bob"], updatedAt: serverTimestamp() });
+    await assertFails(badAttempt.commit());
+    // Doğru kodla katılma → SUCCEED
+    const goodAttempt = writeBatch(bobDb);
+    goodAttempt.set(doc(bobDb, "groups/group-code/joinAttempts/bob"), { code: "123456", at: serverTimestamp(), attempts: 1 });
+    goodAttempt.set(doc(bobDb, "users/bob/joinAttempts/group-code"), { code: "123456", at: serverTimestamp(), attempts: 1, groupId: "group-code" });
+    goodAttempt.update(doc(bobDb, "groups/group-code"), { memberUids: ["alice", "bob"], updatedAt: serverTimestamp() });
+    await assertSucceeds(goodAttempt.commit());
+    // Kilit: 5 hatalı deneme sonrası lockedUntil
+    await seed("groups/group-lock", { name: "KilitGrubu", ownerUid: "alice", memberUids: ["alice"], joinCode: "654321", createdAt: Timestamp.now(), updatedAt: Timestamp.now() });
+    await seed("groups/group-lock/joinAttempts/charlie", {
+      code: "000000",
+      at: Timestamp.now(),
+      attempts: 5,
+      lockedUntil: Timestamp.fromDate(new Date(Date.now() + 900000)),
+    });
+    await seed("users/charlie/joinAttempts/group-lock", {
+      code: "000000",
+      at: Timestamp.now(),
+      attempts: 5,
+      groupId: "group-lock",
+      lockedUntil: Timestamp.fromDate(new Date(Date.now() + 900000)),
+    });
+    // Kilitliyken yeni deneme → FAIL
+    await assertFails(setDoc(doc(charlieDb, "groups/group-lock/joinAttempts/charlie"), { code: "654321", at: serverTimestamp(), attempts: 1 }));
+    await assertFails(setDoc(doc(charlieDb, "users/charlie/joinAttempts/group-lock"), { code: "654321", at: serverTimestamp(), attempts: 1, groupId: "group-lock" }));
+  });
+
+  // === Eski gruplarla uyum: joinCode isteğe bağlı ===
+  it("Eski gruplarla uyum: kodsuz eski grup güncellenir; yeni grup kodlu oluşur; eski gruba kod eklenebilir", async () => {
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    const bobDb = testEnv.authenticatedContext("bob").firestore();
+    // Eski grup: joinCode yok
+    await seed("groups/legacy-group", {
+      name: "EskiGrup",
+      ownerUid: "alice",
+      memberUids: ["alice", "bob"],
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
+    // Üye son mesaj yazabilir (joinCode olmadan)
+    await assertSucceeds(
+      updateDoc(doc(bobDb, "groups/legacy-group"), {
+        lastMessage: { text: "Selam", senderUid: "bob", senderName: "Bob", createdAt: serverTimestamp() },
+        updatedAt: serverTimestamp(),
+      }),
+    );
+    // Üye ayrılabilir
+    await assertSucceeds(updateDoc(doc(bobDb, "groups/legacy-group"), { memberUids: ["alice"], updatedAt: serverTimestamp() }));
+    await seed("groups/legacy-group", {
+      name: "EskiGrup",
+      ownerUid: "alice",
+      memberUids: ["alice", "bob"],
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
+    // Kurucu kodsuz eski gruba 6 haneli kod ekleyebilir → SUCCEED
+    const legacySnap = await getDoc(doc(aliceDb, "groups/legacy-group"));
+    const createdAt = legacySnap.data()!.createdAt;
+    await assertSucceeds(
+      updateDoc(doc(aliceDb, "groups/legacy-group"), {
+        name: "EskiGrup",
+        ownerUid: "alice",
+        memberUids: ["alice", "bob"],
+        joinCode: "112233",
+        createdAt,
+        updatedAt: serverTimestamp(),
+      }),
+    );
+    // 4 haneli kod ekleme → FAIL
+    await seed("groups/legacy-group2", { name: "Eski2", ownerUid: "alice", memberUids: ["alice"], createdAt: Timestamp.now(), updatedAt: Timestamp.now() });
+    const snap2 = await getDoc(doc(aliceDb, "groups/legacy-group2"));
+    await assertFails(
+      updateDoc(doc(aliceDb, "groups/legacy-group2"), {
+        name: "Eski2",
+        ownerUid: "alice",
+        memberUids: ["alice"],
+        joinCode: "1234",
+        createdAt: snap2.data()!.createdAt,
+        updatedAt: serverTimestamp(),
+      }),
+    );
+    // Tam kimlikle katılma (kodsuz eski grup) (#31 akışı) çalışır — üye olmayan davet olmadan eklenemez ama tam kimlikle joinGroup yolu var
+    // Kodsuz grupta kod yolu çalışmaz, ancak davet yolu çalışır
+    await seed("groups/group-invite-old", {
+      name: "DavetEski",
+      ownerUid: "alice",
+      memberUids: ["alice"],
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
+    await seed("groups/group-invite-old/invites/bob", {
+      invitedUid: "bob",
+      inviterUid: "alice",
+      groupId: "group-invite-old",
+      groupName: "DavetEski",
+      createdAt: Timestamp.now(),
+    });
+    const acceptBatch = writeBatch(bobDb);
+    acceptBatch.update(doc(bobDb, "groups/group-invite-old"), { memberUids: ["alice", "bob"], updatedAt: serverTimestamp() });
+    acceptBatch.delete(doc(bobDb, "groups/group-invite-old/invites/bob"));
+    await assertSucceeds(acceptBatch.commit());
+  });
+
+  // === C4 — userProfiles sadece displayName ve photoURL ===
+  it("C4 userProfiles displayName ve photoURL dışında alan okunmuyor/yazılmıyor", async () => {
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    const bobDb = testEnv.authenticatedContext("bob").firestore();
+    // displayName + photoURL ile oluşturma → SUCCEED
+    await assertSucceeds(
+      setDoc(doc(aliceDb, "userProfiles/alice"), {
+        uid: "alice",
+        displayName: "Alice",
+        photoURL: "https://example.com/a.jpg",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }),
+    );
+    // Fazladan alan (email) → FAIL
+    await assertFails(
+      setDoc(doc(aliceDb, "userProfiles/alice2"), {
+        uid: "alice2",
+        displayName: "Alice2",
+        email: "alice@example.com",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }),
+    );
+    // Başkasının profilini yazma → FAIL
+    await assertFails(
+      setDoc(doc(bobDb, "userProfiles/alice"), {
+        uid: "alice",
+        displayName: "Hacked",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }),
+    );
+    // Okuma: herkes oturumlu okuyabilir
+    await assertSucceeds(getDoc(doc(bobDb, "userProfiles/alice")));
+    // Liste 20 ile sınırlı → SUCCEED, 21 → FAIL
+    await assertSucceeds(getDocs(query(collection(aliceDb, "userProfiles"), limit(20))));
+    await assertFails(getDocs(query(collection(aliceDb, "userProfiles"), limit(21))));
   });
 });
