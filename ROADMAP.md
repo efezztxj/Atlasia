@@ -3,8 +3,8 @@
 > Bu dosya, Atlasia'ya eklenecek işlerin **bağımlılık sırasıdır**; özellik listesi değil.
 > Ajanlar için yazıldı: her adımın amacı, girdisi, dosya yolları, "bitti kanıtı" komutu ve riski var.
 >
-> - **Son güncelleme:** 2026-10-20 (P1 · TEMEL & KAPANIŞ)
-> - **Durum:** Adım 0–2 ve kapanış uygulandı; Arena CI run `39333404281` tüm gate'lerde geçti (Rules emulator dahil). Yerel sandbox'ta Java 21 yok; yerel emulator komutu bu yüzden başlamaz. Kanıtlar `teslimat-p1.md` içinde. Karar (a) alt koleksiyon olarak seçildi; (b–g) açık.
+> - **Son güncelleme:** 2026-10-21 (P1 hijyen + T1-AUTH + P17 çekirdek)
+> - **Durum:** main `447fbaa`. Bitti: P1 kapanış, T1-AUTH (#33), P17 çekirdeği (#32; onaylı kaydet akışı **açık**), üretim izin düzeltmesi (#31). Açık: P14 (Overpass + Wikidata içerik hattı), P15 (çevrimdışı saha paketi), P18 (erişilebilirlik), P20 (paylaşım linki, karar bekliyor), T1-SOSYAL (P4, düzeltme bekliyor). Karar (a) alt koleksiyon; (b–g) açık.
 > - **Kural:** ⛔ işaretli adımlarda insan onayı olmadan kod yazılmaz.
 > - **v1'e göre değişiklik:** ürün tezi netleşti (topluluk uygulaması) → sosyal katman silinmiyor, fonlanıyor; `routes`/`tracks` nesneleri eklendi; içerik boru hattı ayrı faz oldu.
 
@@ -412,3 +412,4 @@ Wikidata / Wikipedia geosearch  →  tarihçe metni
 |---|---|---|
 | 2026-10-14 | v1 | İlk sürüm: denetim/onarım eksenli sıra (Adım 0–8), kanıtlanmış durum tablosu |
 | 2026-10-14 | v2 | Ürün tezi netleşti (topluluk uygulaması): sosyal katman silinmiyor, fonlanıyor. `routes`/`tracks` nesneleri, iz kaydı (arz motoru), site ölçeği, içerik boru hattı (Overpass+Wikidata), erişim bacakları, çevrimdışı saha paketi, moderasyon ve sohbet eklendi. Antipattern listesi, sert kısıtlar ve 7 karar maddesi çıkarıldı |
+| 2026-10-22 | v3 | #31 üretim izin düzeltmesi, #32 P17 çekirdeği (onaylı kaydet açık), #33 T1-AUTH (telefon bayrağı, üretim env kapısı). Açık: P14 içerik hattı, P15 çevrimdışı paket, P18 erişilebilirlik, P20 paylaşım linki, T1-SOSYAL |
