@@ -168,7 +168,53 @@ describe("moderasyon yazımı ve hesap verisi silme", () => {
   it("doğrulama kayıtları silinemezse hesap silme hata verir; sessizce 0 dönüp Auth'u silmez", async () => {
     h.store.set("verifications/v1", { uid: "u1", placeId: "p1", status: "still_open" });
     h.failure.failCollection = "verifications";
-    await expect(deleteUserData("u1")).rejects.toMatchObject({ code: "permission-denied" });
+    await expect(deleteUserData("u1")).rejects.toMatchObject({
+      code: "data/delete-incomplete",
+      failures: [{ step: "verifications", code: "permission-denied" }],
+    });
     expect(h.store.has("verifications/v1")).toBe(true);
+  });
+
+  // Regresyon: eski kod grup/bildirim temizlik hatasını console.warn ile yutuyor, sonra
+  // Auth hesabı siliniyordu. Yeni kodda hata toplanır ve hesap silme durur.
+  it("grup üyeliği temizlenemezse hata yutulmaz ve hesap silme durur", async () => {
+    h.store.set("users/u1/groups/g1", { groupId: "g1", name: "Ekip", role: "member" });
+    h.failure.failCollection = "users/u1/groups";
+    await expect(deleteUserData("u1")).rejects.toMatchObject({
+      code: "data/delete-incomplete",
+      failures: [{ step: "groups", code: "permission-denied" }],
+    });
+  });
+
+  it("rota sayacını, arkadaşlığı, profili ve kayıtlı rotayı sahibin verisi olarak siler; başkasınınkine dokunmaz", async () => {
+    h.store.set("routes/r1", { authorUid: "u1", saveCount: 0 });
+    h.store.set("routes/r9", { authorUid: "u9", saveCount: 2 });
+    h.store.set("tracks/t1", { authorUid: "u1" });
+    h.store.set("tracks/t9", { authorUid: "u9" });
+    h.store.set("users/u1/savedRoutes/r9", { routeId: "r9", savedAt: 1 });
+    h.store.set("users/u1/friends/u2", { friendUid: "u2", friendName: "Bora", since: 1 });
+    h.store.set("friendships/u1_u2", { users: ["u1", "u2"] });
+    h.store.set("friendships/u3_u9", { users: ["u3", "u9"] });
+    h.store.set("userProfiles/u1", { uid: "u1", displayName: "Ada" });
+    h.store.set("userProfiles/u9", { uid: "u9", displayName: "Can" });
+
+    const report = await deleteUserData("u1");
+
+    expect(report.routes).toBe(1);
+    expect(report.tracks).toBe(1);
+    expect(report["users/savedRoutes"]).toBe(1);
+    expect(report["users/friends+friendships"]).toBe(1);
+    expect(report.userProfiles).toBe(1);
+    expect(h.store.has("routes/r1")).toBe(false);
+    expect(h.store.has("tracks/t1")).toBe(false);
+    expect(h.store.has("users/u1/savedRoutes/r9")).toBe(false);
+    expect(h.store.get("routes/r9")?.saveCount).toBe(1);
+    expect(h.store.has("users/u1/friends/u2")).toBe(false);
+    expect(h.store.has("friendships/u1_u2")).toBe(false);
+    expect(h.store.has("userProfiles/u1")).toBe(false);
+    expect(h.store.has("routes/r9")).toBe(true);
+    expect(h.store.has("tracks/t9")).toBe(true);
+    expect(h.store.has("friendships/u3_u9")).toBe(true);
+    expect(h.store.has("userProfiles/u9")).toBe(true);
   });
 });
