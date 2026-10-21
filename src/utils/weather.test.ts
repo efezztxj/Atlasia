@@ -160,7 +160,12 @@ describe("fetchWeatherSeries (fixture ile; ağ yok)", () => {
     return count === 1 ? entry : Array.from({ length: count }, () => entry);
   }
 
-  const fetchMock = vi.fn(async (input: unknown) => ({
+  interface FakeResponse {
+    ok: boolean;
+    status: number;
+    json: () => Promise<unknown>;
+  }
+  const fetchMock = vi.fn(async (input: unknown, _init?: { signal?: AbortSignal }): Promise<FakeResponse> => ({
     ok: true,
     status: 200,
     json: async () => meteoPayload(String(input)),
