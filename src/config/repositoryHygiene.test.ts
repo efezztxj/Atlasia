@@ -12,12 +12,24 @@ describe("depo hijyeni", () => {
     };
 
     expect(pkg).toMatchObject({
-      name: "atlasia-web",
+      name: "atlasia",
       version: "0.1.0",
       packageManager: "npm@10.9.2",
       engines: { node: "^22.13.0 || >=24.0.0" },
     });
     expect(pkg.description).toContain("Atlasia");
+  });
+
+  it("örnek ortam dosyası sekiz boş VITE_ değişkeni içerir ve README belge hedeflerini bağlar", () => {
+    // 7 üretim değişkeni (3 zorunlu Firebase + GEOCODER_URL + APPLE + PHONE + GOOGLE_MAPS_EMBED) + 1 yerel geliştirme (App Check debug token) = 8. T1-AUTH ile VITE_PHONE_AUTH_ENABLED eklendi (varsayılan kapalı).
+    const env = readFileSync(".env.example", "utf8");
+    const viteVariables = env.split(/\r?\n/).filter((line) => line.startsWith("VITE_"));
+    expect(viteVariables).toHaveLength(8);
+    expect(viteVariables.every((line) => /^VITE_[A-Z0-9_]+=$/.test(line))).toBe(true);
+
+    const readme = readFileSync("README.md", "utf8");
+    expect(readme).toContain("(AUTH_SETUP.md)");
+    expect(readme).toContain("(CHANGELOG.md)");
   });
 
   it("kopya uygulama, zip ve bağımlılığı olmayan capture betiğini tutmaz", () => {

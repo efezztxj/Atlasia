@@ -2,6 +2,8 @@
 
 Bu belge Atlasia web/PWA için tek yayın yolunu tanımlar: **GitHub → Cloudflare Pages**. Netlify ve paralel Workers Builds hattı yayın kaynağı değildir.
 
+> DDoS/bot/kota saldırısı sertleştirme (ücretsiz katmanlar) runbook'u: `docs/ddos-playbook.md`.
+
 ## 1. Sürüm kontrollü güvenlik politikası
 
 `public/_headers`, Vite tarafından `dist/_headers` olarak kopyalanır ve Cloudflare Pages tarafından statik yanıt politikası olarak yorumlanır.
@@ -65,6 +67,7 @@ Cloudflare üretim ve preview ortamlarında gerçek değerler yalnız şifreli p
 - `VITE_FIREBASE_PROJECT_ID`
 - isteğe bağlı `VITE_GEOCODER_URL`
 - isteğe bağlı `VITE_APPLE_AUTH_ENABLED`
+- isteğe bağlı `VITE_PHONE_AUTH_ENABLED`
 - isteğe bağlı `VITE_GOOGLE_MAPS_EMBED_KEY`
 
 `VITE_` değişkenlerinin tarayıcı paketinde görüneceğini varsay. Yönetici SDK anahtarı, servis hesabı JSON'u, PAT veya özel sunucu sırrı hiçbir zaman `VITE_` değişkenine konmaz.
