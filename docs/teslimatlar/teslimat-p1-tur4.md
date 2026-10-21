@@ -4,8 +4,7 @@
 - **Taban:** `git fetch origin main` ile güncellendi: oturum başında
   `0ad774f..b6922d1` (PR #39), oturum sonunda `b6922d1..c7c30c9` (PR #41).
   İkisi de **merge** ile dalın içine alındı (rebase/force-push yok).
-- **PR:** `[P1] Tur 4 — yasal akış + doküman + P18 denetimi` — PR no ve CI
-  sonucu bu dosyanın §8'inde (PR açıldıktan sonra gerçek değerle güncellendi).
+- **PR:** [#42](https://github.com/efezztxj/Atlasia/pull/42) `[P1] Tur 4 — yasal akış + doküman + P18 denetimi` — CI sonucu §8'de (gerçek değerlerle).
 
 ## 1. Görev → dosya → durum
 
@@ -113,4 +112,22 @@
 
 ## 8. PR ve CI
 
-<!-- PR-SONUC -->
+- **PR:** [#42](https://github.com/efezztxj/Atlasia/pull/42) — `[P1] Tur 4 — yasal akış + doküman + P18 denetimi`
+- **CI (run `39690999994`, iş `119536862552`):** ✅ **yeşil** — `gh pr checks 42`:
+  - `Security, typecheck, lint, test and build` → **pass** (1m21s)
+  - `Cloudflare Pages` (preview) → **pass**
+- Adım dökümü (`gh run view`): Use Java 21 ✅ · Cache the pinned Firestore
+  emulator ✅ · Install exact dependencies ✅ · audit ✅ · Typecheck ✅ · Lint ✅ ·
+  Unit tests ✅ · Script tests ✅ · **Firestore security rules tests ✅** (Java 21
+  emulator — yerelde koşulamayan kapının CI kanıtı) · Production build and bundle
+  budget ✅.
+- Yeni action pin'leri (setup-node 7.1.0, setup-java 6.0.1, cache 6.1.0) ilk
+  kez bu koşuda gerçek CI'da doğrulandı.
+- Not: bu turda PR kontrollerinde `Workers Builds: atlasia fail` satırı da
+  görünüyor; `Cloudflare Pages` **pass** — ayrı hatların repo içi kanıtı
+  `iddia-envanteri.md` §2'de.
+
+## 9. git durumu (teslimat anı)
+
+- `git diff --check`: temiz.
+- `git status --short`: boş (tüm iş commit'li ve push'lu).
