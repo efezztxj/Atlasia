@@ -1,9 +1,17 @@
-import { useEffect, useState } from "react";
-import { ImagePlus, Link2, LockKeyhole, Save, ShieldCheck, Trash2, X } from "lucide-react";
-import type { AtlasRoute, RouteVisibility } from "../types";
+import { useEffect, useRef, useState } from "react";
+import { CloudSun, ImagePlus, Link2, LockKeyhole, Save, ShieldCheck, Trash2, TriangleAlert, X } from "lucide-react";
+import type { AtlasRoute, RouteDay, RouteVisibility } from "../types";
 import { useCollections } from "../hooks/useCollections";
 import { compressImageWithinLimit } from "../utils/image";
 import { buildRouteShareUrl, createRouteShareLink } from "../utils/shareLink";
+import {
+  assessWeatherRisk,
+  dateKeyForDayIndex,
+  fetchWeatherSeries,
+  type WeatherHour,
+  type WeatherPoint,
+  type WeatherRiskAssessment,
+} from "../utils/weather";
 import { cn } from "../utils/cn";
 
 interface Props {
@@ -17,6 +25,113 @@ const VISIBILITIES: { value: RouteVisibility; label: string; detail: string }[] 
   { value: "unlisted", label: "Bağlantısı olanlar", detail: "Listelenmez. Bağlantıyı gönderdiğin kişiler açabilir." },
   { value: "public", label: "Herkese açık", detail: "Keşif akışında listelenir ve bağlantıyla açılır." },
 ];
+
+type RiskState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "done"; byDay: (WeatherRiskAssessment | null)[] }
+  | { status: "error"; message: string };
+
+/** Günün plan penceresini (ilk başlama – son bitiş saati) çıkarır. */
+function dayClockWindow(day: RouteDay): { fromClock?: string; toClock?: string } {
+  const clocks = (values: string[]) => values.filter((value) => /^\d{2}:\d{2}/.test(value)).sort();
+  const starts = clocks(day.stops.map((stop) => stop.startTime));
+  const ends = clocks(day.stops.map((stop) => stop.endTime));
+  return {
+    ...(starts.length ? { fromClock: starts[0].slice(0, 5) } : {}),
+    ...(ends.length ? { toClock: ends[ends.length - 1].slice(0, 5) } : {}),
+  };
+}
+
+function riskBadge(assessment: WeatherRiskAssessment | null): { text: string; className: string } {
+  // null = pencerede veri yok. "Risk yok" DENMEZ; bilinmiyor açıkça söylenir.
+  if (!assessment) return { text: "Hava durumu bilinmiyor", className: "border-white/10 text-mint/55" };
+  if (assessment.level === "warning") return { text: "Kötü hava uyarısı", className: "border-red-300/40 bg-red-400/10 text-red-200" };
+  if (assessment.level === "caution") return { text: "Dikkat", className: "border-sun/40 bg-sun/10 text-sun" };
+  return { text: "Belirgin risk yok", className: "border-leaf/30 bg-leaf/10 text-leaf" };
+}
+
+/**
+ * Adım 15 (kalan): gün bazlı kötü hava rozeti. Veri yalnız kullanıcı
+ * "Denetle" dediğinde çekilir; tahmin aralığı dışındaki günler ve ağ
+ * hatası "bilinmiyor" görünür, tahmin uydurulmaz.
+ */
+function WeatherRiskPanel({ route }: { route: AtlasRoute }) {
+  const [state, setState] = useState<RiskState>({ status: "idle" });
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => () => abortRef.current?.abort(), []);
+
+  const check = async () => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setState({ status: "loading" });
+    try {
+      const points: WeatherPoint[] = [];
+      // Gün başına ilk/orta/son durak: uzun rotalarda istek adresi şişmez,
+      // pencere (saat aralığı) yine de günün tüm planını kapsar.
+      const idsByDay = route.days.map((day, dayIndex) => {
+        const located = day.stops.filter((stop) => Number.isFinite(stop.lat) && Number.isFinite(stop.lng));
+        const picks = [located[0], located[Math.floor(located.length / 2)], located[located.length - 1]]
+          .filter((stop, index, all) => stop !== undefined && all.indexOf(stop) === index);
+        return picks.map((stop, pickIndex) => {
+          const id = `gun-${dayIndex}-nokta-${pickIndex}`;
+          points.push({ id, lat: stop.lat, lng: stop.lng });
+          return id;
+        });
+      });
+      if (points.length === 0) {
+        setState({ status: "done", byDay: route.days.map(() => null) });
+        return;
+      }
+      const series = await fetchWeatherSeries(points, controller.signal);
+      const byDay = route.days.map((day, dayIndex) => {
+        const dayHours: WeatherHour[] = idsByDay[dayIndex].flatMap((id) => series[id] ?? []);
+        const date = dateKeyForDayIndex(dayHours, dayIndex) ?? undefined;
+        return assessWeatherRisk(dayHours, { date, ...dayClockWindow(day) });
+      });
+      setState({ status: "done", byDay });
+    } catch (failure) {
+      if ((failure as { name?: string })?.name === "AbortError") return; // kapanış/yeni denetim
+      setState({ status: "error", message: failure instanceof Error ? failure.message : "Hava durumu alınamadı." });
+    }
+  };
+
+  return (
+    <section aria-label="Hava riski" className="rounded-2xl border border-white/10 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="flex items-center gap-2 text-[13px] font-semibold"><CloudSun size={15} />Hava riski</p>
+        <button type="button" disabled={state.status === "loading"} onClick={() => void check()} className="min-h-10 shrink-0 rounded-full border border-leaf/30 bg-leaf/10 px-3 text-[12px] font-semibold text-leaf disabled:opacity-50">
+          {state.status === "loading" ? "Denetleniyor…" : "Hava riskini denetle"}
+        </button>
+      </div>
+      <p className="mt-1 text-[12px] leading-relaxed text-mint/65">Plan günleri bugünden başlayan 7 günlük tahminle karşılaştırılır; tahminin ötesindeki günler bilinmiyor kalır.</p>
+      {state.status === "error" && <p role="alert" className="mt-2 text-[12px] leading-relaxed text-red-200">Hava durumu bilinmiyor. {state.message}</p>}
+      {state.status === "done" && (
+        <ul className="mt-2 grid gap-2">
+          {route.days.map((day, dayIndex) => {
+            const assessment = state.byDay[dayIndex] ?? null;
+            const badge = riskBadge(assessment);
+            return (
+              <li key={dayIndex} className="rounded-xl border border-white/5 p-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[12px] font-semibold">{day.dayNumber}. gün{day.title ? ` · ${day.title}` : ""}</span>
+                  <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold", badge.className)}>
+                    {assessment?.level === "warning" && <TriangleAlert size={12} />}{badge.text}
+                  </span>
+                </div>
+                {assessment && assessment.reasons.length > 0 && (
+                  <p className="mt-1 text-[12px] leading-relaxed text-mint/70">{assessment.reasons.join("; ")}</p>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
 
 export default function RouteEditor({ route, onClose, onSaved }: Props) {
   const { publishRoute } = useCollections();
@@ -175,6 +290,8 @@ export default function RouteEditor({ route, onClose, onSaved }: Props) {
             </div>
           </div>
         )}
+
+        <WeatherRiskPanel key={route.id} route={route} />
 
         <p className="flex items-start gap-2 rounded-xl border border-leaf/20 bg-leaf/[0.06] p-3 text-[12px] leading-relaxed text-mint/75"><ShieldCheck size={15} className="mt-0.5 shrink-0 text-leaf" />Yürüyüş izleri ve taslaklar varsayılan olarak gizlidir. Bu görünürlük seçimi yalnız bu rotayı etkiler; ham iz kendiliğinden yayımlanmaz.</p>
         {error && <p role="alert" className="text-[13px] text-red-200">{error}</p>}

@@ -8,11 +8,18 @@ const h = vi.hoisted(() => ({
   publishRoute: vi.fn(
     async (_route: AtlasRoute, _visibility: RouteVisibility, _shareConsent: boolean) => undefined,
   ),
+  fetchWeatherSeries: vi.fn(),
 }));
 
 vi.mock("../hooks/useCollections", () => ({
   useCollections: () => ({ publishRoute: h.publishRoute }),
 }));
+
+vi.mock("../utils/weather", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../utils/weather")>();
+  // Saf değerlendirme gerçek; yalnız ağ çağrısı sahtedir (test ağı yok).
+  return { ...actual, fetchWeatherSeries: h.fetchWeatherSeries };
+});
 
 import RouteEditor from "./RouteEditor";
 
@@ -141,5 +148,57 @@ describe("RouteEditor paylaşım onayı (shareConsent)", () => {
     expect(input.value).toContain("/?r=v1.");
     // Sunucu yayını yapılmadı: bağlantı yolu publish'i çağırmaz.
     expect(h.publishRoute).not.toHaveBeenCalled();
+  });
+});
+
+describe("RouteEditor hava riski (Adım 15)", () => {
+  const hour = (time: string, extra: Record<string, number> = {}) => ({
+    time,
+    temperature: 21,
+    precipitationMm: 0,
+    precipitationProbability: 0,
+    weatherCode: 0,
+    windSpeedKmh: 6,
+    windGustKmh: 9,
+    ...extra,
+  });
+
+  beforeEach(() => {
+    h.fetchWeatherSeries.mockReset();
+  });
+
+  it("fırtınalı günde uyarı rozeti + neden görünür", async () => {
+    h.fetchWeatherSeries.mockResolvedValue({
+      "gun-0-nokta-0": [hour("2030-01-05T10:00", { weatherCode: 95 })],
+    });
+    renderEditor(route());
+    fireEvent.click(screen.getByRole("button", { name: /Hava riskini denetle/ }));
+    expect(await screen.findByText(/Kötü hava uyarısı/)).toBeTruthy();
+    expect(screen.getByText(/fırtına/)).toBeTruthy();
+  });
+
+  it("veri yoksa 'bilinmiyor' rozeti çıkar; 'risk yok' sanılmaz", async () => {
+    h.fetchWeatherSeries.mockResolvedValue({});
+    renderEditor(route());
+    fireEvent.click(screen.getByRole("button", { name: /Hava riskini denetle/ }));
+    expect(await screen.findByText(/Hava durumu bilinmiyor/)).toBeTruthy();
+    expect(screen.queryByText(/Belirgin risk yok/)).toBeNull();
+  });
+
+  it("ağ hatasında tahmin uydurulmaz; hata açıkça söylenir", async () => {
+    h.fetchWeatherSeries.mockRejectedValue(new Error("Hava durumu servisine ulaşılamadı. Bağlantını kontrol edip tekrar dene."));
+    renderEditor(route());
+    fireEvent.click(screen.getByRole("button", { name: /Hava riskini denetle/ }));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("bilinmiyor"));
+    expect(screen.queryByText(/Belirgin risk yok/)).toBeNull();
+  });
+
+  it("sakin tahminde 'belirgin risk yok' rozeti çıkar", async () => {
+    h.fetchWeatherSeries.mockResolvedValue({
+      "gun-0-nokta-0": [hour("2030-01-05T10:00")],
+    });
+    renderEditor(route());
+    fireEvent.click(screen.getByRole("button", { name: /Hava riskini denetle/ }));
+    expect(await screen.findByText(/Belirgin risk yok/)).toBeTruthy();
   });
 });

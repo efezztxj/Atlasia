@@ -1,9 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AtlasRoute, RouteStop } from "../types";
 import {
+  WEATHER_RISK_THRESHOLDS as T,
+  assessWeatherRisk,
   attachStopWeather,
   dailyRainNote,
   fetchWeatherSeries,
+  isStormWeatherCode,
   optimizeForRain,
   rainExposure,
   rainRisk,
@@ -264,5 +267,80 @@ describe("fetchWeatherSeries (fixture ile; ağ yok)", () => {
     const assertion = expect(pending).rejects.toThrow("zaman aşımına uğradı");
     await vi.advanceTimersByTimeAsync(8000);
     await assertion;
+  });
+});
+
+describe("assessWeatherRisk — kötü hava uyarısı (Adım 15)", () => {
+  const at = (partial: Partial<WeatherHour>): WeatherHour => ({
+    time: `${BASE}T10:00`,
+    temperature: 20,
+    precipitationMm: 0,
+    precipitationProbability: 0,
+    weatherCode: 0,
+    windSpeedKmh: 5,
+    windGustKmh: 8,
+    ...partial,
+  });
+
+  it("sakin pencerede risk yok; neden listesi boş", () => {
+    const result = assessWeatherRisk([at({}), at({ time: `${BASE}T11:00` })]);
+    expect(result).toEqual({ level: "none", reasons: [], hourCount: 2 });
+  });
+
+  it("yağış eşikleri sınır değerlerde basamak değiştirir", () => {
+    expect(assessWeatherRisk([at({ precipitationProbability: T.warningPrecipitationProbabilityPct })])?.level).toBe("warning");
+    expect(assessWeatherRisk([at({ precipitationProbability: T.warningPrecipitationProbabilityPct - 1 })])?.level).toBe("caution");
+    expect(assessWeatherRisk([at({ precipitationProbability: T.cautionPrecipitationProbabilityPct - 1 })])?.level).toBe("none");
+    // Olasılık düşükken bile 2 mm/sa uyarıdır.
+    expect(assessWeatherRisk([at({ precipitationProbability: 10, precipitationMm: T.warningPrecipitationMmPerHour })])?.level).toBe("warning");
+    expect(assessWeatherRisk([at({ precipitationProbability: 0, precipitationMm: T.cautionPrecipitationMmPerHour })])?.level).toBe("caution");
+  });
+
+  it("rüzgâr ve hamle eşikleri ayrı ayrı tetikler; NaN rüzgâr tetikleyemez", () => {
+    expect(assessWeatherRisk([at({ windSpeedKmh: T.warningWindKmh, windGustKmh: 0 })])?.level).toBe("warning");
+    expect(assessWeatherRisk([at({ windSpeedKmh: 5, windGustKmh: T.warningWindGustKmh })])?.level).toBe("warning");
+    expect(assessWeatherRisk([at({ windSpeedKmh: T.cautionWindKmh, windGustKmh: 0 })])?.level).toBe("caution");
+    expect(assessWeatherRisk([at({ windSpeedKmh: Number.NaN, windGustKmh: undefined })])?.level).toBe("none");
+  });
+
+  it("sıcaklık uçları ve fırtına kodları uyarıdır", () => {
+    expect(assessWeatherRisk([at({ temperature: T.warningHeatC })])?.level).toBe("warning");
+    expect(assessWeatherRisk([at({ temperature: T.warningHeatC - 1 })])?.level).toBe("caution");
+    expect(assessWeatherRisk([at({ temperature: T.warningColdC })])?.level).toBe("warning");
+    expect(assessWeatherRisk([at({ temperature: T.warningColdC + 1 })])?.level).toBe("caution");
+    expect(isStormWeatherCode(95)).toBe(true);
+    expect(isStormWeatherCode(99)).toBe(true);
+    expect(isStormWeatherCode(94)).toBe(false);
+    const storm = assessWeatherRisk([at({ weatherCode: 96 })]);
+    expect(storm?.level).toBe("warning");
+    expect(storm?.reasons.join(" ")).toContain("fırtına");
+  });
+
+  it("nedenler saatli ve kısadır; uyarılar önce gelir, en çok 4 neden", () => {
+    const result = assessWeatherRisk([
+      at({ precipitationProbability: 90, time: `${BASE}T14:00` }),
+      at({ temperature: 38, time: `${BASE}T15:00` }),
+    ]);
+    expect(result?.level).toBe("warning");
+    expect(result?.reasons[0]).toContain("14:00");
+    expect(result?.reasons[0]).toContain("yağış");
+    expect(result?.reasons.join(" ")).toContain("38°C");
+    expect((result?.reasons.length ?? 99) <= 4).toBe(true);
+  });
+
+  it("pencere tarihi ve saat aralığı dışındaki kötü hava sayılmaz", () => {
+    const series = [
+      at({ precipitationProbability: 95, time: `${BASE}T06:00` }), // pencere öncesi
+      at({ time: `${BASE}T10:00` }), // pencere içi sakin
+      at({ precipitationProbability: 95, time: "2026-10-20T10:00" }), // ertesi gün
+    ];
+    const result = assessWeatherRisk(series, { date: BASE, fromClock: "09:00", toClock: "12:00" });
+    expect(result).toEqual({ level: "none", reasons: [], hourCount: 1 });
+  });
+
+  it("boş veri ya da pencere dışı seri 'bilinmiyor' (null) döner — risk yok sanılmaz", () => {
+    expect(assessWeatherRisk([])).toBeNull();
+    expect(assessWeatherRisk([at({})], { date: "2026-11-01" })).toBeNull();
+    expect(assessWeatherRisk([at({})], { fromClock: "20:00", toClock: "21:00" })).toBeNull();
   });
 });
