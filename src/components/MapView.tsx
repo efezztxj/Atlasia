@@ -85,6 +85,13 @@ function openFreeMapLayerVisible(layerId: string, labels: boolean, baseMap: Base
   return baseMap === "dark";
 }
 
+function kktcLabelVisible(labels: boolean, baseMap: BaseMapStyle) {
+  // Street/topographic Esri altlıklarının gömülü etiketleri vardır; özel KKTC
+  // yazısı orada ikinci bir isim katmanı oluşturur. Sınır çizgisi metin
+  // çakışmasına yol açmadığı için bu koşul yalnız etikete uygulanır.
+  return labels && (baseMap === "dark" || baseMap === "satellite");
+}
+
 function openFreeMapLayers(
   labels: boolean,
   baseMap: BaseMapStyle,
@@ -259,7 +266,7 @@ function buildStyle(
         minzoom: 5.2,
         maxzoom: 11,
         layout: {
-          visibility: labels ? "visible" : "none",
+          visibility: kktcLabelVisible(labels, baseMap) ? "visible" : "none",
           "text-field": ["get", "name"],
           "text-font": ["Open Sans Semibold"],
           "text-size": ["interpolate", ["linear"], ["zoom"], 5, 10, 8, 14],
@@ -695,9 +702,12 @@ export default function MapView({
       map.setPaintProperty(layerId, "text-halo-width", paint["text-halo-width"]);
       map.setPaintProperty(layerId, "text-halo-blur", paint["text-halo-blur"]);
     }
-    for (const layer of ["kktc-outline", "kktc-label"]) {
-      map.setLayoutProperty(layer, "visibility", showLabels ? "visible" : "none");
-    }
+    map.setLayoutProperty("kktc-outline", "visibility", showLabels ? "visible" : "none");
+    map.setLayoutProperty(
+      "kktc-label",
+      "visibility",
+      kktcLabelVisible(showLabels, baseMap) ? "visible" : "none",
+    );
   }, [baseMap, showLabels, ready, theme]);
 
   // Yakınlaşınca gerçek yükseklik verisini ister; düşük güçlü cihazlarda kapatılabilir.

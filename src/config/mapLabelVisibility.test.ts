@@ -8,13 +8,13 @@ import { describe, expect, it } from "vitest";
  * Kanıtlanan sözleşme (stil kurulumu + efekt aynı kuralı uygular):
  *  - OpenFreeMap symbol (etiket) katmanları: yalnız dark ve satellite altlıklarda.
  *  - OpenFreeMap symbol olmayan katmanlar: yalnız dark altlıkta.
- *  - kktc-outline / kktc-label: yalnız `labels` bayrağına bağlı; altlık koşulu YOK.
+ *  - kktc-outline: yalnız `labels` bayrağına bağlı; her altlıkta aynı davranır.
+ *  - kktc-label: `labels` + dark/satellite koşuluna bağlı.
  *
- * Son kural kusur #9'un kaynağıdır: street/topographic (Esri raster) altlıkları
- * kendi gömülü etiketleriyle geldiğinden, KKTC etiketi Esri etiketiyle aynı
- * bölgede üst üste gelebilir. Düzeltme (kktc etiketlerine altlık koşulu
- * eklemek) MapView dokunma listesinde olduğu için kullanıcı kararı bekliyor;
- * bu test kusurun varlığını regresyona karşı görünür biçimde kilitler.
+ * Kullanıcının onayladığı B seçeneği kusur #9'u kapatır: street/topographic
+ * (Esri raster) altlıkları kendi gömülü etiketleriyle geldiğinden özel KKTC
+ * yazısı oralarda gizlenir. Sınır çizgisi metin çakışması yaratmadığı için
+ * her altlıkta korunur. Bu test düzeltilmiş sözleşmeyi regresyona kapatır.
  */
 
 const mapViewPath = fileURLToPath(new URL("../components/MapView.tsx", import.meta.url));
@@ -51,18 +51,30 @@ describe("harita etiket görünürlük matrisi (P13)", () => {
     expect(visibilityFn).not.toContain('"topographic" ? "visible"');
   });
 
-  it("KUSUR #9: KKTC etiketi altlık koşulsuzdur — sokak/topo'da Esri etiketiyle çakışabilir (karar bekliyor)", () => {
+  it("kktc-outline her altlıkta kalır; kktc-label yalnız dark/satellite'de görünürdür", () => {
     const outline = styleBlock("kktc-outline");
     const label = styleBlock("kktc-label");
-    // İki katman da ilk kurulumda yalnız `labels` koşuluna bağlı (baseMap yok).
-    expect(outline).toContain('visibility: labels ? "visible" : "none"');
-    expect(label).toContain('visibility: labels ? "visible" : "none"');
-    expect(label).not.toContain("baseMap");
-    // Güncelleme efektinde de baseMap dikkate alınmıyor.
-    expect(mapSource).toContain(
-      'map.setLayoutProperty(layer, "visibility", showLabels ? "visible" : "none")',
+    const helper = mapSource.slice(
+      mapSource.indexOf("function kktcLabelVisible"),
+      mapSource.indexOf("function openFreeMapLayers"),
     );
-    // KKTC etiketi çakışmaya izinli çizilir; yani üst üste binme render'da engellenmez.
+
+    expect(helper).toContain(
+      'return labels && (baseMap === "dark" || baseMap === "satellite")',
+    );
+    // Çizgi ilk kurulumda ve güncellemede altlığa değil yalnız labels'a bağlıdır.
+    expect(outline).toContain('visibility: labels ? "visible" : "none"');
+    expect(mapSource).toContain(
+      'map.setLayoutProperty("kktc-outline", "visibility", showLabels ? "visible" : "none")',
+    );
+    // Etiket aynı yardımcı koşulu ilk kurulumda ve güncellemede kullanır;
+    // böylece street/topographic'te Esri'nin gömülü etiketiyle çakışmaz.
+    expect(label).toContain(
+      'visibility: kktcLabelVisible(labels, baseMap) ? "visible" : "none"',
+    );
+    expect(mapSource).toContain('kktcLabelVisible(showLabels, baseMap)');
+    expect(mapSource.match(/kktcLabelVisible\(/g)).toHaveLength(3); // tanım + 2 çağrı
+    // Koşul kapsamındaki altlıklarda mevcut çizim sözleşmesi değişmez.
     expect(label).toContain('"text-allow-overlap": true');
   });
 
