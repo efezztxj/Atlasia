@@ -72,19 +72,36 @@ jobs:
         run: |
           python3 - <<'PY'
           import os
+          import re
           from pathlib import Path
 
-          log = Path("rules-emulator.log").read_text(encoding="utf-8", errors="replace")
-          lines = log.splitlines()
-          keys = ("FAIL ", "✕", "×", "AssertionError", "Error:", "Test Files", "Tests  ", "expected", "permission-denied")
-          picked = [line for line in lines if any(key in line for key in keys)][:60] or lines[-60:]
-          body = "\n".join(picked)[:6000]
-          escaped = body.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
-          print(f"::error title=Firestore kural testleri basarisiz::{escaped}")
+          raw = Path("rules-emulator.log").read_text(encoding="utf-8", errors="replace")
+          # Terminal renk kodları annotation metninde okunmayı bozuyor; hem gerçek
+          # ESC baytını hem de düz metin olarak düşmüş "^[[..m" biçimini temizle.
+          text = re.sub(r"(\x1b\[[0-9;]*[A-Za-z]|\^\[[0-9;]*m)", "", raw)
+          lines = text.splitlines()
+
+          # Vitest'in hata bloğu: "Failed Tests" başlığından dosya sonuna kadar.
+          start = next((i for i, l in enumerate(lines)
+                        if "Failed Tests" in l or l.strip().startswith("FAIL ")), max(0, len(lines) - 120))
+          block = lines[start:start + 160]
+          # Hangi satırın düştüğünü gösteren işaretçiler ayrıca değerlidir.
+          pointers = [l for l in lines if "❯" in l or "tests/firestore.rules.test.ts:" in l]
+          body = "\n".join((["--- SATIR ISARETCILERI ---"] + pointers[:30] + ["--- HATA BLOGU ---"] if pointers else []) + block)
+          body = body[:20000] or text[-4000:]
+
           summary = os.environ.get("GITHUB_STEP_SUMMARY")
           if summary:
               with open(summary, "a", encoding="utf-8") as handle:
                   handle.write("## Firestore kural testleri — başarısız\n\n```\n" + body + "\n```\n")
+
+          # İş özeti API'den okunamıyor; annotation'lar okunabiliyor. Tek annotation
+          # kırpıldığı için gövdeyi parçalara bölüp birden çok annotation basıyoruz.
+          chunk = 4000
+          parts = [body[i:i + chunk] for i in range(0, len(body), chunk)][:8]
+          for index, part in enumerate(parts, start=1):
+              escaped = part.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+              print(f"::error title=Kural testi hatasi {index}/{len(parts)}::{escaped}")
           PY
 
       - name: Production build
