@@ -152,6 +152,46 @@ export function subscribeFriends(
   );
 }
 
+/** Firestore hatasının kodunu güvenli biçimde okur (hata nesnesi tanınmazsa boş). */
+export function firestoreErrorCode(failure: unknown): string {
+  if (typeof failure === "object" && failure && "code" in failure) return String((failure as { code: unknown }).code);
+  return "";
+}
+
+/**
+ * İstek gönderimindeki hataları TEK yerde, kullanıcıya söylenecek kodla eşler.
+ * `permission-denied` iki farklı durumdan gelebilir:
+ *  1) Bekleyen istek zaten var → `allow update: false` yüzünden create reddedilir.
+ *     Bu yüzden önce kendi bekleyen isteğim silinip bir kez daha denenir.
+ *  2) Tekrar denemeye rağmen reddediliyor → istemci ile sunucu kuralları uyuşmuyor.
+ *     Sessizce yutulmaz; ayrı kodla yüzeye çıkar ve konsola gerçek hata yazılır.
+ */
+export function friendRequestFailure(failure: unknown, context: { retried: boolean }): Error & { code: string; cause: unknown } {
+  const code = firestoreErrorCode(failure);
+  let mapped: Error & { code: string };
+  if (code === "permission-denied" || code === "already-exists") {
+    mapped = context.retried
+      ? dataError("friend-request/rules-mismatch", "Istek gonderilemedi: sunucu bu islemi reddetti. Uygulama guncellendiyse guvenlik kurallarinin da guncellenmesi gerekir.")
+      : dataError("friend-request/exists", "Bu kisiye zaten istek gonderdin ya da arkadassiniz.");
+  } else if (code === "unavailable" || code === "network-request-failed" || code === "deadline-exceeded") {
+    mapped = dataError("friend-request/offline", "Istek gonderilemedi: baglanti kurulamadi.");
+  } else if (code === "unauthenticated") {
+    mapped = dataError("friend-request/not-signed-in", "Istek gondermek icin giris yapmalisin.");
+  } else {
+    mapped = dataError("friend-request/failed", "Istek gonderilemedi.");
+  }
+  return Object.assign(mapped, { cause: failure });
+}
+
+/** Kendi arkadaş indeksim okunamazsa "arkadaş değil" varsayılır (hata yutulmaz, kod yönlendirir). */
+async function isAlreadyFriend(ref: ReturnType<typeof doc>): Promise<boolean> {
+  try {
+    return (await getDoc(ref)).exists();
+  } catch {
+    return false;
+  }
+}
+
 export async function sendFriendRequest(input: { fromUid: string; fromName: string; toUid: string }): Promise<void> {
   if (!db) throw dataError("data/unavailable", "Firestore hazir degil.");
   const fromUid = input.fromUid.trim();
@@ -160,22 +200,47 @@ export async function sendFriendRequest(input: { fromUid: string; fromName: stri
   if (fromUid === toUid) throw dataError("friend-request/self", "Kendine istek gonderemezsin.");
   const fromName = input.fromName.trim().slice(0, 40) || "Gezgin";
   const ref = doc(db, `users/${toUid}/friendRequests/${fromUid}`);
-  const existing = await getDoc(ref);
-  if (existing.exists()) throw dataError("friend-request/exists", "Bu kisiye zaten istek gonderdin.");
+  // Alıcının kuyruğu ve friendships belgesi gönderen tarafından OKUNAMAZ
+  // (kurallar yalnız alıcıya/üyeye izin verir). İlk istek bu okumalara
+  // bağlanmamalı: yalnız kendi gelen kuyruğum okunur.
   const opposite = await getDoc(doc(db, `users/${fromUid}/friendRequests/${toUid}`));
   if (opposite.exists()) throw dataError("friend-request/opposite-exists", "Karsi taraf zaten sana istek gondermis; onun isteğini kabul et.");
-  const fid = friendshipIdFor(fromUid, toUid);
-  const friendshipSnap = await getDoc(doc(db, `friendships/${fid}`));
-  if (friendshipSnap.exists()) throw dataError("friend-request/already-friends", "Zaten arkadassiniz.");
-  await setDoc(
-    ref,
-    withoutUndefined({
-      fromUid,
-      fromName,
-      toUid,
-      createdAt: serverTimestamp(),
-    }),
-  );
+  // Kendi arkadaş indeksim okunabilir; zaten arkadaşsak kural reddetmeden önce
+  // doğru mesajı verebilmek için burada bakılır (create, friendship varken kapalı).
+  const friendRef = doc(db, `users/${fromUid}/friends/${toUid}`);
+  if (await isAlreadyFriend(friendRef)) throw dataError("friend-request/already-friends", "Bu kisi zaten arkadasin.");
+  const payload = () => withoutUndefined({ fromUid, fromName, toUid, createdAt: serverTimestamp() });
+
+  try {
+    await setDoc(ref, payload());
+  } catch (failure) {
+    const code = firestoreErrorCode(failure);
+    if (code !== "permission-denied" && code !== "already-exists") {
+      if (code === "failed-precondition") {
+        console.error("[Atlasia] Arkadaslik istegi yazilamadi (failed-precondition):", failure);
+      }
+      throw friendRequestFailure(failure, { retried: false });
+    }
+    // 1) Bekleyen istek zaten varsa temizle, 2) bir kez daha dene.
+    let healed = false;
+    try {
+      await deleteDoc(ref);
+      healed = true;
+    } catch (cleanupFailure) {
+      console.warn("[Atlasia] Bekleyen istek temizlenemedi:", cleanupFailure);
+    }
+    if (!healed) throw friendRequestFailure(failure, { retried: true });
+    try {
+      await setDoc(ref, payload());
+    } catch (retryFailure) {
+      // Ret sonrası en olası iki neden: zaten arkadaş olmak ya da dağıtılmış
+      // kuralların istemciden eski olması. İkisi ayrı kodla raporlanır.
+      if (await isAlreadyFriend(friendRef)) throw dataError("friend-request/already-friends", "Bu kisi zaten arkadasin.");
+      console.error("[Atlasia] Arkadaslik istegi kurallar tarafindan reddedildi:", retryFailure);
+      throw friendRequestFailure(retryFailure, { retried: true });
+    }
+  }
+
   try {
     await createNotification({
       recipientUid: toUid,
@@ -204,33 +269,10 @@ export async function declineFriendRequest(recipientUid: string, requesterUid: s
   const cleanRequester = requesterUid.trim();
   if (!cleanRecipient || !cleanRequester) throw dataError("friend-request/uid-invalid", "Kullanici kimligi gecersiz.");
   await deleteDoc(doc(db, `users/${cleanRecipient}/friendRequests/${cleanRequester}`));
-  try {
-    await createNotification({
-      recipientUid: cleanRequester,
-      actorUid: cleanRecipient,
-      type: "friend_declined",
-      title: "Istek reddedildi",
-      body: "Arkadaslik istegin reddedildi.",
-      targetId: cleanRecipient,
-    });
-  } catch (error) {
-    console.warn("[Atlasia] Red bildirimi yazilamadi:", error);
-  }
-}
-
-async function writeFriendIndex(ownerUid: string, friendUid: string, friendName: string): Promise<void> {
-  if (!db) throw dataError("data/unavailable", "Firestore hazir degil.");
-  const cleanOwner = ownerUid.trim();
-  const cleanFriend = friendUid.trim();
-  if (!cleanOwner || !cleanFriend) throw dataError("friend-index/uid-invalid", "Kullanici kimligi gecersiz.");
-  await setDoc(
-    doc(db, `users/${cleanOwner}/friends/${cleanFriend}`),
-    withoutUndefined({
-      friendUid: cleanFriend,
-      friendName: friendName.trim().slice(0, 40) || "Gezgin",
-      since: serverTimestamp(),
-    }),
-  );
+  // "Reddedildi" bildirimi bilinçli olarak GÖNDERİLMEZ: ret sonrası istek belgesi
+  // silindiği için kural tarafında kanıtlanacak bir ilişki kalmaz ve kurallar bu
+  // tipi istemciye kapatır (bkz. firestore.rules notificationProof). Sunucu
+  // fonksiyonu yok; kanıtsız bildirim yazmak kuralı gevşetmeyi gerektirirdi.
 }
 
 export async function acceptFriendRequest(recipientUid: string, requesterUid: string, recipientName: string): Promise<Friendship> {
@@ -257,9 +299,18 @@ export async function acceptFriendRequest(recipientUid: string, requesterUid: st
     }),
   );
   batch.delete(requestRef);
+  // Kendi indeksim aynı atomik batch'te yazılır (kural getAfter ile kabul
+  // edilmiş arkadaşlığı doğrular). Karşı tarafın indeksini ben yazamam
+  // (kural: uid == auth); onu kendi hesabı ensureFriendIndex ile yazar.
+  batch.set(
+    doc(db, `users/${cleanRecipient}/friends/${cleanRequester}`),
+    withoutUndefined({
+      friendUid: cleanRequester,
+      friendName: fromName.trim().slice(0, 40) || "Gezgin",
+      since: serverTimestamp(),
+    }),
+  );
   await batch.commit();
-  await writeFriendIndex(cleanRecipient, cleanRequester, fromName);
-  await writeFriendIndex(cleanRequester, cleanRecipient, recipientName.trim().slice(0, 40) || "Gezgin");
   try {
     await createNotification({
       recipientUid: cleanRequester,
@@ -305,6 +356,34 @@ export async function removeFriend(uid: string, friendUid: string): Promise<void
     console.warn("[Atlasia] Karsi taraf arkadas indeksi silinemedi (yetki yoksa normal):", error);
     // Karsi taraf indeksi silinemezse bile kendi tarafin silindi, hata yuzeye cikmaz ama loglanir
   }
+}
+
+/**
+ * Kabul edilmiş arkadaşlık için kendi indeksimi yazar (idempotent).
+ * Karşı taraf kabul ettiğinde benim adıma indeks yazması kural gereği mümkün
+ * değildir; bu yüzden kabul/davet bildirimi aldığımda kendi indeksimi kurarım.
+ */
+export async function ensureFriendIndex(uid: string, friendUid: string, friendName: string): Promise<boolean> {
+  if (!db) throw dataError("data/unavailable", "Firestore hazir degil.");
+  const me = uid.trim();
+  const other = friendUid.trim();
+  if (!me || !other || me === other) throw dataError("friend-request/uid-invalid", "Kullanici kimligi gecersiz.");
+  const indexRef = doc(db, `users/${me}/friends/${other}`);
+  const existing = await getDoc(indexRef);
+  if (existing.exists()) return false;
+  // Kimlik sıradan bağımsız olduğu için tek okuma yeterli; kural da bu
+  // belgeyi yalnız üyelerine okutur.
+  const accepted = await getDoc(doc(db, `friendships/${friendshipIdFor(me, other)}`));
+  const data = accepted.exists() ? accepted.data() : null;
+  if (!data || data.status !== "accepted") return false;
+  const users = Array.isArray(data.users) ? (data.users as string[]) : [];
+  if (!users.includes(me) || !users.includes(other)) return false;
+  await setDoc(indexRef, withoutUndefined({
+    friendUid: other,
+    friendName: friendName.trim().slice(0, 40) || "Gezgin",
+    since: serverTimestamp(),
+  }));
+  return true;
 }
 
 export async function fetchFriendship(uidA: string, uidB: string): Promise<Friendship | null> {

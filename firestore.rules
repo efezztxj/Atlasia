@@ -336,7 +336,11 @@ service cloud.firestore {
     // (validGroupShape joinCode'u biçimce denetler). Rules önce deploy edilir.
     function validGroupCreateShape(data) {
       return validGroupShape(data)
-             && data.createdAt == request.time;
+             && data.createdAt == request.time
+             // Rıza: grup yalnız kurucunun kendisiyle açılır. Başkaları
+             // users/{uid}/groupInvites kuyruğunda bekler, kabul edince üye olur.
+             && data.memberUids.size() == 1
+             && data.memberUids[0] == request.auth.uid;
     }
 
     function validGroupInvite(data, groupId, invitedUid) {
@@ -406,18 +410,62 @@ service cloud.firestore {
              || (existsAfter(path) && getAfter(path).data.status == "accepted" && getAfter(path).data.users.hasAll([uid, friendUid]));
     }
 
+    /**
+     * Bildirim yazımının İLİŞKİ kanıtı. Her tip, istemcinin gerçekten ürettiği
+     * bir belgeye bağlanır; böylece herhangi bir oturum herhangi bir kullanıcıya
+     * serbest metinli "sistem/rapor" bildirimi gönderemez.
+     * Kanıtlanamayan tipler (friend_declined, blocked, system, report_actioned)
+     * istemciye kapalıdır: bunlar yönetici/sunucu yazımıdır, bu projede sunucu yok.
+     */
+    function notificationProof(data) {
+      return (data.type == 'friend_request'
+              && exists(/databases/$(database)/documents/users/$(data.recipientUid)/friendRequests/$(data.actorUid)))
+             || (data.type == 'friend_accepted'
+                 && isAcceptedFriendship(data.actorUid, data.recipientUid))
+             || (data.type == 'group_invite'
+                 && 'targetId' in data
+                 && exists(/databases/$(database)/documents/groups/$(data.targetId)/invites/$(data.recipientUid))
+                 && get(/databases/$(database)/documents/groups/$(data.targetId)/invites/$(data.recipientUid)).data.inviterUid == data.actorUid)
+             || (data.type == 'group_message'
+                 && 'targetId' in data
+                 && exists(/databases/$(database)/documents/groups/$(data.targetId))
+                 && data.actorUid in get(/databases/$(database)/documents/groups/$(data.targetId)).data.memberUids
+                 && data.recipientUid in get(/databases/$(database)/documents/groups/$(data.targetId)).data.memberUids)
+             || (data.type == 'report_received'
+                 && 'targetId' in data
+                 && exists(/databases/$(database)/documents/reports/$(data.targetId))
+                 && get(/databases/$(database)/documents/reports/$(data.targetId)).data.reporterUid == data.actorUid);
+    }
+
     function pendingFriendRequestExists(requesterUid, recipientUid) {
       return exists(/databases/$(database)/documents/users/$(recipientUid)/friendRequests/$(requesterUid));
     }
 
-    function validUserProfile(data, uid) {
+    // Şekil: yalnız uid (kendisi), displayName, isteğe bağlı photoURL.
+    function validUserProfileShape(data, uid) {
       return data.keys().hasAll(['uid', 'displayName', 'createdAt', 'updatedAt'])
              && data.keys().hasOnly(['uid', 'displayName', 'photoURL', 'createdAt', 'updatedAt'])
              && data.uid == uid
              && data.uid == request.auth.uid
              && stringBetween(data.displayName, 2, 40)
-             && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 500 && data.photoURL.matches('https?://.*')))
+             && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 500 && data.photoURL.matches('https?://.*')));
+    }
+
+    // Oluşturma: damgalar sunucu zamanıdır.
+    function validUserProfileCreate(data, uid) {
+      return validUserProfileShape(data, uid)
              && data.createdAt == request.time
+             && data.updatedAt == request.time;
+    }
+
+    // Güncelleme: createdAt DEĞİŞMEZ (resource ile birebir), updatedAt sunucu zamanı.
+    // Eski tek helper `createdAt == request.time` istiyordu; güncelleme kuralı da
+    // `createdAt == resource.data.createdAt` istediği için update HİÇBİR ZAMAN
+    // geçemiyordu (ad değiştirilemiyordu). Çelişki burada kapatıldı; gevşetme yok:
+    // oluşturma aynı, güncelleme daha katı (createdAt dokunulamaz).
+    function validUserProfileUpdate(data, uid) {
+      return validUserProfileShape(data, uid)
+             && data.createdAt == resource.data.createdAt
              && data.updatedAt == request.time;
     }
 
@@ -842,8 +890,19 @@ service cloud.firestore {
     match /users/{uid}/groups/{groupId} {
       allow get: if signedIn() && uid == request.auth.uid;
       allow list: if signedIn() && uid == request.auth.uid && boundedList(20);
-      allow create: if signedIn() && uid == request.auth.uid
-                    && validGroupIndex(request.resource.data, groupId);
+      // Üyelik kanıtı (B1): kişi yalnız gerçekten üyesi olduğu grubu listesine
+      // yazabilir; rol de grubun sahibiyle tutarlı olmalı.
+      allow create: if signedIn()
+                    && uid == request.auth.uid
+                    && validGroupIndex(request.resource.data, groupId)
+                    && exists(/databases/$(database)/documents/groups/$(groupId))
+                    && request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.memberUids
+                    && (
+                      (request.resource.data.role == 'owner'
+                       && get(/databases/$(database)/documents/groups/$(groupId)).data.ownerUid == request.auth.uid)
+                      || (request.resource.data.role == 'member'
+                          && get(/databases/$(database)/documents/groups/$(groupId)).data.ownerUid != request.auth.uid)
+                    );
       allow update: if false;
       allow delete: if signedIn() && uid == request.auth.uid;
     }
@@ -874,7 +933,11 @@ service cloud.firestore {
     match /users/{uid}/notifications/{notificationId} {
       allow get: if signedIn() && uid == request.auth.uid;
       allow list: if signedIn() && uid == request.auth.uid && boundedList(50);
-      allow create: if signedIn() && validNotification(request.resource.data) && request.resource.data.recipientUid == uid;
+      // Rıza/ilişki kanıtı olmadan bildirim yazılamaz (B2).
+      allow create: if signedIn()
+                    && validNotification(request.resource.data)
+                    && request.resource.data.recipientUid == uid
+                    && notificationProof(request.resource.data);
       allow update: if signedIn() && uid == request.auth.uid
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read'])
                     && request.resource.data.read is bool;
@@ -893,8 +956,10 @@ service cloud.firestore {
     match /userProfiles/{uid} {
       allow get: if signedIn();
       allow list: if signedIn() && boundedList(20);
-      allow create: if signedIn() && validUserProfile(request.resource.data, uid);
-      allow update: if signedIn() && validUserProfile(request.resource.data, uid) && resource.data.uid == request.auth.uid && request.resource.data.createdAt == resource.data.createdAt;
+      allow create: if signedIn() && validUserProfileCreate(request.resource.data, uid);
+      allow update: if signedIn()
+                    && resource.data.uid == request.auth.uid
+                    && validUserProfileUpdate(request.resource.data, uid);
       allow delete: if signedIn() && resource.data.uid == request.auth.uid;
     }
 

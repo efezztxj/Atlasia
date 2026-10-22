@@ -6,6 +6,13 @@
 import { collection, deleteDoc, doc, limit, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import { db } from "./firebase";
 
+/**
+ * Kurallar (firestore.rules → notificationProof) her tipi bir İLİŞKİ kanıtına
+ * bağlar. İstemcinin yazabildiği tipler: friend_request, friend_accepted,
+ * group_invite, group_message, report_received.
+ * Kanıtlanamayan tipler (friend_declined, blocked, report_actioned, system)
+ * yalnız yönetici/sunucu yazımıdır; bu projede sunucu yok, kurallar reddeder.
+ */
 export type NotificationType = "report_received" | "report_actioned" | "blocked" | "group_invite" | "group_message" | "friend_request" | "friend_accepted" | "friend_declined" | "system";
 
 export interface AppNotification {

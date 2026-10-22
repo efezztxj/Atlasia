@@ -30,9 +30,10 @@ const FeedbackDialog = lazy(() => import("./FeedbackDialog"));
 interface Props {
   onClose: () => void;
   onRecords: () => void;
+  onOpenFriends?: () => void;
 }
 
-export default function ProfilePanel({ onClose, onRecords }: Props) {
+export default function ProfilePanel({ onClose, onRecords, onOpenFriends }: Props) {
   const { user, logout, setName, resendVerification, refreshSession } = useAuth();
   const { savedPlaces, savedRoutes } = useCollections();
   const panelRef = usePanelAccess(true, onClose);
@@ -178,6 +179,17 @@ export default function ProfilePanel({ onClose, onRecords }: Props) {
           {user?.phoneNumber ? <Phone size={15} /> : <Mail size={15} />}
           {user?.email ?? user?.phoneNumber}
         </p>
+
+        {onOpenFriends && (
+          <button
+            type="button"
+            onClick={onOpenFriends}
+            className="mt-4 flex w-full items-center justify-between gap-2 rounded-xl border border-leaf/25 bg-white/[0.04] p-3 text-left text-[13px] font-medium hover:bg-white/[0.07]"
+          >
+            <span className="flex items-center gap-2"><UserRound size={15} className="text-sun" />Arkadaşlarım</span>
+            <span className="text-[11px] text-mint/70">İstekler · Ekle</span>
+          </button>
+        )}
 
         <div className="mt-4 rounded-xl border border-leaf/20 bg-white/[0.03] p-3">
           <p className="text-[11px] text-mint/60">Hesap kimliğin (grup daveti için paylaş)</p>

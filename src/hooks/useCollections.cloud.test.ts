@@ -191,6 +191,33 @@ describe("useCollections (bulut modu)", () => {
     expect(h.subscriptions[1].unsubscribe).toHaveBeenCalledTimes(1);
   });
 
+  // Denetim 2026-10-22: hesap değişiminde eski kullanıcının kayıtları
+  // yeni kullanıcıya GÖSTERİLMEZ; kapanmış aboneliğin geç gelen yanıtı da sızmaz.
+  it("hesap değişiminde önceki kullanıcının kayıtları görünmez, geç gelen snapshot sızmaz", () => {
+    const { result, rerender } = renderHook(() => useCollections(), { wrapper });
+    act(() => h.subscriptions[0].onChange({ places: [place("a1")], routes: [route("ar1")] }));
+    expect(result.current.savedPlaces.map((item) => item.id)).toEqual(["a1"]);
+
+    h.user = { uid: "u2", backend: "firebase" };
+    rerender();
+
+    // Yeni snapshot gelmeden önce eski kullanıcının verisi görünmez.
+    expect(result.current.savedPlaces).toEqual([]);
+    expect(result.current.savedRoutes).toEqual([]);
+    expect(result.current.loading).toBe(true);
+    expect(result.current.isSaved("a1")).toBe(false);
+
+    // Kapanmış abonelikten geç gelen snapshot yeni kullanıcıya yazılmaz.
+    act(() => h.subscriptions[0].onChange({ places: [place("a2")], routes: [] }));
+    expect(result.current.savedPlaces).toEqual([]);
+    expect(result.current.loading).toBe(true);
+
+    // Yeni kullanıcının kendi snapshot'ı gelince görünür.
+    act(() => h.subscriptions[1].onChange({ places: [place("b1")], routes: [] }));
+    expect(result.current.savedPlaces.map((item) => item.id)).toEqual(["b1"]);
+    expect(result.current.loading).toBe(false);
+  });
+
   // Madde 12 regresyonu: cihaz hesabının uid'si Firestore'da yetkisizdir.
   // Koleksiyon yalnız `firebaseConfigured`a bakarsa cihaz kullanıcısının
   // kayıtları ne buluta yazılır ne yerelde tutulur (sessiz kayıp).

@@ -20,6 +20,7 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { withoutUndefined } from "./firestoreValue";
+import { profileQueryPrefixes } from "./profileSearch";
 
 export const USER_PROFILES_LIMIT = 20;
 export const DISPLAY_NAME_MIN = 2;
@@ -123,4 +124,48 @@ export function searchProfilesLocal(profiles: UserProfile[], queryText: string):
   const needle = queryText.trim().toLocaleLowerCase("tr");
   if (!needle) return [];
   return profiles.filter((profile) => profile.displayName.toLocaleLowerCase("tr").includes(needle)).slice(0, USER_PROFILES_LIMIT);
+}
+
+/**
+ * Instagram benzeri arama: yazılan metnin ilk harfinin büyük/küçük yazımları için
+ * ayrı aralık sorguları açar ve sonuçları tek listede birleştirir. Firestore
+ * aralık sorgusu harfe duyarlı olduğu için tek önek yetmiyor ("ada" → "Ada" ve "ada").
+ * Abonelik kapatıldığında tüm dinleyiciler bırakılır; geç gelen anlık görüntü yazılmaz.
+ */
+export function subscribeUserProfileSearch(
+  queryText: string,
+  onChange: (profiles: UserProfile[]) => void,
+  onError?: (error: Error) => void,
+): () => void {
+  const prefixes = profileQueryPrefixes(queryText);
+  if (!db || prefixes.length === 0) {
+    onChange([]);
+    return () => {};
+  }
+  const perPrefix = new Map<string, UserProfile[]>();
+  let active = true;
+  const publish = () => {
+    if (!active) return;
+    const merged = new Map<string, UserProfile>();
+    for (const prefix of prefixes) {
+      for (const profile of perPrefix.get(prefix) ?? []) {
+        if (!merged.has(profile.uid)) merged.set(profile.uid, profile);
+      }
+    }
+    onChange([...merged.values()]);
+  };
+  const offs = prefixes.map((prefix) =>
+    subscribeUserProfiles(
+      prefix,
+      (items) => {
+        perPrefix.set(prefix, items);
+        publish();
+      },
+      onError,
+    ),
+  );
+  return () => {
+    active = false;
+    offs.forEach((off) => off());
+  };
 }

@@ -1,4 +1,4 @@
-import { Bell, Bookmark, Compass, MapPin, Menu, Plus, Search, UserRound } from "lucide-react";
+import { Bell, Bookmark, Compass, MapPin, Menu, Plus, Search, UserRound, Users } from "lucide-react";
 import { cn } from "../utils/cn";
 
 interface Props {
@@ -11,6 +11,7 @@ interface Props {
   onOpenRecords: () => void;
   onOpenProfile: () => void;
   onOpenNotifications: () => void;
+  onOpenFriends: () => void;
   onOpenSearch: () => void;
   notificationsOpen: boolean;
   profileName: string;
@@ -27,6 +28,7 @@ export default function Header({
   onOpenRecords,
   onOpenProfile,
   onOpenNotifications,
+  onOpenFriends,
   onOpenSearch,
   notificationsOpen,
   profileName,
@@ -52,6 +54,14 @@ export default function Header({
           className="mobile-icon-btn grid place-items-center rounded-full text-mint"
         >
           <Search className="size-[19px]" strokeWidth={1.9} />
+        </button>
+        <button
+          type="button"
+          onClick={onOpenFriends}
+          aria-label="Arkadaşlarımı aç"
+          className="mobile-icon-btn grid place-items-center rounded-full text-mint"
+        >
+          <Users className="size-[19px]" strokeWidth={1.9} />
         </button>
         <button
           type="button"
@@ -110,6 +120,7 @@ export default function Header({
           <Plus className="size-4" strokeWidth={2.6} />
           İz bırak
         </button>
+        <button type="button" onClick={onOpenFriends} aria-label="Arkadaşlarımı aç" title="Arkadaşlar" className="hidden min-h-11 items-center gap-2 px-2 text-[13px] text-mint md:flex"><Users className="size-4" />Arkadaşlar</button>
         <button type="button" onClick={onOpenNotifications} aria-label={`Bildirimler${unreadCount > 0 ? `: ${unreadCount} yeni` : ""}`} aria-expanded={notificationsOpen} className="relative hidden size-11 place-items-center rounded-full text-mint/80 transition hover:bg-white/5 hover:text-mint md:grid">
           <Bell className="size-[18px] stroke-[1.9]" />
           {unreadCount > 0 && <span aria-hidden className="absolute right-2 top-2 size-2 rounded-full bg-sun" />}

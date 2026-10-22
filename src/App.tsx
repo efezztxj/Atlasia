@@ -43,11 +43,15 @@ import { decodePolyline } from "./utils/polyline";
 import { useBlocks } from "./hooks/useBlocks";
 import { useFreshness } from "./hooks/useFreshness";
 import { subscribeNotifications, markNotificationRead, markAllRead, type AppNotification } from "./lib/notifications";
+import { syncUserProfile } from "./lib/userProfiles";
+import { syncFriendIndexes } from "./lib/friendSync";
+import { syncProfileForUser } from "./lib/profileSync";
 import NotificationsPanel from "./components/NotificationsPanel";
 
 const MapView = lazy(() => import("./components/MapView"));
 // Profil paneli yalnız açılınca yüklenir (ilk paket bütçesi).
 const ProfilePanel = lazy(() => import("./components/ProfilePanel"));
+const FriendsPanel = lazy(() => import("./components/FriendsPanel"));
 const MAP_STYLE_KEY = "atlasia.mapStyle.v1";
 
 function initialMapStyle(): BaseMapStyle {
@@ -145,6 +149,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   const [recordsOpen, setRecordsOpen] = useState(false);
   const [trackRecorderOpen, setTrackRecorderOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [friendsOpen, setFriendsOpen] = useState(false);
   const [myPlacesOpen, setMyPlacesOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -233,6 +238,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
     setAtlasOpen(false);
     setRecordsOpen(false);
     setProfileOpen(false);
+    setFriendsOpen(false);
     setMyPlacesOpen(false);
     setSettingsOpen(false);
     setStoryPlace(null);
@@ -242,6 +248,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
 
   const openRecords = () => { closePanels(); setRecordsOpen(true); };
   const openProfile = () => { closePanels(); setProfileOpen(true); };
+  const openFriends = () => { closePanels(); setFriendsOpen(true); };
   const openAtlas = () => { closePanels(); setResumeRoute(null); setSpin(false); setAtlasOpen(true); };
 
   const openSettings = useCallback(() => {
@@ -250,6 +257,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
     setAtlasOpen(false);
     setRecordsOpen(false);
     setProfileOpen(false);
+    setFriendsOpen(false);
     setMyPlacesOpen(false);
     setStoryPlace(null);
     setStreetPlace(null);
@@ -263,6 +271,44 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
     const unsub = subscribeNotifications(user.uid, setNotifications);
     return () => unsub();
   }, [user?.uid]);
+
+  // Arkadaş araması `userProfiles` dizininden çalışır; bu dizin kendiliğinden
+  // oluşmaz. Oturum açan bulut kullanıcısının profili bir kez (ad değişince
+  // yeniden) eşitlenir. Hata oturumu kilitlemez, yalnız loglanır.
+  const profileSyncedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!user?.uid || user.backend !== "firebase") return;
+    const key = `${user.uid}:${(user.displayName ?? "").trim()}`;
+    if (profileSyncedFor.current === key) return;
+    profileSyncedFor.current = key;
+    void syncProfileForUser(user, (input) => syncUserProfile(input)).catch((error: unknown) => {
+      // Başarısızsa anahtar geri alınır: ad değişiminde yeniden denenebilsin.
+      profileSyncedFor.current = null;
+      console.warn("[Atlasia] Profil dizini eşitlenemedi:", error);
+    });
+  }, [user, user?.uid, user?.backend, user?.displayName]);
+
+  // Karşı taraf kabul ettiğinde kendi arkadaş indeksim kendiliğinden oluşmaz
+  // (kural: yalnız kendi listene yazabilirsin). Kabul bildirimini görünce
+  // kanıta bağlı olarak tamamla; hata bildirimi akışı kilitlemez.
+  const friendSyncDone = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!user?.uid || user.backend !== "firebase") return;
+    const pending = notifications.filter(
+      (item) => item.type === "friend_accepted" && item.targetId && !friendSyncDone.current.has(item.targetId),
+    );
+    if (pending.length === 0) return;
+    // Başarısız olanlar "tamamlandı" sayılmaz: sonraki bildirim anında yeniden denenir.
+    const attempted = new Set(pending.map((item) => item.targetId as string));
+    void syncFriendIndexes({
+      uid: user.uid,
+      notifications: pending,
+      onError: (error, friendUid) => console.warn("[Atlasia] Arkadaş indeksi tamamlanamadı:", friendUid, error),
+    }).then((result) => {
+      const settled = new Set([...result.created, ...result.skipped]);
+      for (const friendUid of attempted) if (settled.has(friendUid)) friendSyncDone.current.add(friendUid);
+    });
+  }, [notifications, user?.uid, user?.backend]);
   const visibleNotifications = notifications.filter((item) => !isBlocked(item.actorUid));
   const unreadCount = visibleNotifications.filter((n) => !n.read).length;
   const handleMarkAllRead = () => { if (user?.uid) void markAllRead(user.uid, notifications); };
@@ -562,10 +608,10 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   }, []);
 
   const heroHidden = view.zoom > 3.4;
-  const dockVisible = !recordsOpen && !profileOpen && !myPlacesOpen && !storyPlace && !atlasOpen && !settingsOpen && !drawerOpen && !feedOpen;
+  const dockVisible = !recordsOpen && !profileOpen && !friendsOpen && !myPlacesOpen && !storyPlace && !atlasOpen && !settingsOpen && !drawerOpen && !feedOpen;
   const mobileExplore = () => { closePanels(); setPanelOpen(true); };
   const openMyPlaces = () => { closePanels(); setMyPlacesOpen(true); };
-  const mobileTab = myPlacesOpen ? "İzlerim" : recordsOpen ? "Kaydet" : feedOpen ? "Topluluk" : profileOpen ? "Profil" : "Keşfet";
+  const mobileTab = myPlacesOpen ? "İzlerim" : recordsOpen ? "Kaydet" : feedOpen ? "Topluluk" : profileOpen ? "Profil" : friendsOpen ? "Arkadaşlar" : "Keşfet";
 
   return (
     <div className="space-bg relative h-screen w-full overflow-hidden">
@@ -602,6 +648,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         onOpenSettings={() => openSettings()}
         onOpenRecords={openRecords}
         onOpenProfile={openProfile}
+        onOpenFriends={openFriends}
         onOpenNotifications={() => {
           const next = !notificationsOpen;
           closePanels();
@@ -846,7 +893,16 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
           setToast(visibility === "private" ? "Rota hesabında özel olarak kaydedildi." : "Rota yayımlandı. Kalıcı bağlantı hazır.");
         }}
       />}
-      {profileOpen && <Suspense fallback={null}><ProfilePanel onClose={() => setProfileOpen(false)} onRecords={openRecords} /></Suspense>}
+      {profileOpen && (
+        <Suspense fallback={null}>
+          <ProfilePanel onClose={() => setProfileOpen(false)} onRecords={openRecords} onOpenFriends={openFriends} />
+        </Suspense>
+      )}
+      {friendsOpen && (
+        <Suspense fallback={null}>
+          <FriendsPanel onClose={() => setFriendsOpen(false)} />
+        </Suspense>
+      )}
       {myPlacesOpen && (
         <MyPlacesPanel
           places={myPlaces}
