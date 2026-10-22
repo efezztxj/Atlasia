@@ -9,6 +9,7 @@ import {
   arrayUnion,
   collection,
   deleteDoc,
+  deleteField,
   doc,
   documentId,
   getDoc,
@@ -582,7 +583,9 @@ describe("Firestore güvenlik kuralları", () => {
     await assertSucceeds(setDoc(doc(ownerDb, "groups/group-1"), valid));
 
     await assertSucceeds(getDoc(doc(ownerDb, "groups/group-1")));
-    await assertSucceeds(getDoc(doc(memberDb, "groups/group-1")));
+    // Yeni model: grup yalnız kurucuyla açılır; listede olmayan kullanıcı okuyamaz
+    // (üye koda veya davete katılarak eklenir).
+    await assertFails(getDoc(doc(memberDb, "groups/group-1")));
     await assertFails(getDoc(doc(outsiderDb, "groups/group-1")));
     // Geniş koleksiyon taraması kapalı; listeleme kullanıcı indeksinden yapılır.
     await assertFails(getDocs(query(collection(outsiderDb, "groups"), limit(20))));
@@ -1141,6 +1144,8 @@ describe("Firestore güvenlik kuralları", () => {
         updatedAt: serverTimestamp(),
       }),
     );
+    // Kodlu grup kodsuz bırakılamaz → FAIL
+    await assertFails(updateDoc(doc(aliceDb, "groups/legacy-group"), { joinCode: deleteField(), updatedAt: serverTimestamp() }));
     // 4 haneli kod ekleme → FAIL
     await seed("groups/legacy-group2", { name: "Eski2", ownerUid: "alice", memberUids: ["alice"], createdAt: Timestamp.now(), updatedAt: Timestamp.now() });
     const snap2 = await getDoc(doc(aliceDb, "groups/legacy-group2"));
@@ -1154,6 +1159,10 @@ describe("Firestore güvenlik kuralları", () => {
         updatedAt: serverTimestamp(),
       }),
     );
+    // Kurucu kodsuz eski grubun yalnız adını değiştirebilir (kod eklemeden) → SUCCEED
+    await assertSucceeds(updateDoc(doc(aliceDb, "groups/legacy-group2"), { name: "Eski2 yeni ad", updatedAt: serverTimestamp() }));
+    // Üye olmayan kodsuz eski grubun adını değiştiremez → FAIL
+    await assertFails(updateDoc(doc(bobDb, "groups/legacy-group2"), { name: "Ele geçirildi", updatedAt: serverTimestamp() }));
     // Tam kimlikle katılma (kodsuz eski grup) (#31 akışı) çalışır — üye olmayan davet olmadan eklenemez ama tam kimlikle joinGroup yolu var
     // Kodsuz grupta kod yolu çalışmaz, ancak davet yolu çalışır
     await seed("groups/group-invite-old", {
@@ -1189,7 +1198,27 @@ describe("Firestore güvenlik kuralları", () => {
 
   // === P4 — hesap silme: sahip olunan veri ve kayıtlı rota sayacı kurala uygun silinir ===
   it("hesap silme: kendi rota/iz kaydını siler, başkasınınkini silemez; kayıtlı rota yalnız sayaç düşürülerek silinir", async () => {
-    await seed("routes/r-del", { authorUid: "bob", visibility: "public", saveCount: 1 });
+    // Sayaç güncellemesi validRouteDocument'tan geçmeli: rota belgesi tam şemayla tohumlanır.
+    await seed("routes/r-del", {
+      authorUid: "bob",
+      visibility: "public",
+      route: {
+        id: "r-del",
+        routeTitle: "Kordon",
+        routeSummary: "Kıyı yürüyüşü.",
+        totalDurationHours: 1,
+        totalDistanceKm: 1,
+        transport: "walking",
+        vibe: "Sakin",
+        days: [],
+        weatherNote: null,
+        alternatives: [],
+        createdAt: Date.now(),
+      },
+      saveCount: 1,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
     await seed("routes/r-mine", { authorUid: "alice", visibility: "public", saveCount: 0 });
     await seed("tracks/t-alice", { authorUid: "alice" });
     await seed("users/alice/savedRoutes/r-del", { routeId: "r-del", savedAt: Timestamp.now() });

@@ -671,7 +671,11 @@ service cloud.firestore {
                         && request.resource.data.ownerUid == resource.data.ownerUid
                         && request.resource.data.createdAt == resource.data.createdAt
                         && request.resource.data.memberUids == resource.data.memberUids
-                        && request.resource.data.joinCode.matches('[0-9]{6,8}')
+                        // Kodlu grup kodsuz bırakılamaz; kodsuz eski grup kodsuz kalarak adını değiştirebilir.
+                        && (
+                          ('joinCode' in request.resource.data && request.resource.data.joinCode.matches('[0-9]{6,8}'))
+                          || (!('joinCode' in resource.data) && !('joinCode' in request.resource.data))
+                        )
                         && validGroupShape(request.resource.data)
                       ) || (
                         // Eski gruba kod ekleme: joinCode yoksa kurucu ekleyebilir (backward compat)
