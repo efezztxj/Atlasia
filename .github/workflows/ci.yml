@@ -59,7 +59,33 @@ jobs:
         run: npm run test:owner-index
 
       - name: Firestore security rules tests
-        run: npm run test:rules:emulator
+        id: rules-tests
+        run: |
+          set -o pipefail
+          npm run test:rules:emulator 2>&1 | tee rules-emulator.log
+
+      # Emülatör adımının logu Actions arayüzü dışında okunamıyor; başarısızlıkta
+      # ilgili satırları check-run annotation'ına ve iş özetine taşır. Böylece
+      # hangi kural testinin neden düştüğü API üzerinden de görünür olur.
+      - name: Kural testi hatasını annotation ve iş özetine taşı
+        if: always() && steps.rules-tests.outcome == 'failure'
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          log = Path("rules-emulator.log").read_text(encoding="utf-8", errors="replace")
+          lines = log.splitlines()
+          keys = ("FAIL ", "✕", "×", "AssertionError", "Error:", "Test Files", "Tests  ", "expected", "permission-denied")
+          picked = [line for line in lines if any(key in line for key in keys)][:60] or lines[-60:]
+          body = "\n".join(picked)[:6000]
+          escaped = body.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+          print(f"::error title=Firestore kural testleri basarisiz::{escaped}")
+          summary = os.environ.get("GITHUB_STEP_SUMMARY")
+          if summary:
+              with open(summary, "a", encoding="utf-8") as handle:
+                  handle.write("## Firestore kural testleri — başarısız\n\n```\n" + body + "\n```\n")
+          PY
 
       - name: Production build
         run: npm run build
