@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Activity, Bookmark, Compass, Crosshair, MapPin, MousePointerClick, Plus, UserRound, UsersRound, X } from "lucide-react";
 import type { BaseMapStyle, MapViewHandle } from "./components/MapView";
 import Header from "./components/Header";
@@ -149,11 +149,16 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   const [addMode, setAddMode] = useState(false);
   const [draft, setDraft] = useState<{ lng: number; lat: number } | null>(null);
   const [spin, setSpin] = useState(true);
+  const [heroCompact, setHeroCompact] = useState(false);
   const [labels, setLabels] = useState(true);
   const [terrain, setTerrain] = useState(true);
   const [baseMap, setBaseMap] = useState<BaseMapStyle>(initialMapStyle);
   const [view, setView] = useState<ViewState>({ zoom: 2, lng: 30, lat: 30 });
   const [panelOpen, setPanelOpen] = useState(() => window.innerWidth >= 768);
+  const [discoverySpace, setDiscoverySpace] = useState(0);
+  const handleDiscoverySpaceChange = useCallback((space: number) => {
+    setDiscoverySpace((current) => (Math.abs(current - space) < 1 ? current : space));
+  }, []);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [feedOpen, setFeedOpen] = useState(false);
   const [atlasOpen, setAtlasOpen] = useState(false);
@@ -503,6 +508,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
 
   const handleReset = () => {
     setSpin(true);
+    setHeroCompact(false);
     setActiveId(null);
     setLocationLabel("Dünya");
     mapRef.current?.reset();
@@ -615,7 +621,10 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
 
   const heroHidden = view.zoom > 3.4;
   const dockVisible = !recordsOpen && !profileOpen && !myPlacesOpen && !storyPlace && !atlasOpen && !settingsOpen && !drawerOpen && !feedOpen;
-  const mobileExplore = () => { closePanels(); setPanelOpen(true); };
+  useEffect(() => {
+    if (!dockVisible) setDiscoverySpace(0);
+  }, [dockVisible]);
+  const mobileExplore = () => { closePanels(); setHeroCompact(false); setPanelOpen(true); };
   const openMyPlaces = () => { closePanels(); setMyPlacesOpen(true); };
   const mobileTab = myPlacesOpen ? "İzlerim" : recordsOpen ? "Kaydet" : feedOpen ? "Topluluk" : profileOpen ? "Profil" : "Keşfet";
   const settingsContentProps: SettingsContentProps = {
@@ -643,7 +652,10 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   };
 
   return (
-    <div className="space-bg relative h-screen w-full overflow-hidden">
+    <div
+      className="space-bg relative h-screen w-full overflow-hidden"
+      style={{ "--discovery-occupied-space": `${discoverySpace}px` } as CSSProperties}
+    >
       <a href="#harita" className="skip-link">
         İçeriğe geç
       </a>
@@ -661,7 +673,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
             baseMap={baseMap}
             theme={theme}
             spin={spin && !reducedMotion && !addMode && !draft}
-            onUserInteract={() => setSpin(false)}
+            onUserInteract={() => { setSpin(false); setHeroCompact(true); }}
             onViewChange={setView}
             onViewportChange={setMapViewport}
           />
@@ -694,7 +706,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         className="mobile-home-content pointer-events-none absolute inset-x-0 top-[68px] z-30 px-3 pt-3 md:top-[72px] md:z-10 md:px-8 md:pt-12"
       >
         <div className="mx-auto flex max-w-[1340px] flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-5">
-          <Hero hidden={heroHidden} />
+          <Hero hidden={heroHidden} compact={heroCompact} />
           {/* SearchBox sadece masaüstünde */}
           <div className="hidden md:order-2 md:block">
             <SearchBox
@@ -738,7 +750,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         type="button"
         onClick={() => setTrackRecorderOpen(true)}
         aria-label="Yürüyüş kaydını aç"
-        className="glass-panel gold-frame pressable fixed bottom-[136px] left-3 z-30 flex min-h-12 items-center gap-2.5 rounded-full py-1.5 pr-4 pl-1.5 text-[13px] font-semibold text-mint md:bottom-24 md:left-8"
+        className="mobile-bottom-stack-control glass-panel gold-frame pressable fixed left-3 z-30 flex min-h-12 items-center gap-2.5 rounded-full py-1.5 pr-4 pl-1.5 text-[13px] font-semibold text-mint md:bottom-24 md:left-8"
       ><span className="btn-gold grid size-9 place-items-center rounded-full"><Activity size={16} strokeWidth={2.2} /></span>Yürüyüş kaydı</button>}
       {trackRecorderOpen && <TrackRecorderPanel
         uid={user!.uid}
@@ -849,6 +861,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         onOpenFeed={() => { closePanels(); setFeedOpen(true); }}
         accuracy={precise?.accuracy ?? null}
         locating={geo.status === "locating" || geo.status === "refining"}
+        onOccupiedSpaceChange={handleDiscoverySpaceChange}
       />}
 
       <AtlasAssistant
