@@ -74,6 +74,8 @@ export default function GroupsPanel({ currentUid, currentName, blockedSet, isBlo
 
   const showError = useCallback((message: string) => { setStatus(null); setError(message); }, []);
   const showStatus = useCallback((message: string) => { setError(null); setStatus(message); }, []);
+  // Kararlı referans: FriendsTab bunu efekt bağımlılığında kullanır (her render profil yeniden okunmasın).
+  const clearFriendInvite = useCallback(() => setFriendInviteUid(null), []);
 
   useEffect(() => {
     const unsubscribe = subscribeMyGroups(
@@ -395,7 +397,7 @@ export default function GroupsPanel({ currentUid, currentName, blockedSet, isBlo
               requests={friendRequests}
               isBlocked={isBlocked}
               invitedByUid={friendInviteUid}
-              onInviteHandled={() => setFriendInviteUid(null)}
+              onInviteHandled={clearFriendInvite}
               onStatus={showStatus}
               onError={showError}
             />
