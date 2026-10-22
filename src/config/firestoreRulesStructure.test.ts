@@ -273,6 +273,20 @@ describe("kural sertleştirmeleri — regresyon kilitleri (2026-10-22 denetimi)"
     expect(stories).toContain("function storyLive()");
   });
 
+  it("kusur #5 sınırı: hikâye listesi resource.data'ya dokunamaz (CI kanıtı)", () => {
+    // Firestore list kuralları tek tek belgelere değil, sorgudan türetilen
+    // sentetik bir nesneye karşı değerlendiriliyor: eşitlik filtresi
+    // kanıtlanabiliyor (routes: visibility == 'public'), createdAt için aralık
+    // filtresi kanıtlanamıyor. Emülatör bunu "Property createdAt is undefined
+    // on object. for 'list' @ L507" hatasıyla reddetti ve herkese açık hikâye
+    // akışı kırıldı (PR #51 CI, 2026-10-22). Pencere bu yüzden yalnız get'te
+    // zorunlu; list satırı sadece sayfa sınırını taşır.
+    const listLine = stories.split("\n").find((line) => line.includes("allow list")) ?? "";
+    expect(listLine).toContain("boundedList(50)");
+    expect(listLine).not.toContain("resource.data");
+    expect(stories).toMatch(/allow get: if storyLive\(\)/);
+  });
+
   it("sertleştirmeler gevşetme içermez: catch-all ve list:false yerinde", () => {
     expect(rules).toContain("match /{document=**} {");
     expect(rules).toContain("allow read, write: if false;");

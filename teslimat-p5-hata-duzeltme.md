@@ -363,7 +363,7 @@ düzeltildi. Hiçbir `allow` genişletilmedi; catch-all ve `list: false` yerinde
 | 🔴 #2 Grup indeksi üyelik/rol kanıtı istemiyordu | `users/{uid}/groups` create artık `exists(groups/{gid})` + `auth.uid in get(...).memberUids` + `(role=='owner') == (group.ownerUid==auth.uid)` ister. createGroup/acceptGroupInvite indeksi gruptan SONRA (sıralı) yazar → `get()` güvenli. |
 | 🔴 #3 Silinmiş grupta `get(...).data` null → kural hatası | `groupMembers()` artık `exists(...)` guard'lı; silinmiş grupta `[]` döner, istek temiz reddedilir. |
 | 🟠 #4 Grup kuruluşunda rızasız üye ekleme | create'e `memberUids.hasOnly([request.auth.uid])` eklendi → kuruluş anında liste tam olarak [kurucu]. Diğerleri ancak invite+kabul (friendInviteSelfAdd) ile katılır. |
-| 🟠 #5 Hikâyeler süresiz herkese açık | `storyLive()` = `createdAt >= request.time - duration.value(24,'h')`; get/list buna bağlı, sahibi hariç. İstemci zaten `where(createdAt >= now-24h)` gönderir (STORY_TTL_MS) → liste akışı kırılmaz. |
+| 🟠 #5 Hikâyeler süresiz herkese açık | `storyLive()` = `createdAt >= request.time - duration.value(24,'h')` **get'te** zorunlu (sahibi hariç). **List'te uygulanamıyor — bkz. aşağıdaki CI kanıtı.** İstemci sorgusu zaten `where(createdAt >= now-24h)` gönderir (`STORY_TTL_MS`). Kalan 🟡 risk: filtresiz liste sorgusu süresi dolmuş kayıtları döndürebilir. |
 
 🟡 "var olmayan belgede get → permission-denied" (routes/tracks) **bilinçli
 değiştirilmedi**: varlık-gizleme amacı olabilir; istemci tarafında zaten
@@ -381,3 +381,58 @@ probe ile sarmalanmış durumda. Kural değişikliği ayrı onay gerektirir.
 
 Doğrulama: typecheck 0 · lint 0 · test:run 53 dosya / 374 test · build başarılı.
 Kurallar DEPLOY EDİLMEDİ.
+
+---
+
+## Ek tur 3b — CI kanıtı: `list` kuralları `resource.data` ile yazılamıyor
+
+PR #51'in ilk CI koşusunda emülatör adımı düştü. Log indirme adresi
+(`results-receiver.actions.githubusercontent.com`) bu çalışma ortamından
+erişilemediği için `.github/workflows/ci.yml`'e bir teşhis adımı eklendi:
+emülatör adımı `tee` ile yakalanıyor (`set -o pipefail` ile çıkış kodu
+maskelenmeden) ve başarısızlıkta hata bloğu + `❯ dosya:satır` işaretçileri
+check-run **annotation**'ına yazılıyor (annotation'lar `api.github.com`
+üzerinden okunabiliyor; iş özeti `output.summary/text` null döndüğü için
+okunamıyor).
+
+**Elde edilen kanıt (run 39799985550):**
+
+```
+FAIL tests/firestore.rules.test.ts > story'yi immutable tutar, sorguyu sınırlar ve yalnız sahibine sildirir
+FirebaseError:
+Property createdAt is undefined on object. for 'list' @ L507, false for 'list' @ L850
+Tests  1 failed | 47 passed (48)
+```
+
+**Mekanizma:** Firestore `list` kuralları tek tek belgelere karşı değil,
+sorgudan türetilen sentetik bir nesneye karşı değerlendiriliyor. Bu, depodaki
+mevcut davranışla birebir uyumlu:
+
+| Sorgu | Kural | Sonuç |
+|---|---|---|
+| `routes` + `where("visibility","==","public")` + `limit(40)` | `resource.data.visibility == 'public'` | ✅ allow (eşitlik filtresi kanıtlanıyor) |
+| `routes` filtresiz + `limit(40)` | aynı | ❌ deny (sentetik nesnede alan yok → hata) |
+| `stories` filtresiz + `limit(50)` | `createdAt >= request.time - duration.value(24,'h')` | ❌ **hata** — akış kırıldı |
+
+Aralık filtresi (`>=`) eşitlik gibi kanıtlanamıyor; kanıtlanabilse bile istemci
+saatine bağımlı olurdu (`cutoff`, `request.time - 24h`'ten milisaniyeler önce
+hesaplandığı anda akış kapanırdı).
+
+**Yapılan:** `stories` `allow list` yeniden `boundedList(50)` oldu; 24 saat
+penceresi `allow get`'te kaldı (doğrudan id ile okuma — kalıcı bağlantı sızıntısı
+— kapanmış durumda; süresi dolmuş hikâyeyi yalnız sahibi okuyabiliyor).
+Gerekçe ve kalan risk kural dosyasına yorum olarak işlendi, ayrıca
+`firestoreRulesStructure.test.ts`'e **negatif kilit** eklendi: hikâye `allow list`
+satırı bir daha `resource.data`'ya dokunamaz.
+
+**Kalan 🟡 risk (ürün kararı gerektirir):** oturumsuz ve filtresiz bir liste
+sorgusu, süresi dolmuş hikâyeleri 50 kayıtlık sayfalar hâlinde döndürebilir.
+Bunu kapatmanın iki yolu var: (a) `allow list: if signedIn() && boundedList(50)`
+— misafir akışını kapatır, mevcut testin beklentisini değiştirir; (b) TTL/veri
+modeli değişikliği (gün bazlı koleksiyon veya süre dolunca temizlik). İkisi de
+ayrı onay konusu; bu PR'da uygulanmadı.
+
+**Not:** Aynı nedenle `tracks` list kuralı (`resource.data.authorUid ==
+request.auth.uid`, satır ~550) filtresiz sorguda hiç başarılı olamaz. Mevcut
+(main'de de aynı) bir kural olduğu için bu PR'da dokunulmadı; istemci sorgusu
+`authorUid` eşitlik filtresi gönderiyorsa çalışır.

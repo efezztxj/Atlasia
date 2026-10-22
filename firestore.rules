@@ -503,10 +503,22 @@ service cloud.firestore {
       }
       allow get: if storyLive()
                  || (signedIn() && resource.data.authorUid == request.auth.uid);
-      // 24 saatlik pencere de cursor ile 50 kayıtlık sayfalara ayrılır.
-      allow list: if boundedList(50)
-                  && (storyLive()
-                      || (signedIn() && resource.data.authorUid == request.auth.uid));
+      // LİSTEDE 24 SAAT PENCERESİ UYGULANAMIYOR — kanıtlı sınır (CI, 2026-10-22):
+      // Firestore list kuralları tek tek belgelere değil, sorgudan türetilen
+      // sentetik bir nesneye karşı değerlendiriliyor. Eşitlik filtresi
+      // kanıtlanabiliyor (routes: where visibility == 'public' → allow), ama
+      // createdAt için aralık filtresi (>= now-24h) kanıtlanamıyor: emülatör
+      // "Property createdAt is undefined on object. for 'list' @ L507" hatasıyla
+      // reddediyor ve herkese açık hikâye akışı kırılıyordu. Pencereyi burada
+      // zorlamak ayrıca istemci saatine bağımlı (cutoff, request.time'dan
+      // milisaniyeler önce hesaplanırsa akış kapanır) olurdu. Bu yüzden liste
+      // yalnız 50 kayıtla sınırlı kalır; süre zorunluluğu get'te uygulanır ve
+      // istemci sorgusu createdAt >= now-24h filtresini zaten sunucuya gönderir
+      // (firestoreData.ts STORY_TTL_MS). Kalan 🟡 risk: filtresiz bir liste
+      // sorgusu süresi dolmuş kayıtları da döndürebilir; bunu kapatmak için
+      // listeyi oturuma bağlamak (ürün kararı) veya TTL/veri modeli değişikliği
+      // gerekir — ikisi de ayrı onay konusu.
+      allow list: if boundedList(50);
       allow create: if signedIn()
                     && validStoryShape(request.resource.data)
                     && request.resource.data.authorUid == request.auth.uid
