@@ -82,12 +82,13 @@ Deploy bu oturumda yapılmadı. Cloudflare/Firebase Console ayarına dokunulmad�
 
 ## 6. CI kanıtı
 
-CI çalıştıktan sonra doldurulacak (uydurma değer yazılmaz):
-
-- PR: _(PR açıldıktan sonra eklenecek)_
-- `gh pr checks`: _(eklenecek)_
-- "Firestore security rules tests" job ID: _(eklenecek)_ — `gh api repos/efezztxj/Atlasia/actions/jobs/<job_id>`
-- Yeşil değilse: hangi adım, hangi test; "PR hazır değil" notu.
+- PR: https://github.com/efezztxj/Atlasia/pull/45 (base `main`, "Supersedes #44")
+- Kanıtlanan commit: `d44d1ad` (görev 1–6 + teslimat planı; bu commit'te CI tam koştu)
+- Workflow: "Atlasia CI", run `39728027301`
+- Job: "Security, typecheck, lint, test and build" — job ID `119656428700` — conclusion: **success** (`gh api repos/efezztxj/Atlasia/actions/jobs/119656428700`)
+- Adım sonuçları (aynı job içinde, hepsi `success`): Check production dependency security baseline · Typecheck · Lint · Unit tests · Script tests (no credentials) · **Firestore security rules tests** · Production build and bundle budget
+- `gh pr checks 45`: `Security, typecheck, lint, test and build` → pass (1m14s); `Cloudflare Pages` → pass (PR önizlemesi; deploy değil, Cloudflare Console ayarına dokunulmadı)
+- Sonraki yalnız-doküman commit'i (bu dosyanın son hâli) ayrı bir CI koşusu tetikleyebilir; kanıt `d44d1ad` üzerinedir.
 
 ## 7. DOSYA TALEBİ
 
@@ -97,7 +98,7 @@ CI çalıştıktan sonra doldurulacak (uydurma değer yazılmaz):
 
 ## 8. Açık kalanlar
 
-- **Rules emulator kanıtı CI'da.** Yerelde Java/ağ kısıtı nedeniyle koşturulamadı. "Firestore security rules tests" yeşil olmadan PR hazır değil.
+- **Rules emulator kanıtı CI'da alındı** (`d44d1ad`, adım success). Yerelde Java/ağ kısıtı nedeniyle koşturulamadı.
 - **Deploy.** §4 sırası; bu oturumda deploy yapılmadı.
 - **Sahte Firestore sınırı.** `moderation.io.test.ts` ve `accountExport.test.ts` gerçek Firestore değil; kural davranışı yalnız emulator testleriyle kanıtlanır. Emulator'da başarısız bir kural testi çıkarsa CI log'u indirilemediği için test dosyası kurallarla satır satır karşılaştırılacak.
 - **Yasal metin (P1), App Check enforcement, Cloud Functions, XP/rozet**: kapsam dışı.
@@ -111,5 +112,6 @@ CI çalıştıktan sonra doldurulacak (uydurma değer yazılmaz):
 
 ## 10. Son kontroller
 
-- `git diff --check`: çıktı yok, çıkış 0 (teslimat dosyası eklendikten sonra yeniden çalıştırıldı; bkz. son satırlar).
-- `git status --short`: aşağıda son durum.
+- `git diff --check`: çıkış 0, çıktı yok (bu dosyanın son hâli commit'lenmeden önce çalıştırıldı).
+- `git status --short`: bu teslimat commit'i atıldıktan sonra temiz olmalı (commit sonrası çıktı teslimat mesajında verildi).
+- Deploy yapılmadı; main'e merge yapılmadı; PR #44, #40, #37, #19 kapatılmadı.
