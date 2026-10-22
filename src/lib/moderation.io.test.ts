@@ -26,13 +26,17 @@ const h = vi.hoisted(() => {
   };
   // Bir koleksiyonun okuması permission-denied ile düşürülür (hata yutulmamalı testi).
   const failure: { failCollection: string | null } = { failCollection: null };
-  return { store, ref, snapOf, snapOfGroup, failure };
+  const notifications: Array<Record<string, unknown>> = [];
+  return { store, ref, snapOf, snapOfGroup, failure, notifications };
 });
 
 vi.mock("./firebase", () => ({ db: {}, firebaseApp: {}, firebaseConfigured: true, isCloudReady: true }));
 vi.mock("./auth", () => ({ getAtlasAuth: async () => ({ currentUser: null }) }));
 vi.mock("./notifications", () => ({
-  createNotification: async () => "nt-mock",
+  createNotification: async (input: Record<string, unknown>) => {
+    h.notifications.push(input);
+    return "nt-mock";
+  },
 }));
 vi.mock("firebase/firestore", () => ({
   collection: (_db: unknown, ...segments: string[]) => ({ path: segments.join("/") }),
@@ -92,6 +96,7 @@ import { createReport, deleteUserData } from "./moderation";
 beforeEach(() => {
   h.failure.failCollection = null;
   h.store.clear();
+  h.notifications.length = 0;
 });
 
 describe("moderasyon yazımı ve hesap verisi silme", () => {
@@ -116,6 +121,17 @@ describe("moderasyon yazımı ve hesap verisi silme", () => {
     });
     expect(Object.keys(stored ?? {}).sort()).toEqual([
       "createdAt", "details", "reason", "reporterUid", "targetId", "targetOwnerUid", "targetType",
+    ]);
+
+    // Kural kanıtı (notificationProof): bildirimin targetId'si içeriğin değil
+    // RAPOR belgesinin kimliğidir; kural reports/{targetId} varlığına bakar.
+    expect(h.notifications).toEqual([
+      expect.objectContaining({
+        recipientUid: "owner-1",
+        actorUid: "member-1",
+        type: "report_received",
+        targetId: id,
+      }),
     ]);
   });
 

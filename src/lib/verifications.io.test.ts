@@ -74,8 +74,10 @@ vi.mock("firebase/firestore", () => ({
 import type { VerificationStatus } from "../utils/freshness";
 import {
   addPlaceVerification,
+  freshnessReaderUid,
   normalizeVerification,
   subscribeRecentVerifications,
+  verificationIdFor,
   VERIFICATIONS_LIMIT,
 } from "./verifications";
 
@@ -121,7 +123,7 @@ describe("ziyaret doğrulaması IO sözleşmesi", () => {
     }).status).toBe("closed");
   });
 
-  it("ekleme kimlikleri/notu kırpar ve sunucu zamanıyla tek belge yazar", async () => {
+  it("ekleme kimlikleri/notu kırpar ve {placeId}_{uid} kimliğiyle tek belge yazar", async () => {
     const created = await addPlaceVerification({
       placeId: "  manavgat-şelalesi  ",
       uid: "  user-42  ",
@@ -129,7 +131,8 @@ describe("ziyaret doğrulaması IO sözleşmesi", () => {
       note: "  Giriş ücreti değişmiş.  ",
     });
 
-    expect(created.id).toMatch(/^vr-/);
+    expect(created.id).toBe("manavgat-şelalesi_user-42");
+    expect(verificationIdFor(" manavgat-şelalesi ", " user-42 ")).toBe("manavgat-şelalesi_user-42");
     expect(created).toMatchObject({
       placeId: "manavgat-şelalesi",
       uid: "user-42",
@@ -144,6 +147,33 @@ describe("ziyaret doğrulaması IO sözleşmesi", () => {
       note: "Giriş ücreti değişmiş.",
       createdAt: "SERVER_TS",
     });
+  });
+
+  it("aynı kişinin aynı yere ikinci doğrulaması aynı belgeyi günceller (belge birikmez)", async () => {
+    await addPlaceVerification({ placeId: "place-1", uid: "user-1", status: "still_open" });
+    const updated = await addPlaceVerification({ placeId: "place-1", uid: "user-1", status: "road_closed" });
+    expect(updated.id).toBe("place-1_user-1");
+    expect(h.store.size).toBe(1);
+    expect(h.store.get("verifications/place-1_user-1")).toMatchObject({ status: "road_closed" });
+
+    await addPlaceVerification({ placeId: "place-1", uid: "user-2", status: "still_open" });
+    expect(h.store.size).toBe(2);
+  });
+
+  it("kimliği bölecek '/' içeren yer kimliği yazılmadan reddedilir", async () => {
+    await expect(addPlaceVerification({ placeId: "a/b", uid: "u1", status: "still_open" }))
+      .rejects.toMatchObject({ code: "verification/place-invalid" });
+    expect(h.store.size).toBe(0);
+  });
+
+  it("freshnessReaderUid yalnız Firebase hesabının uid'sini verir (cihaz hesabı abone olmaz)", () => {
+    expect(freshnessReaderUid({ uid: "u1", backend: "firebase" })).toBe("u1");
+    expect(freshnessReaderUid({ uid: " u1 ", backend: "firebase" })).toBe("u1");
+    expect(freshnessReaderUid({ uid: "u1", backend: "device" })).toBeUndefined();
+    expect(freshnessReaderUid({ uid: " ", backend: "firebase" })).toBeUndefined();
+    expect(freshnessReaderUid({ backend: "firebase" })).toBeUndefined();
+    expect(freshnessReaderUid(null)).toBeUndefined();
+    expect(freshnessReaderUid(undefined)).toBeUndefined();
   });
 
   it("yalnız boşluklardan oluşan not belgeye de dönüş değerine de yazılmaz", async () => {

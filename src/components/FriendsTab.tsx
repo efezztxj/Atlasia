@@ -9,6 +9,7 @@ import {
   type FriendRequest,
 } from "../lib/friendships";
 import { fetchUserProfile, searchUserProfiles, type UserProfile } from "../lib/userProfiles";
+import { PROFILE_SEARCH_MIN_CHARS, isSearchableQuery } from "../lib/profileSearch";
 import { friendlyDataError } from "../lib/firestoreValue";
 import { buildFriendInviteLink, shareOrCopy } from "../utils/inviteLink";
 
@@ -56,7 +57,7 @@ export default function FriendsTab({ currentUid, currentName, friends, requests,
   }, [invitedByUid, currentUid, onInviteHandled]);
 
   const search = async () => {
-    if (queryText.trim().length < 2) return;
+    if (!isSearchableQuery(queryText)) return;
     setSearching(true);
     try {
       setResults((await searchUserProfiles(queryText, currentUid)).filter((profile) => !isBlocked(profile.uid)));
@@ -154,8 +155,8 @@ export default function FriendsTab({ currentUid, currentName, friends, requests,
       <button type="button" onClick={() => void shareMyLink()} className="flex min-h-11 items-center justify-center gap-2 rounded-full bg-sun px-4 text-[13px] font-semibold text-ink"><Link2 size={15} />Arkadaş davet bağlantımı paylaş</button>
 
       <form onSubmit={(event) => { event.preventDefault(); void search(); }} className="flex items-center gap-2">
-        <input value={queryText} onChange={(event) => setQueryText(event.target.value)} maxLength={40} aria-label="İsimle kişi ara" placeholder="İsimle ara (en az 2 harf)" className="h-10 min-w-0 flex-1 rounded-full border border-white/10 bg-ink px-3 text-[13px] text-mint outline-none focus:border-sun/50" />
-        <button type="submit" disabled={searching || queryText.trim().length < 2} aria-label="Ara" className="grid size-10 shrink-0 place-items-center rounded-full border border-leaf/30 text-leaf disabled:opacity-50">{searching ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />}</button>
+        <input value={queryText} onChange={(event) => setQueryText(event.target.value)} maxLength={40} aria-label="İsimle kişi ara" placeholder={`İsimle ara (en az ${PROFILE_SEARCH_MIN_CHARS} harf)`} className="h-10 min-w-0 flex-1 rounded-full border border-white/10 bg-ink px-3 text-[13px] text-mint outline-none focus:border-sun/50" />
+        <button type="submit" disabled={searching || !isSearchableQuery(queryText)} aria-label="Ara" className="grid size-10 shrink-0 place-items-center rounded-full border border-leaf/30 text-leaf disabled:opacity-50">{searching ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />}</button>
       </form>
       {results && (
         <ul className="space-y-1.5">

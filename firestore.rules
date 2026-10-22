@@ -390,6 +390,20 @@ service cloud.firestore {
              && data.since == request.time;
     }
 
+    // Takip kaydı: users/{uid}/following/{targetUid}. Alanlar kapalıdır;
+    // belge kimliği hedefle, followerUid belge sahibiyle birebir eşleşir.
+    function validFollow(data, uid, targetUid) {
+      return data.keys().hasAll(['followerUid', 'targetUid', 'createdAt'])
+             && data.keys().hasOnly(['followerUid', 'targetUid', 'createdAt'])
+             && data.followerUid == uid
+             && data.targetUid == targetUid
+             && stringBetween(data.followerUid, 1, 128)
+             && stringBetween(data.targetUid, 1, 128)
+             && data.followerUid == request.auth.uid
+             && data.followerUid != data.targetUid
+             && data.createdAt == request.time;
+    }
+
     function friendshipId(uidA, uidB) {
       return uidA < uidB ? uidA + "_" + uidB : uidB + "_" + uidA;
     }
@@ -410,7 +424,8 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/users/$(recipientUid)/friendRequests/$(requesterUid));
     }
 
-    function validUserProfile(data, uid) {
+    // Şekil: yalnız kendi uid'si, displayName, arama anahtarı, isteğe bağlı photoURL.
+    function validUserProfileShape(data, uid) {
       return data.keys().hasAll(['uid', 'displayName', 'displayNameLower', 'createdAt', 'updatedAt'])
              && data.keys().hasOnly(['uid', 'displayName', 'displayNameLower', 'photoURL', 'createdAt', 'updatedAt'])
              && data.uid == uid
@@ -420,8 +435,26 @@ service cloud.firestore {
              // Yalnız biçim doğrulanır; normalizasyonu istemci üretir.
              && stringBetween(data.displayNameLower, 2, 40)
              && data.displayNameLower.matches('[a-z0-9 ığüşöçâîû-]+')
-             && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 500 && data.photoURL.matches('https?://.*')))
+             && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 500 && data.photoURL.matches('https?://.*')));
+    }
+
+    // Oluşturma: damgalar sunucu zamanıdır.
+    function validUserProfileCreate(data, uid) {
+      return validUserProfileShape(data, uid)
              && data.createdAt == request.time
+             && data.updatedAt == request.time;
+    }
+
+    // Güncelleme: createdAt DEĞİŞMEZ (resource ile birebir), updatedAt sunucu zamanı.
+    // Eski tek helper `createdAt == request.time` istiyordu; güncelleme kuralı da
+    // `createdAt == resource.data.createdAt` istediği için update HİÇBİR ZAMAN
+    // geçemiyordu — istemci belgeyi silip yeniden yazarak dolaşıyordu (atomik
+    // değil, ikinci yazım reddedilirse profil kaybolurdu). Çelişki burada
+    // kapatıldı (#61 p9); gevşetme yok: oluşturma aynı, güncelleme createdAt'i
+    // dokunulamaz kıldığı için eskisinden katı.
+    function validUserProfileUpdate(data, uid) {
+      return validUserProfileShape(data, uid)
+             && data.createdAt == resource.data.createdAt
              && data.updatedAt == request.time;
     }
 
@@ -468,14 +501,48 @@ service cloud.firestore {
              && (!('targetId' in data) || stringBetween(data.targetId, 1, 200));
     }
 
-    // Ret kanıtı: friend_declined ancak decliner'ın kendi ret belgesiyle yazılır.
-    // Diğer tipler bu değişiklikten etkilenmez (dal yalnız friend_declined'a uygulanır).
+    // Ret kanıtı (#55, ayrı kilit): friend_declined ancak decliner'ın kendi ret
+    // belgesiyle yazılır; diğer tipler bu kapıdan etkilenmez.
     function friendDeclineProof(data) {
       return data.type != 'friend_declined'
              || ('targetId' in data
                  && exists(/databases/$(database)/documents/friendDeclines/$(data.targetId))
                  && get(/databases/$(database)/documents/friendDeclines/$(data.targetId)).data.declinerUid == data.actorUid
                  && get(/databases/$(database)/documents/friendDeclines/$(data.targetId)).data.requesterUid == data.recipientUid);
+    }
+
+    /**
+     * Bildirim yazımının İLİŞKİ kanıtı (#61 p6'dan taşındı). Her tip, istemcinin
+     * gerçekten ürettiği bir belgeye bağlanır; böylece herhangi bir oturum
+     * herhangi bir kullanıcıya serbest metinli bildirim gönderemez.
+     * Kanıtlanamayan tipler (blocked, system, report_actioned) istemciye
+     * kapalıdır: bunlar yönetici/sunucu yazımıdır, bu projede sunucu yok.
+     * friend_declined bu fonksiyondan geçmez; onun kanıtı ayrı kilitte
+     * (friendDeclineProof) ve create kuralı İKİ kapıyı birden ister.
+     * Kanıt belgeleri istemci akışında bildirimden ÖNCE commit edilir
+     * (friendRequest, friendship batch'i, friendDeclines batch'i, davet
+     * batch'i, mesaj batch'i, rapor belgesi); bu yüzden exists() yeterlidir,
+     * existsAfter gerekmez.
+     */
+    function notificationProof(data) {
+      return data.type == 'friend_declined'
+             || (data.type == 'friend_request'
+              && exists(/databases/$(database)/documents/users/$(data.recipientUid)/friendRequests/$(data.actorUid)))
+             || (data.type == 'friend_accepted'
+                 && isAcceptedFriendship(data.actorUid, data.recipientUid))
+             || (data.type == 'group_invite'
+                 && 'targetId' in data
+                 && exists(/databases/$(database)/documents/groups/$(data.targetId)/invites/$(data.recipientUid))
+                 && get(/databases/$(database)/documents/groups/$(data.targetId)/invites/$(data.recipientUid)).data.inviterUid == data.actorUid)
+             || (data.type == 'group_message'
+                 && 'targetId' in data
+                 && exists(/databases/$(database)/documents/groups/$(data.targetId))
+                 && data.actorUid in get(/databases/$(database)/documents/groups/$(data.targetId)).data.memberUids
+                 && data.recipientUid in get(/databases/$(database)/documents/groups/$(data.targetId)).data.memberUids)
+             || (data.type == 'report_received'
+                 && 'targetId' in data
+                 && exists(/databases/$(database)/documents/reports/$(data.targetId))
+                 && get(/databases/$(database)/documents/reports/$(data.targetId)).data.reporterUid == data.actorUid);
     }
 
     match /places/{placeId} {
@@ -661,8 +728,22 @@ service cloud.firestore {
     match /verifications/{verificationId} {
       allow get: if signedIn();
       allow list: if signedIn() && boundedList(50);
-      allow create: if signedIn() && validVerification(request.resource.data);
-      allow update: if false;
+      // Belge kimliği zorunlu olarak {placeId}_{uid} (rozet/takip önkoşulu):
+      // "bu kişi bu yeri doğruladı mı" tek belge okumasıyla yanıtlanır, aynı
+      // kişinin aynı yere ikinci doğrulaması yeni belge biriktirmez, kendi
+      // belgesini günceller. Güncelleme yalnız sahibine, yer ve sahip
+      // değişemez, tam geçerli şekille (createdAt sunucu zamanı = son
+      // doğrulama anı). Eski rastgele kimlikli belgeler: get/list/delete
+      // kuralları kimlik biçimine bakmaz, okuma ve sahip silmesi bozulmaz.
+      allow create: if signedIn()
+                    && validVerification(request.resource.data)
+                    && verificationId == request.resource.data.placeId + "_" + request.resource.data.uid;
+      allow update: if signedIn()
+                    && resource.data.uid == request.auth.uid
+                    && validVerification(request.resource.data)
+                    && verificationId == request.resource.data.placeId + "_" + request.resource.data.uid
+                    && request.resource.data.placeId == resource.data.placeId
+                    && request.resource.data.uid == resource.data.uid;
       allow delete: if signedIn() && resource.data.uid == request.auth.uid;
     }
 
@@ -915,7 +996,9 @@ service cloud.firestore {
     match /users/{uid}/notifications/{notificationId} {
       allow get: if signedIn() && uid == request.auth.uid;
       allow list: if signedIn() && uid == request.auth.uid && boundedList(50);
-      allow create: if signedIn() && validNotification(request.resource.data) && request.resource.data.recipientUid == uid && friendDeclineProof(request.resource.data);
+      // İlişki kanıtı olmadan bildirim yazılamaz: genel kanıt (notificationProof)
+      // + ret kanıtı (friendDeclineProof) birlikte zorunlu.
+      allow create: if signedIn() && validNotification(request.resource.data) && request.resource.data.recipientUid == uid && notificationProof(request.resource.data) && friendDeclineProof(request.resource.data);
       allow update: if signedIn() && uid == request.auth.uid
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read'])
                     && request.resource.data.read is bool;
@@ -934,8 +1017,10 @@ service cloud.firestore {
     match /userProfiles/{uid} {
       allow get: if signedIn();
       allow list: if signedIn() && boundedList(20);
-      allow create: if signedIn() && validUserProfile(request.resource.data, uid);
-      allow update: if signedIn() && validUserProfile(request.resource.data, uid) && resource.data.uid == request.auth.uid && request.resource.data.createdAt == resource.data.createdAt;
+      allow create: if signedIn() && validUserProfileCreate(request.resource.data, uid);
+      allow update: if signedIn()
+                    && resource.data.uid == request.auth.uid
+                    && validUserProfileUpdate(request.resource.data, uid);
       allow delete: if signedIn() && resource.data.uid == request.auth.uid;
     }
 
@@ -959,6 +1044,21 @@ service cloud.firestore {
                     && uid == request.auth.uid
                     && validFriendIndex(request.resource.data, friendUid)
                     && isAcceptedFriendship(uid, friendUid);
+      allow update: if false;
+      allow delete: if signedIn() && uid == request.auth.uid;
+    }
+
+    // Takip listesi (rozet/takip önkoşulu; arayüz henüz yok, yalnız kural +
+    // istemci kütüphanesi): kişi yalnız KENDİ listesine yazar, kendini takip
+    // edemez, kayıt güncellenemez (takipten çıkma = silme). Başkasının
+    // listesi okunamaz; takipçi listesi diye bir yol bilinçli olarak yok.
+    match /users/{uid}/following/{targetUid} {
+      allow get: if signedIn() && uid == request.auth.uid;
+      allow list: if signedIn() && uid == request.auth.uid && boundedList(100);
+      allow create: if signedIn()
+                    && uid == request.auth.uid
+                    && uid != targetUid
+                    && validFollow(request.resource.data, uid, targetUid);
       allow update: if false;
       allow delete: if signedIn() && uid == request.auth.uid;
     }

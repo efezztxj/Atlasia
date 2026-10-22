@@ -35,6 +35,7 @@ import { isCloudReady, firebaseConfigSummary } from "./lib/firebase";
 import type { PlaceViewport } from "./lib/firestoreData";
 import { ROUTE_OPEN_MESSAGES, openPublishedRoute } from "./lib/publishedRouteOpen";
 import { placeDeleteErrorMessage } from "./lib/firestoreValue";
+import { freshnessReaderUid } from "./lib/verifications";
 import { readShareTokenFromUrl } from "./utils/shareLinkUrl";
 import type { AtlasRoute, CategoryId, Place, RouteVisibility, ViewState } from "./types";
 import { haversineKm, reverseName, type SearchResult } from "./utils/geo";
@@ -135,7 +136,8 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
     }
   }, [cloudAccount, remote.ready, remote.error]);
   const { blockedSet, isBlocked } = useBlocks(user?.uid);
-  const freshness = useFreshness(user?.uid);
+  // Tazelik okuması giriş şartlı (kural: signedIn); cihaz hesabında abone olunmaz.
+  const freshness = useFreshness(freshnessReaderUid(user));
   const rawDiscoveries = cloud.places;
   const rawPosts = cloud.posts;
   const rawStories = cloud.stories;
@@ -192,14 +194,22 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
 
   useEffect(() => { if (user?.displayName) storageSet("atlasia.author", user.displayName); }, [user?.displayName]);
   // Arkadaş aramasında görünmek için profil dizine yazılır (ad değişmediyse yazım yok).
+  // Kapı profileSync'te: cihaz hesabı buluta yazmaz, uygun olmayan ad denenmez.
+  const profileSyncUid = user?.uid;
+  const profileSyncBackend = user?.backend;
+  const profileSyncName = user?.displayName;
+  const profileSyncPhoto = user?.photoURL;
   useEffect(() => {
-    const uid = user?.uid;
-    const name = user?.displayName?.trim();
-    if (!uid || !name || name.length < 2) return;
-    void import("./lib/userProfiles")
-      .then(({ syncUserProfile }) => syncUserProfile({ uid, displayName: name, photoURL: user?.photoURL ?? undefined }))
+    if (!profileSyncUid || profileSyncBackend !== "firebase") return;
+    void import("./lib/profileSync")
+      .then(({ syncProfileForUser }) => syncProfileForUser({
+        uid: profileSyncUid,
+        backend: profileSyncBackend,
+        displayName: profileSyncName,
+        photoURL: profileSyncPhoto,
+      }))
       .catch((failure: unknown) => console.warn("[Atlasia] Profil arama dizinine yazılamadı:", failure));
-  }, [user?.uid, user?.displayName, user?.photoURL]);
+  }, [profileSyncUid, profileSyncBackend, profileSyncName, profileSyncPhoto]);
   useEffect(() => { storageSet(MAP_STYLE_KEY, baseMap); }, [baseMap]);
 
   const handledShareLinkRef = useRef<string | null>(null);
