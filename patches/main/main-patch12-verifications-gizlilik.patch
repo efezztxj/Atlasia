@@ -1,0 +1,107 @@
+diff --git a/firestore.rules b/firestore.rules
+index 57ef607ce1af088e7c94aacc69c86ca78b31a169..78059d90ee2a99172dbc9a4ffac18621afd70276 100644
+--- a/firestore.rules
++++ b/firestore.rules
+@@ -647,11 +647,12 @@ service cloud.firestore {
+       allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+     }
+ 
+-    // Tazelik doğrulamaları: herkese açık okuma, yalnız kendi adına yazma.
++    // Tazelik doğrulamaları: okuma GİRİŞ ŞARTI (Aşama 3-A), yalnız kendi adına yazma.
++    // `note` 280 karaktere kadar serbest metin taşıdığı için anonim okuma kapatıldı.
+     // Liste isteği 50 kayıtla sınırlıdır; canlı dinleyici tek pencere tutar.
+     match /verifications/{verificationId} {
+-      allow get: if true;
+-      allow list: if boundedList(50);
++      allow get: if signedIn();
++      allow list: if signedIn() && boundedList(50);
+       allow create: if signedIn() && validVerification(request.resource.data);
+       allow update: if false;
+       allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+diff --git a/src/components/PlaceDetails.tsx b/src/components/PlaceDetails.tsx
+index 3b3bb0de9743c7fe821f385be38d1b79debcb04b..1c4a37a13ecdec7935abcc9bfc4dc7aea8996250 100644
+--- a/src/components/PlaceDetails.tsx
++++ b/src/components/PlaceDetails.tsx
+@@ -211,15 +211,21 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDele
+ 
+           <section aria-labelledby="freshness-title" className="mt-7 rounded-2xl border border-leaf/25 bg-white/[0.03] p-3.5">
+             <h3 id="freshness-title" className="flex items-center gap-2 text-[13px] font-semibold"><Clock3 size={16} className="text-leaf" />Tazelik</h3>
+-            <p className="mt-1 text-[13px] leading-relaxed text-mint/85">
+-              {place.freshness ? place.freshness.label : "Henüz doğrulanmadı · bilgi eski olabilir"}
+-            </p>
+-            {place.freshness?.latestAt && (
++            {user ? (
++              <p className="mt-1 text-[13px] leading-relaxed text-mint/85">
++                {place.freshness ? place.freshness.label : "Henüz doğrulanmadı · bilgi eski olabilir"}
++              </p>
++            ) : (
++              <p className="mt-1 text-[13px] leading-relaxed text-mint/70" data-testid="freshness-signin-hint">
++                Giriş yapınca tazelik bilgisi görünür.
++              </p>
++            )}
++            {user && place.freshness?.latestAt && (
+               <p className="mt-1 text-[11px] text-mint/55">
+                 Son doğrulama: {new Date(place.freshness.latestAt).toLocaleDateString("tr-TR")} · toplam {place.freshness.totalCount} doğrulama
+               </p>
+             )}
+-            {onVerify && (
++            {user && onVerify && (
+               <>
+                 <p className="mt-3 text-[12px] text-mint/70">Burayı yeni ziyaret ettiysen tek dokunuşla doğrula:</p>
+                 <div className="mt-2 flex flex-wrap gap-2">
+diff --git a/tests/firestore.rules.test.ts b/tests/firestore.rules.test.ts
+index 3914d938dcd7883d08de05d311f83a563ca9afb0..bb2d54bac1c43451eb502a945b6cab35818a8ab5 100644
+--- a/tests/firestore.rules.test.ts
++++ b/tests/firestore.rules.test.ts
+@@ -794,7 +794,7 @@ describe("Firestore güvenlik kuralları", () => {
+     await assertSucceeds(deleteDoc(doc(memberDb, "users/member/groups/group-1")));
+   });
+ 
+-  it("tazelik doğrulamasını yalnız kendi adına yazar, herkes sınırlı sayfada okur", async () => {
++  it("tazelik doğrulamasını yalnız kendi adına yazar; okuma giriş şartına bağlıdır", async () => {
+     const memberDb = testEnv.authenticatedContext("member").firestore();
+     const otherDb = testEnv.authenticatedContext("other").firestore();
+     const guestDb = testEnv.unauthenticatedContext().firestore();
+@@ -812,15 +812,39 @@ describe("Firestore güvenlik kuralları", () => {
+     await assertFails(setDoc(doc(memberDb, "verifications/extra"), { ...valid, xp: 50 }));
+     await assertSucceeds(setDoc(doc(memberDb, "verifications/vr-1"), valid));
+ 
+-    await assertSucceeds(getDoc(doc(guestDb, "verifications/vr-1")));
++    // Aşama 3-A: anonim okuma kapalı (serbest metin `note` gizliliği).
++    await assertFails(getDoc(doc(guestDb, "verifications/vr-1")));
+     await assertFails(getDocs(collection(guestDb, "verifications")));
+-    await assertSucceeds(getDocs(query(collection(guestDb, "verifications"), limit(50))));
+-    await assertFails(getDocs(query(collection(guestDb, "verifications"), limit(51))));
++    await assertFails(getDocs(query(collection(guestDb, "verifications"), limit(50))));
++    // Oturumlu okuma sınırlı sayfada açık.
++    await assertSucceeds(getDoc(doc(otherDb, "verifications/vr-1")));
++    await assertSucceeds(getDocs(query(collection(otherDb, "verifications"), limit(50))));
++    await assertFails(getDocs(query(collection(otherDb, "verifications"), limit(51))));
+     await assertFails(updateDoc(doc(memberDb, "verifications/vr-1"), { status: "closed" }));
+     await assertFails(deleteDoc(doc(otherDb, "verifications/vr-1")));
+     await assertSucceeds(deleteDoc(doc(memberDb, "verifications/vr-1")));
+   });
+ 
++  // === Aşama 3-A — verifications.note yalnız oturumlu kullanıcıya açık ===
++  it("anonim tazelik okuması reddedilir; giriş yapınca get ve sınırlı list açılır", async () => {
++    await seed("verifications/vr-note", {
++      placeId: "place-1",
++      uid: "member",
++      status: "still_open",
++      note: "Giriş ücreti 200 TL oldu.",
++      createdAt: Timestamp.now(),
++    });
++    const guestDb = testEnv.unauthenticatedContext().firestore();
++    const memberDb = testEnv.authenticatedContext("member").firestore();
++    const otherDb = testEnv.authenticatedContext("other").firestore();
++
++    await assertFails(getDoc(doc(guestDb, "verifications/vr-note")));
++    await assertFails(getDocs(query(collection(guestDb, "verifications"), limit(50))));
++    await assertSucceeds(getDoc(doc(otherDb, "verifications/vr-note")));
++    await assertSucceeds(getDocs(query(collection(memberDb, "verifications"), limit(50))));
++    await assertFails(getDocs(query(collection(memberDb, "verifications"), limit(51))));
++  });
++
+   it("içerik bildirimini yalnız oturum sahibi adına ve sınırlı alanlarla kabul eder", async () => {
+     const memberDb = testEnv.authenticatedContext("member").firestore();
+     const otherDb = testEnv.authenticatedContext("other").firestore();
