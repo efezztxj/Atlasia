@@ -24,8 +24,7 @@ import RouteEditor from "./components/RouteEditor";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { CollectionsProvider, isCloudAccount } from "./hooks/useCollections";
 import { GUIDE_PLACES } from "./data/places";
-import { EPHESUS_CENTER } from "./data/ephesusCenter";
-import { EPHESUS_TOUR } from "./data/siteTours";
+import { siteTourForPoint } from "./data/siteTours";
 import { parseShortcutTab, stripShortcutParam } from "./utils/appShortcut";
 import { formatAccuracy, useGeolocation } from "./hooks/useGeolocation";
 import { useAtlasData } from "./hooks/useAtlasData";
@@ -339,11 +338,12 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
     [geo.fix, preciseLabel],
   );
 
-  const activeTour = useMemo(() => {
-    if (!precise) return null;
-    const d = haversineKm(precise.lat, precise.lng, EPHESUS_CENTER.lat, EPHESUS_CENTER.lng);
-    return d <= 5 ? EPHESUS_TOUR : null;
-  }, [precise]);
+  // Site turu seçimi artık tek siteye sabit değil: konuma en yakın tur
+  // (yarıçap içinde) döner. Yeni tur eklemek bu satırı değiştirmeyi gerektirmez.
+  const activeTour = useMemo(
+    () => (precise ? siteTourForPoint(precise.lat, precise.lng, 5) : null),
+    [precise],
+  );
 
   // Location and storage share one panel; receiving a fix does not close it.
   useEffect(() => {
