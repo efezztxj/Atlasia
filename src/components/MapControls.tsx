@@ -11,6 +11,12 @@ interface Props {
   onToggleTerrain: () => void;
   labels: boolean;
   terrain: boolean;
+  /**
+   * İŞ 2d: mobilde açık keşif paneli harita düğmelerinin üstüne biniyor
+   * (panel 64–332 px, düğme yığını 196–366 px). Panel açıkken düğmeler
+   * gizlenir; masaüstünde görünür kalır.
+   */
+  hiddenOnMobile?: boolean;
 }
 
 function RoundBtn({
@@ -34,10 +40,10 @@ function RoundBtn({
         aria-label={label}
         {...(pressed !== undefined ? { "aria-pressed": pressed } : {})}
         className={cn(
-          "map-round-btn grid place-items-center rounded-full border backdrop-blur-xl transition active:scale-90",
+          "map-round-btn grid place-items-center rounded-full border transition active:scale-90",
           active
             ? "btn-gold border-transparent"
-            : "border-leaf/30 bg-ink/80 text-mint hover:border-leaf/70 hover:bg-ink-3 hover:text-white",
+            : "border-leaf/30 bg-ink/[0.92] text-mint hover:border-leaf/70 hover:bg-ink-3 hover:text-white",
         )}
       >
         {children}
@@ -61,6 +67,7 @@ export default function MapControls({
   onToggleTerrain,
   labels,
   terrain,
+  hiddenOnMobile,
 }: Props) {
   const [weather, setWeather] = useState(false);
   useEffect(() => {
@@ -79,7 +86,10 @@ export default function MapControls({
       role="toolbar"
       aria-label="Görünüm kontrolleri"
       aria-orientation="vertical"
-      className="mobile-map-controls pointer-events-auto absolute right-3 bottom-[136px] z-20 flex flex-col items-center gap-1.5 md:right-8 md:bottom-24 md:gap-3"
+      className={cn(
+        "mobile-map-controls pointer-events-auto absolute right-3 bottom-[136px] z-20 flex flex-col items-center gap-1.5 md:right-8 md:bottom-24 md:gap-3",
+        hiddenOnMobile && "max-md:hidden",
+      )}
     >
       <RoundBtn label="Yakınlaştır" onClick={onZoomIn}>
         <ZoomIn className="size-[18px]" />

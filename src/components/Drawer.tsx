@@ -50,7 +50,7 @@ export default function Drawer({ open, onClose, places, category, onCategory, on
         // Kapalı çekmecenin düğmeleri Tab sırasından çıkar (ekran dışında görünmez odak olmasın).
         inert={!open}
         className={cn(
-          "fixed top-0 right-0 bottom-[calc(70px+env(safe-area-inset-bottom))] z-40 flex w-full max-w-[400px] flex-col border-l border-sun/30 bg-ink-2/95 shadow-2xl shadow-black/70 backdrop-blur-2xl transition-transform duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] md:bottom-0",
+          "fixed top-0 right-0 bottom-[calc(70px+env(safe-area-inset-bottom))] z-40 flex w-full max-w-[400px] flex-col border-l border-sun/30 bg-ink-2/95 shadow-2xl shadow-black/70 transition-transform duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] md:bottom-0",
           open ? "translate-x-0" : "translate-x-full",
         )}
       >
