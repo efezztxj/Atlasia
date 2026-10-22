@@ -27,7 +27,7 @@ function AuthFrame({ signup = false, children, onSwitch, onLegal }: {
   signup?: boolean;
   children: ReactNode;
   onSwitch?: () => void;
-  onLegal?: (type: "privacy" | "terms") => void;
+  onLegal?: (type: "privacy" | "terms" | "kvkk") => void;
 }) {
   const { backend } = useAuth();
   return <main className={`auth-page ${signup ? "auth-signup-page" : "auth-login-page"}`}>
@@ -47,7 +47,7 @@ function AuthFrame({ signup = false, children, onSwitch, onLegal }: {
     <section className="auth-access" aria-label={signup ? "Atlasia üyelik formu" : "Atlasia giriş formu"}>
       {signup ? <div className="auth-account-switch">Zaten hesabın var mı? <button type="button" onClick={onSwitch}>Giriş yap <ArrowRight size={14} /></button></div> : <a className="auth-login-brand" href="/" aria-label="Atlasia başlangıç"><span><Compass size={32} strokeWidth={1.25} /></span><strong>Atlasia<span>.</span></strong></a>}
       <div className="auth-form-wrap">{children}</div>
-      <footer className="auth-access-footer"><p>© {new Date().getFullYear()} Atlasia</p><div>{onLegal ? <><button type="button" onClick={() => onLegal("privacy")}>Gizlilik</button><span>·</span><button type="button" onClick={() => onLegal("terms")}>Koşullar</button></> : <span>{backend === "device" ? "Bu cihaza özel hesap" : "Firebase Authentication"}</span>}</div></footer>
+      <footer className="auth-access-footer"><p>© {new Date().getFullYear()} Atlasia</p><div>{onLegal ? <><button type="button" onClick={() => onLegal("privacy")}>Gizlilik</button><span>·</span><button type="button" onClick={() => onLegal("terms")}>Koşullar</button><span>·</span><button type="button" onClick={() => onLegal("kvkk")}>KVKK</button></> : <span>{backend === "device" ? "Bu cihaza özel hesap" : "Firebase Authentication"}</span>}</div></footer>
     </section>
   </main>;
 }
@@ -119,7 +119,7 @@ export default function AccountAccess() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [busy, setBusy] = useState<Busy | null>(null);
-  const [legal, setLegal] = useState<"privacy" | "terms" | null>(null);
+  const [legal, setLegal] = useState<"privacy" | "terms" | "kvkk" | null>(null);
   const [phone, setPhone] = useState("");
   const [prefix, setPrefix] = useState("+90");
   const [code, setCode] = useState("");
@@ -285,7 +285,7 @@ export default function AccountAccess() {
     <div className="auth-field"><label htmlFor="account-name">Profil adın</label><input id="account-name" value={name} onChange={(event) => { setName(event.target.value); clearField("name"); }} autoComplete="nickname" placeholder="Adın veya takma adın" maxLength={40} disabled={blocked} aria-invalid={!!errors.name} aria-describedby={errors.name ? "account-name-error" : undefined} /><FormError message={errors.name} id="account-name-error" /></div>
     <div className="auth-field"><label htmlFor="account-country">Ülke / bölge</label><select id="account-country" value={country} onChange={(event) => setCountry(event.target.value)} disabled={blocked} autoComplete="country-name"><option>Türkiye</option><option>Kuzey Kıbrıs Türk Cumhuriyeti</option><option>Almanya</option><option>Birleşik Krallık</option><option>Amerika Birleşik Devletleri</option><option>Japonya</option><option>Diğer</option></select></div>
   </>;
-  const consent = <div className="auth-consent-wrap"><label className="auth-consent"><input type="checkbox" checked={accepted} onChange={(event) => { setAccepted(event.target.checked); clearField("terms"); }} disabled={blocked} /><span>Kullanım koşullarını ve gizlilik açıklamasını kabul ediyorum.</span></label><div className="auth-legal-links"><button type="button" onClick={() => setLegal("terms")}>Kullanım koşulları</button><span>·</span><button type="button" onClick={() => setLegal("privacy")}>Gizlilik açıklaması</button></div><FormError message={errors.terms} /></div>;
+  const consent = <div className="auth-consent-wrap"><label className="auth-consent"><input type="checkbox" checked={accepted} onChange={(event) => { setAccepted(event.target.checked); clearField("terms"); }} disabled={blocked} /><span>Kullanım koşullarını kabul ediyorum.</span></label><div className="auth-legal-links"><span>KVKK aydınlatma metnini okudum</span><button type="button" onClick={() => setLegal("kvkk")}>Metni görüntüle</button></div><div className="auth-legal-links"><button type="button" onClick={() => setLegal("terms")}>Kullanım koşulları</button><span>·</span><button type="button" onClick={() => setLegal("privacy")}>Gizlilik açıklaması</button><span>·</span><button type="button" onClick={() => setLegal("kvkk")}>KVKK aydınlatma metni</button></div><FormError message={errors.terms} /></div>;
   const providers = <div className="auth-provider-actions auth-secondary-providers">
     <button type="button" disabled={blocked || !authConfigured} title={!authConfigured ? "Google bağlantısı henüz yapılandırılmadı" : undefined} onClick={() => void social("google")} className="auth-google">{busy === "google" ? <Loader2 className="animate-spin" size={17} /> : <GoogleMark />}<span>Google ile devam et</span></button>
     <button type="button" disabled={blocked || !authConfigured || !APPLE_AUTH_ENABLED} title={!APPLE_AUTH_ENABLED ? "Apple ile giriş hazırlık aşamasında" : !authConfigured ? "Apple bağlantısı henüz yapılandırılmadı" : undefined} onClick={() => void social("apple")} className="auth-apple">{busy === "apple" ? <Loader2 className="animate-spin" size={17} /> : <Apple size={20} fill="currentColor" />}<span>{APPLE_AUTH_ENABLED ? "Apple ile devam et" : "Apple ile giriş yakında"}</span></button>

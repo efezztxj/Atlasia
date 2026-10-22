@@ -2,6 +2,21 @@
 
 CI içindeki üçüncü taraf action'lar değişebilir `@v4` etiketleriyle değil, tam 40 karakterlik commit SHA'larıyla çalışır. Okunabilir sürüm etiketi satır sonu yorumunda korunur.
 
+21 Ekim 2026 doğrulama kaydı (P1 oturumu — Dependabot #6/#7/#8 karşılandı):
+
+| Action | Sürüm | Commit SHA | Doğrulama |
+| --- | --- | --- | --- |
+| `actions/checkout` | `v4.4.0` | `11d5960a326750d5838078e36cf38b85af677262` | Değişmedi; 13 Ekim kaydı geçerli. |
+| `actions/setup-node` | `v7.1.0` | `949feb2413d6458794dcd2491c4babbbce0c15c1` | `git ls-remote --tags` ile etiket aynı SHA'ya işaret ediyor; GitHub commit API `verified=true`, `reason=valid`. |
+| `actions/setup-java` | `v6.0.1` | `de7274f081f381c8f8158605e0321c36c376e2e6` | `git ls-remote --tags` ile etiket aynı SHA'ya işaret ediyor; GitHub commit API `verified=true`, `reason=valid`. |
+| `actions/cache` | `v6.1.0` | `55cc8345863c7cc4c66a329aec7e433d2d1c52a9` | `git ls-remote --tags` ile etiket aynı SHA'ya işaret ediyor; GitHub commit API `verified=true`, `reason=valid`. |
+
+Sürüm notu: `setup-node` v7 ESM paketleme + `NODE_AUTH_TOKEN` davranış değişikliği
+duyurdu; Atlasia özel registry yayını kullanmadığından etkilenmez. `cache` v6
+salt-okunur cache erişimini düzeltir. `setup-java` v6 imza/doğrulama düzeltmeleri
+taşır; `distribution: temurin` + `java-version: 21` girdileri değişmedi. Emulator
+adımı dahil CI koşusu bu pin'lerle doğrulanacaktır.
+
 13 Ekim 2026 doğrulama kaydı:
 
 | Action | Sürüm | Commit SHA | Doğrulama |
