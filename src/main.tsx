@@ -4,6 +4,7 @@ import "./index.css";
 import App from "./App";
 import AppErrorBoundary from "./components/AppErrorBoundary";
 import NetworkStatus from "./components/NetworkStatus";
+import UpdateNotice from "./components/UpdateNotice";
 import { captureInviteFromLocation } from "./utils/inviteLink";
 
 // Davet bağlantısı giriş ekranından önce yakalanır; girişten sonra açılır.
@@ -14,16 +15,8 @@ createRoot(document.getElementById("root")!).render(
     <AppErrorBoundary>
       <App />
       <NetworkStatus />
+      {/* Çevrimdışı kabuk güncellemesi: sessizce zorlanmaz, kullanıcıya sorulur. */}
+      <UpdateNotice />
     </AppErrorBoundary>
   </StrictMode>
 );
-
-if ("serviceWorker" in navigator && location.protocol !== "file:") {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch((error: unknown) => {
-      // SW kaydı başarısızsa uygulama çevrimdışı kabuk olmadan çevrimiçi
-      // çalışmaya devam eder; hatayı yutma, tanı için görünür bırak.
-      console.warn("Service worker kaydedilemedi; çevrimiçi modda devam ediliyor.", error);
-    });
-  });
-}

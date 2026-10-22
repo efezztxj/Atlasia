@@ -26,6 +26,7 @@ import { CollectionsProvider, isCloudAccount } from "./hooks/useCollections";
 import { GUIDE_PLACES } from "./data/places";
 import { EPHESUS_CENTER } from "./data/ephesusCenter";
 import { EPHESUS_TOUR } from "./data/siteTours";
+import { parseShortcutTab, stripShortcutParam } from "./utils/appShortcut";
 import { formatAccuracy, useGeolocation } from "./hooks/useGeolocation";
 import { useAtlasData } from "./hooks/useAtlasData";
 import { useFirestoreAtlasData } from "./hooks/useFirestoreAtlasData";
@@ -617,6 +618,30 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   const dockVisible = !recordsOpen && !profileOpen && !myPlacesOpen && !storyPlace && !atlasOpen && !settingsOpen && !drawerOpen && !feedOpen;
   const mobileExplore = () => { closePanels(); setPanelOpen(true); };
   const openMyPlaces = () => { closePanels(); setMyPlacesOpen(true); };
+  // İŞ 5: manifest kısayolları (?tab=…). Yalnız var olan panelleri açar; panel
+  // kapatma mantığı closePanels ile aynı. Parametre okunduktan sonra adresten
+  // silinir, yenilemede eylem ikinci kez tetiklenmez.
+  const shortcutHandled = useRef(false);
+  useEffect(() => {
+    if (shortcutHandled.current) return;
+    const action = parseShortcutTab(window.location.search);
+    if (!action) return;
+    shortcutHandled.current = true;
+    window.history.replaceState(null, "", stripShortcutParam(window.location.href));
+    setDrawerOpen(false);
+    setFeedOpen(false);
+    setAtlasOpen(false);
+    setRecordsOpen(false);
+    setProfileOpen(false);
+    setMyPlacesOpen(false);
+    setSettingsOpen(false);
+    setStoryPlace(null);
+    setStreetPlace(null);
+    setNotificationsOpen(false);
+    if (action === "explore") setPanelOpen(true);
+    else if (action === "add") { setSpin(false); setAddMode(true); }
+    else setProfileOpen(true);
+  }, []);
   const mobileTab = myPlacesOpen ? "İzlerim" : recordsOpen ? "Kaydet" : feedOpen ? "Topluluk" : profileOpen ? "Profil" : "Keşfet";
   const settingsContentProps: SettingsContentProps = {
     theme,

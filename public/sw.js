@@ -65,8 +65,16 @@ async function precacheAppShell() {
   await Promise.allSettled(assets.map((asset) => cache.add(asset)));
 }
 
+// Güncelleme sessizce zorlanmaz: yeni sürüm "waiting" durumunda bekler,
+// kullanıcı arayüzdeki "Yenile" düğmesine basınca devreye girer (İŞ 5).
 self.addEventListener("install", (event) => {
-  event.waitUntil(precacheAppShell().then(() => self.skipWaiting()));
+  event.waitUntil(precacheAppShell());
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    event.waitUntil(self.skipWaiting());
+  }
 });
 
 self.addEventListener("activate", (event) => {
