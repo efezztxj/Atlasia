@@ -9,7 +9,8 @@ import {
   isRealPath,
   siteTourForPoint,
 } from "./siteTours";
-import { decodePolyline } from "../utils/polyline";
+import { encodePolyline, decodePolyline } from "../utils/polyline";
+import { ADDITIONAL_SITE_TOURS, OSTIA_TOUR, POMPEII_TOUR } from "./tours/additionalTours";
 import { haversineKm } from "../utils/geo";
 
 describe("siteTours – Efes 3 saatlik tur (Adım 8)", () => {
@@ -40,8 +41,8 @@ describe("siteTours – Efes 3 saatlik tur (Adım 8)", () => {
     expect(EPHESUS_TOUR.origin?.lat).toBeCloseTo(entrance!.lat, 2);
   });
 
-  it("patika geometrisi gerçek (düz çizgi değil, ara noktalı)", () => {
-    expect(isRealPath(EPHESUS_TOUR)).toBe(true);
+  it("elle çizilmiş Efes çok noktalı olsa da doğrulanmış yol değildir", () => {
+    expect(isRealPath(EPHESUS_TOUR)).toBe(false);
     const coords = decodePolyline(EPHESUS_TOUR.days[0].polyline);
     // durak sayısı 10, ama polyline 32 nokta içermeli -> ara nokta var
     expect(coords.length).toBeGreaterThan(EPHESUS_TOUR.days[0].stops.length + 5);
@@ -96,10 +97,16 @@ describe("siteTours – tüm turlar için ortak sözleşme", () => {
       let previousEnd = -1;
       day.stops.forEach((stop, index) => {
         expect(stop.order).toBe(index + 1);
-        const [hour, minute] = stop.startTime.split(":").map(Number);
-        const startMinutes = hour * 60 + minute;
-        expect(startMinutes).toBeGreaterThanOrEqual(previousEnd);
-        previousEnd = startMinutes + stop.durationMinutes;
+        if (ADDITIONAL_SITE_TOURS.includes(tour)) {
+          expect(stop.startTime).toBe("");
+          expect(stop.endTime).toBe("");
+          expect(stop.durationMinutes).toBe(0);
+        } else {
+          const [hour, minute] = stop.startTime.split(":").map(Number);
+          const startMinutes = hour * 60 + minute;
+          expect(startMinutes).toBeGreaterThanOrEqual(previousEnd);
+          previousEnd = startMinutes + stop.durationMinutes;
+        }
         expect(stop.description.length).toBeGreaterThan(20);
         expect(stop.tips.length).toBeGreaterThan(0);
         expect(stop.isCommunityPin).toBe(false);
@@ -108,7 +115,8 @@ describe("siteTours – tüm turlar için ortak sözleşme", () => {
         expect(km).toBeLessThan(3);
       });
       expect(tour.transport).toBe("walking");
-      expect(tour.totalDurationHours).toBeGreaterThan(0);
+      if (ADDITIONAL_SITE_TOURS.includes(tour)) expect(tour.totalDurationHours).toBe(0);
+      else expect(tour.totalDurationHours).toBeGreaterThan(0);
     }
   });
 
@@ -125,8 +133,8 @@ describe("siteTours – tüm turlar için ortak sözleşme", () => {
     }
   });
 
-  it("isRealPath doğru sınıflandırır: Efes gerçek, Priene doğrulanmadı", () => {
-    expect(tours.filter(isRealPath).map((tour) => tour.id)).toEqual([EPHESUS_TOUR.id]);
+  it("hiçbir doğrulanmamış tur gerçek yol sayılmaz", () => {
+    expect(tours.filter(isRealPath).map((tour) => tour.id)).toEqual([]);
     expect(isRealPath(PRIENE_TOUR)).toBe(false);
   });
 
@@ -134,5 +142,55 @@ describe("siteTours – tüm turlar için ortak sözleşme", () => {
     expect(siteTourForPoint(37.9395, 27.3417)?.id).toBe(EPHESUS_TOUR.id);
     expect(siteTourForPoint(37.6597, 27.2977)?.id).toBe(PRIENE_TOUR.id);
     expect(siteTourForPoint(39.0, 35.0)).toBeNull();
+  });
+});
+
+
+describe("Pompeii ve Ostia: kaynaklı fakat geometrisiz turlar", () => {
+  it("Priene dahil dört tur korunur; yeni alanlarda konumdan seçilir", () => {
+    expect(getSiteTours()).toHaveLength(4);
+    for (const tour of ADDITIONAL_SITE_TOURS) {
+      expect(getSiteTourById(tour.id)).toBe(tour);
+      expect(siteTourForPoint(tour.origin!.lat, tour.origin!.lng)).toBe(tour);
+    }
+  });
+
+  it.each([
+    [POMPEII_TOUR, ["Porta Marina", "Bazilika", "Pompeii Forumu"]],
+    [OSTIA_TOUR, ["Porta Romana", "Roma Tiyatrosu", "Korporasyonlar Forumu"]],
+  ] as const)("%s: hat sırası, giriş ve tur bitişi sabittir", (tour, names) => {
+    const stops = tour.days[0].stops;
+    expect(stops).toHaveLength(3);
+    stops.forEach((stop, index) => {
+      expect(stop.name).toContain(names[index]);
+      expect(stop.order).toBe(index + 1);
+      expect(stop.description).toContain("Kaynak: https://");
+    });
+    expect(getEntranceGate(tour)).toBe(stops[0]);
+    expect(getExitPoint(tour)).toBe(stops[2]);
+    expect(stops[2].name).toContain("park çıkışı değil");
+    expect(tour.origin).toEqual({ lat: stops[0].lat, lng: stops[0].lng });
+  });
+
+  it.each(ADDITIONAL_SITE_TOURS)("%s: süre, saat ve kilometre uydurulmaz", (tour) => {
+    expect(tour.totalDistanceKm).toBe(0);
+    expect(tour.totalDurationHours).toBe(0);
+    expect(tour.days[0].polyline).toBe("");
+    expect(isRealPath(tour)).toBe(false);
+    expect(tour.routeSummary).toContain("Mesafe ve süre bilinmiyor");
+    expect(tour.routeSummary).toContain("Giriş ücreti, açılış saati ve sezon bilgisi doğrulanmadı");
+    for (const stop of tour.days[0].stops) {
+      expect(stop.startTime).toBe("");
+      expect(stop.endTime).toBe("");
+      expect(stop.durationMinutes).toBe(0);
+    }
+  });
+
+  it("çok nokta, OSM atfı, tur kimliği veya ad gerçek yol kanıtı olamaz", () => {
+    const dense = encodePolyline(Array.from({ length: 500 }, (_, i): [number, number] => [14.48 + i / 100000, 40.75]));
+    for (const tour of getSiteTours()) {
+      expect(isRealPath({ ...tour, dataSources: ["OpenStreetMap (ODbL)"], days: [{ ...tour.days[0], polyline: dense }] })).toBe(false);
+    }
+    expect(isRealPath({ ...POMPEII_TOUR, days: [] })).toBe(false);
   });
 });
