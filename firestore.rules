@@ -530,7 +530,15 @@ service cloud.firestore {
     }
 
     match /stories/{storyId} {
-      allow get: if true;
+      // PR #51 kusur #5: "24 saat" yalnız istemcideydi. Süresi dolan hikâyeyi id ile
+      // yalnız sahibi okur (silebilmek için). Liste kuralı resource.data'ya bağlanamaz
+      // (sorgudan türetilen nesne; CI kanıtı #51); liste 50 kayıtla sınırlı kalır ve
+      // istemci createdAt >= şimdi-24s filtresini gönderir.
+      function storyLive() {
+        return resource.data.createdAt >= request.time - duration.value(24, 'h');
+      }
+      allow get: if storyLive()
+                 || (signedIn() && resource.data.authorUid == request.auth.uid);
       // 24 saatlik pencere de cursor ile 50 kayıtlık sayfalara ayrılır.
       allow list: if boundedList(50);
       allow create: if signedIn()
@@ -685,7 +693,11 @@ service cloud.firestore {
       // belge olarak okur; liste kendi users/{uid}/groups indeksinden gelir.
       allow list: if false;
       allow create: if signedIn()
-                    && validGroupCreateShape(request.resource.data);
+                    && validGroupCreateShape(request.resource.data)
+                    // Rıza (PR #51 kusur #4): kuruluşta üye listesi TAM OLARAK [kurucu].
+                    // Başkaları yalnız davet kabulü (invites/{uid}) ya da katılma kodu
+                    // (joinAttempts/{uid}) ile girer. İstemci createGroup zaten böyle yazar.
+                    && request.resource.data.memberUids.hasOnly([request.auth.uid]);
       allow update: if signedIn()
                     && (
                       // Kurucu metadata gunceller (isim/kod) — uye listesi degismez
@@ -719,6 +731,9 @@ service cloud.firestore {
                         && request.resource.data.ownerUid == resource.data.ownerUid
                         && ((!('joinCode' in resource.data) && !('joinCode' in request.resource.data)) || request.resource.data.joinCode == resource.data.joinCode)
                         && request.resource.data.memberUids == resource.data.memberUids
+                        // PR #51 kusur #1: hasOnly alana izin verir, DEĞERİ kısıtlamaz; üye
+                        // updatedAt'i keyfi zamana yazabiliyordu. İstemci serverTimestamp() gönderir.
+                        && request.resource.data.updatedAt == request.time
                       ) || (
                         // Uye ayrilir — yalniz kendini cikarir
                         request.auth.uid in resource.data.memberUids
@@ -765,7 +780,11 @@ service cloud.firestore {
 
       match /messages/{messageId} {
         function groupMembers() {
-          return get(/databases/$(database)/documents/groups/$(groupId)).data.memberUids;
+          // PR #51 kusur #3: silinmiş grupta get(...).data null olur ve kural
+          // değerlendirme hatasına düşerdi; artık boş liste ile temiz ret.
+          return exists(/databases/$(database)/documents/groups/$(groupId))
+                 ? get(/databases/$(database)/documents/groups/$(groupId)).data.memberUids
+                 : [];
         }
         allow get: if signedIn() && request.auth.uid in groupMembers();
         allow list: if signedIn() && boundedList(50) && request.auth.uid in groupMembers();
@@ -858,7 +877,14 @@ service cloud.firestore {
       allow get: if signedIn() && uid == request.auth.uid;
       allow list: if signedIn() && uid == request.auth.uid && boundedList(20);
       allow create: if signedIn() && uid == request.auth.uid
-                    && validGroupIndex(request.resource.data, groupId);
+                    && validGroupIndex(request.resource.data, groupId)
+                    // PR #51 kusur #2: indeks GERÇEK üyeliği yansıtmalı; rol, grup
+                    // belgesindeki sahiplikle birebir tutarlı olmalı. İstemci indeksi
+                    // her zaman grup yazımından SONRA yazar (get güvenli).
+                    && exists(/databases/$(database)/documents/groups/$(groupId))
+                    && request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.memberUids
+                    && (request.resource.data.role == 'owner')
+                       == (get(/databases/$(database)/documents/groups/$(groupId)).data.ownerUid == request.auth.uid);
       allow update: if false;
       allow delete: if signedIn() && uid == request.auth.uid;
     }

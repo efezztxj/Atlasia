@@ -591,6 +591,8 @@ describe("Firestore güvenlik kuralları", () => {
     await assertFails(setDoc(doc(ownerDb, "groups/empty"), { ...valid, memberUids: [] }));
     await assertFails(setDoc(doc(ownerDb, "groups/too-many"), { ...valid, memberUids: Array.from({ length: 21 }, (_, index) => `member-${index}`) }));
     await assertFails(setDoc(doc(ownerDb, "groups/extra"), { ...valid, visibility: "public" }));
+    // Rıza (#51 kusur #4): kuruluşta başkasını doğrudan üye yazmak kapalı.
+    await assertFails(setDoc(doc(ownerDb, "groups/direct-add"), { ...valid, memberUids: ["owner", "member"] }));
     await assertSucceeds(setDoc(doc(ownerDb, "groups/group-1"), valid));
 
     await assertSucceeds(getDoc(doc(ownerDb, "groups/group-1")));
@@ -785,6 +787,14 @@ describe("Firestore güvenlik kuralları", () => {
   });
 
   it("grup indeksini yalnız sahibi yazar ve sınırlı listeler", async () => {
+    // #51 kusur #2: indeks gerçek üyeliği yansıtmalı → önce grup tohumlanır.
+    await seed("groups/group-1", {
+      name: "Kapadokya ekibi",
+      ownerUid: "owner",
+      memberUids: ["owner", "member"],
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
     const memberDb = testEnv.authenticatedContext("member").firestore();
     const otherDb = testEnv.authenticatedContext("other").firestore();
     const entry = {
@@ -795,6 +805,11 @@ describe("Firestore güvenlik kuralları", () => {
     };
 
     await assertFails(setDoc(doc(otherDb, "users/member/groups/group-1"), entry));
+    // Üye olmayan kendi indeksine bu grubu yazamaz; olmayan grup için de yazamaz.
+    await assertFails(setDoc(doc(otherDb, "users/other/groups/group-1"), entry));
+    await assertFails(setDoc(doc(memberDb, "users/member/groups/yok-grup"), { ...entry, groupId: "yok-grup" }));
+    // Kurucu olmayan üye kendine 'owner' rolü yazamaz.
+    await assertFails(setDoc(doc(memberDb, "users/member/groups/group-1"), { ...entry, role: "owner" }));
     await assertFails(setDoc(doc(memberDb, "users/member/groups/group-1"), { ...entry, role: "admin" }));
     await assertSucceeds(setDoc(doc(memberDb, "users/member/groups/group-1"), entry));
     await assertSucceeds(getDocs(query(collection(memberDb, "users/member/groups"), limit(20))));
@@ -1570,7 +1585,7 @@ describe("Firestore güvenlik kuralları", () => {
     await seed("routes/rt-private", { authorUid: "alice", visibility: "private", saveCount: 0 });
     await seed("routes/rt-unlisted", { authorUid: "alice", visibility: "unlisted", saveCount: 0 });
     await seed("routes/rt-public", { authorUid: "alice", visibility: "public", saveCount: 0 });
-    await seed("stories/st-public", { authorUid: "alice" });
+    await seed("stories/st-public", { authorUid: "alice", createdAt: Timestamp.now() });
     await seed("users/alice/savedPlaces/pl-1", { place: { id: "pl-1" }, savedAt: Timestamp.now() });
     await seed("users/alice/notifications/nt-1", { type: "system", createdAt: Timestamp.now() });
     await seed("users/alice/friends/bob", { friendUid: "bob" });
@@ -1721,5 +1736,43 @@ describe("Firestore güvenlik kuralları", () => {
     await assertSucceeds(getDocs(query(collectionGroup(aliceDb, "replies"), where("authorUid", "==", "alice"), limit(n))));
     await assertSucceeds(getDocs(query(collection(aliceDb, "groups/g-q/messages"), where("senderUid", "==", "alice"), limit(n))));
     await assertSucceeds(getDocs(query(collection(aliceDb, "groups/g-q/messages"), limit(n))));
+  });
+
+  it("süresi dolmuş hikâyeyi yabancı id ile okuyamaz, sahibi okur (#51 kusur #5)", async () => {
+    const ownerDb = testEnv.authenticatedContext("owner").firestore();
+    const guestDb = testEnv.unauthenticatedContext().firestore();
+    await seed("stories/old-1", { ...validStory("owner"), createdAt: Timestamp.fromMillis(Date.now() - 25 * 60 * 60 * 1000) });
+    await assertFails(getDoc(doc(guestDb, "stories/old-1")));
+    await assertSucceeds(getDoc(doc(ownerDb, "stories/old-1")));
+    await seed("stories/live-1", { ...validStory("owner"), createdAt: Timestamp.now() });
+    await assertSucceeds(getDoc(doc(guestDb, "stories/live-1")));
+    // Liste kuralı resource.data'ya bağlanamaz; yalnız 50 kayıt sınırı geçerli.
+    await assertSucceeds(getDocs(query(collection(guestDb, "stories"), limit(50))));
+    await assertFails(getDocs(query(collection(guestDb, "stories"), limit(51))));
+  });
+
+  it("grup lastMessage yazımı sunucu zamanı olmadan reddedilir (#51 kusur #1)", async () => {
+    await seed("groups/group-1", {
+      name: "Kapadokya ekibi", ownerUid: "owner", memberUids: ["owner", "member"],
+      joinCode: "123456", createdAt: Timestamp.now(), updatedAt: Timestamp.now(),
+    });
+    const memberDb = testEnv.authenticatedContext("member").firestore();
+    const lastMessage = { text: "sa", senderUid: "member", senderName: "Üye", createdAt: serverTimestamp() };
+    await assertFails(updateDoc(doc(memberDb, "groups/group-1"), { lastMessage }));
+    await assertFails(updateDoc(doc(memberDb, "groups/group-1"), { lastMessage, updatedAt: Timestamp.fromMillis(Date.now() + 86_400_000) }));
+    await assertSucceeds(updateDoc(doc(memberDb, "groups/group-1"), { lastMessage, updatedAt: serverTimestamp() }));
+  });
+
+  it("silinmiş grubun mesajları kural hatasına düşmeden reddedilir (#51 kusur #3)", async () => {
+    await seed("groups/gone-1", {
+      name: "Eski grup", ownerUid: "owner", memberUids: ["owner", "member"],
+      joinCode: "123456", createdAt: Timestamp.now(), updatedAt: Timestamp.now(),
+    });
+    await seed("groups/gone-1/messages/m-1", { senderUid: "member", senderName: "Üye", text: "selam", createdAt: Timestamp.now() });
+    const ownerDb = testEnv.authenticatedContext("owner").firestore();
+    const memberDb = testEnv.authenticatedContext("member").firestore();
+    await assertSucceeds(getDoc(doc(memberDb, "groups/gone-1/messages/m-1")));
+    await assertSucceeds(deleteDoc(doc(ownerDb, "groups/gone-1")));
+    await assertFails(getDoc(doc(memberDb, "groups/gone-1/messages/m-1")));
   });
 });
