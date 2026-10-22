@@ -25,6 +25,10 @@ jobs:
     name: Firestore rules tests on Windows (tr-TR)
     runs-on: windows-latest
     timeout-minutes: 20
+    env:
+      # Türkçe makineyi taklit eder: her JVM varsayılan olarak tr-TR başlar.
+      # Koşucunun komut satırındaki -Duser.language=en bunu ezmelidir (P5 iddiası).
+      JAVA_TOOL_OPTIONS: -Duser.language=tr -Duser.country=TR
 
     steps:
       - name: Checkout
