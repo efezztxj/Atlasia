@@ -57,9 +57,12 @@ jobs:
       - name: Install exact dependencies
         run: npm ci
 
-      - name: Show the JVM default locale (expected tr)
+      - name: Assert the JVM default locale is Turkish
         shell: pwsh
-        run: java -XshowSettings:properties -version 2>&1 | Select-String "user.language|user.country"
+        run: |
+          $props = (java -XshowSettings:properties -version 2>&1 | Out-String)
+          $props -split "`n" | Select-String "user.language|user.country"
+          if ($props -notmatch "user\.language = tr") { throw "JVM varsayılan dili tr değil; P5 senaryosu kurulamadı." }
 
       - name: Firestore security rules tests
         run: npm run test:rules:emulator
