@@ -26,6 +26,7 @@ import {
   updateDoc,
   where,
   writeBatch,
+  type Firestore,
 } from "firebase/firestore";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -37,6 +38,14 @@ import { ACCOUNT_DATA_PAGE_SIZE } from "../src/config/firestoreLimits";
 
 const PROJECT_ID = "demo-atlasia-rules";
 let testEnv: RulesTestEnvironment;
+
+/**
+ * @firebase/rules-unit-testing compat Firestore tipi, firebase/firestore'un
+ * Firestore tipine atanamıyor (type/toJSON eksik). Susturma yok: bilinçli,
+ * tek noktadan tip köprüsü.
+ */
+type RulesDb = ReturnType<ReturnType<RulesTestEnvironment["authenticatedContext"]>["firestore"]>;
+const asFirestore = (db: RulesDb) => db as unknown as Firestore;
 
 function emulatorAddress() {
   const value = process.env.FIRESTORE_EMULATOR_HOST ?? "127.0.0.1:8080";
@@ -296,7 +305,7 @@ describe("Firestore güvenlik kuralları", () => {
       )));
     });
 
-    await removePostInFirestore(testEnv.authenticatedContext("owner").firestore(), "post-1");
+    await removePostInFirestore(asFirestore(testEnv.authenticatedContext("owner").firestore()), "post-1");
     await testEnv.withSecurityRulesDisabled(async (context) => {
       const firestore = context.firestore();
       const parent = await getDoc(doc(firestore, "posts/post-1"));
@@ -315,16 +324,16 @@ describe("Firestore güvenlik kuralları", () => {
     const otherDb = testEnv.authenticatedContext("other").firestore();
 
     await Promise.all([
-      togglePostLikeInFirestore(memberDb, "post-1", "member"),
-      togglePostLikeInFirestore(otherDb, "post-1", "other"),
+      togglePostLikeInFirestore(asFirestore(memberDb), "post-1", "member"),
+      togglePostLikeInFirestore(asFirestore(otherDb), "post-1", "other"),
     ]);
     const snapshot = await getDoc(doc(memberDb, "posts/post-1"));
     expect(new Set(snapshot.data()?.likedBy)).toEqual(new Set(["member", "other"]));
     expect(snapshot.data()?.likes).toBe(0);
 
     await Promise.all([
-      addReplyInFirestore(memberDb, "post-1", "member", "Üye", "İlk eşzamanlı yanıt."),
-      addReplyInFirestore(otherDb, "post-1", "other", "Diğer", "İkinci eşzamanlı yanıt."),
+      addReplyInFirestore(asFirestore(memberDb), "post-1", "member", "Üye", "İlk eşzamanlı yanıt."),
+      addReplyInFirestore(asFirestore(otherDb), "post-1", "other", "Diğer", "İkinci eşzamanlı yanıt."),
     ]);
     const replies = await getDocs(query(
       collection(memberDb, "posts/post-1/replies"),
