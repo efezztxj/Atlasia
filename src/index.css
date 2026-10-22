@@ -734,6 +734,22 @@ html[data-theme="light"] {
   --color-sun-2: #c98b36;
 }
 
+/* P18-LIGHT-AA:start
+ * Açık temada /70 altı ince metin tonları WCAG AA (4,5:1) altında kalıyordu.
+ * Koyu tema hiyerarşisi aynen korunur; açık temada sıralama korunarak en az %70'e çekilir.
+ * Hover rengi olan öğeler üzerine gelindiğinde kendi hover rengini kullanır.
+ * Kilit: src/config/accessibility.test.ts (her kullanılan ton kapsanmalı ve AA vermeli). */
+html[data-theme="light"] :is(.text-mint\/35, .text-mint\/40, .text-mint\/45, .text-mint\/50):not([class*="hover:text-"]:hover) {
+  color: color-mix(in oklab, var(--color-mint) 70%, transparent);
+}
+html[data-theme="light"] :is(.text-mint\/55, .text-mint\/60):not([class*="hover:text-"]:hover) {
+  color: color-mix(in oklab, var(--color-mint) 74%, transparent);
+}
+html[data-theme="light"] :is(.text-mint\/65, .md\:text-mint\/65):not([class*="hover:text-"]:hover) {
+  color: color-mix(in oklab, var(--color-mint) 78%, transparent);
+}
+/* P18-LIGHT-AA:end */
+
 html[data-theme="light"] body,
 html[data-theme="light"] #root {
   background: #f4f1e7;

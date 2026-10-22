@@ -17,7 +17,8 @@ describe("GitHub Actions tedarik zinciri", () => {
       .join("\n");
     const uses = [...workflows.matchAll(/^\s*uses:\s*(\S+.*)$/gm)].map((match) => match[1].trim());
 
-    expect(uses).toEqual(EXPECTED_PINS);
+    // Birden çok workflow aynı sabitlenmiş sürümü kullanabilir; izinli küme değişmez.
+    expect([...new Set(uses)]).toEqual(EXPECTED_PINS);
     uses.forEach((entry) => {
       expect(entry).toMatch(/^[\w.-]+\/[\w.-]+@[0-9a-f]{40} # v\d+\.\d+\.\d+$/);
     });
@@ -25,8 +26,10 @@ describe("GitHub Actions tedarik zinciri", () => {
   });
 
   it("workflow yetkisini yalnız içerik okumayla sınırlar", () => {
-    const workflow = readFileSync(".github/workflows/ci.yml", "utf8").replace(/\r\n/g, "\n");
-    expect(workflow).toMatch(/permissions:\n\s+contents:\s+read/);
-    expect(workflow).not.toMatch(/permissions:\s+write-all/);
+    for (const name of readdirSync(".github/workflows").filter((file) => /\.ya?ml$/.test(file))) {
+      const workflow = readFileSync(`.github/workflows/${name}`, "utf8").replace(/\r\n/g, "\n");
+      expect(workflow, name).toMatch(/permissions:\n\s+contents:\s+read/);
+      expect(workflow, name).not.toMatch(/permissions:\s+write-all/);
+    }
   });
 });

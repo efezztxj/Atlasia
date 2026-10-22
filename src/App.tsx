@@ -24,7 +24,7 @@ import RouteEditor from "./components/RouteEditor";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { CollectionsProvider, isCloudAccount } from "./hooks/useCollections";
 import { GUIDE_PLACES } from "./data/places";
-import { EPHESUS_CENTER } from "./data/ephesusFixture";
+import { EPHESUS_CENTER } from "./data/ephesusCenter";
 import { EPHESUS_TOUR } from "./data/siteTours";
 import { formatAccuracy, useGeolocation } from "./hooks/useGeolocation";
 import { useAtlasData } from "./hooks/useAtlasData";

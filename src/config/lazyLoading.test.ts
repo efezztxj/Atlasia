@@ -12,6 +12,14 @@ describe("ağır istemci modüllerinin tembel yüklenmesi", () => {
     expect(app).not.toMatch(/^import MapView.+from "\.\/components\/MapView";/m);
   });
 
+  it("P14 tarihçe kodu ve Efes fixture verisi entry'ye girmez", () => {
+    const sources = ["src/App.tsx", "src/components/PlaceDetails.tsx", "src/components/NearbyHistory.tsx"].map(read).join("\n");
+    // Statik import tüm fixture modülünü entry'ye taşır; yalnız ephesusCenter statik olabilir.
+    expect(sources).not.toMatch(/^import [^;]+ from "[./]+data\/ephesusFixture";/m);
+    expect(sources).not.toMatch(/^import (?!type )[^;]+ from "[./]+utils\/historicSites";/m);
+    expect(read("src/components/PlaceDetails.tsx")).toContain('lazy(() => import("./NearbyHistory"))');
+  });
+
   it("Firebase Auth çalışma kodunu statik başlangıç grafiğine eklemez", () => {
     const runtimeFiles = [
       "src/lib/auth.ts",

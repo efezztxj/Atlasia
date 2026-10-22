@@ -22,6 +22,6 @@
 `node --check public/sw.js` ✅ (denetim 2026-10-22).
 
 ## Açık
-- Ayarlar paneline yeni "Çevrimdışı harita" bölümü eklendi. Bileşen daha önce hiçbir yere bağlı değildi; spec "yerleşim değişikliği yok" diyor → bu ekleme kullanıcı onayına tabidir.
+- Ayarlar'daki "Çevrimdışı harita" bölümü **kalıcı** (2026-10-22, kullanıcı talimatı "yapabildiğini yap"): bölüm olmadan P15 kodu ölü kalır. Kapalıyken tek satırlık düğme; kod yalnız açılınca yüklenir.
 - Paketsiz bölgede SW 204 boş karo döner; NetworkStatus çevrimdışı bandı gösterir. Gri alan + bant birlikte gerçek cihazda görülmeli.
 - Çevrimdışıyken yalnız "Karanlık" altlık çalışır; UI bunu söylüyor. Gerçek cihazda uçak modu doğrulaması (TASK-016) kullanıcıda.

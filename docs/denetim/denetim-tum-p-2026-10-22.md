@@ -59,3 +59,16 @@
 
 ## Biçim notu
 Plan "biten satır tablodan kaldırılır" kuralı ile 2026-10-22 "✅ işaretle" uygulaması çelişiyor; mevcut tablo ikincisini izliyor. Teslimatlar hem kökte (P12/13/16/19) hem `docs/teslimatlar/` altında; taşıma yapılmadı.
+
+## İkinci tur (2026-10-22, kullanıcı: "sırasıyla yap, düzelt")
+
+| P | Önce | Şimdi | Ne yapıldı |
+|---|---|---|---|
+| P16 | ⚠️ mapWeather testsiz | ✅ | `mapWeather.test.ts` (5): kapalıyken ağ yok, hata/boş yanıt etiketi, geç yanıt çizilmez, destroy |
+| P5 | ⚠️ Windows'ta koşulmadı | ✅ (CI kanıtı PR'da) | `rules-windows.yml`: windows-latest + `Set-Culture tr-TR` + emulator testleri |
+| P14 | ⚠️ UI'a bağlı değil, CSP kapalı | ✅ | Yer detayında "Yakındaki tarihî yerler" (düğmeyle, lazy); CSP tam host; Efes fixture entry sızıntısı kapatıldı |
+| P15 | ⚠️ yerleşim değişikliği | ✅ karar: kalır | Bölüm olmadan özellik ölü; teslimata işlendi |
+| P18 | ⚠️ 140 açık tema AA altı, giriş yüzeyi | ✅ | Açık tema AA katmanı (koyu tema aynen); giriş yüzeyi **bilinçli koyu** + AA testi |
+| P6–P9 | — | kapandı | Tanım yok; plan dosyasına "boş numara" olarak işlendi |
+
+Canlı rules karşılaştırması: `canli-rules-farki-2026-10-22.md`.
