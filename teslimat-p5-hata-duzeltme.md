@@ -439,3 +439,112 @@ ayrı onay konusu; bu PR'da uygulanmadı.
 request.auth.uid`, satır ~550) filtresiz sorguda hiç başarılı olamaz. Mevcut
 (main'de de aynı) bir kural olduğu için bu PR'da dokunulmadı; istemci sorgusu
 `authorUid` eşitlik filtresi gönderiyorsa çalışır.
+
+## Ek tur 4 — `origin/main` birleştirmesi (2026-10-22, kullanıcı onayıyla)
+
+**Neden gerekti:** PR #51 `mergeable: CONFLICTING` durumundaydı ve bu daldaki
+`firestore.rules` `joinCode` içermiyordu; main'in istemcisi (`groups.ts`)
+ise `joinCode` yazıyordu. Yani bu dal tek başına yayınlansaydı **grup kurma
+canlıda kırılırdı** (🔥 sürüm uyuşmazlığı). Kullanıcı birleştirmeyi onayladı.
+
+**Birleştirilen gerçek tip:** `84d2425` (PR #54, "arkadaşlık isteği başkasının
+kutusunu okumuyor") — birleştirme sırasında `origin/main`, daha önce incelenen
+`4d32cf4`'ten ilerlemişti. Dalımıza 168 commit geldi. PR #54 `firestore.rules`'a
+dokunmadı (`friendships.ts` + 17 satır emülatör vakası + ROADMAP), bu yüzden kural
+analizi ve `writeGroupIndex` satır referansları (415/466/508/545) geçerli kaldı.
+
+### Çakışma çözüm ilkesi
+
+9 çakışan dosyada **main esas alındı**: `firestore.rules`,
+`tests/firestore.rules.test.ts`, `src/lib/groups.ts`, `moderation.ts`,
+`notifications.ts`, `routeData.ts`, `src/hooks/useCollections.tsx`,
+`src/components/GroupsPanel.tsx`, `RecordsDock.tsx`. Birleştirme öncesi
+kopyalar `/home/user/merge-backup/` altına alındı (depo dışında, izlenebilirlik için).
+
+### Düşürülen dosyalar (main'de karşılığı var — çift sistem olmasın diye)
+
+| Silinen | Main'deki karşılığı |
+|---|---|
+| `src/lib/friends.ts` + `friends.test.ts` + `friends.mirror.test.ts` + `groups.friends.test.ts` | `src/lib/friendships.ts` (kendi ayna/indeks modeli: `users/{uid}/friendRequests`, `users/{uid}/friends`, `/friendships/{fid}`) |
+| `src/lib/firestoreErrors.ts` + testi | `src/lib/firestoreValue.ts` (`friendlyDataError`, `isPermissionDenied`) |
+| `src/lib/recordsErrors.ts` + testi | `RecordsDock.tsx` / `firestoreValue.ts` hata dalları |
+| `src/lib/routeData.permissions.test.ts` | `routeData.ts` içindeki permission-denied/not-found dalları + main'in kendi testleri |
+
+Kural tarafında da benim `friendInviteSelfAdd()` mekanizmam düştü; yerinde
+main'in **iki kanıtlı katılım yolu** duruyor: `invites/{invitedUid}` varlığı
+VE `joinAttempts/{joinId}` kodu. Toplam 9 dosya `git rm` ile kaldırıldı;
+typecheck bu silmelerden sonra 0 hataya indi.
+
+### Yeniden uygulanan 5 sertleştirme (main'in 948 satırlık kurallarına → 1001 satır)
+
+Kusur #1–#5 aynen geçerliydi, ancak main'in kural metnine uyarlanarak uygulandı:
+
+| Kusur | Main'deki durum | Uygulanan |
+|---|---|---|
+| #1 `updatedAt` doğrulanmıyor | Yalnız `lastMessage` dalında eksikti (öteki üç dal zaten doğruluyordu) | o dala `&& request.resource.data.updatedAt == request.time` |
+| #2 grup indeksi kanıtsız | `users/{uid}/groups/{groupId}` create serbestti | `exists(groups)` + `auth.uid in memberUids` + `(role=='owner') == (ownerUid==auth.uid)` |
+| #3 silinmiş grupta `get(...).data` | `groupMembers()` null'a düşüyordu | `exists(...) ? get(...).data.memberUids : []` |
+| #4 kuruluşta rızasız üye | create'te sınır yoktu | `memberUids.hasOnly([request.auth.uid])` |
+| #5 hikâye süresi | süresi dolmuş hikâye herkese açıktı | `storyLive()` **yalnız `get`**'te |
+
+`storyLive()` list'te kullanılamıyor — PR #51'in CI kanıtı: `Property createdAt is
+undefined on object. for 'list'` (run `39799985550`, check-run `119897608578`).
+Kusur #5 bu yüzden **kısmen** kapandı: doğrudan id ile okuma kapanır, oturumsuz
+ve filtresiz liste ≤50 kayıt döndürebilir. (Ürün kararı gerekir; Ek tur 3b'de anlatıldı.)
+
+### Statik kilitlerin yeniden hedeflenmesi
+
+- `src/config/firestoreRulesStructure.test.ts` → **22/22**. Arkadaşlık (10 test) ve
+  grup daveti (5 test) bölümleri, benim düşen sistemimi kilitlediği için kaldırıldı;
+  yerine **main'in mekanizmalarını** kilitleyen 9 test yazıldı: `friendships`
+  `list:false` + yalnız katılımcı `get` + `update:false`; kabulün
+  `pendingFriendRequestExists` + `existsAfter(...friendRequests...)` atomikliği ve
+  `fid == friendshipId(...)`; `friendRequests`'te karşılıklı-tekrar ve
+  zaten-arkadaş yasakları; `friends` indeksinin `isAcceptedFriendship` şartı;
+  `invites`'te kurucu + kabul edilmiş arkadaşlık + üye-olmama; `joinAttempts`'te
+  own-scoped `get`, `list:false`, sayaç `1 → +1`, tavan 5, pencere 15 dk.
+  (Bu sayı Ek tur 3'teki "28 test" kaydının yerine geçer: 28 − 15 kaldırılan + 9 yeni = 22.)
+- `src/config/firestoreLimits.test.ts` → **15/15** (Ek tur 2'deki 13'ün yerine).
+  Üç gerçek eksik kapatıldı: takma ad sabitleri artık çözülüyor
+  (`DELETE_PAGE_SIZE = ACCOUNT_DATA_PAGE_SIZE`, geçişli + döngü korumalı);
+  `collectionGroup` sorguları destekleniyor (`{*}/replies`); silinecek hedefler
+  `OWNED_TOP_LEVEL`/`OWN_SUBCOLLECTIONS` listelerinden somutlaştırılıyor ve limit
+  **ilgili fonksiyonun gövdesinden** alınıyor (dosyanın ilk `limit(...)`'i
+  `REPORT_LIMIT=50` olduğu için sahte `/routes` ihlali üretiyordu). Ayrıca
+  `PUBLIC_ROUTE_PAGE_SIZE=40` ve "ACCOUNT_DATA_PAGE_SIZE silinen her koleksiyonun
+  en küçük sınırını aşmaz" kilidi eklendi.
+
+### Emülatör dosyası (main'in sürümüne uygulandı)
+
+- 3 yeni vaka: süresi dolmuş hikâyeyi yabancı okuyamaz/sahibi okur, `updatedAt`'siz
+  `lastMessage` reddedilir, silinmiş grubun mesajı kural hatasına düşmeden reddedilir.
+- 2 fixture'a gerçekçi `createdAt` eklendi (`stories/st-public`, `stories/st-alice`):
+  gerçek bir hikâyede bu alan her zaman vardır (create kuralı `createdAt == request.time`
+  ister) ve kusur #5'in penceresi bu alandan hesaplanır.
+- 2 assertion: create'te `memberUids: ["owner","member"]` reddedilir (rıza kilidi);
+  indekse `role:"owner"` yazan üye reddedilir (rol tutarlılığı).
+
+### Doğrulama — yerelde ve CI'da gerçekten koştu
+
+| Kontrol | Sonuç |
+|---|---|
+| `npm run typecheck` | 0 hata |
+| `npm run lint` (`--max-warnings=0`) | 0 uyarı |
+| `npm run test:run` | **106 dosya / 770 test geçti** |
+| `npm run build` + bundle bütçesi | başarılı, bütçe içinde |
+| CI `verify` (run `39808517940`) adım 12 "Firestore security rules tests" | **success** — emülatör süiti Linux'ta geçti |
+| CI `verify` adım 13 (benim teşhis adımı) | **skipped** — beklenen davranış (`if: failure()`) |
+| CI `Firestore rules tests on Windows (tr-TR)` (run `39808517895`) | **success** — emülatör Türkçe yerelle de geçti |
+| Cloudflare Pages | **success** |
+| PR #51 durumu | `mergeable=true` (çakışma bitti), `state=blocked` (onay bekliyor) |
+
+Yerelde emülatör KOŞULAMADI (Java 21 yok, JAR adresi erişilemez); kanıt CI'dan geldi.
+
+### Canlı kurallar hakkında güncel durum
+
+Main'e bu turda gelen `docs/denetim/canli-rules-farki-2026-10-22.md` kaydına göre
+kullanıcı **Console'dan `firestore.rules`'u (main `2b03f2f`) yayınladı** ve indeksler
+de ele alındı. `git log 2b03f2f..84d2425 -- firestore.rules` boş çıktı: o yayından
+beri main'in kuralları değişmedi, yani **canlı = main**. Bu dal ise canlıdakine
+5 sertleştirmeyi ekliyor. Yayın kararı kullanıcıya aittir; bu turda **hiçbir kural
+deploy edilmedi**, üretim değişikliği yapılmadı.
