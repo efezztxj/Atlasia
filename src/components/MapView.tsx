@@ -14,6 +14,7 @@ import type { PlaceViewport } from "../lib/firestoreData";
 import type { Place, RouteLeg, ViewState } from "../types";
 import { shouldAdvanceSpin } from "../utils/mapLifecycle";
 import type { WeatherLayerHandle } from "../utils/mapWeather";
+import { attachMapResume } from "../lib/mapResume";
 
 maplibregl.setWorkerUrl(maplibreWorkerUrl);
 
@@ -697,6 +698,14 @@ export default function MapView({
       mapRef.current = null;
       setReady(false);
     };
+  }, []);
+
+  // Aşama 4: arka plandan dönüşte yalnız resize + repaint (çizim mantığı değişmez).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const resume = attachMapResume({ map });
+    return resume.dispose;
   }, []);
 
   // Altlık ve etiketleri kaynakları yeniden yüklemeden değiştir; pin ve rota
