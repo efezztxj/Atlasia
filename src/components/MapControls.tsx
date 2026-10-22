@@ -11,6 +11,12 @@ interface Props {
   onToggleTerrain: () => void;
   labels: boolean;
   terrain: boolean;
+  /**
+   * İŞ 2d: mobilde açık keşif paneli harita düğmelerinin üstüne biniyor
+   * (panel 64–332 px, düğme yığını 196–366 px). Panel açıkken düğmeler
+   * gizlenir; masaüstünde görünür kalır.
+   */
+  hiddenOnMobile?: boolean;
 }
 
 function RoundBtn({
@@ -61,6 +67,7 @@ export default function MapControls({
   onToggleTerrain,
   labels,
   terrain,
+  hiddenOnMobile,
 }: Props) {
   const [weather, setWeather] = useState(false);
   useEffect(() => {
@@ -79,7 +86,10 @@ export default function MapControls({
       role="toolbar"
       aria-label="Görünüm kontrolleri"
       aria-orientation="vertical"
-      className="mobile-map-controls mobile-bottom-stack-control glass-panel gold-frame pointer-events-auto absolute right-3 z-20 flex flex-col items-center gap-1 rounded-full p-1.5 md:right-8 md:bottom-24 md:gap-1.5"
+      className={cn(
+        "mobile-map-controls mobile-bottom-stack-control glass-panel gold-frame pointer-events-auto absolute right-3 z-20 flex flex-col items-center gap-1 rounded-full p-1.5 md:right-8 md:bottom-24 md:gap-1.5",
+        hiddenOnMobile && "max-md:hidden",
+      )}
     >
       <RoundBtn label="Yakınlaştır" onClick={onZoomIn}>
         <ZoomIn className="size-[18px]" />

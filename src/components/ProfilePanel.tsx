@@ -223,7 +223,7 @@ export default function ProfilePanel({ onClose, onRecords, settings, myPlacesCou
           </div>
         </section>
 
-        <nav aria-label="Profil bölümleri" className="no-scrollbar sticky top-0 z-10 -mx-6 mt-4 flex gap-2 overflow-x-auto border-y border-white/[0.06] bg-ink-2/95 px-6 py-2 backdrop-blur-xl">
+        <nav aria-label="Profil bölümleri" className="no-scrollbar sticky top-0 z-10 -mx-6 mt-4 flex gap-2 overflow-x-auto border-y border-white/[0.06] bg-ink-2/95 px-6 py-2">
           {[
             { id: "profile-account", label: "Hesabım", icon: UserRound },
             { id: "profile-library", label: "Kayıtlar", icon: Bookmark },

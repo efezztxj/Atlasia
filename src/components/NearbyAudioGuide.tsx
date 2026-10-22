@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BookOpen, MapPin, Pause, Play, RotateCcw, Volume2, X } from "lucide-react";
-import type { Place, AtlasRoute } from "../types";
+import type { Place } from "../types";
 import { STORIES } from "../data/galleries";
 import { storageGet, storageSet } from "../utils/storage";
 import { initialGuideState, resolveGuidePlace, type TourGuideState } from "../utils/tourGuide";
+import { siteTourForPoint } from "../data/siteTours";
 
 interface Props {
   location: { lat: number; lng: number; accuracy: number } | null;
   places: Place[];
-  tourRoute?: AtlasRoute | null;
   onOpenPlace: (place: Place) => void;
 }
 
@@ -27,7 +27,13 @@ function guideText(place: Place) {
   return `${place.title}. ${story}`.replace(/\s+/g, " ").trim();
 }
 
-export default function NearbyAudioGuide({ location, places, tourRoute, onOpenPlace }: Props) {
+export default function NearbyAudioGuide({ location, places, onOpenPlace }: Props) {
+  // İŞ 4: tur seçimi bileşenin içinde — site turu verisi giriş paketinde değil,
+  // bu bileşenin lazy parçasında kalır. Yarıçap App'ten bağımsızdır.
+  const tourRoute = useMemo(
+    () => (location ? siteTourForPoint(location.lat, location.lng, 5) : null),
+    [location],
+  );
   const [dismissed, setDismissed] = useState<string[]>(readDismissed);
   const [speaking, setSpeaking] = useState(false);
   const [paused, setPaused] = useState(false);
@@ -147,7 +153,7 @@ export default function NearbyAudioGuide({ location, places, tourRoute, onOpenPl
   const replay = () => speakFromStart();
 
   return (
-    <section aria-labelledby="nearby-guide-title" className="nearby-audio-guide animate-rise fixed inset-x-3 top-[78px] z-[38] mx-auto max-w-[440px] rounded-[22px] border border-sun/30 bg-[#06241d]/95 p-4 shadow-2xl shadow-black/60 backdrop-blur-xl md:top-[92px]">
+    <section aria-labelledby="nearby-guide-title" className="nearby-audio-guide animate-rise fixed inset-x-3 top-[78px] z-[38] mx-auto max-w-[440px] rounded-[22px] border border-sun/30 bg-[#06241d] p-4 shadow-2xl shadow-black/60 md:top-[92px]">
       <div className="flex items-start gap-3">
         <span className="grid size-11 shrink-0 place-items-center rounded-full bg-sun/15 text-sun"><Volume2 size={19} /></span>
         <div className="min-w-0 flex-1">
