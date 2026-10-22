@@ -2,6 +2,12 @@
 
 CI içindeki üçüncü taraf action'lar değişebilir `@v4` etiketleriyle değil, tam 40 karakterlik commit SHA'larıyla çalışır. Okunabilir sürüm etiketi satır sonu yorumunda korunur.
 
+22 Ekim 2026 güncellemesi (Dependabot #6 karşılandı): `actions/setup-java`
+`v6.1.0` → `b843ebf9b913146b38da2eaa7aeddf76074ae1ad`. `git ls-remote --tags`
+etiketi aynı SHA'ya işaret ediyor; GitHub commit API `verified=true`,
+`reason=valid`. Girdiler (`temurin`, `21`) değişmedi. Diğer üç pin aşağıdaki
+21 Ekim kaydıyla aynıdır.
+
 21 Ekim 2026 doğrulama kaydı (P1 oturumu — Dependabot #6/#7/#8 karşılandı):
 
 | Action | Sürüm | Commit SHA | Doğrulama |
