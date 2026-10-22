@@ -84,3 +84,15 @@ piksel ölçümüyle doğrulandı (10px boşluk her iki panel durumunda da).
 
 Merge onayı sonrası gerçek cihazda safe-area ve kısa ekran kontrolü;
 gerekirse kontrol sütunu için üst sınır (max bottom) ince ayarı.
+
+## Ek — Kapsül kontrol çubuğu (aynı PR, kullanıcı önerisi)
+
+- Sağ harita kontrolleri tek cam kapsülde toplandı
+  (`glass-panel` + `gold-frame`, tam görünür); butonlar her platformda
+  44px tam yuvarlak oldu (önceden masaüstünde 20px, mobilde 38×44 ovaldi).
+- Alt yığın düzeni korundu: kapsül de ölçülen kart alanına göre
+  yükseliyor (10px boşluk ölçümü tekrar doğrulandı, mobil + PC).
+- PC'deki "Haritayı tut, döndür, keşfet" ipucu kapsülün soluna alındı
+  (right-8 → right-28).
+- Görüntüler (git dışı): `design-vizyon/kapsul-sonrasi-mobil.png`,
+  `design-vizyon/kapsul-sonrasi-pc.png`.

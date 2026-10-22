@@ -779,7 +779,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
       />
 
       {/* İpucu + atıf */}
-      <div className="pointer-events-none absolute right-8 bottom-[30%] z-10 hidden flex-col items-end gap-2 text-right lg:flex">
+      <div className="pointer-events-none absolute right-28 bottom-[30%] z-10 hidden flex-col items-end gap-2 text-right lg:flex">
         <p className="flex items-center gap-2 text-[10.5px] font-medium tracking-[0.16em] text-mint/70 uppercase">
           <span className="relative flex size-1.5">
             <span className="absolute inline-flex size-full animate-ping rounded-full bg-leaf opacity-70" />

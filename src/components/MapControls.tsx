@@ -34,10 +34,10 @@ function RoundBtn({
         aria-label={label}
         {...(pressed !== undefined ? { "aria-pressed": pressed } : {})}
         className={cn(
-          "map-round-btn grid place-items-center rounded-full border backdrop-blur-xl transition active:scale-90",
+          "map-round-btn grid size-11 place-items-center rounded-full border transition active:scale-90",
           active
             ? "btn-gold border-transparent"
-            : "border-leaf/30 bg-ink/80 text-mint hover:border-leaf/70 hover:bg-ink-3 hover:text-white",
+            : "border-white/10 bg-white/[0.04] text-mint/85 hover:border-sun/40 hover:bg-white/[0.08] hover:text-white",
         )}
       >
         {children}
@@ -79,7 +79,7 @@ export default function MapControls({
       role="toolbar"
       aria-label="Görünüm kontrolleri"
       aria-orientation="vertical"
-      className="mobile-map-controls mobile-bottom-stack-control pointer-events-auto absolute right-3 z-20 flex flex-col items-center gap-1.5 md:right-8 md:bottom-24 md:gap-3"
+      className="mobile-map-controls mobile-bottom-stack-control glass-panel gold-frame pointer-events-auto absolute right-3 z-20 flex flex-col items-center gap-1 rounded-full p-1.5 md:right-8 md:bottom-24 md:gap-1.5"
     >
       <RoundBtn label="Yakınlaştır" onClick={onZoomIn}>
         <ZoomIn className="size-[18px]" />
