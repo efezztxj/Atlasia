@@ -633,18 +633,24 @@ body,
     padding: 10px;
   }
 
-  /* Alt yığın: hap ve harita kontrolleri keşif kartının üst kenarına yaslanır */
+  /* İŞ 2d: daraltılmış keşif kartı bottom 118 + p-2.5 + 48 px küçük görsel
+     ≈ 186 px'lik bandı kaplar. Buradaki sabit değer kartın üst kenarına denk
+     gelen yedektir; gerçek değeri aşağıdaki ölçülen yığın kuralı belirler. */
+  .mobile-map-controls {
+    right: 10px;
+    bottom: calc(186px + env(safe-area-inset-bottom));
+    gap: 6px;
+  }
+
+  /* Alt yığın: hap ve harita kontrolleri keşif kartının üst kenarına yaslanır.
+     Aynı özgüllükte ve .mobile-map-controls'tan sonra geldiği için ölçülen
+     --discovery-occupied-space her zaman kazanır (daraltılmış kartta ≈196 px). */
   .mobile-bottom-stack-control {
     bottom: max(
       calc(var(--mobile-stack-base, 118px) + env(safe-area-inset-bottom)),
       calc(var(--discovery-occupied-space, 0px) + 10px)
     );
     transition: bottom .35s cubic-bezier(.2, .8, .2, 1);
-  }
-
-  .mobile-map-controls {
-    right: 10px;
-    gap: 6px;
   }
   .mobile-map-controls .map-round-btn { width: 44px; height: 44px; }
   .mobile-map-controls .map-round-btn svg { width: 16px; height: 16px; }
@@ -671,16 +677,16 @@ body,
   }
   .mobile-add-fab svg { width: 20px; height: 20px; }
 
-  /* Alt çubuk: altın çerçeveli cam bar (Instagram / Material 3 hap göstergesi) */
+  /* Alt çubuk: nötr hairline bar (Instagram / Material 3 hap göstergesi).
+     Karar (İŞ 2a/2b): altın süs ve backdrop-filter kaldırıldı; bar zaten
+     neredeyse opaktı (.94), aynı görünüm .97 opaklıkla korunur. */
   .mobile-tab-bar {
     height: calc(58px + env(safe-area-inset-bottom));
-    background: rgba(2, 24, 19, .94);
-    backdrop-filter: blur(20px) saturate(1.4);
-    -webkit-backdrop-filter: blur(20px) saturate(1.4);
-    border-top: 1px solid rgba(234, 181, 79, .38);
+    background: rgba(2, 24, 19, .97);
+    border-top: 1px solid rgba(228, 245, 234, .14);
     box-shadow:
-      0 -12px 32px rgba(0, 0, 0, .38),
-      inset 0 1px 0 rgba(243, 200, 112, .28);
+      0 -10px 24px rgba(0, 0, 0, .26),
+      inset 0 1px 0 rgba(228, 245, 234, .06);
   }
   .mobile-tab-bar::before {
     content: "";
@@ -689,7 +695,7 @@ body,
     left: 0;
     right: 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(243, 200, 112, .9) 30%, rgba(91, 224, 166, .55) 62%, rgba(243, 200, 112, .9) 85%, transparent);
+    background: linear-gradient(90deg, transparent, rgba(228, 245, 234, .22) 30%, rgba(228, 245, 234, .12) 62%, rgba(228, 245, 234, .22) 85%, transparent);
     pointer-events: none;
   }
   .mobile-tab-item {
@@ -750,20 +756,23 @@ body,
    hap göstergesi, iOS gruplu listeler ve degrade halka. Konum/yerleşim
    kararları değişmez; bu katman yalnız yüzey dilini birleştirir. */
 
-/* Altın çerçeveli panel: degrade üst çizgi + sıcak gölge */
+/* Panel çerçevesi: sade, ince, nötr hairline.
+   Karar (İŞ 2a): altın yalnız birincil eylemde (.btn-gold, .btn-gold-round,
+   Atlas AI) ve seçili durumda (sekme hapı, .segmented aktif) kalır. Sıradan
+   paneller nötr çerçeve kullanır; sınıf adı geriye dönük uyum için korunur.
+   Önem eki kullanılmaz: çerçeve rengi bağlama göre ezilebilir kalır. */
 .gold-frame {
-  border: 1px solid rgba(234, 181, 79, .42) !important;
+  border: 1px solid rgba(228, 245, 234, .12);
   box-shadow:
-    0 0 0 1px rgba(234, 181, 79, .09),
-    0 22px 54px rgba(0, 0, 0, .52),
-    inset 0 1px 0 rgba(255, 236, 190, .16);
+    0 10px 26px rgba(0, 0, 0, .28),
+    inset 0 1px 0 rgba(255, 255, 255, .05);
 }
 
-/* Cam panel: harita üzerinde bulanık, doygun yüzey */
+/* Cam panel: harita üzerinde yüzey.
+   Karar (İŞ 2b): backdrop-filter kaldırıldı — zayıf Android'de kaydırma
+   takılmasının kaynağıydı. Aynı görünüm opaklıkla korunur. */
 .glass-panel {
-  background: linear-gradient(180deg, rgba(7, 43, 36, .93), rgba(2, 21, 18, .97));
-  backdrop-filter: blur(20px) saturate(1.35);
-  -webkit-backdrop-filter: blur(20px) saturate(1.35);
+  background: linear-gradient(180deg, rgba(7, 43, 36, .965), rgba(2, 21, 18, .985));
 }
 
 /* Birincil eylem: altın degrade düğme */
@@ -1004,10 +1013,9 @@ html[data-theme="light"] .space-bg .glass-panel {
 }
 
 html[data-theme="light"] .space-bg .gold-frame {
-  border-color: rgba(168, 109, 32, .48) !important;
+  border-color: rgba(18, 51, 43, .14);
   box-shadow:
-    0 0 0 1px rgba(168, 109, 32, .1),
-    0 18px 44px rgba(18, 51, 43, .16),
+    0 10px 26px rgba(18, 51, 43, .10),
     inset 0 1px 0 rgba(255, 255, 255, .8);
 }
 
