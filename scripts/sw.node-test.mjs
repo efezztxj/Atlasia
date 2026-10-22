@@ -4,7 +4,7 @@ import test from "node:test";
 import vm from "node:vm";
 
 const ORIGIN = "https://atlasia.test";
-const SHELL_CACHE = "atlasia-shell-v6";
+const SHELL_CACHE = "atlasia-shell-v7";
 const TILE_CACHE = "atlasia-tiles-v1";
 const TILE_META_CACHE = "atlasia-tile-meta-v1";
 const PACK_CACHE = "atlasia-packs-v1";
@@ -127,7 +127,7 @@ function createHarness({ now = 1_700_000_000_000 } = {}) {
     if (url.origin === ORIGIN) {
       return typedResponse(`shell:${url.pathname}`, {
         status: 200,
-        headers: { "Content-Type": url.pathname.endsWith(".css") ? "text/css" : "application/octet-stream" },
+        headers: { "Content-Type": url.pathname.endsWith(".js") ? "text/javascript" : url.pathname.endsWith(".css") ? "text/css" : "application/octet-stream" },
         url: url.href,
       });
     }
@@ -267,15 +267,40 @@ test("install: hash'li ve lazy uygulama parçalarıyla kabuğu saklar, skipWaiti
   assert.equal(harness.state.skipWaitingCalls, 1);
 });
 
-test("install: eksik lazy parça kurulumu reddeder ve aktif v5 kabuğunu ezmez", async () => {
+test("install: yeni v7 beklerken aktif v6 kabuğuna dokunmaz", async () => {
   const harness = createHarness();
-  const oldShell = await harness.caches.open("atlasia-shell-v5");
-  await oldShell.put("/", typedResponse("old-v5-shell", { status: 200, url: `${ORIGIN}/` }));
+  const active = await harness.caches.open("atlasia-shell-v6");
+  await active.put("/", typedResponse("active-v6", { status: 200, url: `${ORIGIN}/` }));
+  await harness.dispatch("install");
+  assert.equal(harness.state.skipWaitingCalls, 0);
+  assert.equal(await (await active.match("/")).text(), "active-v6");
+  assert.ok(await (await harness.caches.open(SHELL_CACHE)).match("/"));
+});
+
+test("install: eksik lazy parça kurulumu reddeder ve aktif v6 kabuğunu ezmez", async () => {
+  const harness = createHarness();
+  const oldShell = await harness.caches.open("atlasia-shell-v6");
+  await oldShell.put("/", typedResponse("old-v6-shell", { status: 200, url: `${ORIGIN}/` }));
   harness.routes.set(`${ORIGIN}/assets/lazy.js`, () => typedResponse("missing", { status: 404 }));
 
   await assert.rejects(harness.dispatch("install"), /shell asset could not be fetched/);
   assert.equal(harness.state.skipWaitingCalls, 0);
-  assert.equal(await (await oldShell.match("/")).text(), "old-v5-shell");
+  assert.equal(await (await oldShell.match("/")).text(), "old-v6-shell");
+});
+
+test("install: eksik JS'e sunulan 200 HTML SPA fallback'i kabuk sanıp saklamaz", async () => {
+  const harness = createHarness();
+  const oldShell = await harness.caches.open("atlasia-shell-v6");
+  await oldShell.put("/", typedResponse("old-shell", { status: 200, url: `${ORIGIN}/` }));
+  harness.routes.set(`${ORIGIN}/assets/lazy.js`, () => typedResponse("<html>not a module</html>", {
+    status: 200,
+    headers: { "Content-Type": "text/html" },
+    // SPA rewrite: URL değişmese bile HTML bir JS dosyası değildir.
+    url: `${ORIGIN}/assets/lazy.js`,
+  }));
+
+  await assert.rejects(harness.dispatch("install"), /shell asset could not be fetched/);
+  assert.equal(await (await oldShell.match("/")).text(), "old-shell");
 });
 
 test("navigasyon ve lazy script ağ yokken aynı sürümün ön önbelleğinden gelir", async () => {
@@ -310,6 +335,7 @@ test("Firebase/Auth/Firestore, authorization, Esri ve genel dış API istekleri 
     `${ORIGIN}/__/auth/handler`,
     `${ORIGIN}/__/firebase/init.json`,
     `${ORIGIN}/api/private-data`,
+    `${ORIGIN}/api`,
   ];
 
   for (const url of urls) {
@@ -360,6 +386,22 @@ test("izinli istek Firebase/Auth cevabına yönlendirilirse son URL fail-closed 
   }));
   await assert.rejects(installHarness.dispatch("install"), /shell asset could not be fetched/);
   assert.equal(await (await installHarness.caches.open(SHELL_CACHE)).match("/"), undefined);
+});
+
+test("aynı origin API yönlendirmesi ve dinamik kişisel görsel önbelleklenmez", async () => {
+  const harness = createHarness();
+  const assetUrl = `${ORIGIN}/assets/redirected.js`;
+  harness.routes.set(assetUrl, () => typedResponse("private-response", {
+    status: 200,
+    headers: { "Content-Type": "text/javascript" },
+    url: `${ORIGIN}/api/me`,
+  }));
+  const asset = await harness.fetchEvent(assetUrl, { destination: "script" });
+  assert.equal(asset.response.status, 200);
+  assert.equal(await (await harness.caches.open(SHELL_CACHE)).match(assetUrl), undefined);
+
+  const privateImage = await harness.fetchEvent(`${ORIGIN}/account/me/avatar`, { destination: "image" });
+  assert.equal(privateImage.intercepted, false);
 });
 
 test("izinli karo CORS gövdesiyle saklanır; çevrimdışı okunur ve 7 gün sonunda silinir", async () => {
@@ -428,7 +470,7 @@ test("aktivasyon 500 girdi tavanını uygular, eski sürümleri siler ve saha pa
   }
   const packs = await harness.caches.open(PACK_CACHE);
   await packs.put("https://tiles.openfreemap.org/planet/12/1/1.pbf", typedResponse("packed", { status: 200 }));
-  await (await harness.caches.open("atlasia-shell-v5")).put("/", typedResponse("old"));
+  await (await harness.caches.open("atlasia-shell-v6")).put("/", typedResponse("old"));
   await (await harness.caches.open("atlasia-tiles-v0")).put("old", typedResponse("old"));
 
   await harness.dispatch("activate");
@@ -436,7 +478,7 @@ test("aktivasyon 500 girdi tavanını uygular, eski sürümleri siler ve saha pa
   assert.equal(await tileCache.match("https://tiles.openfreemap.org/planet/14/2/0.pbf"), undefined);
   assert.ok(await packs.match("https://tiles.openfreemap.org/planet/12/1/1.pbf"));
   const names = await harness.caches.keys();
-  assert.equal(names.includes("atlasia-shell-v5"), false);
+  assert.equal(names.includes("atlasia-shell-v6"), false);
   assert.equal(names.includes("atlasia-tiles-v0"), false);
   assert.equal(names.includes(PACK_CACHE), true);
   assert.equal(harness.state.preloadCalls, 1);
