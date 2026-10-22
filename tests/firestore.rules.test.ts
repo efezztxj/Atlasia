@@ -26,6 +26,7 @@ import {
   updateDoc,
   where,
   writeBatch,
+  type Firestore,
 } from "firebase/firestore";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -37,6 +38,14 @@ import { ACCOUNT_DATA_PAGE_SIZE } from "../src/config/firestoreLimits";
 
 const PROJECT_ID = "demo-atlasia-rules";
 let testEnv: RulesTestEnvironment;
+
+/**
+ * @firebase/rules-unit-testing compat Firestore tipi, firebase/firestore'un
+ * Firestore tipine atanamıyor (type/toJSON eksik). Susturma yok: bilinçli,
+ * tek noktadan tip köprüsü.
+ */
+type RulesDb = ReturnType<ReturnType<RulesTestEnvironment["authenticatedContext"]>["firestore"]>;
+const asFirestore = (db: RulesDb) => db as unknown as Firestore;
 
 function emulatorAddress() {
   const value = process.env.FIRESTORE_EMULATOR_HOST ?? "127.0.0.1:8080";
@@ -296,7 +305,7 @@ describe("Firestore güvenlik kuralları", () => {
       )));
     });
 
-    await removePostInFirestore(testEnv.authenticatedContext("owner").firestore(), "post-1");
+    await removePostInFirestore(asFirestore(testEnv.authenticatedContext("owner").firestore()), "post-1");
     await testEnv.withSecurityRulesDisabled(async (context) => {
       const firestore = context.firestore();
       const parent = await getDoc(doc(firestore, "posts/post-1"));
@@ -315,16 +324,16 @@ describe("Firestore güvenlik kuralları", () => {
     const otherDb = testEnv.authenticatedContext("other").firestore();
 
     await Promise.all([
-      togglePostLikeInFirestore(memberDb, "post-1", "member"),
-      togglePostLikeInFirestore(otherDb, "post-1", "other"),
+      togglePostLikeInFirestore(asFirestore(memberDb), "post-1", "member"),
+      togglePostLikeInFirestore(asFirestore(otherDb), "post-1", "other"),
     ]);
     const snapshot = await getDoc(doc(memberDb, "posts/post-1"));
     expect(new Set(snapshot.data()?.likedBy)).toEqual(new Set(["member", "other"]));
     expect(snapshot.data()?.likes).toBe(0);
 
     await Promise.all([
-      addReplyInFirestore(memberDb, "post-1", "member", "Üye", "İlk eşzamanlı yanıt."),
-      addReplyInFirestore(otherDb, "post-1", "other", "Diğer", "İkinci eşzamanlı yanıt."),
+      addReplyInFirestore(asFirestore(memberDb), "post-1", "member", "Üye", "İlk eşzamanlı yanıt."),
+      addReplyInFirestore(asFirestore(otherDb), "post-1", "other", "Diğer", "İkinci eşzamanlı yanıt."),
     ]);
     const replies = await getDocs(query(
       collection(memberDb, "posts/post-1/replies"),
@@ -809,7 +818,7 @@ describe("Firestore güvenlik kuralları", () => {
     await assertSucceeds(deleteDoc(doc(memberDb, "users/member/groups/group-1")));
   });
 
-  it("tazelik doğrulamasını yalnız kendi adına yazar, herkes sınırlı sayfada okur", async () => {
+  it("tazelik doğrulamasını yalnız kendi adına yazar; okuma giriş şartına bağlıdır", async () => {
     const memberDb = testEnv.authenticatedContext("member").firestore();
     const otherDb = testEnv.authenticatedContext("other").firestore();
     const guestDb = testEnv.unauthenticatedContext().firestore();
@@ -827,13 +836,37 @@ describe("Firestore güvenlik kuralları", () => {
     await assertFails(setDoc(doc(memberDb, "verifications/extra"), { ...valid, xp: 50 }));
     await assertSucceeds(setDoc(doc(memberDb, "verifications/vr-1"), valid));
 
-    await assertSucceeds(getDoc(doc(guestDb, "verifications/vr-1")));
+    // Aşama 3-A: anonim okuma kapalı (serbest metin `note` gizliliği).
+    await assertFails(getDoc(doc(guestDb, "verifications/vr-1")));
     await assertFails(getDocs(collection(guestDb, "verifications")));
-    await assertSucceeds(getDocs(query(collection(guestDb, "verifications"), limit(50))));
-    await assertFails(getDocs(query(collection(guestDb, "verifications"), limit(51))));
+    await assertFails(getDocs(query(collection(guestDb, "verifications"), limit(50))));
+    // Oturumlu okuma sınırlı sayfada açık.
+    await assertSucceeds(getDoc(doc(otherDb, "verifications/vr-1")));
+    await assertSucceeds(getDocs(query(collection(otherDb, "verifications"), limit(50))));
+    await assertFails(getDocs(query(collection(otherDb, "verifications"), limit(51))));
     await assertFails(updateDoc(doc(memberDb, "verifications/vr-1"), { status: "closed" }));
     await assertFails(deleteDoc(doc(otherDb, "verifications/vr-1")));
     await assertSucceeds(deleteDoc(doc(memberDb, "verifications/vr-1")));
+  });
+
+  // === Aşama 3-A — verifications.note yalnız oturumlu kullanıcıya açık ===
+  it("anonim tazelik okuması reddedilir; giriş yapınca get ve sınırlı list açılır", async () => {
+    await seed("verifications/vr-note", {
+      placeId: "place-1",
+      uid: "member",
+      status: "still_open",
+      note: "Giriş ücreti 200 TL oldu.",
+      createdAt: Timestamp.now(),
+    });
+    const guestDb = testEnv.unauthenticatedContext().firestore();
+    const memberDb = testEnv.authenticatedContext("member").firestore();
+    const otherDb = testEnv.authenticatedContext("other").firestore();
+
+    await assertFails(getDoc(doc(guestDb, "verifications/vr-note")));
+    await assertFails(getDocs(query(collection(guestDb, "verifications"), limit(50))));
+    await assertSucceeds(getDoc(doc(otherDb, "verifications/vr-note")));
+    await assertSucceeds(getDocs(query(collection(memberDb, "verifications"), limit(50))));
+    await assertFails(getDocs(query(collection(memberDb, "verifications"), limit(51))));
   });
 
   it("içerik bildirimini yalnız oturum sahibi adına ve sınırlı alanlarla kabul eder", async () => {
@@ -919,6 +952,119 @@ describe("Firestore güvenlik kuralları", () => {
     await assertFails(updateDoc(doc(senderDb, "users/recipient/notifications/note-1"), { read: false }));
     await assertFails(deleteDoc(doc(senderDb, "users/recipient/notifications/note-1")));
     await assertSucceeds(deleteDoc(doc(recipientDb, "users/recipient/notifications/note-1")));
+  });
+
+  // === Aşama 1 — friend_declined kendi kanıtını üretir (friendDeclines) ===
+  it("friend_declined kanıtsız reddedilir; ret batch'i kanıt yazınca bildirim geçer", async () => {
+    await seed("users/bob/friendRequests/alice", {
+      fromUid: "alice",
+      fromName: "Alice",
+      toUid: "bob",
+      createdAt: Timestamp.now(),
+    });
+    const bobDb = testEnv.authenticatedContext("bob").firestore();
+    const notice = (targetId: string) => ({
+      recipientUid: "alice",
+      actorUid: "bob",
+      type: "friend_declined",
+      title: "Istek reddedildi",
+      body: "Arkadaslik istegin reddedildi.",
+      read: false,
+      createdAt: serverTimestamp(),
+      targetId,
+    });
+
+    // Kanıt belgesi yokken bildirim reddedilir.
+    await assertFails(setDoc(doc(bobDb, "users/alice/notifications/nt-declined-0"), notice("alice_bob")));
+
+    // Ret: kanıt + istek silme aynı batch'te (exists + !existsAfter).
+    const decline = writeBatch(bobDb);
+    decline.set(doc(bobDb, "friendDeclines/alice_bob"), {
+      declinerUid: "bob",
+      requesterUid: "alice",
+      users: ["alice", "bob"],
+      createdAt: serverTimestamp(),
+    });
+    decline.delete(doc(bobDb, "users/bob/friendRequests/alice"));
+    await assertSucceeds(decline.commit());
+
+    // Kanıt varken bildirim geçer.
+    await assertSucceeds(setDoc(doc(bobDb, "users/alice/notifications/nt-declined-1"), notice("alice_bob")));
+  });
+
+  it("üçüncü kişi başkasının ret kanıtıyla friend_declined yazamaz; friendDeclines yalnız taraflara açıktır", async () => {
+    await seed("friendDeclines/alice_bob", {
+      declinerUid: "bob",
+      requesterUid: "alice",
+      users: ["alice", "bob"],
+      createdAt: Timestamp.now(),
+    });
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    const bobDb = testEnv.authenticatedContext("bob").firestore();
+    const carolDb = testEnv.authenticatedContext("carol").firestore();
+    const forged = {
+      recipientUid: "alice",
+      actorUid: "carol",
+      type: "friend_declined",
+      title: "Istek reddedildi",
+      body: "Arkadaslik istegin reddedildi.",
+      read: false,
+      createdAt: serverTimestamp(),
+      targetId: "alice_bob",
+    };
+
+    await assertFails(setDoc(doc(carolDb, "users/alice/notifications/nt-forged"), forged));
+
+    await assertSucceeds(getDoc(doc(aliceDb, "friendDeclines/alice_bob")));
+    await assertSucceeds(getDoc(doc(bobDb, "friendDeclines/alice_bob")));
+    await assertFails(getDoc(doc(carolDb, "friendDeclines/alice_bob")));
+    await assertFails(getDocs(query(collection(aliceDb, "friendDeclines"), limit(10))));
+  });
+
+  it("friendDeclines güncellenemez; yalnız reddeden siler", async () => {
+    await seed("friendDeclines/alice_bob", {
+      declinerUid: "bob",
+      requesterUid: "alice",
+      users: ["alice", "bob"],
+      createdAt: Timestamp.now(),
+    });
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    const bobDb = testEnv.authenticatedContext("bob").firestore();
+    const carolDb = testEnv.authenticatedContext("carol").firestore();
+
+    await assertFails(updateDoc(doc(bobDb, "friendDeclines/alice_bob"), { requesterUid: "carol" }));
+    await assertFails(deleteDoc(doc(aliceDb, "friendDeclines/alice_bob")));
+    await assertFails(deleteDoc(doc(carolDb, "friendDeclines/alice_bob")));
+    await assertSucceeds(deleteDoc(doc(bobDb, "friendDeclines/alice_bob")));
+  });
+
+  it("friendDeclines create yalnız reddeden adına ve istek silinen batch'te yazılır", async () => {
+    await seed("users/bob/friendRequests/alice", {
+      fromUid: "alice",
+      fromName: "Alice",
+      toUid: "bob",
+      createdAt: Timestamp.now(),
+    });
+    const bobDb = testEnv.authenticatedContext("bob").firestore();
+    const valid = {
+      declinerUid: "bob",
+      requesterUid: "alice",
+      users: ["alice", "bob"],
+      createdAt: serverTimestamp(),
+    };
+
+    // Batch dışı yazım isteği silmediği için existsAfter kapısına takılır.
+    await assertFails(setDoc(doc(bobDb, "friendDeclines/alice_bob"), valid));
+    // Belge kimliği friendshipId ile eşleşmeli.
+    const wrongId = writeBatch(bobDb);
+    wrongId.set(doc(bobDb, "friendDeclines/alice_carol"), valid);
+    wrongId.delete(doc(bobDb, "users/bob/friendRequests/alice"));
+    await assertFails(wrongId.commit());
+    // Başkası adına ret yazılamaz.
+    const carolDb = testEnv.authenticatedContext("carol").firestore();
+    const spoof = writeBatch(carolDb);
+    spoof.set(doc(carolDb, "friendDeclines/alice_bob"), valid);
+    await assertFails(spoof.commit());
   });
 
   it("beğeni güncellemesi yalnız kendi UID'sidir; sayaç ve metin müdahaleleri reddedilir", async () => {
@@ -1481,6 +1627,7 @@ describe("Firestore güvenlik kuralları", () => {
       setDoc(doc(aliceDb, "userProfiles/alice"), {
         uid: "alice",
         displayName: "Alice",
+        displayNameLower: "alice",
         photoURL: "https://example.com/a.jpg",
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -1491,6 +1638,7 @@ describe("Firestore güvenlik kuralları", () => {
       setDoc(doc(aliceDb, "userProfiles/alice2"), {
         uid: "alice2",
         displayName: "Alice2",
+        displayNameLower: "alice2",
         email: "alice@example.com",
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -1501,6 +1649,7 @@ describe("Firestore güvenlik kuralları", () => {
       setDoc(doc(bobDb, "userProfiles/alice"), {
         uid: "alice",
         displayName: "Hacked",
+        displayNameLower: "hacked",
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       }),
@@ -1510,6 +1659,59 @@ describe("Firestore güvenlik kuralları", () => {
     // Liste 20 ile sınırlı → SUCCEED, 21 → FAIL
     await assertSucceeds(getDocs(query(collection(aliceDb, "userProfiles"), limit(20))));
     await assertFails(getDocs(query(collection(aliceDb, "userProfiles"), limit(21))));
+  });
+
+  // === Aşama 2 — displayNameLower: zorunlu alan + Türkçe İ emülatör kanıtı ===
+  it("displayNameLower zorunlu; biçim denetimi Türkçe İ'yi istemcinin ürettiği gibi kabul eder", async () => {
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    const bobDb = testEnv.authenticatedContext("bob").firestore();
+    const profile = (uid: string, lower?: string) => ({
+      uid,
+      displayName: "İrem",
+      ...(lower === undefined ? {} : { displayNameLower: lower }),
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+
+    // Alan yok → FAIL (zorunlu)
+    await assertFails(setDoc(doc(aliceDb, "userProfiles/alice"), profile("alice")));
+    // Büyük harfli biçim → FAIL (kural lower() yapmaz; biçim ister)
+    await assertFails(setDoc(doc(aliceDb, "userProfiles/alice"), profile("alice", "İrem")));
+    // Birleşik noktalı "i̇rem" (JS'in dilsiz toLowerCase çıktısı) → FAIL
+    await assertFails(setDoc(doc(bobDb, "userProfiles/bob"), profile("bob", "i\u0307rem")));
+    // İstemcinin toLocaleLowerCase("tr") çıktısı → SUCCEED (kazanan varyant)
+    await assertSucceeds(setDoc(doc(aliceDb, "userProfiles/alice"), profile("alice", "irem")));
+  });
+
+  it("geçiş: displayNameLower'sız eski belge okunur, güncellenemez, yeniden yazılır", async () => {
+    await seed("userProfiles/alice", {
+      uid: "alice",
+      displayName: "İrem",
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    const bobDb = testEnv.authenticatedContext("bob").firestore();
+
+    // Okuma etkilenmez (liste/get kuralı alan istemez).
+    await assertSucceeds(getDoc(doc(bobDb, "userProfiles/alice")));
+    // Güncelleme zaten kapalı: createdAt == request.time çelişkisi.
+    await assertFails(updateDoc(doc(aliceDb, "userProfiles/alice"), {
+      uid: "alice",
+      displayName: "İrem",
+      displayNameLower: "irem",
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }));
+    // Geçiş yolu: sil + alanla yeniden oluştur.
+    await assertSucceeds(deleteDoc(doc(aliceDb, "userProfiles/alice")));
+    await assertSucceeds(setDoc(doc(aliceDb, "userProfiles/alice"), {
+      uid: "alice",
+      displayName: "İrem",
+      displayNameLower: "irem",
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }));
   });
   // Hesap silme ve "Verilerimi indir", tek tek belge silmeden ÖNCE bu liste
   // sorgularını çalıştırır. Sayfa boyutu herhangi bir boundedList sınırını

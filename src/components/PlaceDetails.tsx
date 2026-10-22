@@ -211,15 +211,21 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDele
 
           <section aria-labelledby="freshness-title" className="mt-7 rounded-2xl border border-leaf/25 bg-white/[0.03] p-3.5">
             <h3 id="freshness-title" className="flex items-center gap-2 text-[13px] font-semibold"><Clock3 size={16} className="text-leaf" />Tazelik</h3>
-            <p className="mt-1 text-[13px] leading-relaxed text-mint/85">
-              {place.freshness ? place.freshness.label : "Henüz doğrulanmadı · bilgi eski olabilir"}
-            </p>
-            {place.freshness?.latestAt && (
+            {user ? (
+              <p className="mt-1 text-[13px] leading-relaxed text-mint/85">
+                {place.freshness ? place.freshness.label : "Henüz doğrulanmadı · bilgi eski olabilir"}
+              </p>
+            ) : (
+              <p className="mt-1 text-[13px] leading-relaxed text-mint/70" data-testid="freshness-signin-hint">
+                Giriş yapınca tazelik bilgisi görünür.
+              </p>
+            )}
+            {user && place.freshness?.latestAt && (
               <p className="mt-1 text-[11px] text-mint/55">
                 Son doğrulama: {new Date(place.freshness.latestAt).toLocaleDateString("tr-TR")} · toplam {place.freshness.totalCount} doğrulama
               </p>
             )}
-            {onVerify && (
+            {user && onVerify && (
               <>
                 <p className="mt-3 text-[12px] text-mint/70">Burayı yeni ziyaret ettiysen tek dokunuşla doğrula:</p>
                 <div className="mt-2 flex flex-wrap gap-2">

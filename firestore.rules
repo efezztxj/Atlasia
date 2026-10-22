@@ -411,11 +411,15 @@ service cloud.firestore {
     }
 
     function validUserProfile(data, uid) {
-      return data.keys().hasAll(['uid', 'displayName', 'createdAt', 'updatedAt'])
-             && data.keys().hasOnly(['uid', 'displayName', 'photoURL', 'createdAt', 'updatedAt'])
+      return data.keys().hasAll(['uid', 'displayName', 'displayNameLower', 'createdAt', 'updatedAt'])
+             && data.keys().hasOnly(['uid', 'displayName', 'displayNameLower', 'photoURL', 'createdAt', 'updatedAt'])
              && data.uid == uid
              && data.uid == request.auth.uid
              && stringBetween(data.displayName, 2, 40)
+             // Sunucu tarafında lower() YOK: Türkçe İ JS'ten ayrışır (§Aşama 2).
+             // Yalnız biçim doğrulanır; normalizasyonu istemci üretir.
+             && stringBetween(data.displayNameLower, 2, 40)
+             && data.displayNameLower.matches('[a-z0-9 ığüşöçâîû-]+')
              && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 500 && data.photoURL.matches('https?://.*')))
              && data.createdAt == request.time
              && data.updatedAt == request.time;
@@ -462,6 +466,16 @@ service cloud.firestore {
              && data.read == false
              && data.createdAt == request.time
              && (!('targetId' in data) || stringBetween(data.targetId, 1, 200));
+    }
+
+    // Ret kanıtı: friend_declined ancak decliner'ın kendi ret belgesiyle yazılır.
+    // Diğer tipler bu değişiklikten etkilenmez (dal yalnız friend_declined'a uygulanır).
+    function friendDeclineProof(data) {
+      return data.type != 'friend_declined'
+             || ('targetId' in data
+                 && exists(/databases/$(database)/documents/friendDeclines/$(data.targetId))
+                 && get(/databases/$(database)/documents/friendDeclines/$(data.targetId)).data.declinerUid == data.actorUid
+                 && get(/databases/$(database)/documents/friendDeclines/$(data.targetId)).data.requesterUid == data.recipientUid);
     }
 
     match /places/{placeId} {
@@ -641,11 +655,12 @@ service cloud.firestore {
       allow delete: if signedIn() && resource.data.uid == request.auth.uid;
     }
 
-    // Tazelik doğrulamaları: herkese açık okuma, yalnız kendi adına yazma.
+    // Tazelik doğrulamaları: okuma GİRİŞ ŞARTI (Aşama 3-A), yalnız kendi adına yazma.
+    // `note` 280 karaktere kadar serbest metin taşıdığı için anonim okuma kapatıldı.
     // Liste isteği 50 kayıtla sınırlıdır; canlı dinleyici tek pencere tutar.
     match /verifications/{verificationId} {
-      allow get: if true;
-      allow list: if boundedList(50);
+      allow get: if signedIn();
+      allow list: if signedIn() && boundedList(50);
       allow create: if signedIn() && validVerification(request.resource.data);
       allow update: if false;
       allow delete: if signedIn() && resource.data.uid == request.auth.uid;
@@ -900,7 +915,7 @@ service cloud.firestore {
     match /users/{uid}/notifications/{notificationId} {
       allow get: if signedIn() && uid == request.auth.uid;
       allow list: if signedIn() && uid == request.auth.uid && boundedList(50);
-      allow create: if signedIn() && validNotification(request.resource.data) && request.resource.data.recipientUid == uid;
+      allow create: if signedIn() && validNotification(request.resource.data) && request.resource.data.recipientUid == uid && friendDeclineProof(request.resource.data);
       allow update: if signedIn() && uid == request.auth.uid
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read'])
                     && request.resource.data.read is bool;
@@ -966,6 +981,28 @@ service cloud.firestore {
       allow delete: if signedIn() && request.auth.uid in resource.data.users;
     }
 
+    // Ret kanıtı: reddeden kullanıcı, isteği sildiği batch'te yazar.
+    // Kanıt yoksa friend_declined bildirimi de yazılamaz (friendDeclineProof).
+    match /friendDeclines/{fid} {
+      allow get: if signedIn() && request.auth.uid in resource.data.users;
+      allow list: if false;
+      allow create: if signedIn()
+                    && request.resource.data.keys().hasAll(['declinerUid', 'requesterUid', 'users', 'createdAt'])
+                    && request.resource.data.keys().hasOnly(['declinerUid', 'requesterUid', 'users', 'createdAt'])
+                    && stringBetween(request.resource.data.declinerUid, 1, 128)
+                    && stringBetween(request.resource.data.requesterUid, 1, 128)
+                    && request.auth.uid == request.resource.data.declinerUid
+                    && request.resource.data.declinerUid != request.resource.data.requesterUid
+                    && request.resource.data.users is list
+                    && request.resource.data.users.size() == 2
+                    && request.resource.data.users.hasAll([request.resource.data.declinerUid, request.resource.data.requesterUid])
+                    && fid == friendshipId(request.resource.data.declinerUid, request.resource.data.requesterUid)
+                    && exists(/databases/$(database)/documents/users/$(request.resource.data.declinerUid)/friendRequests/$(request.resource.data.requesterUid))
+                    && !existsAfter(/databases/$(database)/documents/users/$(request.resource.data.declinerUid)/friendRequests/$(request.resource.data.requesterUid))
+                    && request.resource.data.createdAt == request.time;
+      allow update: if false;
+      allow delete: if signedIn() && request.auth.uid == resource.data.declinerUid;
+    }
 
     match /{document=**} {
       allow read, write: if false;

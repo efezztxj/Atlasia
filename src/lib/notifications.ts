@@ -6,6 +6,12 @@
 import { collection, deleteDoc, doc, limit, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import { db } from "./firebase";
 
+/**
+ * friend_declined artık kanıtlı ve istemciye açık: declineFriendRequest aynı
+ * batch'te friendDeclines/{friendshipId} belgesini yazar, kural da bildirimi
+ * yalnız bu belge varken (declinerUid == actorUid) kabul eder.
+ * Diğer tipler bu değişiklikten etkilenmez.
+ */
 export type NotificationType = "report_received" | "report_actioned" | "blocked" | "group_invite" | "group_message" | "friend_request" | "friend_accepted" | "friend_declined" | "system";
 
 export interface AppNotification {
