@@ -7,8 +7,10 @@
  */
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
+  getDocs,
   limit,
   onSnapshot,
   orderBy,
@@ -71,26 +73,68 @@ export async function fetchUserProfile(uid: string): Promise<UserProfile | null>
   return normalizeUserProfile(snap.id, snap.data());
 }
 
-export async function syncUserProfile(input: { uid: string; displayName: string; photoURL?: string }): Promise<void> {
-  if (!db) return;
+/**
+ * Profili arama dizinine yazar. Kural `createdAt == request.time` istediği için
+ * var olan belge güncellenemez; ad/foto değiştiyse belge silinip yeniden
+ * yazılır, değişmediyse hiç yazılmaz (gereksiz kota yok).
+ */
+export async function syncUserProfile(input: { uid: string; displayName: string; photoURL?: string }): Promise<"created" | "replaced" | "unchanged"> {
+  if (!db) return "unchanged";
   const uid = input.uid.trim();
   if (!uid) throw dataError("profile/uid-invalid", "Kullanici kimligi gecersiz.");
   const invalid = validateDisplayName(input.displayName);
   if (invalid) throw dataError(invalid, "Profil adi 2-40 karakter olmali.");
   const displayName = input.displayName.trim().slice(0, DISPLAY_NAME_MAX);
-  const payload: Record<string, unknown> = {
+  const photo = input.photoURL?.trim();
+  const photoURL = photo && /^https?:\/\//.test(photo) && photo.length <= 500 ? photo : undefined;
+  const ref = doc(db, "userProfiles", uid);
+  const existing = await getDoc(ref);
+  const existed = existing.exists();
+  if (existed) {
+    const current = existing.data();
+    const samePhoto = (typeof current.photoURL === "string" ? current.photoURL : undefined) === photoURL;
+    if (current.displayName === displayName && samePhoto) return "unchanged";
+    await deleteDoc(ref);
+  }
+  await setDoc(ref, withoutUndefined({
     uid,
     displayName,
+    photoURL,
+    createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
-  };
-  if (input.photoURL?.trim()) payload.photoURL = input.photoURL.trim().slice(0, 500);
-  const existing = await getDoc(doc(db, "userProfiles", uid));
-  if (!existing.exists()) {
-    payload.createdAt = serverTimestamp();
-  } else {
-    payload.createdAt = existing.data().createdAt ?? serverTimestamp();
+  }));
+  return existed ? "replaced" : "created";
+}
+
+/** Arama öneklerini üretir: yazıldığı gibi + ilk harfi Türkçe büyük (efe → Efe). */
+export function profilePrefixes(text: string): string[] {
+  const clean = text.trim().slice(0, DISPLAY_NAME_MAX);
+  if (!clean) return [];
+  const capital = clean.charAt(0).toLocaleUpperCase("tr") + clean.slice(1);
+  return [...new Set([clean, capital])];
+}
+
+/** İsimle tek seferlik arama (en çok 20 sonuç, kendisi hariç). */
+export async function searchUserProfiles(text: string, excludeUid: string): Promise<UserProfile[]> {
+  if (!db) return [];
+  const prefixes = profilePrefixes(text);
+  if (prefixes.length === 0) return [];
+  const firestore = db;
+  const snaps = await Promise.all(prefixes.map((prefix) => getDocs(query(
+    collection(firestore, "userProfiles"),
+    orderBy("displayName"),
+    where("displayName", ">=", prefix),
+    where("displayName", "<", `${prefix}\uf8ff`),
+    limit(USER_PROFILES_LIMIT),
+  ))));
+  const seen = new Map<string, UserProfile>();
+  for (const snap of snaps) {
+    for (const item of snap.docs) {
+      if (item.id === excludeUid || seen.has(item.id)) continue;
+      seen.set(item.id, normalizeUserProfile(item.id, item.data()));
+    }
   }
-  await setDoc(doc(db, "userProfiles", uid), withoutUndefined(payload), { merge: true });
+  return [...seen.values()].slice(0, USER_PROFILES_LIMIT);
 }
 
 export function subscribeUserProfiles(

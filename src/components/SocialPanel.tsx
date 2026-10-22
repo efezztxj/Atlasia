@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Ban,
   CornerDownRight,
@@ -32,7 +32,10 @@ import Avatar from "./Avatar";
 import StoryComposer from "./StoryComposer";
 import StoryViewer from "./StoryViewer";
 import ReportDialog from "./ReportDialog";
-import GroupsPanel from "./GroupsPanel";
+import type { SocialTarget } from "../utils/inviteLink";
+
+// Gruplar/arkadaşlar paneli yalnız açılınca yüklenir (ilk paket bütçesi).
+const GroupsPanel = lazy(() => import("./GroupsPanel"));
 import { blockUser } from "../lib/moderation";
 import { friendlyDataError } from "../lib/firestoreValue";
 
@@ -70,8 +73,8 @@ interface Props {
   onRemoveStory: (id: string) => Promise<unknown> | unknown;
   blockedSet: Set<string>;
   isBlocked: (uid?: string | null) => boolean;
-  pendingGroupId?: string | null;
-  onGroupOpened?: () => void;
+  socialTarget?: SocialTarget | null;
+  onSocialTargetHandled?: () => void;
 }
 
 export default function SocialPanel({
@@ -103,8 +106,8 @@ export default function SocialPanel({
   onRemoveStory,
   blockedSet,
   isBlocked,
-  pendingGroupId,
-  onGroupOpened,
+  socialTarget,
+  onSocialTargetHandled,
 }: Props) {
   const [seen, setSeen] = useState<string[]>(() => {
     try {
@@ -132,11 +135,14 @@ export default function SocialPanel({
   const [reportPost, setReportPost] = useState<FeedPost | null>(null);
   const [menuPostId, setMenuPostId] = useState<string | null>(null);
   const [groupsOpen, setGroupsOpen] = useState(false);
+  // Hedef yerel kopyada tutulur: üst bileşen hedefi temizlese de panel onu alır.
+  const [groupsTarget, setGroupsTarget] = useState<SocialTarget | null>(null);
   useEffect(() => {
-    if (!pendingGroupId) return;
+    if (!socialTarget) return;
+    setGroupsTarget(socialTarget);
     setGroupsOpen(true);
-    onGroupOpened?.();
-  }, [pendingGroupId, onGroupOpened]);
+    onSocialTargetHandled?.();
+  }, [socialTarget, onSocialTargetHandled]);
 
   const listRef = useRef<HTMLDivElement>(null);
   const replyInputRef = useRef<HTMLInputElement>(null);
@@ -790,7 +796,9 @@ export default function SocialPanel({
         <ReportDialog targetType="post" targetId={reportPost.id} targetOwnerUid={reportPost.authorUid} targetLabel={reportPost.text.slice(0,40)} reporterUid={currentUid} onClose={() => setReportPost(null)} onReported={() => setActionError("Raporun alındı, inceleyeceğiz.")} />
       )}
       {groupsOpen && (
-        <GroupsPanel currentUid={currentUid} currentName={author()} blockedSet={blockedSet} isBlocked={isBlocked} initialGroupId={pendingGroupId} onClose={() => setGroupsOpen(false)} />
+        <Suspense fallback={<div className="fixed inset-0 z-[66] grid place-items-center bg-black/40"><Loader2 className="size-6 animate-spin text-leaf" aria-label="Yükleniyor" /></div>}>
+          <GroupsPanel key={groupsTarget ? JSON.stringify(groupsTarget) : "panel"} currentUid={currentUid} currentName={author()} blockedSet={blockedSet} isBlocked={isBlocked} initialTarget={groupsTarget} onClose={() => { setGroupsOpen(false); setGroupsTarget(null); }} />
+        </Suspense>
       )}
     </>
   );

@@ -27,6 +27,7 @@ import {
   setDoc,
   startAfter,
   updateDoc,
+  where,
   writeBatch,
   type DocumentData,
   type QueryDocumentSnapshot,
@@ -295,6 +296,89 @@ export async function fetchGroup(groupId: string): Promise<Group | null> {
   return normalizeGroup(snap.id, snap.data());
 }
 
+interface DeliverInvitesInput {
+  groupId: string;
+  groupName: string;
+  ownerUid: string;
+  ownerName: string;
+  invitedUids: string[];
+}
+
+/** Her davet kendi batch'i: biri reddedilirse (arkadaş değil / zaten davetli) diğerleri gider. */
+async function deliverGroupInvites(input: DeliverInvitesInput): Promise<{ delivered: string[]; invited: number; skipped: number }> {
+  if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
+  const delivered: string[] = [];
+  for (const invitedUid of input.invitedUids) {
+    const invite = withoutUndefined({
+      invitedUid,
+      inviterUid: input.ownerUid,
+      groupId: input.groupId,
+      groupName: input.groupName.slice(0, 80),
+      createdAt: serverTimestamp(),
+    });
+    const inviteBatch = writeBatch(db);
+    inviteBatch.set(doc(db, `groups/${input.groupId}/invites/${invitedUid}`), invite);
+    inviteBatch.set(doc(db, `users/${invitedUid}/groupInvites/${input.groupId}`), invite);
+    try {
+      await inviteBatch.commit();
+      delivered.push(invitedUid);
+    } catch (error) {
+      if (!isPermissionDenied(error)) throw error;
+    }
+  }
+  let invited = 0;
+  for (const memberUid of delivered) {
+    try {
+      await createNotification({
+        recipientUid: memberUid,
+        actorUid: input.ownerUid,
+        type: "group_invite",
+        title: "Grup daveti",
+        body: `${input.ownerName} seni “${input.groupName}” grubuna davet etti. Daveti kabul ederek katılabilirsin.`,
+        targetId: input.groupId,
+      });
+      invited += 1;
+    } catch (error) {
+      console.warn("[Atlasia] Grup daveti bildirimi yazılamadı:", error);
+    }
+  }
+  return { delivered, invited, skipped: input.invitedUids.length - delivered.length };
+}
+
+/** Kurucu, kurulmuş gruba arkadaşlarını ekler (davet gider; kabul edince üye olurlar). */
+export async function inviteFriendsToGroup(
+  group: Pick<Group, "id" | "name" | "ownerUid" | "memberUids">,
+  owner: { uid: string; name: string },
+  friendUids: string[],
+): Promise<{ delivered: string[]; invited: number; skipped: number }> {
+  if (group.ownerUid !== owner.uid) throw dataError("group/not-owner", "Yalnız grup kurucusu kişi ekleyebilir.");
+  const room = Math.max(0, GROUP_MEMBERS_MAX - group.memberUids.length);
+  const invitedUids = [...new Set(friendUids.map((uid) => uid.trim()))]
+    .filter((uid) => uid && uid !== owner.uid && uid.length <= 128 && !group.memberUids.includes(uid))
+    .slice(0, room);
+  return deliverGroupInvites({ groupId: group.id, groupName: group.name, ownerUid: owner.uid, ownerName: owner.name, invitedUids });
+}
+
+/** Kurucunun bu gruba gönderdiği bekleyen davetler (kural: inviterUid == kendisi). */
+export function subscribeSentGroupInvites(
+  groupId: string,
+  inviterUid: string,
+  onChange: (invites: GroupInvite[]) => void,
+  onError?: (error: Error) => void,
+): () => void {
+  if (!db || !groupId.trim() || !inviterUid.trim()) return () => {};
+  const q = query(
+    collection(db, `groups/${groupId}/invites`),
+    where("inviterUid", "==", inviterUid),
+    limit(50),
+  );
+  return onSnapshot(
+    q,
+    (snap) => onChange(snap.docs.map((item) => normalizeGroupInvite(item.id, item.data()))),
+    onError,
+  );
+}
+
 export interface CreateGroupInput {
   name: string;
   ownerUid: string;
@@ -333,43 +417,7 @@ export async function createGroup(input: CreateGroupInput): Promise<{ group: Gro
   // Davetler grup kurulumundan AYRI yazılır: kural yalnız kabul edilmiş
   // arkadaşa davete izin verir. Tek bir yanlış/arkadaş olmayan kimlik grubu
   // kurdurmamazlık etmesin; o davet atlanır ve sayısı bildirilir.
-  const delivered: string[] = [];
-  for (const invitedUid of invitedUids) {
-    const invite = withoutUndefined({
-      invitedUid,
-      inviterUid: input.ownerUid,
-      groupId: ref.id,
-      groupName: name.slice(0, 80),
-      createdAt: serverTimestamp(),
-    });
-    const inviteBatch = writeBatch(db);
-    inviteBatch.set(doc(db, `groups/${ref.id}/invites/${invitedUid}`), invite);
-    inviteBatch.set(doc(db, `users/${invitedUid}/groupInvites/${ref.id}`), invite);
-    try {
-      await inviteBatch.commit();
-      delivered.push(invitedUid);
-    } catch (error) {
-      if (!isPermissionDenied(error)) throw error;
-    }
-  }
-  const skipped = invitedUids.length - delivered.length;
-
-  let invited = 0;
-  for (const memberUid of delivered) {
-    try {
-      await createNotification({
-        recipientUid: memberUid,
-        actorUid: input.ownerUid,
-        type: "group_invite",
-        title: "Grup daveti",
-        body: `${input.ownerName} seni “${name}” grubuna davet etti. Daveti kabul ederek katılabilirsin.`,
-        targetId: ref.id,
-      });
-      invited += 1;
-    } catch (error) {
-      console.warn("[Atlasia] Grup daveti bildirimi yazılamadı:", error);
-    }
-  }
+  const { invited, skipped } = await deliverGroupInvites({ groupId: ref.id, groupName: name, ownerUid: input.ownerUid, ownerName: input.ownerName, invitedUids });
 
   return {
     group: {

@@ -132,6 +132,7 @@ import {
   GROUP_NOT_MEMBER_MESSAGE,
   joinGroup,
   joinGroupWithCode,
+  inviteFriendsToGroup,
   sendGroupMessage,
   visibleMessages,
   type Group,
@@ -350,5 +351,25 @@ describe("okumasız katılma (grup belgesi üyeliği zorunlu, Firestore kuralı 
   it("davet aynası yoksa okumadan group/invite-not-found döner", async () => {
     h.state.currentUid = "user-x";
     await expect(acceptGroupInvite("yok", "user-x")).rejects.toMatchObject({ code: "group/invite-not-found" });
+  });
+});
+
+describe("kurulmuş gruba arkadaş ekleme (Instagram tarzı)", () => {
+  it("kurucu arkadaşını ekler: iki davet belgesi + bildirim; üyeler ve kendisi atlanır", async () => {
+    const result = await inviteFriendsToGroup(group, { uid: "user-a", name: "Ada" }, ["user-c", "user-b", "user-a", " user-c "]);
+    expect(result).toEqual({ delivered: ["user-c"], invited: 1, skipped: 0 });
+    expect(h.store.get("groups/group-1/invites/user-c")).toMatchObject({ invitedUid: "user-c", inviterUid: "user-a", groupId: "group-1", groupName: "Kapadokya ekibi" });
+    expect(h.store.get("users/user-c/groupInvites/group-1")).toMatchObject({ invitedUid: "user-c", inviterUid: "user-a" });
+    expect(h.notifications).toEqual([expect.objectContaining({ recipientUid: "user-c", actorUid: "user-a", type: "group_invite", targetId: "group-1" })]);
+  });
+
+  it("kurucu olmayan ekleyemez; Firestore'a yazım yapılmaz", async () => {
+    await expect(inviteFriendsToGroup(group, { uid: "user-b", name: "Bora" }, ["user-c"])).rejects.toMatchObject({ code: "group/not-owner" });
+    expect(h.store.size).toBe(0);
+  });
+
+  it("grup doluysa (20 üye) davet gönderilmez", async () => {
+    const full = { ...group, memberUids: Array.from({ length: 20 }, (_, i) => (i === 0 ? "user-a" : `m${i}`)) };
+    expect(await inviteFriendsToGroup(full, { uid: "user-a", name: "Ada" }, ["user-c"])).toEqual({ delivered: [], invited: 0, skipped: 0 });
   });
 });
