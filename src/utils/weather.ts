@@ -442,6 +442,64 @@ export function attachStopWeather(
   return { ...route, days, weatherNote: route.weatherNote };
 }
 
+/** Kayıtlı rota hava denetiminde istenecek en çok durak (servis isteği başına 10 nokta). */
+export const ROUTE_WEATHER_MAX_STOPS = 40;
+const WEATHER_BATCH_SIZE = 10;
+
+/** Kayıtlı rota durağının hava serisi kimliği (pinId'ye bağlı değildir). */
+export function routeStopWeatherId(dayIndex: number, stopIndex: number): string {
+  return `durak-${dayIndex}-${stopIndex}`;
+}
+
+/**
+ * Konumu geçerli durakları plan sırasıyla hava noktalarına çevirir. Üst sınırı
+ * aşan duraklar istenmez; onların havası "bilinmiyor" kalır.
+ */
+export function routeStopWeatherPoints(route: AtlasRoute, maxStops = ROUTE_WEATHER_MAX_STOPS): WeatherPoint[] {
+  const points: WeatherPoint[] = [];
+  route.days.forEach((day, dayIndex) => {
+    day.stops.forEach((stop, stopIndex) => {
+      if (points.length >= maxStops) return;
+      if (!Number.isFinite(stop.lat) || !Number.isFinite(stop.lng)) return;
+      points.push({ id: routeStopWeatherId(dayIndex, stopIndex), lat: stop.lat, lng: stop.lng });
+    });
+  });
+  return points;
+}
+
+/**
+ * Her durağın varış (başlama) saatindeki hava. Sözleşme `weatherAtClock` ile
+ * aynıdır: 0. gün tahmin serisinin ilk günüdür. Saat "SS:DD" değilse, seri
+ * yoksa ya da saat tahmin aralığı dışındaysa `null` döner: bilinmiyor,
+ * tahmin uydurulmaz. Sıralama değişmez.
+ */
+export function routeStopArrivalWeather(
+  route: AtlasRoute,
+  series: Record<string, WeatherHour[]>,
+): (StopWeather | null)[][] {
+  return route.days.map((day, dayIndex) => day.stops.map((stop, stopIndex) => {
+    const hours = series[routeStopWeatherId(dayIndex, stopIndex)];
+    if (!hours?.length || !/^\d{2}:\d{2}/.test(stop.startTime)) return null;
+    const hour = weatherAtClock(hours, dayIndex, stop.startTime);
+    return hour ? toStopWeather(hour) : null;
+  }));
+}
+
+/**
+ * `fetchWeatherSeries` 10 noktayla sınırlıdır; daha uzun listeyi sırayla
+ * 10'luk parçalar hâlinde ister. Hata ve iptal sözleşmesi aynen korunur.
+ */
+export async function fetchWeatherSeriesBatched(
+  points: WeatherPoint[],
+  signal?: AbortSignal,
+): Promise<Record<string, WeatherHour[]>> {
+  const result: Record<string, WeatherHour[]> = {};
+  for (let start = 0; start < points.length; start += WEATHER_BATCH_SIZE) {
+    Object.assign(result, await fetchWeatherSeries(points.slice(start, start + WEATHER_BATCH_SIZE), signal));
+  }
+  return result;
+}
+
 /** Rota için toplam yağış maruziyeti: varış saatlerindeki olasılıkların toplamı. */
 export function rainExposure(route: AtlasRoute, series: Record<string, WeatherHour[]>, dayOffsetBase = 0): number {
   let total = 0;

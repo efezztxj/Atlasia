@@ -152,6 +152,57 @@ export function subscribeFriends(
   );
 }
 
+/**
+ * Arkadaşlık bitti mi? Kural, var olmayan ya da üyesi olmadığın
+ * `friendships` belgesinin okunmasını reddeder; bu yüzden okuma reddi
+ * "arkadaşlık bitmiş" demektir. Önbellekten gelen "yok" yanıtı ya da ağ
+ * hatası bitmiş SAYILMAZ (bilinmiyor → dokunma).
+ */
+async function friendshipEnded(uid: string, friendUid: string): Promise<boolean> {
+  if (!db) return false;
+  try {
+    const snap = await getDoc(doc(db, `friendships/${friendshipIdFor(uid, friendUid)}`));
+    if (!snap.exists()) return false;
+    const users = (snap.data() as { users?: unknown }).users;
+    return !(Array.isArray(users) && users.includes(uid) && users.includes(friendUid));
+  } catch (failure) {
+    if (isPermissionDenied(failure)) return true;
+    return false;
+  }
+}
+
+/** Bu oturumda geçerli olduğu doğrulanan arkadaş kayıtları (tekrar okunmaz). */
+const verifiedFriendIndexes = new Set<string>();
+
+/**
+ * Karşı taraf arkadaşlığı bitirdiğinde bizim `users/{uid}/friends/{x}`
+ * kaydımız kalır (kural başkasının listesini silmeye izin vermez). Liste
+ * açıldığında her kayıt için arkadaşlık bir kez denetlenir; bitmişse kişi
+ * KENDİ kaydını siler. Kural değişmez. Silinen arkadaş kimliklerini döndürür.
+ */
+export async function pruneStaleFriends(uid: string, friendUids: readonly string[]): Promise<string[]> {
+  if (!db) return [];
+  const cleanUid = uid.trim();
+  if (!cleanUid) return [];
+  const pending = Array.from(new Set(friendUids.map((value) => value.trim())))
+    .filter((friendUid) => friendUid && friendUid !== cleanUid && !verifiedFriendIndexes.has(`${cleanUid}/${friendUid}`))
+    .slice(0, FRIENDS_LIMIT);
+  const outcomes = await Promise.allSettled(pending.map(async (friendUid) => {
+    if (!(await friendshipEnded(cleanUid, friendUid))) {
+      verifiedFriendIndexes.add(`${cleanUid}/${friendUid}`);
+      return null;
+    }
+    await deleteDoc(doc(db!, `users/${cleanUid}/friends/${friendUid}`));
+    return friendUid;
+  }));
+  return outcomes.flatMap((outcome) => (outcome.status === "fulfilled" && outcome.value ? [outcome.value] : []));
+}
+
+/** Yalnız testler: oturum önbelleğini sıfırlar. */
+export function resetFriendIndexVerificationForTests(): void {
+  verifiedFriendIndexes.clear();
+}
+
 export async function sendFriendRequest(input: { fromUid: string; fromName: string; toUid: string }): Promise<void> {
   if (!db) throw dataError("data/unavailable", "Firestore hazir degil.");
   const fromUid = input.fromUid.trim();
@@ -162,8 +213,14 @@ export async function sendFriendRequest(input: { fromUid: string; fromName: stri
   // Kural: başkasının istek kutusu ve var olmayan arkadaşlık belgesi okunamaz
   // (get reddedilir). Bu yüzden yalnız KENDİ belgelerimize bakılır; "zaten
   // istek gönderdin / zaten arkadaşsınız" koşullarını kural create'te zorlar.
-  const ownIndex = await getDoc(doc(db, `users/${fromUid}/friends/${toUid}`));
-  if (ownIndex.exists()) throw dataError("friend-request/already-friends", "Zaten arkadassiniz.");
+  const ownIndexRef = doc(db, `users/${fromUid}/friends/${toUid}`);
+  const ownIndex = await getDoc(ownIndexRef);
+  if (ownIndex.exists()) {
+    // Karşı taraf arkadaşlığı bitirdiyse kayıt artıktır: temizle ve devam et.
+    if (!(await friendshipEnded(fromUid, toUid))) throw dataError("friend-request/already-friends", "Zaten arkadassiniz.");
+    await deleteDoc(ownIndexRef);
+    verifiedFriendIndexes.delete(`${fromUid}/${toUid}`);
+  }
   const opposite = await getDoc(doc(db, `users/${fromUid}/friendRequests/${toUid}`));
   if (opposite.exists()) throw dataError("friend-request/opposite-exists", "Karsi taraf zaten sana istek gondermis; onun isteğini kabul et.");
   const ref = doc(db, `users/${toUid}/friendRequests/${fromUid}`);
@@ -319,7 +376,17 @@ export async function removeFriend(uid: string, friendUid: string): Promise<void
   if (!cleanUid || !cleanFriend) throw dataError("friendship/uid-invalid", "Kullanici kimligi gecersiz.");
   const fid = friendshipIdFor(cleanUid, cleanFriend);
   const friendshipRef = doc(db, `friendships/${fid}`);
-  const snap = await getDoc(friendshipRef);
+  let snap;
+  try {
+    snap = await getDoc(friendshipRef);
+  } catch (failure) {
+    // Okuma reddi = arkadaşlık zaten bitmiş (karşı taraf sildi). Artık kendi
+    // kaydımızı silmek yeterli; işlem tekrar çağrılabilir (idempotent).
+    if (!isPermissionDenied(failure)) throw failure;
+    await deleteDoc(doc(db, `users/${cleanUid}/friends/${cleanFriend}`));
+    verifiedFriendIndexes.delete(`${cleanUid}/${cleanFriend}`);
+    return;
+  }
   if (!snap.exists()) throw dataError("friendship/not-found", "Arkadaslik bulunamadi.");
   const data = snap.data() as { users?: string[] };
   if (!data.users || !data.users.includes(cleanUid) || !data.users.includes(cleanFriend)) {
@@ -327,6 +394,7 @@ export async function removeFriend(uid: string, friendUid: string): Promise<void
   }
   // C3: hatalar yutulmaz — silme reddedilirse hata yuzeye cikar, "silindi" sanilmaz
   await deleteDoc(doc(db, `users/${cleanUid}/friends/${cleanFriend}`));
+  verifiedFriendIndexes.delete(`${cleanUid}/${cleanFriend}`);
   await deleteDoc(friendshipRef);
   try {
     await deleteDoc(doc(db, `users/${cleanFriend}/friends/${cleanUid}`));

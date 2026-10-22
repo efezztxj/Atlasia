@@ -7,11 +7,15 @@ import { decodePolyline } from "../utils/polyline";
 import type { ElevationProfileData } from "../utils/elevation";
 import { buildRouteShareUrl } from "../utils/shareLinkUrl";
 import {
+  ROUTE_WEATHER_MAX_STOPS,
   assessWeatherRisk,
   dateKeyForDayIndex,
-  fetchWeatherSeries,
+  fetchWeatherSeriesBatched,
+  routeStopArrivalWeather,
+  routeStopWeatherId,
+  routeStopWeatherPoints,
+  type StopWeather,
   type WeatherHour,
-  type WeatherPoint,
   type WeatherRiskAssessment,
 } from "../utils/weather";
 import { cn } from "../utils/cn";
@@ -33,7 +37,7 @@ const VISIBILITIES: { value: RouteVisibility; label: string; detail: string }[] 
 type RiskState =
   | { status: "idle" }
   | { status: "loading" }
-  | { status: "done"; byDay: (WeatherRiskAssessment | null)[] }
+  | { status: "done"; byDay: (WeatherRiskAssessment | null)[]; byStop: (StopWeather | null)[][]; truncated: boolean }
   | { status: "error"; message: string };
 
 /** Günün plan penceresini (ilk başlama – son bitiş saati) çıkarır. */
@@ -72,30 +76,31 @@ function WeatherRiskPanel({ route }: { route: AtlasRoute }) {
     abortRef.current = controller;
     setState({ status: "loading" });
     try {
-      const points: WeatherPoint[] = [];
-      // Gün başına ilk/orta/son durak: uzun rotalarda istek adresi şişmez,
-      // pencere (saat aralığı) yine de günün tüm planını kapsar.
-      const idsByDay = route.days.map((day, dayIndex) => {
-        const located = day.stops.filter((stop) => Number.isFinite(stop.lat) && Number.isFinite(stop.lng));
-        const picks = [located[0], located[Math.floor(located.length / 2)], located[located.length - 1]]
-          .filter((stop, index, all) => stop !== undefined && all.indexOf(stop) === index);
-        return picks.map((stop, pickIndex) => {
-          const id = `gun-${dayIndex}-nokta-${pickIndex}`;
-          points.push({ id, lat: stop.lat, lng: stop.lng });
-          return id;
-        });
-      });
+      // Her konumlu durak bir nokta (üst sınır ROUTE_WEATHER_MAX_STOPS); seri
+      // 10'luk parçalarla istenir. Gün rozeti yine günün ilk/orta/son
+      // durağından hesaplanır, durak satırları varış saatini kullanır.
+      const points = routeStopWeatherPoints(route);
+      const requested = new Set(points.map((point) => point.id));
+      const locatedCount = route.days.reduce((total, day) => total
+        + day.stops.filter((stop) => Number.isFinite(stop.lat) && Number.isFinite(stop.lng)).length, 0);
+      const truncated = locatedCount > points.length;
       if (points.length === 0) {
-        setState({ status: "done", byDay: route.days.map(() => null) });
+        setState({ status: "done", byDay: route.days.map(() => null), byStop: route.days.map((day) => day.stops.map(() => null)), truncated });
         return;
       }
-      const series = await fetchWeatherSeries(points, controller.signal);
+      const series = await fetchWeatherSeriesBatched(points, controller.signal);
       const byDay = route.days.map((day, dayIndex) => {
-        const dayHours: WeatherHour[] = idsByDay[dayIndex].flatMap((id) => series[id] ?? []);
+        const ids = day.stops
+          .map((_, stopIndex) => routeStopWeatherId(dayIndex, stopIndex))
+          .filter((id) => requested.has(id));
+        const picks = [ids[0], ids[Math.floor(ids.length / 2)], ids[ids.length - 1]]
+          .filter((id, index, all) => id !== undefined && all.indexOf(id) === index);
+        const dayHours: WeatherHour[] = picks.flatMap((id) => series[id] ?? []);
         const date = dateKeyForDayIndex(dayHours, dayIndex) ?? undefined;
         return assessWeatherRisk(dayHours, { date, ...dayClockWindow(day) });
       });
-      setState({ status: "done", byDay });
+      const byStop = routeStopArrivalWeather(route, series);
+      setState({ status: "done", byDay, byStop, truncated });
     } catch (failure) {
       if ((failure as { name?: string })?.name === "AbortError") return; // kapanış/yeni denetim
       setState({ status: "error", message: failure instanceof Error ? failure.message : "Hava durumu alınamadı." });
@@ -110,7 +115,10 @@ function WeatherRiskPanel({ route }: { route: AtlasRoute }) {
           {state.status === "loading" ? "Denetleniyor…" : "Hava riskini denetle"}
         </button>
       </div>
-      <p className="mt-1 text-[12px] leading-relaxed text-mint/65">Plan günleri bugünden başlayan 7 günlük tahminle karşılaştırılır; tahminin ötesindeki günler bilinmiyor kalır.</p>
+      <p className="mt-1 text-[12px] leading-relaxed text-mint/65">Plan günleri bugünden başlayan 7 günlük tahminle karşılaştırılır; tahminin ötesindeki günler bilinmiyor kalır. Her durakta başlama saatindeki hava gösterilir.</p>
+      {state.status === "done" && state.truncated && (
+        <p className="mt-1 text-[12px] leading-relaxed text-mint/65">İlk {ROUTE_WEATHER_MAX_STOPS} durağın havası istendi; sonrakiler bilinmiyor görünür.</p>
+      )}
       {state.status === "error" && <p role="alert" className="mt-2 text-[12px] leading-relaxed text-red-200">Hava durumu bilinmiyor. {state.message}</p>}
       {state.status === "done" && (
         <ul className="mt-2 grid gap-2">
@@ -127,6 +135,25 @@ function WeatherRiskPanel({ route }: { route: AtlasRoute }) {
                 </div>
                 {assessment && assessment.reasons.length > 0 && (
                   <p className="mt-1 text-[12px] leading-relaxed text-mint/70">{assessment.reasons.join("; ")}</p>
+                )}
+                {day.stops.length > 0 && (
+                  <ul aria-label={`${day.dayNumber}. gün durak havası`} className="mt-2 grid gap-1">
+                    {day.stops.map((stop, stopIndex) => {
+                      const weather = state.byStop[dayIndex]?.[stopIndex] ?? null;
+                      return (
+                        <li key={stopIndex} className="flex flex-wrap items-baseline justify-between gap-x-2 text-[12px] leading-relaxed">
+                          <span className="min-w-0 truncate text-mint/80">{/^\d{2}:\d{2}/.test(stop.startTime) ? `${stop.startTime.slice(0, 5)} · ` : ""}{stop.name}</span>
+                          {weather ? (
+                            <span className={cn("shrink-0", weather.risk === "rainy" ? "text-red-200" : weather.risk === "possible" ? "text-sun" : "text-leaf")}>
+                              Varışta: {Math.round(weather.temperature)}° · {weather.label} · %{Math.round(weather.precipitationProbability)} yağış
+                            </span>
+                          ) : (
+                            <span className="shrink-0 text-mint/65">Varış havası bilinmiyor</span>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
                 )}
               </li>
             );

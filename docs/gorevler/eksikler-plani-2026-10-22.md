@@ -1,6 +1,8 @@
 # Eksikler planı — 22 Ekim 2026
 
-Taban: main `6d7cbce` (#56). Kapsam: kodda henüz olmayan ya da yarım kalan her şey.
+Taban: main `6d7cbce` (#56).
+
+**Durum (2026-10-22 sonu):** A2, A3, B1 ve B2 yapıldı. A1 yapılmadı: açık temanın zemini zaten `#f4f1e7`, yani üst çubuk rengi zeminle uyumlu. "Gerçek beyaz" değişikliği beyaz sayfa modu işine girer ve o iş kullanıcıda. Kapsam: kodda henüz olmayan ya da yarım kalan her şey.
 Sıralamanın ölçütü: önce onay ve maliyet gerektirmeyen işler, sonra onay isteyenler, en son
 para ya da karar isteyenler. Her iş ayrı PR olarak yapılır. Kural (rules) değişikliği olan PR'dan
 sonra deploy'u kullanıcı adım adım yapar.

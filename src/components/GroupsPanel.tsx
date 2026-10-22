@@ -23,7 +23,7 @@ import {
   type GroupInvite,
   type GroupMessage,
 } from "../lib/groups";
-import { subscribeFriendRequests, subscribeFriends, type FriendIndex, type FriendRequest } from "../lib/friendships";
+import { pruneStaleFriends, subscribeFriendRequests, subscribeFriends, type FriendIndex, type FriendRequest } from "../lib/friendships";
 import ReportDialog from "./ReportDialog";
 import FriendsTab from "./FriendsTab";
 import { blockUser } from "../lib/moderation";
@@ -102,6 +102,14 @@ export default function GroupsPanel({ currentUid, currentName, blockedSet, isBlo
     ];
     return () => stops.forEach((stop) => stop());
   }, [currentUid]);
+
+  // Karşı tarafın bitirdiği arkadaşlıklar listede kalmasın: her kayıt oturumda
+  // bir kez denetlenir, bitmişse kendi kaydımız silinir (snapshot listeyi günceller).
+  const friendUidsKey = useMemo(() => friends.map((friend) => friend.friendUid).sort().join(","), [friends]);
+  useEffect(() => {
+    if (!friendUidsKey) return;
+    pruneStaleFriends(currentUid, friendUidsKey.split(",")).catch((failure) => console.warn("[Atlasia] Arkadaş listesi temizlenemedi:", failure));
+  }, [currentUid, friendUidsKey]);
 
   const isOwner = Boolean(openGroup && openGroup.ownerUid === currentUid);
   const openGroupId = openGroup?.id ?? null;
