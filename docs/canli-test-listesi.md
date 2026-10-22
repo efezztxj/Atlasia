@@ -49,13 +49,13 @@
 | 3.3 | "Herkese açık" rota | Keşif akışında listelenir; `saveCount` artar | — |
 | 3.4 | "Yalnız ben" (private) rota | Gizli pencerede **açılamaz** (yetkisiz: boş/bilgi sayfası; hata patlaması yok) | İkinci oturumda erişilebildiyse bu **güvenlik bulgusudur**; rules + istemci kaydı acil iletilir |
 
-## 4. Grup: kur / kodla katıl / kilit
+## 4. Grup: kur / kodla katıl / kodu yenile
 
 | # | Adım | Beklenen sonuç | Hata olursa kanıt |
 | --- | --- | --- | --- |
-| 4.1 | Grup kur | Grup oluşur; katılma kodu (4–8 hane) görünür | Console; `groups.ts` hata mesajı |
+| 4.1 | Grup kur | Grup oluşur; katılma kodu (6–8 hane) görünür | Console; `groups.ts` hata mesajı |
 | 4.2 | İkinci hesap kodla katıl | Katılım başarılı; üye listesinde görünür; mesaj akışı açılır | "Kod geçersiz" / `permission-denied` ayrımı; kodun gerçekten üretildiği an |
-| 4.3 | Grubu **kilitle** (katılıma kapat) | Yeni katılımlar reddedilir; mevcut üyeler etkilenmez | Kilitli gruba katılmak isteyen ikinci hesabın hata metni |
+| 4.3 | Sahip katılma kodunu **yeniler** | Eski kodla katılım reddedilir, yeni kodla kabul edilir; mevcut üyeler etkilenmez | Eski kodla katılmaya çalışan üçüncü hesabın hata metni |
 | 4.4 | Üye olmayan hesabı grupta okumaya çalış | Okuma reddedilir (`permission-denied`) | Kural delinirse **güvenlik bulgusu**; rules testleri + Console |
 
 ## 5. Arkadaşlık

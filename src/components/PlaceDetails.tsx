@@ -29,6 +29,7 @@ import { VERIFICATION_LABELS, VERIFICATION_STATUSES, type VerificationStatus } f
 import ReportDialog from "./ReportDialog";
 import { advice } from "../utils/placeAdvice";
 import { buildGooglePlaceDirectionsUrl, buildYandexPlaceDirectionsUrl } from "../utils/mapLinks";
+import { friendlyDataError } from "../lib/firestoreValue";
 
 interface Props {
   place: Place;
@@ -65,7 +66,7 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDele
       setVerifyNote("");
       setVerifyStatus("Doğrulaman kaydedildi. Teşekkürler!");
     } catch (error) {
-      setVerifyStatus((error as Error).message || "Doğrulama kaydedilemedi.");
+      setVerifyStatus(friendlyDataError(error, "Doğrulama kaydedilemedi."));
     } finally {
       setVerifyBusy(null);
     }
@@ -181,7 +182,7 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDele
                 if (!user || !place.authorUid) return;
                 if (!confirm(`${place.author} kullanıcısını engellemek istiyor musun?`)) return;
                 setBlocking(true);
-                try { await blockUser(place.authorUid, user.uid); setStatus("Kullanıcı engellendi."); } catch (e) { setStatus((e as Error).message); } finally { setBlocking(false); }
+                try { await blockUser(place.authorUid, user.uid); setStatus("Kullanıcı engellendi."); } catch (e) { setStatus(friendlyDataError(e, "Kullanıcı engellenemedi.")); } finally { setBlocking(false); }
               }} className="flex min-h-11 items-center gap-2 rounded-full border border-white/10 px-4 text-sm text-mint/70 disabled:opacity-50">
                 {blocking ? <Loader2 size={15} className="animate-spin" /> : <Ban size={15} />}Engelle
               </button>

@@ -52,3 +52,22 @@ export function isPermissionDenied(failure: unknown): boolean {
       && (failure as { code?: unknown }).code === "permission-denied",
   );
 }
+
+/**
+ * Arayüzde gösterilecek Türkçe hata metni. Uygulamanın kendi hataları zaten
+ * Türkçedir ve aynen gösterilir; Firebase SDK hataları (`name ===
+ * "FirebaseError"`) koduna göre Türkçeye çevrilir — ham İngilizce mesaj
+ * ("Missing or insufficient permissions." vb.) asla kullanıcıya çıkmaz.
+ */
+export function friendlyDataError(failure: unknown, fallback: string): string {
+  const name = (failure as { name?: unknown })?.name;
+  const rawCode = (failure as { code?: unknown })?.code;
+  const message = failure instanceof Error ? failure.message : "";
+  if (name !== "FirebaseError") return message || fallback;
+  const code = typeof rawCode === "string" ? rawCode.slice(rawCode.lastIndexOf("/") + 1) : "";
+  if (code === "permission-denied" || code === "unauthorized") return `${fallback} Bu işlem için yetkin yok ya da uygulama güncelleniyor; biraz sonra tekrar dene.`;
+  if (code === "unavailable" || code === "deadline-exceeded" || code.includes("network") || code === "retry-limit-exceeded") return "Bağlantı kurulamadı. İnternetini kontrol edip tekrar dene.";
+  if (code === "resource-exhausted" || code === "quota-exceeded") return "Çok fazla istek gönderildi. Biraz bekleyip tekrar dene.";
+  if (code === "not-found" || code === "object-not-found") return `${fallback} Kayıt bulunamadı.`;
+  return fallback;
+}

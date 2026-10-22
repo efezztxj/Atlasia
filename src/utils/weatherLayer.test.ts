@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { clearWeatherLayerCache, debounce, fetchWeatherGrid, weatherGrid } from "./weatherLayer";
+import { clearWeatherLayerCache, debounce, fetchWeatherGrid, weatherGrid, weatherIcon } from "./weatherLayer";
 
 afterEach(() => { clearWeatherLayerCache(); vi.useRealTimers(); });
 
@@ -39,5 +39,33 @@ describe("hava katmanı verisi", () => {
     expect(fn).toHaveBeenCalledTimes(1);
     delayed(); delayed.cancel(); vi.runOnlyPendingTimers();
     expect(fn).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("hava katmanı düzeltmeleri", () => {
+  it("küçük kaydırmada grid (dolayısıyla cache anahtarı) değişmez", () => {
+    const a = weatherGrid({ west: 27.01, south: 38.31, east: 27.29, north: 38.52 });
+    for (const shift of [0.01, 0.02, 0.03, -0.02]) {
+      expect(weatherGrid({ west: 27.01 + shift, south: 38.31 + shift, east: 27.29 + shift, north: 38.52 + shift })).toEqual(a);
+    }
+  });
+
+  it("antimeridyeni geçen görünümde boş dönmez; istekte boylam [-180,180) aralığına sarılır", async () => {
+    const points = weatherGrid({ west: 170, south: -20, east: -170, north: -10 });
+    expect(points).toHaveLength(9);
+    const fetcher = vi.fn(async (_input: RequestInfo | URL) => new Response(JSON.stringify([]), { status: 200 }));
+    await fetchWeatherGrid({ west: 170, south: -20, east: 190, north: -10 }, fetcher, 1);
+    const url = new URL(String(fetcher.mock.calls[0][0]));
+    const lngs = url.searchParams.get("longitude")!.split(",").map(Number);
+    expect(lngs.every((lng) => lng >= -180 && lng < 180)).toBe(true);
+  });
+
+  it("WMO kodları ayrı simgelere eşlenir (kar/sis/fırtına yağmur sayılmaz)", () => {
+    expect(weatherIcon(0)).toBe("☀");
+    expect(weatherIcon(3)).toBe("☁");
+    expect(weatherIcon(45)).toBe("🌫");
+    expect(weatherIcon(61)).toBe("🌧");
+    expect(weatherIcon(73)).toBe("❄");
+    expect(weatherIcon(95)).toBe("⛈");
   });
 });

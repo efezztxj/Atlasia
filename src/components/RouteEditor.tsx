@@ -5,7 +5,7 @@ import { useCollections } from "../hooks/useCollections";
 import { compressImageWithinLimit } from "../utils/image";
 import { decodePolyline } from "../utils/polyline";
 import type { ElevationProfileData } from "../utils/elevation";
-import { buildRouteShareUrl, createRouteShareLink } from "../utils/shareLink";
+import { buildRouteShareUrl } from "../utils/shareLinkUrl";
 import {
   assessWeatherRisk,
   dateKeyForDayIndex,
@@ -15,6 +15,7 @@ import {
   type WeatherRiskAssessment,
 } from "../utils/weather";
 import { cn } from "../utils/cn";
+import { friendlyDataError } from "../lib/firestoreValue";
 
 interface Props {
   route: AtlasRoute;
@@ -274,7 +275,7 @@ export default function RouteEditor({ route, onClose, onSaved }: Props) {
       setShareLink(visibility === "private" ? null : `${window.location.origin}/?route=${encodeURIComponent(updated.id)}`);
       onSaved(updated, visibility);
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : "Rota kaydedilemedi. Bağlantını kontrol edip tekrar dene.");
+      setError(friendlyDataError(failure, "Rota kaydedilemedi. Bağlantını kontrol edip tekrar dene."));
     } finally {
       setBusy(false);
     }
@@ -291,6 +292,8 @@ export default function RouteEditor({ route, onClose, onSaved }: Props) {
     setError(null);
     setInlineNote(null);
     try {
+      // Paylaşım kodu (sıkıştırma dahil) yalnız bağlantı istenince yüklenir.
+      const { createRouteShareLink } = await import("../utils/shareLink");
       const created = await createRouteShareLink(updated, { userInitiated: true, shareConsent });
       if (!created.ok) {
         setError(created.message);

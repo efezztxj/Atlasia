@@ -64,6 +64,7 @@ export default function MapControls({
 }: Props) {
   const [weather, setWeather] = useState(false);
   useEffect(() => {
+    // Hava katmanı parçası yüklenemezse (ağ kopuk) düğme kapalıya döner.
     const unavailable = () => setWeather(false);
     window.addEventListener("atlasia:weather-unavailable", unavailable);
     return () => window.removeEventListener("atlasia:weather-unavailable", unavailable);

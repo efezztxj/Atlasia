@@ -9,8 +9,11 @@ import {
   createRouteShareLink,
   parseRouteShareLink,
   parseShareRoute,
+  inflateBounded,
   readShareTokenFromUrl,
+  safeShareImageUrl,
 } from "./shareLink";
+import { Unzlib } from "fflate";
 
 const CONSENT = { userInitiated: true, shareConsent: true } as const;
 
@@ -68,7 +71,7 @@ function sampleRoute(): AtlasRoute {
             isCommunityPin: true,
             pinId: "pin-9",
             category: "Manzara",
-            imageUrl: "https://example.org/kordon.jpg",
+            imageUrl: "https://images.pexels.com/photos/1/kordon.jpg",
           },
         ],
         polyline: encodePolyline(coords),
@@ -298,5 +301,26 @@ describe("P20 gelen veri doğrulaması (saldırgan yükü)", () => {
     expect((parsed.route.days[0].stops[0] as unknown as Record<string, unknown>).ekAlan).toBeUndefined();
     // Hava tahmini enjekte edilse bile taşınmaz (bayat veri).
     expect(parsed.route.days[0].stops[0].weather).toBeUndefined();
+  });
+});
+
+describe("Tur 5 sertleştirme", () => {
+  it("sıkıştırma bombası sınırı aşınca belleğe tamamen açılmadan durur", () => {
+    const bomb = zlibSync(new Uint8Array(4_000_000));
+    expect(inflateBounded(bomb, Unzlib, 512_000)).toBeNull();
+    const small = zlibSync(strToU8("merhaba"));
+    expect(new TextDecoder().decode(inflateBounded(small, Unzlib)!)).toBe("merhaba");
+    expect(() => inflateBounded(small.subarray(0, small.length - 3), Unzlib)).toThrow();
+  });
+
+  it("fotoğraf adresi yalnız bilinen kaynaklardan kabul edilir (izleme pikseli engeli)", () => {
+    expect(safeShareImageUrl("https://images.pexels.com/photos/1/a.jpg")).toBe("https://images.pexels.com/photos/1/a.jpg");
+    expect(safeShareImageUrl("https://upload.wikimedia.org/a.jpg")).not.toBeNull();
+    expect(safeShareImageUrl("https://s3.amazonaws.com/izleyici/p.gif")).toBeNull();
+    expect(safeShareImageUrl("http://images.pexels.com/a.jpg")).toBeNull();
+    expect(safeShareImageUrl("https://user:pw@images.pexels.com/a.jpg")).toBeNull();
+    expect(safeShareImageUrl("javascript:alert(1)")).toBeNull();
+    expect(safeShareImageUrl("data:image/png;base64,AAAA")).toBe("data:image/png;base64,AAAA");
+    expect(safeShareImageUrl(42)).toBeNull();
   });
 });

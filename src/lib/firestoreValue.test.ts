@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isPermissionDenied, placeDeleteErrorMessage, withoutUndefined } from "./firestoreValue";
+import { friendlyDataError, isPermissionDenied, placeDeleteErrorMessage, withoutUndefined } from "./firestoreValue";
 
 /**
  * Metin kilidi: bu cümleler kullanıcıya birebir gösteriliyor. App.tsx
@@ -54,5 +54,23 @@ describe("withoutUndefined", () => {
     expect(result).toEqual({ a: 1, c: { e: [1, { g: 2 }] }, ts: sentinel });
     expect(result.ts).toBe(sentinel); // aynı nesne
     expect("b" in input).toBe(true); // girdi bozulmadı
+  });
+});
+
+describe("friendlyDataError", () => {
+  it("Firebase'in ham İngilizce mesajını göstermez", () => {
+    const failure = Object.assign(new Error("Missing or insufficient permissions."), { name: "FirebaseError", code: "permission-denied" });
+    const text = friendlyDataError(failure, "Grup oluşturulamadı.");
+    expect(text).not.toContain("Missing");
+    expect(text.startsWith("Grup oluşturulamadı.")).toBe(true);
+    expect(friendlyDataError(Object.assign(new Error("x"), { name: "FirebaseError", code: "unavailable" }), "Olmadı.")).toContain("Bağlantı");
+    expect(friendlyDataError(Object.assign(new Error("Firebase Storage: x"), { name: "FirebaseError", code: "storage/unknown" }), "Olmadı.")).toBe("Olmadı.");
+    expect(friendlyDataError("string", "Olmadı.")).toBe("Olmadı.");
+  });
+
+  it("uygulamanın kendi Türkçe hatalarını aynen geçirir", () => {
+    const failure = Object.assign(new Error("Grup adı 2–80 karakter olmalı."), { code: "group/name-too-short" });
+    expect(friendlyDataError(failure, "Olmadı.")).toBe("Grup adı 2–80 karakter olmalı.");
+    expect(friendlyDataError(new Error("Rota bulunamadı."), "Olmadı.")).toBe("Rota bulunamadı.");
   });
 });

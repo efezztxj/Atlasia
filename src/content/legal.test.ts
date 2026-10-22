@@ -73,6 +73,14 @@ describe("TASK KVKK aydınlatma akışı (Tur 4)", () => {
     expect(legalDocumentText(privacyDocument)).not.toContain("İŞLEME AMAÇLARI\n");
   });
 
+  it("aydınlatma metinleri kabule bağlanmaz; tek KVKK aydınlatma metni vardır", () => {
+    expect(privacyDocument.title).toBe("Gizlilik Açıklaması");
+    expect(legalDocumentText(privacyDocument)).not.toContain("kabul etmeden önce");
+    const terms = legalDocumentText(termsDocument);
+    expect(terms).not.toContain("Gizlilik/KVKK metnini kabul");
+    expect(terms).toContain("kabul edilmesi gerekmez");
+  });
+
   it("kayıt akışında iki ayrı yasal öğe vardır: zorunlu koşul onayı + kutusuz KVKK bilgilendirmesi", () => {
     const accountAccess = readFileSync("src/components/AccountAccess.tsx", "utf8");
 

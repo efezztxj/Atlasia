@@ -23,10 +23,10 @@ export const LEGAL_PLACEHOLDERS = ["[TARİH]", "[AD SOYAD / UNVAN]", "[E-POSTA]"
 export const privacyDocument: LegalDocument = {
   type: "privacy",
   shortTitle: "Gizlilik açıklaması",
-  title: "Gizlilik ve KVKK Aydınlatma Metni",
+  title: "Gizlilik Açıklaması",
   updatedLine: "Son güncelleme: [TARİH] · Sürüm 2.0",
   intro: [
-    "Merhaba, Atlasia'ya hoş geldin. Bu metin, 6698 sayılı Kişisel Verilerin Korunması Kanunu (KVKK) uyarınca; hangi kişisel verilerini, hangi amaçla, hangi hukuki sebebe dayanarak işlediğimizi; kimlerle paylaştığımızı ve haklarını açıklar. Metni kabul etmeden önce lütfen tamamını oku; soruların için bize her zaman yazabilirsin.",
+    "Merhaba, Atlasia'ya hoş geldin. Bu metin, 6698 sayılı Kişisel Verilerin Korunması Kanunu (KVKK) uyarınca; hangi kişisel verilerini, hangi amaçla, hangi hukuki sebebe dayanarak işlediğimizi; kimlerle paylaştığımızı ve haklarını açıklar. Bu bir bilgilendirme metnidir, onay gerektirmez; özet hâli ayrıca KVKK Aydınlatma Metni'nde yer alır. Soruların için bize her zaman yazabilirsin.",
   ],
   sections: [
     {
@@ -110,7 +110,7 @@ export const termsDocument: LegalDocument = {
     {
       title: "1. KABUL",
       paragraphs: [
-        "Atlasia'yı kullanarak bu koşulları ve Gizlilik/KVKK metnini kabul etmiş olursun. Kabul etmiyorsan hizmeti kullanmamalısın.",
+        "Atlasia'yı kullanarak bu koşulları kabul etmiş olursun. Kabul etmiyorsan hizmeti kullanmamalısın. Kişisel verilerinin nasıl işlendiği KVKK Aydınlatma Metni ve Gizlilik açıklamasında anlatılır; bu metinler bilgilendirme amaçlıdır ve kabul edilmesi gerekmez.",
       ],
     },
     {

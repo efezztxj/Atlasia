@@ -20,6 +20,7 @@ import {
 import ReportDialog from "./ReportDialog";
 import { blockUser } from "../lib/moderation";
 import { usePanelAccess } from "../hooks/usePanelAccess";
+import { friendlyDataError } from "../lib/firestoreValue";
 import { relativeTime } from "../utils/time";
 
 interface Props {
@@ -92,7 +93,7 @@ export default function GroupsPanel({ currentUid, currentName, blockedSet, isBlo
       if (!group) throw new Error("Grup bulunamadı veya erişim yok.");
       setOpenGroup(group);
     } catch (failure) {
-      setError((failure as Error).message || "Grup açılamadı.");
+      setError(friendlyDataError(failure, "Grup açılamadı."));
     }
   }, []);
 
@@ -112,7 +113,7 @@ export default function GroupsPanel({ currentUid, currentName, blockedSet, isBlo
     setError(null);
     setStatus(null);
     void joinAndOpen(initialGroupId).catch((failure: unknown) => {
-      setError((failure as Error).message || "Grup açılamadı.");
+      setError(friendlyDataError(failure, "Grup açılamadı."));
     });
   }, [initialGroupId, joinAndOpen]);
 
@@ -140,15 +141,15 @@ export default function GroupsPanel({ currentUid, currentName, blockedSet, isBlo
       setCreateOpen(false);
       setNewName("");
       setNewMembers("");
-      setStatus(
-        result.invited > 0
-          ? `Grup oluşturuldu ve ${result.invited} kişiye davet bildirimi gönderildi. Katılma kodu: ${result.group.joinCode} — bu kodu paylaşın, asıl katılım bu kodla yapılır.`
-          : `Grup oluşturuldu. Katılma kodu: ${result.group.joinCode} — bu kodu paylaşın, asıl katılım bu kodla yapılır.`,
-      );
+      const invitedNote = result.invited > 0 ? ` ${result.invited} kişiye davet bildirimi gönderildi.` : "";
+      const skippedNote = result.skipped > 0
+        ? ` ${result.skipped} kimliğe davet gönderilemedi: yalnız kabul edilmiş arkadaşlar davet edilebilir.`
+        : "";
+      setStatus(`Grup oluşturuldu.${invitedNote}${skippedNote} Katılma kodu: ${result.group.joinCode} — bu kodu paylaşın, asıl katılım bu kodla yapılır.`);
       setIndex((current) => [{ groupId: result.group.id, name: result.group.name, role: "owner", joinedAt: Date.now() }, ...current]);
       setOpenGroup(result.group);
     } catch (failure) {
-      setError((failure as Error).message || "Grup oluşturulamadı.");
+      setError(friendlyDataError(failure, "Grup oluşturulamadı."));
     } finally {
       setBusy(false);
     }
@@ -162,7 +163,7 @@ export default function GroupsPanel({ currentUid, currentName, blockedSet, isBlo
       setJoinId("");
       setStatus(`“${group.name}” grubuna katıldın.`);
     } catch (failure) {
-      setError((failure as Error).message || "Gruba katılınamadı.");
+      setError(friendlyDataError(failure, "Gruba katılınamadı."));
     } finally {
       setBusy(false);
     }
@@ -186,7 +187,10 @@ export default function GroupsPanel({ currentUid, currentName, blockedSet, isBlo
       if (code === "group/locked" || msg.includes("kilit")) {
         setError("Çok fazla hatalı deneme. 15 dakika sonra tekrar deneyin.");
       } else {
-        setError(msg || "Katılma kodu yanlış veya grup bulunamadı.");
+        // Yanlış kod kural reddi (permission-denied) olarak döner; ham İngilizce metin gösterilmez.
+        setError(code === "permission-denied" || code === "not-found"
+          ? "Katılma kodu yanlış veya grup bulunamadı."
+          : friendlyDataError(failure, "Gruba katılınamadı."));
       }
     } finally {
       setBusy(false);
@@ -200,7 +204,7 @@ export default function GroupsPanel({ currentUid, currentName, blockedSet, isBlo
       setOpenGroup({ ...openGroup, joinCode: newCode });
       setStatus(`Yeni katılma kodu: ${newCode} — yeni kodu paylaşın, eski kod geçersiz.`);
     } catch (failure) {
-      setError((failure as Error).message || "Kod yenilenemedi.");
+      setError(friendlyDataError(failure, "Kod yenilenemedi."));
     }
   };
 
@@ -213,7 +217,7 @@ export default function GroupsPanel({ currentUid, currentName, blockedSet, isBlo
       setDraft("");
       setMessages((current) => [created, ...current].slice(0, 50));
     } catch (failure) {
-      setError((failure as Error).message || "Mesaj gönderilemedi.");
+      setError(friendlyDataError(failure, "Mesaj gönderilemedi."));
     } finally {
       setSending(false);
     }
@@ -225,7 +229,7 @@ export default function GroupsPanel({ currentUid, currentName, blockedSet, isBlo
       await deleteGroupMessage(openGroup.id, messageId);
       setMessages((current) => current.filter((item) => item.id !== messageId));
     } catch (failure) {
-      setError((failure as Error).message || "Mesaj silinemedi.");
+      setError(friendlyDataError(failure, "Mesaj silinemedi."));
     }
   };
 
@@ -236,7 +240,7 @@ export default function GroupsPanel({ currentUid, currentName, blockedSet, isBlo
       await blockUser(uid, currentUid);
       setStatus(`${name} engellendi.`);
     } catch (failure) {
-      setError((failure as Error).message || "Kullanıcı engellenemedi.");
+      setError(friendlyDataError(failure, "Kullanıcı engellenemedi."));
     }
   };
 
@@ -250,7 +254,7 @@ export default function GroupsPanel({ currentUid, currentName, blockedSet, isBlo
       setOpenGroup(null);
       setStatus("Gruptan ayrıldın.");
     } catch (failure) {
-      setError((failure as Error).message || "İşlem tamamlanamadı.");
+      setError(friendlyDataError(failure, "İşlem tamamlanamadı."));
     }
   };
 
@@ -291,8 +295,8 @@ export default function GroupsPanel({ currentUid, currentName, blockedSet, isBlo
               {createOpen && (
                 <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
                   <label className="block text-[12px] text-mint/70">Grup adı<input value={newName} onChange={(event) => setNewName(event.target.value)} maxLength={80} placeholder="Örn. Kapadokya ekibi" className="mt-1 h-10 w-full rounded-lg border border-white/10 bg-ink px-2 text-[13px] text-mint outline-none focus:border-sun/50" /></label>
-                  <label className="mt-2 block text-[12px] text-mint/70">Üye hesap kimlikleri (virgülle, en fazla 19) — asıl yol kod paylaşımı<textarea value={newMembers} onChange={(event) => setNewMembers(event.target.value)} rows={2} placeholder="UID1, UID2" className="mt-1 w-full rounded-lg border border-white/10 bg-ink px-2 py-1.5 text-[12px] text-mint outline-none focus:border-sun/50" /></label>
-                  <p className="mt-1 text-[11px] text-mint/50">Davet bildirimi gider; ancak kalıcı çözüm katılma kodunu paylaşmaktır. Kod, grup içinden görüntülenir ve yenilenebilir.</p>
+                  <label className="mt-2 block text-[12px] text-mint/70">İsteğe bağlı: arkadaşlarının hesap kimlikleri (virgülle, en fazla 19)<textarea value={newMembers} onChange={(event) => setNewMembers(event.target.value)} rows={2} placeholder="Boş bırakabilirsin" className="mt-1 w-full rounded-lg border border-white/10 bg-ink px-2 py-1.5 text-[12px] text-mint outline-none focus:border-sun/50" /></label>
+                  <p className="mt-1 text-[11px] text-mint/50">Kullanıcı adı değil, hesap kimliği yazılır; yalnız kabul edilmiş arkadaşlara davet gider. Asıl yol: grup kurulunca çıkan katılma kodunu paylaşmak. Kod grup içinden görüntülenir ve yenilenebilir.</p>
                   <button type="button" disabled={busy} onClick={() => void submitCreate()} className="mt-2 flex min-h-10 w-full items-center justify-center gap-2 rounded-full bg-sun text-[12px] font-semibold text-ink disabled:opacity-50">{busy ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}Oluştur</button>
                 </div>
               )}
