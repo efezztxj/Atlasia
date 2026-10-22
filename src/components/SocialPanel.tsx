@@ -359,7 +359,7 @@ export default function SocialPanel({
       <section
         className={cn(
           "social-panel gold-frame animate-rise fixed z-50 flex flex-col overflow-hidden bg-[#021915]/92 md:z-40",
-          "inset-x-0 top-[calc(6px+env(safe-area-inset-top))] bottom-0 h-auto rounded-t-[24px] rounded-b-none pb-0 max-md:bg-[#021915]/98 md:top-auto md:bottom-0 md:h-[82dvh] md:rounded-b-none",
+          "inset-x-0 top-[calc(6px+env(safe-area-inset-top))] bottom-0 h-auto rounded-t-[24px] rounded-b-none pb-0 max-md:bg-[#021915] md:top-auto md:bottom-0 md:h-[82dvh] md:rounded-b-none",
           "lg:inset-x-auto lg:bottom-4 lg:left-4 lg:h-[min(64vh,600px)] lg:w-[380px] lg:rounded-[26px] lg:pb-0",
         )}
         aria-label="İzler"
