@@ -198,12 +198,30 @@ export async function cancelFriendRequest(fromUid: string, toUid: string): Promi
   await deleteDoc(doc(db, `users/${cleanTo}/friendRequests/${cleanFrom}`));
 }
 
+/**
+ * Ret, isteği silerken aynı batch'te kendi kanıtını üretir:
+ * friendDeclines/{friendshipId}. Kural, friend_declined bildirimini yalnız bu
+ * belge varken ve declinerUid == actorUid iken kabul eder; böylece ret sonrası
+ * kanıt kaybolmaz ve Cloud Functions gerekmez.
+ */
 export async function declineFriendRequest(recipientUid: string, requesterUid: string): Promise<void> {
   if (!db) throw dataError("data/unavailable", "Firestore hazir degil.");
   const cleanRecipient = recipientUid.trim();
   const cleanRequester = requesterUid.trim();
   if (!cleanRecipient || !cleanRequester) throw dataError("friend-request/uid-invalid", "Kullanici kimligi gecersiz.");
-  await deleteDoc(doc(db, `users/${cleanRecipient}/friendRequests/${cleanRequester}`));
+  const declineId = friendshipIdFor(cleanRecipient, cleanRequester);
+  const batch = writeBatch(db);
+  batch.set(
+    doc(db, `friendDeclines/${declineId}`),
+    withoutUndefined({
+      declinerUid: cleanRecipient,
+      requesterUid: cleanRequester,
+      users: [cleanRecipient, cleanRequester].sort(),
+      createdAt: serverTimestamp(),
+    }),
+  );
+  batch.delete(doc(db, `users/${cleanRecipient}/friendRequests/${cleanRequester}`));
+  await batch.commit();
   try {
     await createNotification({
       recipientUid: cleanRequester,
@@ -211,7 +229,7 @@ export async function declineFriendRequest(recipientUid: string, requesterUid: s
       type: "friend_declined",
       title: "Istek reddedildi",
       body: "Arkadaslik istegin reddedildi.",
-      targetId: cleanRecipient,
+      targetId: declineId,
     });
   } catch (error) {
     console.warn("[Atlasia] Red bildirimi yazilamadi:", error);

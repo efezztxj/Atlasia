@@ -906,6 +906,119 @@ describe("Firestore güvenlik kuralları", () => {
     await assertSucceeds(deleteDoc(doc(recipientDb, "users/recipient/notifications/note-1")));
   });
 
+  // === Aşama 1 — friend_declined kendi kanıtını üretir (friendDeclines) ===
+  it("friend_declined kanıtsız reddedilir; ret batch'i kanıt yazınca bildirim geçer", async () => {
+    await seed("users/bob/friendRequests/alice", {
+      fromUid: "alice",
+      fromName: "Alice",
+      toUid: "bob",
+      createdAt: Timestamp.now(),
+    });
+    const bobDb = testEnv.authenticatedContext("bob").firestore();
+    const notice = (targetId: string) => ({
+      recipientUid: "alice",
+      actorUid: "bob",
+      type: "friend_declined",
+      title: "Istek reddedildi",
+      body: "Arkadaslik istegin reddedildi.",
+      read: false,
+      createdAt: serverTimestamp(),
+      targetId,
+    });
+
+    // Kanıt belgesi yokken bildirim reddedilir.
+    await assertFails(setDoc(doc(bobDb, "users/alice/notifications/nt-declined-0"), notice("alice_bob")));
+
+    // Ret: kanıt + istek silme aynı batch'te (exists + !existsAfter).
+    const decline = writeBatch(bobDb);
+    decline.set(doc(bobDb, "friendDeclines/alice_bob"), {
+      declinerUid: "bob",
+      requesterUid: "alice",
+      users: ["alice", "bob"],
+      createdAt: serverTimestamp(),
+    });
+    decline.delete(doc(bobDb, "users/bob/friendRequests/alice"));
+    await assertSucceeds(decline.commit());
+
+    // Kanıt varken bildirim geçer.
+    await assertSucceeds(setDoc(doc(bobDb, "users/alice/notifications/nt-declined-1"), notice("alice_bob")));
+  });
+
+  it("üçüncü kişi başkasının ret kanıtıyla friend_declined yazamaz; friendDeclines yalnız taraflara açıktır", async () => {
+    await seed("friendDeclines/alice_bob", {
+      declinerUid: "bob",
+      requesterUid: "alice",
+      users: ["alice", "bob"],
+      createdAt: Timestamp.now(),
+    });
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    const bobDb = testEnv.authenticatedContext("bob").firestore();
+    const carolDb = testEnv.authenticatedContext("carol").firestore();
+    const forged = {
+      recipientUid: "alice",
+      actorUid: "carol",
+      type: "friend_declined",
+      title: "Istek reddedildi",
+      body: "Arkadaslik istegin reddedildi.",
+      read: false,
+      createdAt: serverTimestamp(),
+      targetId: "alice_bob",
+    };
+
+    await assertFails(setDoc(doc(carolDb, "users/alice/notifications/nt-forged"), forged));
+
+    await assertSucceeds(getDoc(doc(aliceDb, "friendDeclines/alice_bob")));
+    await assertSucceeds(getDoc(doc(bobDb, "friendDeclines/alice_bob")));
+    await assertFails(getDoc(doc(carolDb, "friendDeclines/alice_bob")));
+    await assertFails(getDocs(query(collection(aliceDb, "friendDeclines"), limit(10))));
+  });
+
+  it("friendDeclines güncellenemez; yalnız reddeden siler", async () => {
+    await seed("friendDeclines/alice_bob", {
+      declinerUid: "bob",
+      requesterUid: "alice",
+      users: ["alice", "bob"],
+      createdAt: Timestamp.now(),
+    });
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    const bobDb = testEnv.authenticatedContext("bob").firestore();
+    const carolDb = testEnv.authenticatedContext("carol").firestore();
+
+    await assertFails(updateDoc(doc(bobDb, "friendDeclines/alice_bob"), { requesterUid: "carol" }));
+    await assertFails(deleteDoc(doc(aliceDb, "friendDeclines/alice_bob")));
+    await assertFails(deleteDoc(doc(carolDb, "friendDeclines/alice_bob")));
+    await assertSucceeds(deleteDoc(doc(bobDb, "friendDeclines/alice_bob")));
+  });
+
+  it("friendDeclines create yalnız reddeden adına ve istek silinen batch'te yazılır", async () => {
+    await seed("users/bob/friendRequests/alice", {
+      fromUid: "alice",
+      fromName: "Alice",
+      toUid: "bob",
+      createdAt: Timestamp.now(),
+    });
+    const bobDb = testEnv.authenticatedContext("bob").firestore();
+    const valid = {
+      declinerUid: "bob",
+      requesterUid: "alice",
+      users: ["alice", "bob"],
+      createdAt: serverTimestamp(),
+    };
+
+    // Batch dışı yazım isteği silmediği için existsAfter kapısına takılır.
+    await assertFails(setDoc(doc(bobDb, "friendDeclines/alice_bob"), valid));
+    // Belge kimliği friendshipId ile eşleşmeli.
+    const wrongId = writeBatch(bobDb);
+    wrongId.set(doc(bobDb, "friendDeclines/alice_carol"), valid);
+    wrongId.delete(doc(bobDb, "users/bob/friendRequests/alice"));
+    await assertFails(wrongId.commit());
+    // Başkası adına ret yazılamaz.
+    const carolDb = testEnv.authenticatedContext("carol").firestore();
+    const spoof = writeBatch(carolDb);
+    spoof.set(doc(carolDb, "friendDeclines/alice_bob"), valid);
+    await assertFails(spoof.commit());
+  });
+
   it("beğeni güncellemesi yalnız kendi UID'sidir; sayaç ve metin müdahaleleri reddedilir", async () => {
     await seed("posts/post-1", {
       ...validPost("owner"),
