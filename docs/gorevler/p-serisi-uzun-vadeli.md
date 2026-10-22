@@ -30,7 +30,7 @@
 | Görev | Konu | Not |
 |---|---|---|
 | P5 | `run-firestore-rules-tests.mjs` locale | Emulator JVM'e İngilizce locale eklendi. Windows'ta son hâli **henüz yeniden çalıştırılmadı** — çalışan doğrulama yoksa "doğrulandı" denmez (→ P12 bunu kapsıyor) |
-| P10 | `MapView.tsx` spin | Spin döngüsü **15 FPS `setTimeout`** kullanıyor; rAF varsayma. Profil yokken performans iddiası yok. ⚠️ **Denetim şerhi (2026-10-21, `arena/c064e040-atlasia`):** bu ağaçta spin `requestAnimationFrame` kullanıyor (MapView.tsx:655-657); P10 işi bu dalda yok — bkz. `denetim-p1-p4-2026-10-21.md` |
+| P10 | `MapView.tsx` spin | ✅ **2026-10-22 main:** spin `requestAnimationFrame` + `shouldAdvanceSpin` ile en çok 15 FPS ilerler; gizli sekme, reduced-motion, yakın zoom ve harita hareketi sırasında durur (MapView.tsx ~668–684). Eski "15 FPS setTimeout" notu tarihsel. Profil yokken performans iddiası yok. (Tarihsel şerh, 2026-10-21, `arena/c064e040-atlasia`:) bu ağaçta spin `requestAnimationFrame` kullanıyor (MapView.tsx:655-657); P10 işi bu dalda yok — bkz. `denetim-p1-p4-2026-10-21.md` |
 | P11 | Offline cache allowlist | `offlineCache.ts` + `public/sw.js` tam HTTPS host/path; LRU güncellendi; lookalike URL testleri var. **Cache allowlist işi bitti, yeniden açma.** ✅ **2026-10-22: main'de doğrulandı** — `f3c28e5` main'in atası; `offlineCache.ts` ve `sw.js` `host === … && pathname.startsWith(…)` kullanıyor. (Eski şerh tarihsel:) ⚠️ **Denetim şerhi (2026-10-21, `arena/c064e040-atlasia`):** bu ağaçta `isCacheableTile` hâlâ `url.includes(...)` substring eşleşmesi kullanıyor (offlineCache.ts:25-31, sw.js:19-22); tam host/path daraltması bu dalda yok — bkz. `denetim-p1-p4-2026-10-21.md` |
 
 ## 2. Kalıcı kısıtlar (her görevde geçerli)
@@ -60,7 +60,7 @@
 | P14 | Overpass + Wikidata/Wikipedia içerik boru hattı (atıf dahil) | 1–2 gece | özellik | karar (f) seçili: 1 | ✅ 2026-10-22 (UI/CSP açık) |
 | P15 | Çevrimdışı saha paketi: tile önbelleği (lisans-güvenli kaynaklar) | 1 gece | özellik | P11 allowlist'e dokunmadan genişletme | ✅ 2026-10-22 |
 | P16 | Testsiz modül kapsama maratonu (utils/lib/hooks) | 1 gece+ | test | yok | ✅ tamamlandı — utils/lib/hooks envanterinin tamamında ilişkili test var; kapanış: `teslimat-p16.md` (73 dosya / 399 test) |
-| P17 | track → taslak rota boru hattı (durak tespiti + sadeleştirme) | 1–2 gece | özellik | ROADMAP Adım 4 | ✅ çekirdek tamamlandı — PR #32 (`6a4d2aa`, main `38dfa3a`); `teslimat-p17-kurtarma-2026-10-21.md`. Onaylı kaydet akışı PR #35'te sürüyor (işaretlenmedi) |
+| P17 | track → taslak rota boru hattı (durak tespiti + sadeleştirme) | 1–2 gece | özellik | ROADMAP Adım 4 | ✅ çekirdek tamamlandı — PR #32 (`6a4d2aa`, main `38dfa3a`); `teslimat-p17-kurtarma-2026-10-21.md`. Onaylı kaydet akışı PR #35 ile main'de (`teslimat-p17-tur2.md`) |
 | P18 | Erişilebilirlik denetimi (klavye/odak/kontrast, tema çiftleri) | 1 gece | kalite | AGENTS tema kararı | ✅ 2026-10-22 (açık tema kararı) |
 | P19 | Bundle bütçesi + lazy-loading derin taraması (ölçüm, iddia yok) | ~3–5 sa | perf-araç | `lazyLoading.test.ts` | ✅ tamamlandı — Auth preload sızıntısı kapatıldı, bundle bütçesi kilitlendi; kapanış: `teslimat-p19.md` |
 | P20 | Rota paylaşım linki (yalnız istemci içi kodlama, Firestore'suz) | 1 gece | özellik | karar (c) ⛔ — buluta geçmeden | ✅ #43 |
@@ -77,7 +77,7 @@
 | PR #30 (eski P17) | — | ✅ kapatıldı (#32 ile yerine geçildi) |
 | PR #34 (P1 ilk teslim) | — | ✅ kapatıldı (#36 ile yerine geçildi) |
 
-> Süren işler işaretlenmedi: PR #35 (P2 P17-Tur2), PR #37 (P4 T1-SOSYAL), PR #38 (P3 tazelik), ayrıca P1–P4'e verilmiş güncel görev metinleri.
+> 2026-10-22 denetimi: #35, #37, #38 merge edildi (artık süren iş değil). Ayrıntı: `docs/denetim/denetim-tum-p-2026-10-22.md`.
 
 "Sabaha kadar" hedefi: bir gecede tek görev; biterse teslimat yazılır, tablo
 güncellenir ve **durulur** — kullanıcı talimatı olmadan sıradaki göreve

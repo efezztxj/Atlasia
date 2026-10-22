@@ -18,5 +18,10 @@
 ## Testler
 `offlinePacks.test.ts` (13): z0, antimeridyen, kutup, 3000 reddi (ağ isteği yok), şablon allowlist (Esri/terrain/lookalike), ≤4 paralel, eksik, kota, iptal temizliği, ortak karo koruması, sw.js sözleşmesi.
 
+## Doğrulama
+`node --check public/sw.js` ✅ (denetim 2026-10-22).
+
 ## Açık
+- Ayarlar paneline yeni "Çevrimdışı harita" bölümü eklendi. Bileşen daha önce hiçbir yere bağlı değildi; spec "yerleşim değişikliği yok" diyor → bu ekleme kullanıcı onayına tabidir.
+- Paketsiz bölgede SW 204 boş karo döner; NetworkStatus çevrimdışı bandı gösterir. Gri alan + bant birlikte gerçek cihazda görülmeli.
 - Çevrimdışıyken yalnız "Karanlık" altlık çalışır; UI bunu söylüyor. Gerçek cihazda uçak modu doğrulaması (TASK-016) kullanıcıda.
