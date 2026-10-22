@@ -32,8 +32,9 @@ import type { AtlasRoute, LegMode, RouteDay, RouteLeg, RouteStop, StopType, Tran
 import { decodePolyline, encodePolyline } from "./polyline";
 import { resolveTrackShare, routeLeaksRawTrack } from "./trackPrivacy";
 
-/** Paylaşım parametresi adı; fragment'ta (`#r=`) taşınır, eski `?r=` de okunur. */
-export const SHARE_LINK_PARAM = "r";
+import { SHARE_LINK_PARAM } from "./shareLinkUrl";
+
+export { SHARE_LINK_PARAM };
 
 /**
  * Token üst sınırı. Tipik rota (birkaç gün, duraklar, polyline dizgileri)
@@ -180,9 +181,28 @@ function parseStop(value: unknown, index: number): RouteStop | null {
     isCommunityPin: value.isCommunityPin === true,
     pinId: typeof value.pinId === "string" && value.pinId.length <= 128 ? value.pinId : null,
     category: text(value.category, 120),
-    imageUrl: typeof value.imageUrl === "string" && value.imageUrl.length <= 2048 ? value.imageUrl : null,
+    imageUrl: safeShareImageUrl(value.imageUrl),
     ...(source ? { source } : {}),
   };
+}
+
+/**
+ * Paylaşım bağlantısından gelen fotoğraf adresi yalnız bilinen fotoğraf
+ * kaynaklarından olabilir. Aksi hâlde bağlantıyı hazırlayan, CSP'nin izin
+ * verdiği genel bir sunucuya (ör. s3.amazonaws.com) koyduğu görselle açan
+ * kişinin IP'sini ve açılış anını izleyebilirdi (izleme pikseli).
+ */
+const SHARE_IMAGE_HOSTS = new Set(["images.pexels.com", "upload.wikimedia.org", "commons.wikimedia.org"]);
+
+export function safeShareImageUrl(value: unknown): string | null {
+  if (typeof value !== "string" || value.length > 2048) return null;
+  if (/^data:image\/(png|jpeg|webp|gif);base64,/i.test(value)) return value;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && SHARE_IMAGE_HOSTS.has(url.hostname) && !url.username && !url.password ? url.href : null;
+  } catch {
+    return null;
+  }
 }
 
 function parseLeg(value: unknown, index: number): RouteLeg | null {
@@ -337,6 +357,41 @@ export async function createRouteShareLink(route: AtlasRoute, request: ShareLink
   };
 }
 
+/** Akışlı açma girdisi parçası: 1 KB sıkıştırılmış veri en fazla ~1 MB açılır. */
+const INFLATE_CHUNK_BYTES = 1024;
+
+type UnzlibCtor = typeof import("fflate").Unzlib;
+
+/**
+ * Sıkıştırma bombasına karşı sınırlı açma: veri parça parça açılır ve açılmış
+ * boyut {@link SHARE_PAYLOAD_MAX_BYTES}'ı geçtiği anda durulur. (Tek seferde
+ * `unzlibSync` tüm veriyi — en kötü ~9 MB — belleğe açıp sonra ölçüyordu.)
+ * Sınır aşılırsa `null`; bozuk veri istisna fırlatır.
+ */
+export function inflateBounded(bytes: Uint8Array, Unzlib: UnzlibCtor, maxBytes = SHARE_PAYLOAD_MAX_BYTES): Uint8Array | null {
+  const parts: Uint8Array[] = [];
+  let total = 0;
+  let overflow = false;
+  let done = false;
+  const stream = new Unzlib((chunk, final) => {
+    if (overflow) return;
+    total += chunk.length;
+    if (total > maxBytes) { overflow = true; return; }
+    parts.push(chunk);
+    if (final) done = true;
+  });
+  for (let offset = 0; offset < bytes.length && !overflow; offset += INFLATE_CHUNK_BYTES) {
+    const end = Math.min(bytes.length, offset + INFLATE_CHUNK_BYTES);
+    stream.push(bytes.subarray(offset, end), end === bytes.length);
+  }
+  if (overflow) return null;
+  if (!done) throw new Error("Sıkıştırılmış veri eksik.");
+  const out = new Uint8Array(total);
+  let at = 0;
+  for (const part of parts) { out.set(part, at); at += part.length; }
+  return out;
+}
+
 /** Token'ı doğrulanmış bir rotaya açar; hiçbir durumda sessizce yutmaz. */
 export async function parseRouteShareLink(token: string): Promise<ShareDecodeResult> {
   const trimmed = token.trim();
@@ -354,9 +409,9 @@ export async function parseRouteShareLink(token: string): Promise<ShareDecodeRes
 
   let raw: unknown;
   try {
-    const { strFromU8, unzlibSync } = await import("fflate");
-    const inflated = unzlibSync(bytes);
-    if (inflated.length > SHARE_PAYLOAD_MAX_BYTES) {
+    const { strFromU8, Unzlib } = await import("fflate");
+    const inflated = inflateBounded(bytes, Unzlib);
+    if (!inflated) {
       return { ok: false, reason: "too-large", message: SHARE_LINK_MESSAGES.tooLarge };
     }
     raw = JSON.parse(strFromU8(inflated)) as unknown;
@@ -373,30 +428,5 @@ export async function parseRouteShareLink(token: string): Promise<ShareDecodeRes
   return { ok: true, route };
 }
 
-/**
- * Tam paylaşım URL'si: `<origin>/#r=v1.…`
- *
- * Yük fragment'tadır: istek satırına girmez, sunucu/CDN günlüklerine ve
- * `Referer` başlığına düşmez. Yayınlanmış rotanın kalıcı bağlantısı
- * (`?route=`) bundan etkilenmez.
- */
-export function buildRouteShareUrl(origin: string, token: string): string {
-  return `${origin.replace(/\/+$/, "")}/#${SHARE_LINK_PARAM}=${token}`;
-}
-
-/**
- * Adres çubuğundaki paylaşım simgesini okur: önce fragment (`#r=`), yoksa
- * eski biçim sorgu (`?r=`). İkisi de yoksa ya da adres çözülemiyorsa `null`.
- * Yalnız simgeyi çıkarır; doğrulama `parseRouteShareLink`'indir.
- */
-export function readShareTokenFromUrl(url: string): string | null {
-  let parsed: URL;
-  try {
-    parsed = new URL(url);
-  } catch {
-    return null;
-  }
-  const fromFragment = new URLSearchParams(parsed.hash.replace(/^#/, "")).get(SHARE_LINK_PARAM);
-  if (fromFragment) return fromFragment;
-  return parsed.searchParams.get(SHARE_LINK_PARAM);
-}
+// Adres okuma ayrı küçük modülde: App ilk yükte yalnız onu alır, açma/doğrulama kodu tembel yüklenir.
+export { buildRouteShareUrl, readShareTokenFromUrl } from "./shareLinkUrl";

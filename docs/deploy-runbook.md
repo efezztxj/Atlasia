@@ -85,6 +85,7 @@ zaten tek yetkilendirme katmanıdır.
 | --- | --- | --- |
 | **Aktif güvenlik açığı / kötüye kullanım** | **Önce rules**, istemci sonra | Veri gizliliği ve bütünlüğü erişilebilirlikten önce gelir. Eski istemcilerin hata görmesi kabul edilir; kural penceresi dakikalarca açık tutulmaz. |
 | **Yeni koleksiyona izin veren *ek* kural** (yalnız yeni istemci kullanır) | **Rules önce veya aynı anda** | Ek kural eski istemciyi etkilemez; kural geç gelirse yeni istemci aradaki pencerede `permission-denied` alır. Sıkılaştırma olmadığı için sıra kuralının gerekçesi burada geçerli değildir. |
+| **Mevcut belgeye yeni alan yazan istemci** (ör. #44: `groups.joinCode`; kural `hasOnly` ile alan listesini sınırlıyorsa) | **Önce rules** | Eski kural yeni alanı reddeder; istemci önce yayınlanırsa mevcut özellik (grup kurma) herkes için kırılır. 22.10.2026'da canlıda yaşandı. Yeni kural eski istemciyi etkilemez çünkü alan isteğe bağlıdır. |
 
 Ters sıra kullanıldıysa teslimat/PR notuna **hangi istisna** ve **gerekçesi**
 yazılır.

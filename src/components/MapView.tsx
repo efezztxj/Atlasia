@@ -13,7 +13,7 @@ import { KKTC_GEOMETRY, KKTC_NAME } from "../data/regions";
 import type { PlaceViewport } from "../lib/firestoreData";
 import type { Place, RouteLeg, ViewState } from "../types";
 import { shouldAdvanceSpin } from "../utils/mapLifecycle";
-import { debounce, fetchWeatherGrid } from "../utils/weatherLayer";
+import type { WeatherLayerHandle } from "../utils/mapWeather";
 
 maplibregl.setWorkerUrl(maplibreWorkerUrl);
 
@@ -608,40 +608,21 @@ export default function MapView({
     });
     mapRef.current = map;
 
-    let weatherEnabled = false;
-    let weatherMarkers: maplibregl.Marker[] = [];
-    const clearWeather = () => { weatherMarkers.forEach((marker) => marker.remove()); weatherMarkers = []; };
-    const refreshWeather = debounce(async () => {
-      if (!weatherEnabled || !mapRef.current) return;
-      clearWeather();
-      try {
-        const bounds = map.getBounds();
-        const cells = await fetchWeatherGrid({ west: bounds.getWest(), south: bounds.getSouth(), east: bounds.getEast(), north: bounds.getNorth() });
-        if (!weatherEnabled || !cells.length) throw new Error("Hava verisi yok.");
-        for (const cell of cells) {
-          const label = document.createElement("div");
-          label.className = "rounded-full border border-white/20 bg-[#071f1a]/90 px-2 py-1 text-xs font-semibold text-white shadow-lg";
-          label.textContent = `${cell.weatherCode >= 51 ? "🌧" : "☀"} ${Math.round(cell.temperature)}°`;
-          weatherMarkers.push(new maplibregl.Marker({ element: label, anchor: "center" }).setLngLat([cell.lng, cell.lat]).addTo(map));
-        }
-      } catch {
-        if (!weatherEnabled) return;
-        weatherEnabled = false;
-        window.dispatchEvent(new CustomEvent("atlasia:weather-unavailable"));
-        const label = document.createElement("div");
-        label.className = "rounded-full border border-white/20 bg-[#071f1a]/90 px-2 py-1 text-xs text-white";
-        label.textContent = "Hava verisi yok";
-        const center = map.getCenter();
-        weatherMarkers.push(new maplibregl.Marker({ element: label, anchor: "center" }).setLngLat([center.lng, center.lat]).addTo(map));
-      }
-    }, 450);
+    // Hava katmanı ayrı parçada; yalnız ilk açılışta yüklenir (mapView bütçesi).
+    let weatherWanted = false;
+    let weatherDisposed = false;
+    let weatherLayer: WeatherLayerHandle | null = null;
     const onWeatherToggle = (event: Event) => {
-      weatherEnabled = (event as CustomEvent<boolean>).detail === true;
-      if (weatherEnabled) refreshWeather();
-      else { refreshWeather.cancel(); clearWeather(); }
+      weatherWanted = (event as CustomEvent<boolean>).detail === true;
+      if (weatherLayer) { weatherLayer.setEnabled(weatherWanted); return; }
+      if (!weatherWanted) return;
+      void import("../utils/mapWeather").then(({ createWeatherLayer }) => {
+        if (weatherDisposed) return;
+        weatherLayer ??= createWeatherLayer(map, maplibregl.Marker);
+        weatherLayer.setEnabled(weatherWanted);
+      }, () => window.dispatchEvent(new CustomEvent("atlasia:weather-unavailable")));
     };
     window.addEventListener("atlasia:weather-toggle", onWeatherToggle);
-    map.on("moveend", refreshWeather);
     map.once("style.load", () => setReady(true));
     if (map.isStyleLoaded()) setReady(true);
 
@@ -707,9 +688,8 @@ export default function MapView({
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("atlasia:weather-toggle", onWeatherToggle);
-      map.off("moveend", refreshWeather);
-      refreshWeather.cancel();
-      clearWeather();
+      weatherDisposed = true;
+      weatherLayer?.destroy();
       markers.forEach((value) => value.marker.remove());
       markers.clear();
       meMarkerRef.current?.remove();

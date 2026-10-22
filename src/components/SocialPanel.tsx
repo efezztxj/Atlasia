@@ -34,6 +34,7 @@ import StoryViewer from "./StoryViewer";
 import ReportDialog from "./ReportDialog";
 import GroupsPanel from "./GroupsPanel";
 import { blockUser } from "../lib/moderation";
+import { friendlyDataError } from "../lib/firestoreValue";
 
 const SEEN_KEY = "atlasia.feed.seen.v1";
 const NEARBY_KM = 900;
@@ -498,7 +499,7 @@ export default function SocialPanel({
                                 if (!p.authorUid) return;
                                 if (!confirm(`${p.author} kullanıcısını engellemek istiyor musun?`)) return;
                                 setMenuPostId(null);
-                                try { await blockUser(p.authorUid, currentUid); setActionError(`${p.author} engellendi.`); } catch (e) { setActionError((e as Error).message); }
+                                try { await blockUser(p.authorUid, currentUid); setActionError(`${p.author} engellendi.`); } catch (e) { setActionError(friendlyDataError(e, "Kullanıcı engellenemedi.")); }
                               }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[12px] text-mint/80 hover:bg-white/5"><Ban size={14} />Engelle</button>
                               <button type="button" onClick={() => setMenuPostId(null)} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[11px] text-mint/50">Kapat</button>
                             </div>

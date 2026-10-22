@@ -15,7 +15,6 @@ import Onboarding from "./components/Onboarding";
 import PlaceDetails from "./components/PlaceDetails";
 import StreetPeek from "./components/StreetPeek";
 import AccountAccess, { EmailVerification, ProfileSetup } from "./components/AccountAccess";
-import ProfilePanel from "./components/ProfilePanel";
 import MyPlacesPanel from "./components/MyPlacesPanel";
 import NearbyAudioGuide from "./components/NearbyAudioGuide";
 import LandingPage from "./components/LandingPage";
@@ -36,7 +35,7 @@ import { isCloudReady, firebaseConfigSummary } from "./lib/firebase";
 import type { PlaceViewport } from "./lib/firestoreData";
 import { ROUTE_OPEN_MESSAGES, openPublishedRoute } from "./lib/publishedRouteOpen";
 import { placeDeleteErrorMessage } from "./lib/firestoreValue";
-import { parseRouteShareLink, readShareTokenFromUrl } from "./utils/shareLink";
+import { readShareTokenFromUrl } from "./utils/shareLinkUrl";
 import type { AtlasRoute, CategoryId, Place, RouteVisibility, ViewState } from "./types";
 import { haversineKm, reverseName, type SearchResult } from "./utils/geo";
 import { storageGet, storageSet } from "./utils/storage";
@@ -47,6 +46,8 @@ import { subscribeNotifications, markNotificationRead, markAllRead, type AppNoti
 import NotificationsPanel from "./components/NotificationsPanel";
 
 const MapView = lazy(() => import("./components/MapView"));
+// Profil paneli yalnız açılınca yüklenir (ilk paket bütçesi).
+const ProfilePanel = lazy(() => import("./components/ProfilePanel"));
 const MAP_STYLE_KEY = "atlasia.mapStyle.v1";
 
 function initialMapStyle(): BaseMapStyle {
@@ -202,7 +203,8 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
       } else if (shareToken) {
         // P20: rota bağlantının içinde gelir. Doğrulama shareLink'te; burada
         // yalnız önizleme açılır — kaydetmek kullanıcının açık eylemidir.
-        void parseRouteShareLink(shareToken).then((outcome) => {
+        // Açma/doğrulama kodu (fflate dahil) tembel yüklenir: ilk paket bütçesi.
+        void import("./utils/shareLink").then(({ parseRouteShareLink }) => parseRouteShareLink(shareToken)).then((outcome) => {
           if (!active) return;
           if (outcome.ok) {
             setResumeRoute(outcome.route);
@@ -211,6 +213,8 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
           } else {
             setToast(outcome.message);
           }
+        }, () => {
+          if (active) setToast("Paylaşılan rota açılamadı. Bağlantını kontrol edip sayfayı yenile.");
         });
       }
     };
@@ -842,7 +846,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
           setToast(visibility === "private" ? "Rota hesabında özel olarak kaydedildi." : "Rota yayımlandı. Kalıcı bağlantı hazır.");
         }}
       />}
-      {profileOpen && <ProfilePanel onClose={() => setProfileOpen(false)} onRecords={openRecords} />}
+      {profileOpen && <Suspense fallback={null}><ProfilePanel onClose={() => setProfileOpen(false)} onRecords={openRecords} /></Suspense>}
       {myPlacesOpen && (
         <MyPlacesPanel
           places={myPlaces}

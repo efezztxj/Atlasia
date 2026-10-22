@@ -15,11 +15,30 @@ describe("tourGuide – sıra-duyarlı yakınlık (Adım 9)", () => {
     expect(exitRadiusM(10)).toBe(60);
   });
 
-  it("GPS doğruluğu 25m'den kötüyse yakın anıtı tetiklemez", () => {
+  it("GPS doğruluğu 60m'den kötüyse yakın anıtı tetiklemez", () => {
     const candidate = { id: "a", lat: 37.94, lng: 27.34 };
-    const result = resolveGuidePlace({ lat: candidate.lat, lng: candidate.lng, accuracy: 26 }, [candidate], initialGuideState());
+    const result = resolveGuidePlace({ lat: candidate.lat, lng: candidate.lng, accuracy: 61 }, [candidate], initialGuideState());
     expect(result.place).toBeNull();
     expect(result.entered).toBe(false);
+  });
+
+  it("orta doğrulukta (30–50 m) çalışır ama giriş yarıçapı daralır", () => {
+    expect(enterRadiusM(35)).toBe(30);
+    expect(enterRadiusM(50)).toBe(15);
+    const candidate = { id: "a", lat: 37.94, lng: 27.34 };
+    const onTop = resolveGuidePlace({ lat: candidate.lat, lng: candidate.lng, accuracy: 40 }, [candidate], initialGuideState());
+    expect(onTop.entered).toBe(true);
+    // ~33 m uzakta, doğruluk 40 m → yarıçap 25 m → tetiklenmez
+    const away = resolveGuidePlace({ lat: candidate.lat + 0.0003, lng: candidate.lng, accuracy: 40 }, [candidate], initialGuideState());
+    expect(away.place).toBeNull();
+  });
+
+  it("içerideyken tek bir kötü ölçüm durağı kaybettirmez", () => {
+    const candidate = { id: "a", lat: 37.94, lng: 27.34 };
+    const entered = resolveGuidePlace({ lat: candidate.lat, lng: candidate.lng, accuracy: 10 }, [candidate], initialGuideState());
+    const noisy = resolveGuidePlace({ lat: candidate.lat, lng: candidate.lng, accuracy: 200 }, [candidate], entered.nextState);
+    expect(noisy.place?.id).toBe("a");
+    expect(noisy.exited).toBe(false);
   });
 
   it("20m aralıklı anıtlarda sıradaki durak öne alınır", () => {

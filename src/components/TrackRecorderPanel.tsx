@@ -7,6 +7,7 @@ import { firebaseConfigured } from "../lib/firebase";
 import { decodePolyline } from "../utils/polyline";
 import { summarizeDraft, draftSummaryText, DRAFT_LOSS_NOTICE } from "../utils/trackDraft";
 import TrackRibbonPreview from "./TrackRibbonPreview";
+import { friendlyDataError } from "../lib/firestoreValue";
 
 interface Props {
   uid: string;
@@ -57,7 +58,7 @@ export default function TrackRecorderPanel({ uid, cloudAccount, onClose, onPrevi
     try {
       setDraft(await recorder.finish());
     } catch (failure) {
-      setActionError(failure instanceof Error ? failure.message : "Kayıt tamamlanamadı.");
+      setActionError(friendlyDataError(failure, "Kayıt tamamlanamadı."));
     }
   };
 
@@ -71,7 +72,7 @@ export default function TrackRecorderPanel({ uid, cloudAccount, onClose, onPrevi
       setSavedMsg("İz hesabına özel olarak kaydedildi. Yayınlanmadı.");
       onFinished(value.track, value.route);
     } catch (failure) {
-      setActionError(failure instanceof Error ? failure.message : "İz kaydedilemedi. Bağlantını kontrol edip tekrar dene.");
+      setActionError(friendlyDataError(failure, "İz kaydedilemedi. Bağlantını kontrol edip tekrar dene."));
     } finally {
       setSaving(false);
     }

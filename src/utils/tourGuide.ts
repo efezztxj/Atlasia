@@ -9,7 +9,11 @@ import { haversineKm } from "./geo";
 
 export const TOUR_ENTER_BASE_M = 40;
 export const TOUR_EXIT_HYSTERESIS_M = 20;
-export const TOUR_MAX_ACCURACY_M = 25;
+/** Bu doğruluğa kadar tam 40 m giriş yarıçapı kullanılır. */
+export const TOUR_GOOD_ACCURACY_M = 25;
+/** Bunun üstünde yeni giriş yapılmaz (şehir içi/kapalı alanda telefonlar sık 30–50 m verir). */
+export const TOUR_MAX_ACCURACY_M = 60;
+export const TOUR_MIN_ENTER_M = 15;
 
 export interface TourGuideState {
   insideId: string | null;
@@ -17,9 +21,12 @@ export interface TourGuideState {
   lastUpdateAt: number;
 }
 
-export function enterRadiusM(_accuracy: number): number {
-  // Site ölçeğinde anıtlar 20-40 m arayla; 40 m giriş ve 60 m çıkış eşiği.
-  return TOUR_ENTER_BASE_M;
+export function enterRadiusM(accuracy: number): number {
+  // Site ölçeğinde anıtlar 20-40 m arayla; iyi sinyalde 40 m giriş ve 60 m çıkış.
+  // Sinyal zayıfladıkça giriş yarıçapı daralır: yanlış anıtın tetiklenmesi yerine
+  // kullanıcının anıta biraz daha yaklaşması beklenir (eskiden 25 m üstünde hiç çalışmıyordu).
+  if (!Number.isFinite(accuracy) || accuracy <= TOUR_GOOD_ACCURACY_M) return TOUR_ENTER_BASE_M;
+  return Math.max(TOUR_MIN_ENTER_M, TOUR_ENTER_BASE_M - (accuracy - TOUR_GOOD_ACCURACY_M));
 }
 
 export function exitRadiusM(_accuracy: number): number {
@@ -54,8 +61,13 @@ export function resolveGuidePlace(
   state: TourGuideState,
   isTourContext = false,
 ): GuideResolution {
-  if (!location || candidates.length === 0 || !Number.isFinite(location.accuracy) || location.accuracy > TOUR_MAX_ACCURACY_M) {
+  if (!location || candidates.length === 0) {
     return { place: null, meters: null, nextState: state, entered: false, exited: false };
+  }
+  if (!Number.isFinite(location.accuracy) || location.accuracy > TOUR_MAX_ACCURACY_M) {
+    // Zayıf konum: yeni giriş yok, ama içinde olunan durak tek bir kötü ölçümle kaybolmaz.
+    const inside = state.insideId ? candidates.find((c) => c.id === state.insideId) ?? null : null;
+    return { place: inside, meters: null, nextState: state, entered: false, exited: false };
   }
 
   const enterR = enterRadiusM(location.accuracy);

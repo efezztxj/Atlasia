@@ -16,6 +16,7 @@ import {
 import type { AtlasRoute, AtlasTrack, Place } from "../types";
 import PlaceImage from "./PlaceImage";
 import { cn } from "../utils/cn";
+import { friendlyDataError } from "../lib/firestoreValue";
 
 interface Props { onClose: () => void; onPlace: (place: Place) => void; onRoute: (route: AtlasRoute) => void; }
 type Tab = "places" | "routes" | "discover" | "tracks";
@@ -46,7 +47,7 @@ export default function RecordsDock({ onClose, onPlace, onRoute }: Props) {
     void listPublicRoutes().then((routes) => {
       if (active) setPublicRoutes(routes);
     }).catch((failure: unknown) => {
-      if (active) setError(failure instanceof Error ? failure.message : "Rotalar keşfedilemedi.");
+      if (active) setError(friendlyDataError(failure, "Rotalar keşfedilemedi."));
     }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [cloudReady, tab]);
@@ -59,7 +60,7 @@ export default function RecordsDock({ onClose, onPlace, onRoute }: Props) {
     void listOwnedTracks(user.uid).then((items) => {
       if (active) setTracks(items.sort((a, b) => b.startedAt - a.startedAt));
     }).catch((failure: unknown) => {
-      if (active) setError(failure instanceof Error ? failure.message : "Özel izler yüklenemedi.");
+      if (active) setError(friendlyDataError(failure, "Özel izler yüklenemedi."));
     }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [cloudReady, tab, user]);
@@ -80,7 +81,7 @@ export default function RecordsDock({ onClose, onPlace, onRoute }: Props) {
       await deleteTrack(trackId);
       setTracks((current) => current.filter((track) => track.id !== trackId));
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : "İz silinemedi.");
+      setError(friendlyDataError(failure, "İz silinemedi."));
     }
   };
 

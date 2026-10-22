@@ -303,7 +303,7 @@ export interface CreateGroupInput {
   joinCode?: string;
 }
 
-export async function createGroup(input: CreateGroupInput): Promise<{ group: Group; invited: number }> {
+export async function createGroup(input: CreateGroupInput): Promise<{ group: Group; invited: number; skipped: number }> {
   if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
   const invalid = validateGroupName(input.name);
   if (invalid) throw dataError(invalid, "Grup adı 2–80 karakter olmalı.");
@@ -327,35 +327,35 @@ export async function createGroup(input: CreateGroupInput): Promise<{ group: Gro
       updatedAt: serverTimestamp(),
     }),
   );
-  for (const invitedUid of invitedUids) {
-    const inviteRef = doc(db, `groups/${ref.id}/invites/${invitedUid}`);
-    batch.set(
-      inviteRef,
-      withoutUndefined({
-        invitedUid,
-        inviterUid: input.ownerUid,
-        groupId: ref.id,
-        groupName: name.slice(0, 80),
-        createdAt: serverTimestamp(),
-      }),
-    );
-    const mirrorRef = doc(db, `users/${invitedUid}/groupInvites/${ref.id}`);
-    batch.set(
-      mirrorRef,
-      withoutUndefined({
-        invitedUid,
-        inviterUid: input.ownerUid,
-        groupId: ref.id,
-        groupName: name.slice(0, 80),
-        createdAt: serverTimestamp(),
-      }),
-    );
-  }
   await batch.commit();
   await writeGroupIndex(input.ownerUid, ref.id, name, "owner");
 
+  // Davetler grup kurulumundan AYRI yazılır: kural yalnız kabul edilmiş
+  // arkadaşa davete izin verir. Tek bir yanlış/arkadaş olmayan kimlik grubu
+  // kurdurmamazlık etmesin; o davet atlanır ve sayısı bildirilir.
+  const delivered: string[] = [];
+  for (const invitedUid of invitedUids) {
+    const invite = withoutUndefined({
+      invitedUid,
+      inviterUid: input.ownerUid,
+      groupId: ref.id,
+      groupName: name.slice(0, 80),
+      createdAt: serverTimestamp(),
+    });
+    const inviteBatch = writeBatch(db);
+    inviteBatch.set(doc(db, `groups/${ref.id}/invites/${invitedUid}`), invite);
+    inviteBatch.set(doc(db, `users/${invitedUid}/groupInvites/${ref.id}`), invite);
+    try {
+      await inviteBatch.commit();
+      delivered.push(invitedUid);
+    } catch (error) {
+      if (!isPermissionDenied(error)) throw error;
+    }
+  }
+  const skipped = invitedUids.length - delivered.length;
+
   let invited = 0;
-  for (const memberUid of invitedUids) {
+  for (const memberUid of delivered) {
     try {
       await createNotification({
         recipientUid: memberUid,
@@ -382,6 +382,7 @@ export async function createGroup(input: CreateGroupInput): Promise<{ group: Gro
       updatedAt: Date.now(),
     },
     invited,
+    skipped,
   };
 }
 
