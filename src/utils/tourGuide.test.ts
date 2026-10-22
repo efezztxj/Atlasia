@@ -9,12 +9,27 @@ import {
 import { EPHESUS_TOUR } from "../data/siteTours";
 
 describe("tourGuide – sıra-duyarlı yakınlık (Adım 9)", () => {
-  it("giriş 35-50m bandında, çıkış histerezisli 20m fazla", () => {
-    expect(enterRadiusM(10)).toBe(35);
-    expect(enterRadiusM(30)).toBe(38);
-    expect(enterRadiusM(100)).toBe(50);
-    expect(exitRadiusM(10)).toBe(55);
-    expect(exitRadiusM(30)).toBe(58);
+  it("giriş 40m, çıkış 60m ve doğruluk eşiği sabittir", () => {
+    expect(enterRadiusM(10)).toBe(40);
+    expect(enterRadiusM(25)).toBe(40);
+    expect(exitRadiusM(10)).toBe(60);
+  });
+
+  it("GPS doğruluğu 25m'den kötüyse yakın anıtı tetiklemez", () => {
+    const candidate = { id: "a", lat: 37.94, lng: 27.34 };
+    const result = resolveGuidePlace({ lat: candidate.lat, lng: candidate.lng, accuracy: 26 }, [candidate], initialGuideState());
+    expect(result.place).toBeNull();
+    expect(result.entered).toBe(false);
+  });
+
+  it("20m aralıklı anıtlarda sıradaki durak öne alınır", () => {
+    const candidates = [
+      { id: "next", lat: 37.94 + 0.00018, lng: 27.34, order: 2 },
+      { id: "later", lat: 37.94, lng: 27.34, order: 3 },
+    ];
+    const result = resolveGuidePlace({ lat: 37.94, lng: 27.34, accuracy: 5 }, candidates,
+      { insideId: null, currentIndex: 1, lastUpdateAt: 0 }, true);
+    expect(result.place?.id).toBe("next");
   });
 
   it("yürürken doğru durağın anlatımı öneriliyor (sıra öncelikli)", () => {

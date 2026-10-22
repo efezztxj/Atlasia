@@ -7,8 +7,9 @@ import { haversineKm } from "./geo";
  * Çözüm: eşik 35-50m (site ölçeği), histerezis 20m, sıradaki durak öncelikli.
  */
 
-export const TOUR_ENTER_BASE_M = 35;
+export const TOUR_ENTER_BASE_M = 40;
 export const TOUR_EXIT_HYSTERESIS_M = 20;
+export const TOUR_MAX_ACCURACY_M = 25;
 
 export interface TourGuideState {
   insideId: string | null;
@@ -16,15 +17,13 @@ export interface TourGuideState {
   lastUpdateAt: number;
 }
 
-export function enterRadiusM(accuracy: number): number {
-  // Site ölçeğinde anıtlar 20-40m arayla; 120m eşik yanlış anıt tetikler.
-  // Daha sıkı: 35-50m bandı, doğruluğa ölçekli
-  const a = Number.isFinite(accuracy) ? accuracy : 50;
-  return Math.max(35, Math.min(50, a + 8));
+export function enterRadiusM(_accuracy: number): number {
+  // Site ölçeğinde anıtlar 20-40 m arayla; 40 m giriş ve 60 m çıkış eşiği.
+  return TOUR_ENTER_BASE_M;
 }
 
-export function exitRadiusM(accuracy: number): number {
-  return enterRadiusM(accuracy) + TOUR_EXIT_HYSTERESIS_M;
+export function exitRadiusM(_accuracy: number): number {
+  return TOUR_ENTER_BASE_M + TOUR_EXIT_HYSTERESIS_M;
 }
 
 export interface GuideCandidate {
@@ -55,7 +54,7 @@ export function resolveGuidePlace(
   state: TourGuideState,
   isTourContext = false,
 ): GuideResolution {
-  if (!location || candidates.length === 0) {
+  if (!location || candidates.length === 0 || !Number.isFinite(location.accuracy) || location.accuracy > TOUR_MAX_ACCURACY_M) {
     return { place: null, meters: null, nextState: state, entered: false, exited: false };
   }
 
