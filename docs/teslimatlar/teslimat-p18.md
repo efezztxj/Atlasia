@@ -1,6 +1,6 @@
 # Teslimat P18 — Erişilebilirlik (klavye/odak/kontrast)
 
-**Tarih:** 2026-10-22 · **Durum:** ✅ kod tamam; açık temadaki toplu kontrast kararı kullanıcıda.
+**Tarih:** 2026-10-22 · **Durum:** ✅ tamam (2026-10-22 ikinci tur: açık tema kontrastı kapatıldı, giriş yüzeyi kararı verildi).
 
 ## Yapılan
 - AddDiscoveryModal, StoryComposer, StoryViewer, Onboarding, RouteEditor → `usePanelAccess` (odak tuzağı, Esc, odak iadesi) + `role="dialog"`/`aria-modal`/`aria-labelledby`.
@@ -18,8 +18,21 @@
 
 AA (4.5) için minimum: koyu /50, açık ink-2 /65, açık ink /70. `/70` iki temada da AA.
 
-## Kullanıcı kararı
-Açık temada AA altında 140 `text-mint/<70` kullanımı var (/35:1, /40:9, /45:14, /50:22, /55:23, /60:46, /65:25). Toptan düzeltme palet/tasarım kararı; cırcır yalnız artışı engeller.
+## Açık tema kontrastı — kapatıldı (2026-10-22, kullanıcı talimatıyla)
+136 `text-mint/<70` kullanımı + `md:text-mint/65` açık temada AA altındaydı. Bileşenlere dokunmadan `src/index.css` içinde yalnız açık temaya uygulanan katman (`P18-LIGHT-AA`):
+
+| Kaynak ton | Açık temada | `#fffdf7` | `#f4f1e7` |
+|---|---|---|---|
+| /35 /40 /45 /50 | %70 | 5.26 | 4.99 |
+| /55 /60 | %74 | 5.95 | 5.62 |
+| /65, md:/65 | %78 | 6.76 | 6.34 |
+
+- Koyu tema değişmedi; açık temada sıralama korunuyor (soluk → daha az koyu).
+- Hover rengi olan öğe üzerine gelinince kendi hover rengini kullanır (`:not([class*="hover:text-"]:hover)`).
+- Kilit: `accessibility.test.ts` — kaynakta kullanılan her /70-altı ton katmanda olmalı ve iki açık zeminde AA vermeli; yeni ton eklenip katmana yazılmazsa test kırılır (denendi).
+
+## P18-13 giriş yüzeyi — karar: her temada koyu kalır (❌ açık temaya çevrilmedi)
+Gerekçe: giriş ekranının sol yarısı manzara fotoğrafı üstünde metin; ~196 elle yazılmış koyu kural var. Açık temaya çevirmek redesign olur ve bu ortamda tarayıcıyla görsel doğrulama yapılamıyor. Bunun yerine giriş yüzeyindeki 11 metin rengi iki koyu zemine karşı AA testiyle kilitlendi; açık tema katmanının `.auth-*`'a dokunmaması da testte.
 
 ## Yanlış pozitifler
 - P18-03/06 `outline-none`: katmansız global `:focus-visible` kazanıyor; testle kilitlendi.

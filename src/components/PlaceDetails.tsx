@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import {
   Ban,
   Bookmark,
@@ -31,6 +31,9 @@ import { advice } from "../utils/placeAdvice";
 import { buildGooglePlaceDirectionsUrl, buildYandexPlaceDirectionsUrl } from "../utils/mapLinks";
 import { friendlyDataError } from "../lib/firestoreValue";
 
+// P14: tarihçe listesi ve Overpass/Wikipedia kodu yalnız detay açılınca yüklenir.
+const NearbyHistory = lazy(() => import("./NearbyHistory"));
+
 interface Props {
   place: Place;
   onClose: () => void;
@@ -39,9 +42,11 @@ interface Props {
   canDelete?: boolean;
   onDelete?: () => Promise<boolean>;
   onVerify?: (status: VerificationStatus, note?: string) => Promise<void>;
+  /** Yakındaki tarihî yer listesinden bir yer açılınca. */
+  onOpenPlace?: (place: Place) => void;
 }
 
-export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDelete = false, onDelete, onVerify }: Props) {
+export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDelete = false, onDelete, onVerify, onOpenPlace }: Props) {
   const { photos: allPhotos, loading, error } = usePlaceGallery(place);
   const { savePlace, isSaved } = useCollections();
   const panelRef = usePanelAccess(true, onClose, true);
@@ -199,6 +204,10 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDele
           ) : place.dataSources?.length ? (
             <p className="mt-2 text-[11px] leading-relaxed text-mint/70" data-testid="place-attribution">Kaynak: {place.dataSources.join(" · ")}</p>
           ) : null}
+
+          <Suspense fallback={null}>
+            <NearbyHistory key={place.id} place={place} onOpen={onOpenPlace} />
+          </Suspense>
 
           <section aria-labelledby="freshness-title" className="mt-7 rounded-2xl border border-leaf/25 bg-white/[0.03] p-3.5">
             <h3 id="freshness-title" className="flex items-center gap-2 text-[13px] font-semibold"><Clock3 size={16} className="text-leaf" />Tazelik</h3>

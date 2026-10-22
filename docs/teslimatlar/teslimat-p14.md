@@ -1,6 +1,6 @@
 # Teslimat P14 — Overpass + Wikidata/Wikipedia içerik hattı (atıf dahil)
 
-**Tarih:** 2026-10-22 · **Durum:** ✅ boru hattı + atıf tamam; UI bağlantısı ve CSP ayrı karar.
+**Tarih:** 2026-10-22 · **Durum:** ✅ tamam (2026-10-22 ikinci tur: UI'a bağlandı, CSP açıldı).
 
 ## Politika (`src/utils/historicSites.ts`)
 - Dil: yalnız `tr` > `en` (`HISTORY_SUMMARY_LANGS`). Özet 600 karakter, cümle sınırında (`clampSummary`).
@@ -16,9 +16,13 @@
 ## Testler (canlı ağ yok, `vi.stubGlobal("fetch")`)
 `historicSites.pipeline.test.ts` (9): yarıçap sıkıştırma, cümle sınırı, tr tercihi + atıf, etiketsiz → hiç wiki isteği yok, `de:` reddi, disambiguation reddi, önbellek isabeti, stale, error. Mevcut 4 Efes fixture testi geçiyor.
 
-## Açık (kullanıcı kararı)
-- `historicSites.ts` henüz hiçbir bileşene bağlı değil (yalnız testte).
-- `public/_headers` CSP `connect-src` overpass-api.de / wikipedia.org / wikidata.org içermiyor; canlıda bağlanınca istekler engellenir. CSP genişletme güvenlik kararı olduğu için yapılmadı.
+## UI bağlantısı (2026-10-22 ikinci tur)
+- Yer detayında **"Yakındaki tarihî yerler"** bölümü (`NearbyHistory.tsx`, lazy). Overpass'e otomatik istek yok: yalnız "Çevredeki tarihi göster" düğmesiyle, 800 m.
+- Liste: kaynaklı tarihçesi olanlar önce, sonra yakından uzağa, en çok 6 (`utils/nearbyHistory.ts` + test). Her satırda kaynak (Wikipedia · CC BY-SA 4.0 / OpenStreetMap · ODbL), altta OSM atıf bağlantısı.
+- Hata görünür: `stale` → "eski olabilir" notu, `error` → `role="alert"` + "Tekrar dene". Boş sonuç dürüst mesaj.
+- Satıra dokununca yer haritada açılır ve detayı gösterilir.
+- CSP `connect-src`: `https://overpass-api.de https://tr.wikipedia.org https://en.wikipedia.org https://www.wikidata.org` (tam host, joker yok; `cloudflareHeaders.test.ts` kilitli).
+- Bundle: `ephesusFixture` statik import'u Efes verisini entry'ye çekiyordu (+2,2 KB gzip) → `data/ephesusCenter.ts` ayrıldı, `lazyLoading.test.ts` kilitli. Entry 169.809 B.
 
 ## Akış (metin diyagramı) — denetim 2026-10-22'de eklendi
 ```
@@ -43,6 +47,6 @@ fetchHistoricSitesDetailed(center, radius)
 | Efes fixture | ODbL + CC BY-SA | fixture `dataSources` → PlaceDetails "Kaynak: …" satırı |
 
 ## Canlı doğrulanamayanlar
-Canlı Overpass/Wikipedia'ya hiç istek atılmadı (yasak). Gerçek yanıt biçimi fixture'lardan varsayıldı; modül UI'a bağlanınca CSP ile birlikte canlıda denenmeli.
+Canlı Overpass/Wikipedia'ya bu ortamdan istek atılmadı (yasak). Yayından sonra canlıda bir yer açıp "Çevredeki tarihi göster" ile denenmeli.
 
 `git diff --check`: temiz (CI #48).
