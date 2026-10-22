@@ -411,11 +411,15 @@ service cloud.firestore {
     }
 
     function validUserProfile(data, uid) {
-      return data.keys().hasAll(['uid', 'displayName', 'createdAt', 'updatedAt'])
-             && data.keys().hasOnly(['uid', 'displayName', 'photoURL', 'createdAt', 'updatedAt'])
+      return data.keys().hasAll(['uid', 'displayName', 'displayNameLower', 'createdAt', 'updatedAt'])
+             && data.keys().hasOnly(['uid', 'displayName', 'displayNameLower', 'photoURL', 'createdAt', 'updatedAt'])
              && data.uid == uid
              && data.uid == request.auth.uid
              && stringBetween(data.displayName, 2, 40)
+             // Sunucu tarafında lower() YOK: Türkçe İ JS'ten ayrışır (§Aşama 2).
+             // Yalnız biçim doğrulanır; normalizasyonu istemci üretir.
+             && stringBetween(data.displayNameLower, 2, 40)
+             && data.displayNameLower.matches('[a-z0-9 ığüşöçâîû-]+')
              && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 500 && data.photoURL.matches('https?://.*')))
              && data.createdAt == request.time
              && data.updatedAt == request.time;

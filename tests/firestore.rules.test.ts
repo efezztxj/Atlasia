@@ -1562,6 +1562,7 @@ describe("Firestore güvenlik kuralları", () => {
       setDoc(doc(aliceDb, "userProfiles/alice"), {
         uid: "alice",
         displayName: "Alice",
+        displayNameLower: "alice",
         photoURL: "https://example.com/a.jpg",
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -1572,6 +1573,7 @@ describe("Firestore güvenlik kuralları", () => {
       setDoc(doc(aliceDb, "userProfiles/alice2"), {
         uid: "alice2",
         displayName: "Alice2",
+        displayNameLower: "alice2",
         email: "alice@example.com",
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -1582,6 +1584,7 @@ describe("Firestore güvenlik kuralları", () => {
       setDoc(doc(bobDb, "userProfiles/alice"), {
         uid: "alice",
         displayName: "Hacked",
+        displayNameLower: "hacked",
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       }),
@@ -1591,6 +1594,59 @@ describe("Firestore güvenlik kuralları", () => {
     // Liste 20 ile sınırlı → SUCCEED, 21 → FAIL
     await assertSucceeds(getDocs(query(collection(aliceDb, "userProfiles"), limit(20))));
     await assertFails(getDocs(query(collection(aliceDb, "userProfiles"), limit(21))));
+  });
+
+  // === Aşama 2 — displayNameLower: zorunlu alan + Türkçe İ emülatör kanıtı ===
+  it("displayNameLower zorunlu; biçim denetimi Türkçe İ'yi istemcinin ürettiği gibi kabul eder", async () => {
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    const bobDb = testEnv.authenticatedContext("bob").firestore();
+    const profile = (uid: string, lower?: string) => ({
+      uid,
+      displayName: "İrem",
+      ...(lower === undefined ? {} : { displayNameLower: lower }),
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+
+    // Alan yok → FAIL (zorunlu)
+    await assertFails(setDoc(doc(aliceDb, "userProfiles/alice"), profile("alice")));
+    // Büyük harfli biçim → FAIL (kural lower() yapmaz; biçim ister)
+    await assertFails(setDoc(doc(aliceDb, "userProfiles/alice"), profile("alice", "İrem")));
+    // Birleşik noktalı "i̇rem" (JS'in dilsiz toLowerCase çıktısı) → FAIL
+    await assertFails(setDoc(doc(bobDb, "userProfiles/bob"), profile("bob", "i\u0307rem")));
+    // İstemcinin toLocaleLowerCase("tr") çıktısı → SUCCEED (kazanan varyant)
+    await assertSucceeds(setDoc(doc(aliceDb, "userProfiles/alice"), profile("alice", "irem")));
+  });
+
+  it("geçiş: displayNameLower'sız eski belge okunur, güncellenemez, yeniden yazılır", async () => {
+    await seed("userProfiles/alice", {
+      uid: "alice",
+      displayName: "İrem",
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    const bobDb = testEnv.authenticatedContext("bob").firestore();
+
+    // Okuma etkilenmez (liste/get kuralı alan istemez).
+    await assertSucceeds(getDoc(doc(bobDb, "userProfiles/alice")));
+    // Güncelleme zaten kapalı: createdAt == request.time çelişkisi.
+    await assertFails(updateDoc(doc(aliceDb, "userProfiles/alice"), {
+      uid: "alice",
+      displayName: "İrem",
+      displayNameLower: "irem",
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }));
+    // Geçiş yolu: sil + alanla yeniden oluştur.
+    await assertSucceeds(deleteDoc(doc(aliceDb, "userProfiles/alice")));
+    await assertSucceeds(setDoc(doc(aliceDb, "userProfiles/alice"), {
+      uid: "alice",
+      displayName: "İrem",
+      displayNameLower: "irem",
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }));
   });
   // Hesap silme ve "Verilerimi indir", tek tek belge silmeden ÖNCE bu liste
   // sorgularını çalıştırır. Sayfa boyutu herhangi bir boundedList sınırını
