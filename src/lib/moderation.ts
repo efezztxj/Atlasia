@@ -456,10 +456,16 @@ export async function deleteUserData(uid: string): Promise<AccountDataDeletionRe
   return { ok: true, steps: report };
 }
 
-export async function deleteAccount(uid: string): Promise<void> {
-  // Önce verisini sil, sonra Auth hesabını sil
-  await deleteUserData(uid);
-  // Local storage temizliği
+export type AccountBackend = "firebase" | "device";
+
+export interface DeleteAccountInput {
+  uid: string;
+  backend: AccountBackend;
+  /** E-posta/şifre hesabında zorunlu; Google/Apple'da boş bırakılır (popup ile doğrulanır). */
+  password?: string;
+}
+
+function clearLocalAccountData(uid: string): void {
   try {
     const keysToRemove: string[] = [];
     for (let i = 0; i < localStorage.length; i += 1) {
@@ -470,18 +476,80 @@ export async function deleteAccount(uid: string): Promise<void> {
   } catch (error) {
     console.warn("[Atlasia] Yerel kayıtlar temizlenemedi:", error);
   }
+}
 
-  if (!firebaseApp) {
-    // Cihaz modu: local account sil
-    const { deleteDeviceAccount } = await import("./deviceAccounts");
-    await deleteDeviceAccount(uid);
+/**
+ * Silmeden ÖNCE kimlik doğrulaması. Başarısızsa hiçbir veri silinmez.
+ * E-posta/şifre: şifre ile; Google/Apple: popup ile yeniden doğrulama.
+ */
+export async function reauthenticateForAccountDeletion(
+  current: { email: string | null; providerData: Array<{ providerId: string }> },
+  password: string | undefined,
+  reauth: {
+    credential: (email: string, password: string) => unknown;
+    withCredential: (credential: unknown) => Promise<unknown>;
+    withPopup: (providerId: "google.com" | "apple.com") => Promise<unknown>;
+  },
+): Promise<void> {
+  const providers = current.providerData.map((item) => item.providerId);
+  const isPassword = providers.includes("password");
+  if (isPassword) {
+    if (!password) throw dataError("auth/password-required", "Hesabını silmek için şifreni gir. Hiçbir veri silinmedi.");
+    if (!current.email) throw dataError("auth/reauth-unsupported", "Hesap e-postası okunamadı; hiçbir veri silinmedi.");
+    try {
+      await reauth.withCredential(reauth.credential(current.email, password));
+    } catch (error) {
+      const code = typeof (error as { code?: unknown })?.code === "string" ? (error as { code: string }).code : "unknown";
+      const wrong = code === "auth/invalid-credential" || code === "auth/wrong-password" || code === "auth/invalid-login-credentials";
+      throw dataError(
+        "auth/reauth-failed",
+        wrong ? "Şifre yanlış. Hiçbir veri silinmedi." : `Yeniden doğrulama tamamlanamadı (${code}). Hiçbir veri silinmedi.`,
+      );
+    }
     return;
   }
+  const provider = providers.includes("google.com") ? "google.com" : providers.includes("apple.com") ? "apple.com" : null;
+  if (!provider) throw dataError("auth/reauth-unsupported", "Bu hesap türüyle yeniden doğrulama yapılamıyor; hiçbir veri silinmedi.");
+  try {
+    await reauth.withPopup(provider);
+  } catch (error) {
+    const code = typeof (error as { code?: unknown })?.code === "string" ? (error as { code: string }).code : "unknown";
+    throw dataError("auth/reauth-failed", `Yeniden doğrulama tamamlanamadı (${code}). Hiçbir veri silinmedi.`);
+  }
+}
+
+/**
+ * Hesap silme. KARAR: backend hesabın kendisinden gelir (firebaseApp varlığından değil).
+ * - device: yalnız cihaz hesabı + yerel veri; Firestore'a hiç dokunulmaz.
+ * - firebase: yeniden doğrulama → veri silme (hata varsa durur) → Auth hesabı.
+ */
+export async function deleteAccount(input: DeleteAccountInput): Promise<AccountDataDeletionReport | null> {
+  const uid = input.uid.trim();
+  if (!uid) throw dataError("auth/required", "Hesap bilgisi geçersiz.");
+
+  if (input.backend === "device") {
+    const { deleteDeviceAccount } = await import("./deviceAccounts");
+    await deleteDeviceAccount(uid);
+    clearLocalAccountData(uid);
+    return null;
+  }
+
+  if (!firebaseApp) throw dataError("auth/unavailable", "Firebase bu derlemede yapılandırılmamış; hesap silinemedi.");
   const auth = await getAtlasAuth();
   const current = auth.currentUser;
   if (!current || current.uid !== uid) throw dataError("auth/session-expired", "Oturumun doğrulanamadı, yeniden giriş yap.");
-  // Auth SDK'sı yalnız hesap silme gibi seyrek işlemlerde yüklenir; statik
-  // import, moderasyonu kullanan her ekranı başlangıç grafiğine bağlar.
-  const { deleteUser } = await import("firebase/auth");
-  await deleteUser(current);
+  // Auth SDK'sı yalnız hesap silme gibi seyrek işlemlerde yüklenir.
+  const authSdk = await import("firebase/auth");
+  await reauthenticateForAccountDeletion(current, input.password, {
+    credential: (email, pass) => authSdk.EmailAuthProvider.credential(email, pass),
+    withCredential: (credential) => authSdk.reauthenticateWithCredential(current, credential as Parameters<typeof authSdk.reauthenticateWithCredential>[1]),
+    withPopup: (providerId) => authSdk.reauthenticateWithPopup(
+      current,
+      providerId === "google.com" ? new authSdk.GoogleAuthProvider() : new authSdk.OAuthProvider("apple.com"),
+    ),
+  });
+  const report = await deleteUserData(uid);
+  await authSdk.deleteUser(current);
+  clearLocalAccountData(uid);
+  return report;
 }

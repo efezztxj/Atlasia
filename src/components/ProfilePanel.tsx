@@ -44,6 +44,7 @@ export default function ProfilePanel({ onClose, onRecords }: Props) {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deletePassword, setDeletePassword] = useState("");
   const needsEmailVerification = user?.backend === "firebase" && !!user.email && !user.emailVerified;
 
   const sendVerification = async () => {
@@ -105,7 +106,8 @@ export default function ProfilePanel({ onClose, onRecords }: Props) {
     setStatus(null);
     setDeleteError(null);
     try {
-      await deleteAccount(user.uid);
+      await deleteAccount({ uid: user.uid, backend: user.backend, password: deletePassword });
+      setDeletePassword("");
       setStatus("Hesabın ve tüm verilerin silindi.");
       // Oturum zaten kalktı; kısa gecikme sonrası kapan
       setTimeout(() => {
@@ -272,6 +274,19 @@ export default function ProfilePanel({ onClose, onRecords }: Props) {
           <section role="alertdialog" aria-modal="true" aria-labelledby="delete-title" className="w-full rounded-[24px] border border-red-300/20 bg-[#1a0f0f] p-5 shadow-2xl">
             <h3 id="delete-title" className="font-display text-lg font-semibold text-red-200">Hesabın tamamen silinsin mi?</h3>
             <p className="mt-2 text-[13px] leading-relaxed text-mint/70">İzlerin, rotaların, kayıtların, gönderilerin, hikâyelerin, arkadaşlıkların, grup üyeliklerin, bildirimlerin, raporların, engellerin ve geri bildirimlerin silinir. Bir adım başarısız olursa hesabın silinmez ve tekrar deneyebilirsin. Bu işlem geri alınamaz. Onaylıyor musun?</p>
+            {user?.backend === "firebase" && (
+              <label className="mt-4 block text-[12px] text-mint/75">
+                Şifren (e-posta hesabıysan zorunlu; Google/Apple ile girdiysen boş bırak)
+                <input
+                  type="password"
+                  autoComplete="current-password"
+                  value={deletePassword}
+                  onChange={(event) => setDeletePassword(event.target.value)}
+                  disabled={deleting}
+                  className="mt-1 min-h-11 w-full rounded-xl border border-white/15 bg-black/30 px-3 text-sm text-mint focus-visible:outline focus-visible:outline-2 focus-visible:outline-sun"
+                />
+              </label>
+            )}
             {deleteError && <p role="alert" className="mt-3 text-[13px] leading-relaxed text-red-200">{deleteError}</p>}
             <div className="mt-5 grid grid-cols-2 gap-2">
               <button type="button" disabled={deleting} onClick={() => setConfirmDelete(false)} className="min-h-11 rounded-full border border-white/15 text-sm text-mint disabled:opacity-50">Vazgeç</button>
