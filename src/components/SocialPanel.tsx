@@ -153,7 +153,12 @@ export default function SocialPanel({
     if ((event.target as HTMLElement).closest("button")) return;
     dragStartY.current = event.clientY;
     setDragging(true);
-    event.currentTarget.setPointerCapture(event.pointerId);
+    // İşaretçi çoktan serbest kalmışsa capture hata fırlatabilir; sürükleme onsuz da sürer.
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      /* yoksay */
+    }
   };
   const movePanelDrag = (event: React.PointerEvent<HTMLElement>) => {
     if (dragStartY.current === null) return;
