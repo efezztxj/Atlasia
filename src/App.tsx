@@ -734,12 +734,15 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         terrain={terrain}
       />
 
-      {!trackRecorderOpen && <button
+      {/* Sol alt eylem şeridi: mobilde "İzler" ve Atlas AI ile aynı hizada
+          duran yuvarlak düğme, masaüstünde İzler hapının üstünde aynı sol
+          hizada hap. Hiçbir panelin/kartın üstüne binmez. */}
+      {!trackRecorderOpen && !feedOpen && <button
         type="button"
         onClick={() => setTrackRecorderOpen(true)}
         aria-label="Yürüyüş kaydını aç"
-        className="glass-panel gold-frame pressable fixed bottom-[136px] left-3 z-30 flex min-h-12 items-center gap-2.5 rounded-full py-1.5 pr-4 pl-1.5 text-[13px] font-semibold text-mint md:bottom-24 md:left-8"
-      ><span className="btn-gold grid size-9 place-items-center rounded-full"><Activity size={16} strokeWidth={2.2} /></span>Yürüyüş kaydı</button>}
+        className="glass-panel gold-frame pressable fixed right-[64px] bottom-[calc(66px+env(safe-area-inset-bottom))] z-30 flex size-[46px] items-center justify-center gap-2.5 rounded-full p-0 text-[13px] font-semibold text-mint md:right-auto md:bottom-[84px] md:left-6 md:size-auto md:min-h-12 md:justify-start md:py-1.5 md:pr-4 md:pl-1.5"
+      ><span className="btn-gold grid size-9 place-items-center rounded-full"><Activity size={16} strokeWidth={2.2} /></span><span className="hidden md:inline">Yürüyüş kaydı</span></button>}
       {trackRecorderOpen && <TrackRecorderPanel
         uid={user!.uid}
         cloudAccount={user!.backend === "firebase"}

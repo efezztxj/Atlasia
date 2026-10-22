@@ -337,7 +337,7 @@ export default function SocialPanel({
     return (
       <button
         onClick={onOpen}
-        className="group glass-panel gold-frame fixed bottom-4 left-4 z-30 hidden items-center gap-2.5 rounded-full py-2.5 pr-4 pl-3 text-[13px] text-mint transition hover:text-white lg:flex"
+        className="group glass-panel gold-frame pressable fixed bottom-7 left-6 z-30 hidden min-h-12 items-center gap-2.5 rounded-full py-2.5 pr-4 pl-3 text-[13px] text-mint transition hover:text-white lg:flex"
         aria-label="İzleri aç"
       >
         <span className="relative grid size-7 place-items-center rounded-full bg-leaf/15">
@@ -360,7 +360,7 @@ export default function SocialPanel({
         className={cn(
           "social-panel gold-frame animate-rise fixed z-50 flex flex-col overflow-hidden bg-[#021915]/92 backdrop-blur-2xl md:z-40",
           "inset-x-0 bottom-[calc(70px+env(safe-area-inset-bottom))] h-[min(74dvh,650px)] rounded-t-[28px] rounded-b-[18px] pb-0 md:bottom-0 md:h-[82dvh] md:rounded-b-none",
-          "lg:inset-x-auto lg:bottom-4 lg:left-4 lg:h-[min(64vh,600px)] lg:w-[380px] lg:rounded-[26px] lg:pb-0",
+          "lg:inset-x-auto lg:bottom-7 lg:left-6 lg:h-[min(64vh,600px)] lg:w-[380px] lg:rounded-[26px] lg:pb-0",
         )}
         aria-label="İzler"
         style={{ translate: `0 ${dragY}px`, transition: dragging ? "none" : "translate 180ms ease" }}

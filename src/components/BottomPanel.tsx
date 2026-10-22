@@ -80,7 +80,7 @@ export default function BottomPanel({
         <div className="w-full max-w-[920px]">
           <section
             aria-label="Daraltılmış keşif önerisi"
-            className="mobile-discovery-panel desktop-discovery-panel gold-frame pointer-events-auto rounded-[22px] bg-[#021915]/95 p-2.5 backdrop-blur-xl max-md:fixed max-md:inset-x-3 max-md:bottom-[calc(112px+env(safe-area-inset-bottom))] max-md:z-20 md:rounded-[28px] md:p-4"
+            className="mobile-discovery-panel desktop-discovery-panel gold-frame pointer-events-auto rounded-[22px] bg-[#021915]/95 p-2.5 backdrop-blur-xl max-md:fixed max-md:inset-x-3 max-md:bottom-[calc(120px+env(safe-area-inset-bottom))] max-md:z-20 md:rounded-[28px] md:p-4"
           >
             {current ? (
               <div className="flex min-w-0 items-center gap-1.5 md:gap-3">
@@ -145,7 +145,7 @@ export default function BottomPanel({
       )}
     >
       <div className="w-full max-w-[920px]">
-        <section aria-label="Keşif önerileri" className="mobile-discovery-panel gold-frame pointer-events-auto rounded-[26px] bg-[#021b16] px-3.5 pb-3.5 pt-2.5 max-md:fixed max-md:inset-x-3 max-md:bottom-[calc(64px+env(safe-area-inset-bottom))] max-md:z-20 max-md:max-h-[42dvh] max-md:overflow-y-auto md:hidden">
+        <section aria-label="Keşif önerileri" className="mobile-discovery-panel gold-frame pointer-events-auto rounded-[26px] bg-[#021b16] px-3.5 pb-3.5 pt-2.5 max-md:fixed max-md:inset-x-3 max-md:bottom-[calc(120px+env(safe-area-inset-bottom))] max-md:z-20 max-md:max-h-[42dvh] max-md:overflow-y-auto md:hidden">
           <span aria-hidden className="sheet-handle mb-2.5" />
           <div className="flex items-center justify-between gap-3">
             <p className="truncate text-[12px] text-mint/75">Yol üstündekilerden küçük ipuçları</p>
