@@ -19,12 +19,20 @@ vi.mock("firebase/firestore", () => ({
   doc: (_db: unknown, ...segments: string[]) => ({ path: segments.join("/") }),
   getDoc: async (ref: { path: string }) => {
     const data = h.store.get(ref.path);
+    const box = /^users\/([^/]+)\/(friendRequests|friends)\//.exec(ref.path);
+    if ((box && box[1] !== h.me) || (ref.path.startsWith("friendships/") && !data)) {
+      throw Object.assign(new Error("denied"), { code: "permission-denied" });
+    }
     if (ref.path.startsWith("friendships/") && data && !(data.users as string[]).includes(h.me)) {
       throw Object.assign(new Error("denied"), { code: "permission-denied" });
     }
     return { exists: () => data !== undefined, data: () => data, id: ref.path.split("/").at(-1) };
   },
-  setDoc: async (ref: { path: string }, data: Record<string, unknown>) => { denyCrossWrite(ref.path); h.store.set(ref.path, data); },
+  setDoc: async (ref: { path: string }, data: Record<string, unknown>) => {
+    if (/\/friendRequests\//.test(ref.path) && h.store.has(ref.path)) throw Object.assign(new Error("denied"), { code: "permission-denied" });
+    if (!/\/friendRequests\//.test(ref.path)) denyCrossWrite(ref.path);
+    h.store.set(ref.path, data);
+  },
   deleteDoc: async (ref: { path: string }) => { h.store.delete(ref.path); },
   serverTimestamp: () => "TS",
   writeBatch: () => {
@@ -72,5 +80,25 @@ describe("arkadaşlık kabulü ve liste tamamlama", () => {
     h.store.set("friendships/alice_dave", { users: ["dave", "eve"], status: "accepted" });
     expect(await ensureFriendIndex("alice", "dave", "Dave")).toBe(false);
     expect([...h.store.keys()].some((key) => key.startsWith("users/alice/friends/"))).toBe(false);
+  });
+});
+
+describe("arkadaşlık isteği gönderme (canlı permission-denied düzeltmesi)", () => {
+  it("başkasının istek kutusunu okumadan isteği yazar", async () => {
+    h.me = "alice";
+    const { sendFriendRequest } = await import("./friendships");
+    await sendFriendRequest({ fromUid: "alice", fromName: "Alice", toUid: "bob" });
+    expect(h.store.get("users/bob/friendRequests/alice")).toMatchObject({ fromUid: "alice", toUid: "bob", fromName: "Alice" });
+  });
+
+  it("zaten arkadaşsa ya da karşı taraf istek attıysa yazmaz", async () => {
+    h.me = "alice";
+    const { sendFriendRequest } = await import("./friendships");
+    h.store.set("users/alice/friends/bob", { friendUid: "bob" });
+    await expect(sendFriendRequest({ fromUid: "alice", fromName: "Alice", toUid: "bob" })).rejects.toMatchObject({ code: "friend-request/already-friends" });
+    h.store.delete("users/alice/friends/bob");
+    h.store.set("users/alice/friendRequests/bob", { fromUid: "bob" });
+    await expect(sendFriendRequest({ fromUid: "alice", fromName: "Alice", toUid: "bob" })).rejects.toMatchObject({ code: "friend-request/opposite-exists" });
+    expect(h.store.has("users/bob/friendRequests/alice")).toBe(false);
   });
 });
