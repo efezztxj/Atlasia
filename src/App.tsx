@@ -899,6 +899,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
           baseMap={baseMap}
           onBaseMap={setBaseMap}
           installApp={installApp}
+          mapBounds={mapViewport?.bounds ?? null}
           location={{
             supported: geo.supported,
             secure: geo.secure,
