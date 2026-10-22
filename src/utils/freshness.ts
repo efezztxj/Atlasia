@@ -2,8 +2,8 @@
  * Atlasia — Tazelik döngüsü (Adım 14)
  *
  * Bir yerin bilgisinin "hâlâ doğru" olduğunu gösteren tek dokunuşluk ziyaret
- * doğrulamaları burada hesaplanır. Ürün kararı (d) BAĞLI: XP/rozet/takip
- * fonlanmaz; tazelik Cloud Functions olmadan, istemci + Firestore kurallarıyla
+ * doğrulamaları burada hesaplanır. Ürün kararı (d, 2026-10-22): XP yok;
+ * rozet/takip ileride sunucu tarafında gelir. Tazelik Cloud Functions olmadan, istemci + Firestore kurallarıyla
  * güvenli biçimde çalışır (kullanıcı yalnız kendi doğrulamasını yazar).
  */
 import type { Place } from "../types";

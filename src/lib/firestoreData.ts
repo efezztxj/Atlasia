@@ -9,12 +9,11 @@
  *   stories/{storyId}                 — 24 saat ömürlü hikâyeler
  *   verifications/{verificationId}     — tazelik doğrulamaları (Adım 14)
  *
- * Ürün kararı (d) BAĞLI — XP/rozet/takip fonlanmıyor:
- * Bu katmanda XP/level yazacak istemci fonksiyonu YOKTUR ve eklenmeyecektir;
- * puan üretimi Cloud Functions (Blaze) gerektirir. `@deprecated` niteliğindeki
- * eski sosyal ilerleme yardımcıları varsa silinmez, çağrılmaz. Puan yerine
- * tazelik doğrulaması bir güven sinyali olarak çalışır (bkz. utils/freshness).
- * XP'nin gerçek işi lansman sonrası Blaze onayına ertelenmiştir.
+ * Ürün kararı (d) — kullanıcı kararı 2026-10-22:
+ * XP/level KALDIRILDI: istemci ya da sunucu tarafında XP/level yazan kod
+ * yoktur ve eklenmez. Rozet ve takip ürün kapsamında KALIR; ikisi de sunucu
+ * tarafı sayaç/doğrulama (Cloud Functions, Blaze) ister ve bu katmanda henüz
+ * yoktur. Puan yerine tazelik doğrulaması güven sinyalidir (bkz. utils/freshness).
  */
 import {
   arrayRemove,
