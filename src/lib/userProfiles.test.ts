@@ -54,23 +54,9 @@ describe("searchProfilesLocal", () => {
   });
 
   it("boş sorgu sonuç döndürmez; sonuç üst sınırla kesilir", () => {
-    const many = Array.from({ length: USER_PROFILES_LIMIT + 5 }, (_, i) => profile(`Deniz ${i}`, i));
+    const many = Array.from({ length: USER_PROFILES_LIMIT + 5 }, (_, i) => profile(`Gezgin ${i}`, i));
     expect(searchProfilesLocal(many, "  ")).toEqual([]);
-    expect(searchProfilesLocal(many, "deniz")).toHaveLength(USER_PROFILES_LIMIT);
-  });
-
-  it("kelime içi arama yapmaz: yalnız önek eşleşir", () => {
-    const list = [profile("Mustafa Efe"), profile("Efe Yılmaz", 1)];
-    expect(searchProfilesLocal(list, "efe").map((p) => p.displayName)).toEqual(["Efe Yılmaz"]);
-    expect(searchProfilesLocal(list, "mustafa").map((p) => p.displayName)).toEqual(["Mustafa Efe"]);
-  });
-
-  it("adsız/\"Gezgin\" profiller aramada gizlenir", () => {
-    const list = [profile("Gezgin", 0), profile("Gezgin Can", 1), profile("", 2)];
-    // Yalnız tam "Gezgin" ve boş ad gizlenir; başında "Gezgin" olan gerçek ad kalır.
-    expect(searchProfilesLocal(list, "gezgin c").map((p) => p.displayName)).toEqual(["Gezgin Can"]);
-    expect(searchProfilesLocal([profile("Gezgin", 0)], "gez")).toEqual([]);
-    expect(searchProfilesLocal([profile("", 1)], "gez")).toEqual([]);
+    expect(searchProfilesLocal(many, "gezgin")).toHaveLength(USER_PROFILES_LIMIT);
   });
 
   it("yalnız önek arar: kelime içi eşleşme ve yer tutucu ad sonuç vermez", () => {
@@ -78,5 +64,12 @@ describe("searchProfilesLocal", () => {
     expect(searchProfilesLocal(list, "ada")).toEqual([]);
     expect(searchProfilesLocal(list, "gezgin")).toEqual([]);
     expect(searchProfilesLocal(list, "Kaan").map((p) => p.displayName)).toEqual(["Kaan Ada"]);
+  });
+
+  it("adsız/\"Gezgin\" gizlenir, \"Gezgin Can\" gibi gerçek ad gizlenmez", () => {
+    const list = [profile("Gezgin", 0), profile("Gezgin Can", 1), profile("", 2)];
+    expect(searchProfilesLocal(list, "gezgin c").map((p) => p.displayName)).toEqual(["Gezgin Can"]);
+    // Önek "Gezgin" ile başlayan gerçek adlar kalır; yalnız tam "Gezgin" ve boş ad gizlenir.
+    expect(searchProfilesLocal(list, "gezgin").map((p) => p.displayName)).toEqual(["Gezgin Can"]);
   });
 });
