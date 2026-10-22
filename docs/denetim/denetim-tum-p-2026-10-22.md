@@ -65,7 +65,7 @@ Plan "biten satır tablodan kaldırılır" kuralı ile 2026-10-22 "✅ işaretle
 | P | Önce | Şimdi | Ne yapıldı |
 |---|---|---|---|
 | P16 | ⚠️ mapWeather testsiz | ✅ | `mapWeather.test.ts` (5): kapalıyken ağ yok, hata/boş yanıt etiketi, geç yanıt çizilmez, destroy |
-| P5 | ⚠️ Windows'ta koşulmadı | ✅ (CI kanıtı PR'da) | `rules-windows.yml`: windows-latest + `Set-Culture tr-TR` + emulator testleri |
+| P5 | ⚠️ Windows'ta koşulmadı | ✅ | `rules-windows.yml`: windows-latest, JVM varsayılanı `tr` (adımda doğrulanır), emulator testleri geçti — run 39788199627. İlk koşu `Set-Culture` ile Türkçeyi kuramamıştı; assert eklenince yakalandı |
 | P14 | ⚠️ UI'a bağlı değil, CSP kapalı | ✅ | Yer detayında "Yakındaki tarihî yerler" (düğmeyle, lazy); CSP tam host; Efes fixture entry sızıntısı kapatıldı |
 | P15 | ⚠️ yerleşim değişikliği | ✅ karar: kalır | Bölüm olmadan özellik ölü; teslimata işlendi |
 | P18 | ⚠️ 140 açık tema AA altı, giriş yüzeyi | ✅ | Açık tema AA katmanı (koyu tema aynen); giriş yüzeyi **bilinçli koyu** + AA testi |
