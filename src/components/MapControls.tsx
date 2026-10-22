@@ -36,7 +36,7 @@ function RoundBtn({
         className={cn(
           "map-round-btn grid place-items-center rounded-full border backdrop-blur-xl transition active:scale-90",
           active
-            ? "border-sun/70 bg-sun/20 text-sun"
+            ? "btn-gold border-transparent"
             : "border-leaf/30 bg-ink/80 text-mint hover:border-leaf/70 hover:bg-ink-3 hover:text-white",
         )}
       >
@@ -44,7 +44,7 @@ function RoundBtn({
       </button>
       <span
         role="tooltip"
-        className="panel-solid pointer-events-none absolute top-1/2 right-[calc(100%+10px)] hidden -translate-y-1/2 rounded-lg border border-leaf/25 px-2.5 py-1.5 text-[13px] whitespace-nowrap text-mint opacity-0 shadow-lg transition group-hover:opacity-100 group-focus-within:opacity-100 md:block"
+        className="panel-solid pointer-events-none absolute top-1/2 right-[calc(100%+10px)] hidden -translate-y-1/2 rounded-lg border border-sun/30 px-2.5 py-1.5 text-[13px] whitespace-nowrap text-mint opacity-0 shadow-lg transition group-hover:opacity-100 group-focus-within:opacity-100 md:block"
       >
         {label}
       </span>

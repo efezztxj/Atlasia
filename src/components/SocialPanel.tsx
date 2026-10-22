@@ -310,7 +310,7 @@ export default function SocialPanel({
     return (
       <button
         onClick={onOpen}
-        className="group fixed bottom-4 left-4 z-30 hidden items-center gap-2.5 rounded-full border border-leaf/25 bg-ink/85 py-2.5 pr-4 pl-3 text-[13px] text-mint shadow-xl shadow-black/50 backdrop-blur-xl transition hover:border-leaf/60 hover:text-white lg:flex"
+        className="group glass-panel gold-frame fixed bottom-4 left-4 z-30 hidden items-center gap-2.5 rounded-full py-2.5 pr-4 pl-3 text-[13px] text-mint transition hover:text-white lg:flex"
         aria-label="İzleri aç"
       >
         <span className="relative grid size-7 place-items-center rounded-full bg-leaf/15">
@@ -331,16 +331,17 @@ export default function SocialPanel({
     <>
       <section
         className={cn(
-          "social-panel animate-rise fixed z-50 flex flex-col overflow-hidden border border-leaf/20 bg-[#021915]/92 shadow-2xl shadow-black/70 backdrop-blur-2xl md:z-40",
+          "social-panel gold-frame animate-rise fixed z-50 flex flex-col overflow-hidden bg-[#021915]/92 backdrop-blur-2xl md:z-40",
           "inset-x-0 bottom-[calc(70px+env(safe-area-inset-bottom))] h-[min(74dvh,650px)] rounded-t-[28px] rounded-b-[18px] pb-0 md:bottom-0 md:h-[82dvh] md:rounded-b-none",
           "lg:inset-x-auto lg:bottom-4 lg:left-4 lg:h-[min(64vh,600px)] lg:w-[380px] lg:rounded-[26px] lg:pb-0",
         )}
         aria-label="İzler"
       >
+        <span aria-hidden className="sheet-handle mt-2.5 shrink-0 lg:hidden" />
         {/* Başlık */}
-        <div className="flex items-center gap-2 border-b border-white/[0.07] px-4 py-3.5">
+        <div className="flex items-center gap-2 border-b border-white/[0.07] px-4 py-3">
           <h2 className="font-display text-[17px] font-semibold tracking-tight text-white">İzler</h2>
-          <span className="text-[13px] text-mint/55">{posts.length} ipucu</span>
+          <span className="rounded-full bg-sun/12 px-2 py-0.5 text-[11px] font-bold text-sun ring-1 ring-sun/35">{posts.length} ipucu</span>
 
           <button
             type="button"
@@ -359,7 +360,7 @@ export default function SocialPanel({
         </div>
 
         {/* Story şeridi */}
-        <div className="no-scrollbar flex shrink-0 gap-3 overflow-x-auto border-b border-white/[0.07] px-4 py-3">
+        <div className="no-scrollbar fade-x flex shrink-0 gap-3 overflow-x-auto border-b border-white/[0.07] px-4 py-3">
           <button
             onClick={() => setComposerOpen(true)}
             className="flex w-[58px] shrink-0 flex-col items-center gap-1.5"
@@ -423,25 +424,26 @@ export default function SocialPanel({
         </div>
 
         {/* Sekmeler */}
-        <div className="flex shrink-0 gap-1 px-3 pt-2.5">
-          {(
-            [
-              ["all", "Tümü"],
-              ["near", "Yakınımda"],
-            ] as const
-          ).map(([id, label]) => (
-            <button
-              key={id}
-              onClick={() => setTab(id)}
-              className={cn(
-                "rounded-full px-3 py-1.5 text-[12px] transition",
-                tab === id ? "bg-white/[0.08] font-semibold text-white" : "text-mint/55 hover:text-mint",
-              )}
-            >
-              {label}
-            </button>
-          ))}
-          <span className="ml-auto self-center pr-1 text-[11px] text-mint/40">
+        <div className="flex shrink-0 items-center gap-2.5 px-3 pt-2.5">
+          <div className="segmented min-w-0 flex-1" role="group" aria-label="İz filtresi">
+            {(
+              [
+                ["all", "Tümü"],
+                ["near", "Yakınımda"],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setTab(id)}
+                aria-pressed={tab === id}
+                className="text-[12px]"
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <span className="shrink-0 pr-1 text-[11px] text-mint/70">
             {visiblePosts.length} gönderi
           </span>
         </div>

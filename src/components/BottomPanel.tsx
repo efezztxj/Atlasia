@@ -80,7 +80,7 @@ export default function BottomPanel({
         <div className="w-full max-w-[920px]">
           <section
             aria-label="Daraltılmış keşif önerisi"
-            className="mobile-discovery-panel desktop-discovery-panel pointer-events-auto rounded-[22px] border border-leaf/25 bg-[#021915]/95 p-2.5 shadow-2xl shadow-black/60 backdrop-blur-xl max-md:fixed max-md:inset-x-3 max-md:bottom-[calc(110px+env(safe-area-inset-bottom))] max-md:z-20 md:rounded-[28px] md:p-4"
+            className="mobile-discovery-panel desktop-discovery-panel gold-frame pointer-events-auto rounded-[22px] bg-[#021915]/95 p-2.5 backdrop-blur-xl max-md:fixed max-md:inset-x-3 max-md:bottom-[calc(112px+env(safe-area-inset-bottom))] max-md:z-20 md:rounded-[28px] md:p-4"
           >
             {current ? (
               <div className="flex min-w-0 items-center gap-1.5 md:gap-3">
@@ -115,7 +115,7 @@ export default function BottomPanel({
                     onClick={() => onShow(current)}
                     className={cn(
                       "flex min-h-10 items-center gap-1.5 rounded-full px-3 text-[12px] font-bold text-ink transition active:scale-95 md:px-5 md:text-[12.5px]",
-                      isActive ? "bg-leaf" : "bg-sun hover:bg-sun-2",
+                      isActive ? "bg-leaf" : "btn-gold",
                     )}
                   >
                     <span className="hidden sm:inline">{isActive ? "Odaklandı" : "Haritada gör"}</span>
@@ -145,7 +145,8 @@ export default function BottomPanel({
       )}
     >
       <div className="w-full max-w-[920px]">
-        <section aria-label="Keşif önerileri" className="mobile-discovery-panel pointer-events-auto rounded-[26px] border border-leaf/25 bg-[#021b16] px-3.5 pb-3.5 pt-3 shadow-2xl shadow-black/60 max-md:fixed max-md:inset-x-3 max-md:bottom-[calc(62px+env(safe-area-inset-bottom))] max-md:z-20 max-md:max-h-[42dvh] max-md:overflow-y-auto md:hidden">
+        <section aria-label="Keşif önerileri" className="mobile-discovery-panel gold-frame pointer-events-auto rounded-[26px] bg-[#021b16] px-3.5 pb-3.5 pt-2.5 max-md:fixed max-md:inset-x-3 max-md:bottom-[calc(64px+env(safe-area-inset-bottom))] max-md:z-20 max-md:max-h-[42dvh] max-md:overflow-y-auto md:hidden">
+          <span aria-hidden className="sheet-handle mb-2.5" />
           <div className="flex items-center justify-between gap-3">
             <p className="truncate text-[12px] text-mint/75">Yol üstündekilerden küçük ipuçları</p>
             <button type="button" onClick={onToggle} aria-expanded={open} aria-label={open ? "Öneri panelini küçült" : "Öneri panelini genişlet"} className="flex min-h-9 shrink-0 items-center gap-1 text-[12px] font-medium text-sun">
@@ -169,8 +170,8 @@ export default function BottomPanel({
                       onClick={() => onCategory(selected ? null : item.id)}
                       aria-pressed={selected}
                       className={cn(
-                        "mobile-category-item flex min-h-[43px] flex-col items-center justify-center gap-0.5 rounded-[18px] border px-0.5 py-1 text-center text-[10px] leading-[1.05] transition",
-                        selected ? "border-sun bg-sun/10 text-sun" : "border-leaf/35 bg-white/[0.015] text-mint/90",
+                        "mobile-category-item pressable flex min-h-[46px] flex-col items-center justify-center gap-0.5 rounded-[18px] border px-0.5 py-1 text-center text-[10px] leading-[1.05] transition",
+                        selected ? "btn-gold border-transparent font-bold" : "border-leaf/35 bg-white/[0.015] text-mint/90",
                       )}
                     >
                       <Icon className="size-[15px] shrink-0" strokeWidth={1.65} />
@@ -196,14 +197,14 @@ export default function BottomPanel({
                       <ChevronRight className="size-4" />
                     </button>
                   </div>
-                  <button type="button" onClick={() => onShow(current)} className="mt-2 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-full bg-sun px-4 text-[13px] font-bold text-[#10241A] transition hover:bg-sun-2">
+                  <button type="button" onClick={() => onShow(current)} className="mt-2 flex min-h-[44px] w-full items-center justify-center gap-2 btn-gold rounded-full px-4 text-[13px] font-bold text-[#10241A] transition">
                     <Map className="size-[17px]" strokeWidth={1.8} />Haritada gör <ArrowRight className="size-4" />
                   </button>
                 </>
               ) : (
                 <div className="mt-3 flex items-center justify-between gap-2 border-t border-white/10 pt-3">
                   <p className="text-[12px] text-mint/75">Bu kategoride henüz iz yok.</p>
-                  <button type="button" onClick={onAdd} className="min-h-10 rounded-full bg-sun px-3 text-[12px] font-semibold text-ink">İz bırak</button>
+                  <button type="button" onClick={onAdd} className="btn-gold min-h-10 rounded-full px-3 text-[12px] font-semibold text-ink">İz bırak</button>
                 </div>
               )}
             </>
@@ -231,12 +232,12 @@ export default function BottomPanel({
             <Sparkles className="size-3.5 text-leaf" />
             {nearby === 0 ? "Bu noktaya ilk izi sen bırak" : "Buraya sen de iz bırak"}
           </button>
-          <span className="pointer-events-auto col-start-3 justify-self-end font-medium text-sun drop-shadow-[0_1px_6px_rgba(0,0,0,0.9)]">
+          <span className="pointer-events-auto col-start-3 justify-self-end rounded-full border border-sun/35 bg-ink/80 px-3 py-1.5 font-semibold text-sun backdrop-blur-xl">
             {total} iz
           </span>
         </div>
 
-        <section aria-label="Keşif önerileri" className="desktop-discovery-panel pointer-events-auto hidden animate-rise rounded-[28px] border border-leaf/20 bg-[#021915] p-4 shadow-2xl shadow-black/60 md:block md:p-6">
+        <section aria-label="Keşif önerileri" className="desktop-discovery-panel gold-frame pointer-events-auto hidden animate-rise rounded-[28px] bg-[#021915] p-4 md:block md:p-6">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <h2 className="font-display text-[17px] leading-tight font-semibold tracking-tight text-white md:text-[21px]">
@@ -278,7 +279,7 @@ export default function BottomPanel({
 
           {open && (
             <>
-              <div className="no-scrollbar -mx-1 mt-4 flex gap-2 overflow-x-auto px-1 py-1">
+              <div className="no-scrollbar fade-x -mx-1 mt-4 flex gap-2 overflow-x-auto px-1 py-1">
                 {CATEGORIES.map((c) => {
                   const Icon = c.icon;
                   const active = category === c.id;
@@ -288,9 +289,9 @@ export default function BottomPanel({
                       onClick={() => onCategory(active ? null : c.id)}
                       aria-pressed={active}
                       className={cn(
-                        "flex shrink-0 flex-col items-center gap-1 rounded-full border px-4 py-2 text-[12px] transition active:scale-95",
+                        "flex min-h-11 shrink-0 flex-col items-center justify-center gap-1 rounded-full border px-4 py-2 text-[12px] transition active:scale-95",
                         active
-                          ? "border-sun bg-sun/15 text-sun"
+                          ? "btn-gold border-transparent font-bold"
                           : "border-leaf/25 bg-white/[0.02] text-mint/85 hover:border-leaf/60 hover:bg-white/[0.06]",
                       )}
                     >
@@ -348,7 +349,7 @@ export default function BottomPanel({
                       onClick={() => onShow(current)}
                       className={cn(
                         "flex items-center gap-2 rounded-full px-4 py-2.5 text-[12.5px] font-bold text-ink transition active:scale-95 md:px-5",
-                        isActive ? "bg-leaf" : "bg-sun hover:bg-sun-2",
+                        isActive ? "bg-leaf" : "btn-gold",
                       )}
                     >
                       <span className="hidden sm:inline">{isActive ? "Odaklandı" : "Haritada gör"}</span>

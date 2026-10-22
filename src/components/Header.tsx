@@ -33,7 +33,7 @@ export default function Header({
   unreadCount,
 }: Props) {
   return (
-    <header className="mobile-explorer-header absolute inset-x-0 top-0 z-30 flex h-[68px] items-center justify-between border-b border-white/[0.08] bg-ink/90 px-3 backdrop-blur-xl md:h-[72px] md:px-6">
+    <header className="mobile-explorer-header absolute inset-x-0 top-0 z-30 flex h-[68px] items-center justify-between border-b border-sun/20 bg-ink/90 px-3 shadow-[0_10px_32px_rgba(0,0,0,0.22)] backdrop-blur-xl md:h-[72px] md:px-6">
       <div className="flex min-w-0 items-center gap-4">
         <a href="#" className="font-display text-[26px] leading-none font-bold tracking-tight text-mint" aria-label="Atlasia ana sayfa">
           Atlasia<span className="text-sun">.</span>
@@ -56,11 +56,16 @@ export default function Header({
         <button
           type="button"
           onClick={onOpenNotifications}
-          aria-label="Bildirimleri aç"
+          aria-label={`Bildirimleri aç${unreadCount > 0 ? `: ${unreadCount} yeni` : ""}`}
           aria-expanded={notificationsOpen}
-          className="mobile-icon-btn grid place-items-center rounded-full text-mint"
+          className="mobile-icon-btn relative grid place-items-center rounded-full text-mint"
         >
           <Bell className="size-[19px]" strokeWidth={1.9} />
+          {unreadCount > 0 && (
+            <span aria-hidden className="absolute top-0.5 right-0.5 grid h-[17px] min-w-[17px] place-items-center rounded-full bg-sun px-1 text-[10px] leading-none font-bold text-ink ring-2 ring-ink">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
         </button>
         <button
           type="button"
@@ -91,20 +96,20 @@ export default function Header({
 
         <button
           onClick={onOpenDrawer}
-          className="group flex items-center gap-2 rounded-full px-2 py-2 text-[13px] text-mint/80 transition hover:bg-white/5 hover:text-mint md:px-3"
+          className="group flex min-h-11 items-center gap-2 rounded-full px-2 py-2 text-[13px] text-mint/80 transition hover:bg-white/5 hover:text-mint md:px-3"
         >
           <Compass className="size-4 transition group-hover:rotate-45" />
           Keşfet
-          <span className="hidden rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] leading-none text-mint/70 min-[390px]:inline">
+          <span className="hidden rounded-full bg-sun/15 px-1.5 py-0.5 text-[11px] leading-none font-semibold text-sun ring-1 ring-sun/25 min-[390px]:inline">
             {placeCount}
           </span>
         </button>
-        <button type="button" onClick={onOpenRecords} aria-label="Kayıtlarımı aç" className="hidden min-h-11 items-center gap-2 px-2 text-[13px] text-mint md:flex"><Bookmark className="size-4" />Kayıtlarım</button>
+        <button type="button" onClick={onOpenRecords} aria-label="Kayıtlarımı aç" className="hidden min-h-11 items-center gap-2 rounded-full px-3 text-[13px] text-mint/80 transition hover:bg-white/5 hover:text-mint md:flex"><Bookmark className="size-4" />Kayıtlarım</button>
         <button
           onClick={onAdd}
           className={
-            "flex min-h-[44px] items-center gap-2 rounded-lg px-3.5 text-[14px] font-bold text-[#10241A] transition active:scale-95 md:px-4 " +
-            (addMode ? "bg-leaf" : "bg-sun hover:bg-sun-2")
+            "flex min-h-[44px] items-center gap-2 rounded-full px-3.5 text-[14px] font-bold text-[#10241A] transition active:scale-95 md:px-4 " +
+            (addMode ? "bg-leaf" : "btn-gold")
           }
         >
           <Plus className="size-4" strokeWidth={2.6} />
@@ -112,9 +117,17 @@ export default function Header({
         </button>
         <button type="button" onClick={onOpenNotifications} aria-label={`Bildirimler${unreadCount > 0 ? `: ${unreadCount} yeni` : ""}`} aria-expanded={notificationsOpen} className="relative hidden size-11 place-items-center rounded-full text-mint/80 transition hover:bg-white/5 hover:text-mint md:grid">
           <Bell className="size-[18px] stroke-[1.9]" />
-          {unreadCount > 0 && <span aria-hidden className="absolute right-2 top-2 size-2 rounded-full bg-sun" />}
+          {unreadCount > 0 && (
+            <span aria-hidden className="absolute top-0.5 right-0.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-sun px-1 text-[10px] leading-none font-bold text-ink ring-2 ring-ink">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
         </button>
-        <button type="button" onClick={onOpenProfile} aria-label={`${profileName}: profili aç`} title="Profilim" className="hidden size-11 place-items-center rounded-full border border-leaf/25 bg-white/[0.04] font-semibold text-sun md:grid">{profileName?.[0]?.toLocaleUpperCase("tr") ?? <UserRound size={18} />}</button>
+        <button type="button" onClick={onOpenProfile} aria-label={`${profileName}: profili aç`} title="Profilim" className="avatar-gold-ring pressable hidden size-11 md:grid">
+          <span className="grid size-full place-items-center bg-ink-2 font-semibold text-sun">
+            {profileName?.[0]?.toLocaleUpperCase("tr") ?? <UserRound size={18} />}
+          </span>
+        </button>
       </nav>
     </header>
   );

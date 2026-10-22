@@ -2,6 +2,7 @@ import { lazy, Suspense, useState } from "react";
 import {
   AlertCircle,
   Bookmark,
+  ChevronRight,
   Download,
   CheckCircle2,
   Loader2,
@@ -148,7 +149,7 @@ export default function ProfilePanel({ onClose, onRecords }: Props) {
       role="dialog"
       aria-modal="false"
       aria-labelledby="profile-title"
-      className="settings-sheet fixed top-[68px] right-0 bottom-0 z-[55] flex w-full max-w-[390px] flex-col overflow-hidden border-l border-leaf/20 bg-ink-2 md:top-[88px] md:right-4 md:bottom-4 md:rounded-3xl md:border"
+      className="settings-sheet gold-frame fixed top-[68px] right-0 bottom-0 z-[55] flex w-full max-w-[390px] flex-col overflow-hidden border-l bg-ink-2 md:top-[88px] md:right-4 md:bottom-4 md:rounded-3xl md:border"
     >
       <header className="flex shrink-0 items-center justify-between px-6 pt-5 pb-3">
         <h2 id="profile-title" className="font-display text-xl font-semibold">Profilim</h2>
@@ -158,29 +159,43 @@ export default function ProfilePanel({ onClose, onRecords }: Props) {
       </header>
 
       <div className="thin-scroll min-h-0 flex-1 overflow-y-auto px-6 pb-5">
-        <div className="mt-2 flex items-center gap-4">
-          <span className="grid size-16 shrink-0 place-items-center rounded-full bg-sun/15 font-display text-2xl text-sun">
-            {user?.displayName?.[0]?.toLocaleUpperCase("tr") ?? <UserRound size={25} />}
-          </span>
-          <div className="min-w-0">
-            <p className="truncate text-lg font-semibold">{user?.displayName ?? "Profil adını ekle"}</p>
-            <p className={`mt-1 flex items-center gap-1.5 text-[13px] ${needsEmailVerification ? "text-sun" : "text-leaf"}`}>
-              {user?.backend === "device"
-                ? <><Monitor size={14} />Bu cihaza özel hesap</>
-                : needsEmailVerification
-                  ? <><AlertCircle size={14} />E-posta doğrulanmadı</>
-                  : <><ShieldCheck size={14} />Doğrulanmış hesap</>}
-            </p>
+        <section aria-label="Hesap özeti" className="mt-2 overflow-hidden rounded-[24px] border border-sun/25 bg-gradient-to-br from-sun/[0.13] via-leaf/[0.07] to-transparent p-4">
+          <div className="flex items-center gap-4">
+            <span className="avatar-gold-ring size-[74px] shrink-0">
+              <span className="grid size-full place-items-center bg-ink-2 font-display text-[26px] font-bold text-sun">
+                {user?.displayName?.[0]?.toLocaleUpperCase("tr") ?? <UserRound size={25} />}
+              </span>
+            </span>
+            <div className="min-w-0">
+              <p className="truncate font-display text-xl font-semibold">{user?.displayName ?? "Profil adını ekle"}</p>
+              <p className={`mt-1.5 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-semibold ring-1 ${needsEmailVerification ? "bg-sun/12 text-sun ring-sun/35" : "bg-leaf/12 text-leaf ring-leaf/35"}`}>
+                {user?.backend === "device"
+                  ? <><Monitor size={13} />Bu cihaza özel hesap</>
+                  : needsEmailVerification
+                    ? <><AlertCircle size={13} />E-posta doğrulanmadı</>
+                    : <><ShieldCheck size={13} />Doğrulanmış hesap</>}
+              </p>
+              <p className="mt-2 flex items-center gap-1.5 text-[13px] break-all text-mint/80">
+                {user?.phoneNumber ? <Phone size={14} className="shrink-0" /> : <Mail size={14} className="shrink-0" />}
+                <span className="min-w-0">{user?.email ?? user?.phoneNumber}</span>
+              </p>
+            </div>
           </div>
-        </div>
 
-        <p className="mt-6 flex items-center gap-2 break-all text-sm text-mint/80">
-          {user?.phoneNumber ? <Phone size={15} /> : <Mail size={15} />}
-          {user?.email ?? user?.phoneNumber}
-        </p>
+          <div className="mt-4 grid grid-cols-2 divide-x divide-white/10 border-t border-white/10 pt-3.5 text-center">
+            <div className="px-2">
+              <p className="font-display text-[22px] leading-none font-bold text-white tabular-nums">{savedPlaces.length}</p>
+              <p className="mt-1.5 text-[12px] text-mint/70">yer kaydı</p>
+            </div>
+            <div className="px-2">
+              <p className="font-display text-[22px] leading-none font-bold text-white tabular-nums">{savedRoutes.length}</p>
+              <p className="mt-1.5 text-[12px] text-mint/70">rota kaydı</p>
+            </div>
+          </div>
+        </section>
 
-        <div className="mt-4 rounded-xl border border-leaf/20 bg-white/[0.03] p-3">
-          <p className="text-[11px] text-mint/60">Hesap kimliğin (grup daveti için paylaş)</p>
+        <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-3.5">
+          <p className="text-[12px] text-mint/70">Hesap kimliğin (grup daveti için paylaş)</p>
           <div className="mt-1 flex items-center gap-2">
             <code className="min-w-0 flex-1 truncate text-[11px] text-mint/85">{user?.uid}</code>
             <button
@@ -230,7 +245,7 @@ export default function ProfilePanel({ onClose, onRecords }: Props) {
           <button
             type="submit"
             disabled={saving || name.trim().length < 2}
-            className="mt-3 flex min-h-11 items-center justify-center gap-2 rounded-full bg-sun px-5 text-sm font-semibold text-ink disabled:opacity-50"
+            className="btn-gold mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold text-ink disabled:opacity-50"
           >
             {saving ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
             Değişiklikleri kaydet
@@ -239,24 +254,34 @@ export default function ProfilePanel({ onClose, onRecords }: Props) {
 
         {status && <p role="status" className="mt-3 text-sm text-sun">{status}</p>}
 
-        <button
-          type="button"
-          onClick={onRecords}
-          className="mt-8 flex w-full items-center justify-between gap-3 border-y border-white/10 py-4 text-left"
-        >
-          <span className="flex items-center gap-2 text-sm"><Bookmark size={17} className="text-sun" />Kayıtlarım</span>
-          <span className="text-right text-[13px] text-mint/70">{savedPlaces.length} yer · {savedRoutes.length} rota</span>
-        </button>
-        <p className="mt-4 flex items-start gap-2 text-[13px] leading-relaxed text-mint/65">
-          <Route size={15} className="mt-1 shrink-0" />
+        <div className="mt-8 divide-y divide-white/[0.07] overflow-hidden rounded-[20px] border border-white/10 bg-white/[0.02]">
+          <button
+            type="button"
+            onClick={onRecords}
+            className="flex min-h-[56px] w-full items-center gap-3 px-4 text-left transition hover:bg-white/[0.04]"
+          >
+            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-sun/12 text-sun ring-1 ring-sun/30"><Bookmark size={16} /></span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold">Kayıtlarım</span>
+              <span className="mt-0.5 block text-[12px] text-mint/70">{savedPlaces.length} yer · {savedRoutes.length} rota</span>
+            </span>
+            <ChevronRight size={16} className="shrink-0 text-mint/70" />
+          </button>
+          <button type="button" onClick={() => setFeedbackOpen(true)} className="flex min-h-[56px] w-full items-center gap-3 px-4 text-left transition hover:bg-white/[0.04]">
+            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-leaf/12 text-leaf ring-1 ring-leaf/30"><Send size={15} /></span>
+            <span className="min-w-0 flex-1 text-sm font-semibold">Geri bildirim gönder</span>
+            <ChevronRight size={16} className="shrink-0 text-mint/70" />
+          </button>
+          <button type="button" disabled={exporting} onClick={() => void exportData()} className="flex min-h-[56px] w-full items-center gap-3 px-4 text-left transition hover:bg-white/[0.04] disabled:opacity-60">
+            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-white/[0.06] text-mint ring-1 ring-white/15">{exporting ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}</span>
+            <span className="min-w-0 flex-1 text-sm font-semibold">Verilerimi indir</span>
+            <ChevronRight size={16} className="shrink-0 text-mint/70" />
+          </button>
+        </div>
+        <p className="mt-3.5 flex items-start gap-2 px-1 text-[12px] leading-relaxed text-mint/70">
+          <Route size={14} className="mt-0.5 shrink-0" />
           Kaydettiğin yerler ve rotalar bu cihazda, hesabına özel tutulur.
         </p>
-        <button type="button" onClick={() => setFeedbackOpen(true)} className="mt-6 flex min-h-10 items-center gap-2 rounded-full border border-sun/30 px-4 text-[12px] font-semibold text-sun">
-          Geri bildirim gönder
-        </button>
-        <button type="button" disabled={exporting} onClick={() => void exportData()} className="mt-2 flex min-h-10 items-center gap-2 rounded-full border border-white/15 px-4 text-[12px] font-semibold text-mint disabled:opacity-60">
-          {exporting ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}Verilerimi indir
-        </button>
       </div>
       {feedbackOpen && <Suspense fallback={null}><FeedbackDialog uid={user?.uid ?? null} onClose={() => setFeedbackOpen(false)} /></Suspense>}
 
