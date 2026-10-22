@@ -126,6 +126,20 @@ describe("sendFriendRequest", () => {
     expect(h.setDoc).not.toHaveBeenCalled();
   });
 
+  it("aynı anda karşılıklı istek olduysa 'karşı taraf zaten gönderdi' kodu döner", async () => {
+    // Ön kontroller: karşı kuyruk yok, arkadaş değil. Ret sonrası: arkadaş değil, karşı istek VAR.
+    h.getDoc
+      .mockResolvedValueOnce(snap(false))
+      .mockResolvedValueOnce(snap(false))
+      .mockResolvedValueOnce(snap(false))
+      .mockResolvedValueOnce(snap(true));
+    h.setDoc.mockRejectedValueOnce(denied()).mockRejectedValueOnce(denied());
+
+    await expect(sendFriendRequest({ fromUid: "me", fromName: "Ada", toUid: "u2" })).rejects.toMatchObject({
+      code: "friend-request/opposite-exists",
+    });
+  });
+
   it("çevrimdışı hatası ayrı kodla raporlanır", async () => {
     h.setDoc.mockRejectedValueOnce(Object.assign(new Error("offline"), { code: "unavailable" }));
 

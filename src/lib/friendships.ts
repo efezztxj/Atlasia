@@ -233,9 +233,17 @@ export async function sendFriendRequest(input: { fromUid: string; fromName: stri
     try {
       await setDoc(ref, payload());
     } catch (retryFailure) {
-      // Ret sonrası en olası iki neden: zaten arkadaş olmak ya da dağıtılmış
-      // kuralların istemciden eski olması. İkisi ayrı kodla raporlanır.
+      // Ret sonrası üç olası neden ayrı ayrı raporlanır:
+      //  1) zaten arkadaşız, 2) karşı taraf aynı anda bize istek göndermiş
+      //  (kural iki yönlü bekleyen isteği engeller), 3) dağıtılmış kurallar eski.
       if (await isAlreadyFriend(friendRef)) throw dataError("friend-request/already-friends", "Bu kisi zaten arkadasin.");
+      // Kendi gelen kuyruğum okunabilir; yarış durumunda doğru mesajı verebilmek için bakılır.
+      const oppositeNow = await getDoc(doc(db, `users/${fromUid}/friendRequests/${toUid}`))
+        .then((snapshot) => snapshot.exists())
+        .catch(() => false);
+      if (oppositeNow) {
+        throw dataError("friend-request/opposite-exists", "Karsi taraf zaten sana istek gondermis; Istekler sekmesinden kabul et.");
+      }
       // Teşhis izi: "istek gönderilemedi" şikayetinde ilk bakılacak iki şey
       // (yol ve kural ipucu) konsolda tek satırda görünür. Bkz. runbook §3.1.
       console.error("[Atlasia] Arkadaslik istegi sunucu kurallari tarafindan reddedildi.", {
