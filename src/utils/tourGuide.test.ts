@@ -6,7 +6,7 @@ import {
   resolveGuidePlace,
   simulateWalk,
 } from "./tourGuide";
-import { EPHESUS_TOUR } from "../data/siteTours";
+import { EPHESUS_TOUR, getSiteTours } from "../data/siteTours";
 
 describe("tourGuide – sıra-duyarlı yakınlık (Adım 9)", () => {
   it("giriş 40m, çıkış 60m ve doğruluk eşiği sabittir", () => {
@@ -178,4 +178,30 @@ describe("tourGuide – sıra-duyarlı yakınlık (Adım 9)", () => {
     }
     expect(jitter).toBe(0);
   });
+});
+
+describe("tourGuide – yeni site turları", () => {
+  for (const tour of getSiteTours().filter((tour) => tour !== EPHESUS_TOUR)) {
+    it(`${tour.id}: tüm durakları sırayla tetikler ve aynı konumda titremez`, () => {
+      // Kimlikler NearbyAudioGuide bileşenindeki gibi pinId veya sıra ile türetilir.
+      const candidates = tour.days[0].stops.map((stop) => ({
+        id: stop.pinId ?? `tour-${stop.order}`, lat: stop.lat, lng: stop.lng, order: stop.order,
+      }));
+      let state = initialGuideState();
+      for (const candidate of candidates) {
+        const location = { lat: candidate.lat, lng: candidate.lng, accuracy: 10 };
+        const entered = resolveGuidePlace(location, candidates, state, true);
+        expect(entered.entered).toBe(true);
+        expect(entered.place?.id).toBe(candidate.id);
+        const held = resolveGuidePlace(location, candidates, entered.nextState, true);
+        expect(held.entered).toBe(false);
+        expect(held.place?.id).toBe(candidate.id);
+        const exit = resolveGuidePlace({ lat: 0, lng: 0, accuracy: 10 }, candidates, held.nextState, true);
+        expect(exit.exited).toBe(true);
+        expect(exit.place).toBeNull();
+        expect(exit.nextState.currentIndex).toBe(candidate.order);
+        state = exit.nextState;
+      }
+    });
+  }
 });

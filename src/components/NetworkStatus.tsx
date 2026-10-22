@@ -18,7 +18,7 @@ export default function NetworkStatus() {
   if (online) return null;
 
   return (
-    <div role="status" className="fixed top-[max(12px,env(safe-area-inset-top))] left-1/2 z-[120] flex -translate-x-1/2 items-center gap-2 rounded-full border border-sun/30 bg-[#06221b]/95 px-4 py-2 text-[12px] whitespace-nowrap text-sun shadow-xl backdrop-blur-xl">
+    <div role="status" className="fixed top-[max(12px,env(safe-area-inset-top))] left-1/2 z-[120] flex -translate-x-1/2 items-center gap-2 rounded-full border border-sun/30 bg-[#06221b]/95 px-4 py-2 text-[12px] whitespace-nowrap text-sun shadow-xl">
       <WifiOff className="size-4" />Çevrimdışısın · canlı harita ve hesap işlemleri sınırlı
     </div>
   );

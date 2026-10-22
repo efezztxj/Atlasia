@@ -1,15 +1,17 @@
 import type { AtlasRoute, RouteStop } from "../types";
 import { encodePolyline } from "../utils/polyline";
+import { ADDITIONAL_SITE_TOURS } from "./tours/additionalTours";
+import { haversineKm } from "../utils/geo";
 
 /**
  * Adım 8 — Site içi tur modeli
  * Tur YAZILIR, HESAPLANMAZ (antipattern A). planRoute KULLANILMAZ.
  * Sıralı duraklar, patika geometrisi (elle çizilmiş), giriş kapısı, çıkış noktası.
- * KANIT: Efes 3 saatlik tur, durak saatleri tanımlı, haritada gerçek patika.
+ * Efes çizgisi elle yazılmış temsildir; doğrulanmış OSM yolu değildir.
  */
 
 const EPHESUS_PATH_COORDS: [number, number][] = [
-  // Giriş → Devlet Agorası arası patika (yaya footway)
+  // Eski editör çizimi; kaynaklı footway geometrisi değildir.
   [27.3435, 37.9365], // Magnesia Kapısı (Giriş)
   [27.3437, 37.9367],
   [27.3439, 37.9369],
@@ -66,7 +68,7 @@ function stop(
     endTime,
     durationMinutes,
     description,
-    aiReason: `Editör tarafından yazılan site turu durağı ${order}: önceki durağa yaya patikasıyla bağlı, sıra bölge motoruyla değil elle belirlendi.`,
+    aiReason: `Editör tarafından yazılan site turu durağı ${order}: sıra bölge motoruyla değil elle belirlendi; duraklar arası yol bağlantısı doğrulanmadı.`,
     tips: ["Bilet ve açılış saatini resmî kaynaktan doğrula.", "Yazın şapka ve su al; alan içinde gölge sınırlı."],
     isCommunityPin: false,
     pinId,
@@ -80,7 +82,7 @@ export const EPHESUS_TOUR: AtlasRoute = {
   id: "site-efes-3h",
   routeTitle: "Efes Antik Kenti — 3 Saatlik Klasik Tur",
   routeSummary:
-    "Magnesia Kapısı'ndan giren, Kuretler Caddesi'ni izleyen ve Büyük Tiyatro'da biten 2,1 km'lik yaya turu. Sıra editör tarafından yazıldı; kesik çizgi patika geometrisi footway'i takip eder, planRoute kullanılmadı.",
+    "Magnesia Kapısı'ndan giren, Kuretler Caddesi'ni izleyen ve Büyük Tiyatro'da biten 2,1 km'lik yaya turu. Sıra editör tarafından yazıldı; eski elle çizilmiş geometri doğrulanmış yol değildir, planRoute kullanılmadı.",
   totalDurationHours: 3,
   totalDistanceKm: 2.1,
   transport: "walking",
@@ -215,9 +217,113 @@ export const EPHESUS_TOUR: AtlasRoute = {
   origin: { lat: 37.9365, lng: 27.3435 },
 };
 
+/**
+ * Priene — kısa yürüyüş (Aydın/Söke, açık hava ören yeri).
+ *
+ * KAYNAK: dört durağın koordinatı da OpenStreetMap düğümlerinden alındı
+ * (node/919567612 Alexandreion, node/3751926827 Demeter Kutsal Alanı,
+ * node/919567617 Isis Kutsal Alanı, node/4014933868 Wiegand Moloz Tepeciği —
+ * sonuncusu OSM'de `tourism=viewpoint`). Koordinat uydurulmadı.
+ *
+ * SINIR: Bu turun **patika geometrisi doğrulanmadı** (Overpass 2026-10-22'de
+ * yanıt vermedi). Bu yüzden `polyline` boş bırakıldı ve `isRealPath()` false
+ * döner; harita bu turda yalnız durakları gösterir, çizgi çizmez. Yol
+ * doğrulandığında polyline eklenmeli ve test bunu `isRealPath === true` ile
+ * kilitlemeli. Toplam mesafe iki nokta arası (kuş uçuşu) toplamıdır: 0,72 km.
+ */
+export const PRIENE_TOUR: AtlasRoute = {
+  id: "site-priene-1h",
+  routeTitle: "Priene — Kısa Yürüyüş (1 Saat)",
+  routeSummary:
+    "Priene'nin batı yamacındaki Demeter kutsal alanından başlayıp Alexandreion, Isis kutsal alanı ve Wiegand moloz tepeciği manzara noktasında biten dört duraklı yürüyüş. Durak koordinatları OSM düğümlerinden; patika geometrisi doğrulanmadı, bu yüzden harita çizgi çizmez.",
+  totalDurationHours: 1,
+  totalDistanceKm: 0.72,
+  transport: "walking",
+  vibe: "Tarih",
+  days: [
+    {
+      dayNumber: 1,
+      title: "Gün 1 · Priene içi 1 saat",
+      summary: "4 durak, 60 dakika. Batıdan doğuya, yamaç boyunca.",
+      stops: [
+        stop(
+          1,
+          "Demeter Kutsal Alanı",
+          37.6606561,
+          27.2958851,
+          "10:00",
+          "10:15",
+          15,
+          "Batı yamacın kuzeyinde, kayaya oyulmuş oturma basamaklarıyla bilinen kutsal alan. OSM'de 'Sanctuary of Demeter' adıyla işaretli.",
+          "osm-node-3751926827",
+        ),
+        stop(
+          2,
+          "Alexandreion",
+          37.6585781,
+          27.2949996,
+          "10:20",
+          "10:35",
+          15,
+          "Priene'nin güneybatısındaki kutsal alan; adı İskender'e gönderme yapar. Kalıntıların ayrıntısı için kazı raporuna bakılmalı, bu metin yalnız konumu tarif eder.",
+          "osm-node-919567612",
+        ),
+        stop(
+          3,
+          "Isis Kutsal Alanı",
+          37.6594486,
+          27.2990539,
+          "10:42",
+          "10:55",
+          13,
+          "Kent merkezinin doğusunda, Hellenistik dönemde Mısır tanrılarına adanan kutsal alan. OSM'de bina ve 'historic=ruins' olarak işaretli.",
+          "osm-node-919567617",
+        ),
+        stop(
+          4,
+          "Wiegand Moloz Tepeciği (Manzara Noktası)",
+          37.6584604,
+          27.2990505,
+          "10:58",
+          "11:00",
+          2,
+          "Kazı artıklarının yığıldığı tepecik; OSM'de manzara noktası olarak işaretli. Vadi ve ovanın görünümü için turun doğal bitişi.",
+          "osm-node-4014933868",
+        ),
+      ],
+      // Patika geometrisi doğrulanmadı: boş polyline bilinçli. isRealPath() false döner.
+      polyline: "",
+    },
+  ],
+  weatherNote: null,
+  alternatives: [{ label: "Uzun versiyon", prompt: "Tiyatro ve Athena Tapınağı eklenerek 2 saate çıkarılır (durak koordinatları doğrulanmadan eklenmez)." }],
+  dataSources: ["© OpenStreetMap contributors (ODbL)", "Atlasia editör turu"],
+  createdAt: Date.now(),
+  origin: { lat: 37.6606561, lng: 27.2958851 },
+};
+
 /** Site turları listesi (ölçeklenebilir) */
+export const SITE_TOURS: AtlasRoute[] = [EPHESUS_TOUR, PRIENE_TOUR, ...ADDITIONAL_SITE_TOURS];
+
 export function getSiteTours(): AtlasRoute[] {
-  return [EPHESUS_TOUR];
+  return SITE_TOURS;
+}
+
+/**
+ * Konuma göre en yakın site turu. Yarıçap dışında `null` döner; iki tur
+ * yarıçapa girerse giriş noktası daha yakın olan kazanır. Uygulama bu
+ * yardımcıyı kullanır (Efes'e sabit kodlanmış kontrol kaldırıldı).
+ */
+export function siteTourForPoint(lat: number, lng: number, maxKm = 5): AtlasRoute | null {
+  let best: { tour: AtlasRoute; km: number } | null = null;
+  for (const tour of SITE_TOURS) {
+    const origin = tour.origin ?? tour.days[0]?.stops[0];
+    if (!origin) continue;
+    const km = haversineKm(lat, lng, origin.lat, origin.lng);
+    if (km > maxKm) continue;
+    if (!best || km < best.km) best = { tour, km };
+  }
+  return best?.tour ?? null;
 }
 
 export function getSiteTourById(id: string): AtlasRoute | null {
@@ -234,33 +340,11 @@ export function getExitPoint(tour: AtlasRoute) {
   return stops[stops.length - 1] ?? null;
 }
 
-/** Patika gerçek mi yoksa düz çizgi mi? (antipattern A kontrolü) */
-export function isRealPath(tour: AtlasRoute): boolean {
-  const poly = tour.days[0]?.polyline ?? "";
-  if (!poly) return false;
-  // Gerçek patika: decode edilmiş nokta sayısı durak sayısından明显 fazla
-  // Düz çizgi olsaydı nokta sayısı = durak +1 olurdu
-  const decodedLength = (() => {
-    // basit polyline decode sayımı: encodePolyline ile aynı algoritma
-    let i = 0;
-    let count = 0;
-    while (i < poly.length) {
-      // her nokta 2 değer kodlar
-      let _s = 0;
-      let b: number;
-      do {
-        b = poly.charCodeAt(i++) - 63;
-        _s += 5;
-      } while (b >= 0x20 && i < poly.length);
-      do {
-        b = poly.charCodeAt(i++) - 63;
-        _s += 5;
-      } while (b >= 0x20 && i < poly.length);
-      void _s;
-      count++;
-    }
-    return count;
-  })();
-  const stops = tour.days[0]?.stops.length ?? 0;
-  return decodedLength > stops + 4; // en az 4 ara nokta fazla
+/**
+ * Nokta sayısı, isim veya OSM atfı gerçek yol kanıtı değildir.
+ * Katalogda kaynak way/node zinciriyle doğrulanmış geometri yoktur.
+ * Gerçek yol eklenirken saklanan kaynak geometriyle eşleşme kontrolü eklenmeli.
+ */
+export function isRealPath(_tour: AtlasRoute): boolean {
+  return false;
 }

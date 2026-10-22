@@ -16,7 +16,7 @@ import PlaceDetails from "./components/PlaceDetails";
 import StreetPeek from "./components/StreetPeek";
 import AccountAccess, { EmailVerification, ProfileSetup } from "./components/AccountAccess";
 import MyPlacesPanel from "./components/MyPlacesPanel";
-import NearbyAudioGuide from "./components/NearbyAudioGuide";
+const NearbyAudioGuide = lazy(() => import("./components/NearbyAudioGuide"));
 import LandingPage from "./components/LandingPage";
 import RecordsDock from "./components/RecordsDock";
 import TrackRecorderPanel from "./components/TrackRecorderPanel";
@@ -24,8 +24,7 @@ import RouteEditor from "./components/RouteEditor";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { CollectionsProvider, isCloudAccount } from "./hooks/useCollections";
 import { GUIDE_PLACES } from "./data/places";
-import { EPHESUS_CENTER } from "./data/ephesusCenter";
-import { EPHESUS_TOUR } from "./data/siteTours";
+import { parseShortcutTab, stripShortcutParam } from "./utils/appShortcut";
 import { formatAccuracy, useGeolocation } from "./hooks/useGeolocation";
 import { useAtlasData } from "./hooks/useAtlasData";
 import { useFirestoreAtlasData } from "./hooks/useFirestoreAtlasData";
@@ -353,12 +352,6 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
     [geo.fix, preciseLabel],
   );
 
-  const activeTour = useMemo(() => {
-    if (!precise) return null;
-    const d = haversineKm(precise.lat, precise.lng, EPHESUS_CENTER.lat, EPHESUS_CENTER.lng);
-    return d <= 5 ? EPHESUS_TOUR : null;
-  }, [precise]);
-
   // Location and storage share one panel; receiving a fix does not close it.
   useEffect(() => {
     const fix = geo.fix;
@@ -636,6 +629,30 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   }, [dockVisible]);
   const mobileExplore = () => { closePanels(); setHeroCompact(false); setPanelOpen(true); };
   const openMyPlaces = () => { closePanels(); setMyPlacesOpen(true); };
+  // İŞ 5: manifest kısayolları (?tab=…). Yalnız var olan panelleri açar; panel
+  // kapatma mantığı closePanels ile aynı. Parametre okunduktan sonra adresten
+  // silinir, yenilemede eylem ikinci kez tetiklenmez.
+  const shortcutHandled = useRef(false);
+  useEffect(() => {
+    if (shortcutHandled.current) return;
+    const action = parseShortcutTab(window.location.search);
+    if (!action) return;
+    shortcutHandled.current = true;
+    window.history.replaceState(null, "", stripShortcutParam(window.location.href));
+    setDrawerOpen(false);
+    setFeedOpen(false);
+    setAtlasOpen(false);
+    setRecordsOpen(false);
+    setProfileOpen(false);
+    setMyPlacesOpen(false);
+    setSettingsOpen(false);
+    setStoryPlace(null);
+    setStreetPlace(null);
+    setNotificationsOpen(false);
+    if (action === "explore") setPanelOpen(true);
+    else if (action === "add") { setSpin(false); setAddMode(true); }
+    else setProfileOpen(true);
+  }, []);
   const mobileTab = myPlacesOpen ? "İzlerim" : recordsOpen ? "Kaydet" : feedOpen ? "Topluluk" : profileOpen ? "Profil" : "Keşfet";
   const settingsContentProps: SettingsContentProps = {
     theme,
@@ -754,6 +771,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         onToggleTerrain={() => setTerrain((v) => !v)}
         labels={labels}
         terrain={terrain}
+        hiddenOnMobile={panelOpen}
       />
 
       {!trackRecorderOpen && <button
@@ -761,7 +779,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         onClick={() => setTrackRecorderOpen(true)}
         aria-label="Yürüyüş kaydını aç"
         title="Yürüyüş kaydı"
-        className="glass-panel gold-frame pressable fixed bottom-[calc(64px+env(safe-area-inset-bottom))] left-[calc(50%-78px)] z-30 grid size-[46px] place-items-center rounded-full text-[13px] font-semibold text-mint md:bottom-24 md:left-8 md:flex md:h-12 md:w-auto md:items-center md:gap-2.5 md:py-1.5 md:pr-4 md:pl-1.5"
+        className={`glass-panel gold-frame pressable fixed bottom-[calc(64px+env(safe-area-inset-bottom))] left-[calc(50%-78px)] z-30 grid size-[46px] place-items-center rounded-full text-[13px] font-semibold text-mint md:bottom-24 md:left-8 md:flex md:h-12 md:w-auto md:items-center md:gap-2.5 md:py-1.5 md:pr-4 md:pl-1.5${panelOpen ? " max-md:hidden" : ""}`}
       ><span className="btn-gold grid size-9 place-items-center rounded-full"><Activity size={16} strokeWidth={2.2} /></span><span className="hidden md:inline">Yürüyüş kaydı</span></button>}
       {trackRecorderOpen && <TrackRecorderPanel
         uid={user!.uid}
@@ -778,16 +796,17 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         }}
       />}
 
-      <NearbyAudioGuide
-        location={precise}
-        places={GUIDE_PLACES}
-        tourRoute={activeTour}
-        onOpenPlace={(place) => {
-          closePanels();
-          focusPlace(place, 15);
-          setStoryPlace(place);
-        }}
-      />
+      <Suspense fallback={null}>
+        <NearbyAudioGuide
+          location={precise}
+          places={GUIDE_PLACES}
+          onOpenPlace={(place) => {
+            closePanels();
+            focusPlace(place, 15);
+            setStoryPlace(place);
+          }}
+        />
+      </Suspense>
 
       {/* İpucu + atıf */}
       <div className="pointer-events-none absolute right-28 bottom-[30%] z-10 hidden flex-col items-end gap-2 text-right lg:flex">
@@ -801,7 +820,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         {precise && (
           <button
             onClick={handleClearLocation}
-            className="pointer-events-auto flex items-center gap-2 rounded-full border border-leaf/25 bg-ink/80 px-3 py-1.5 text-[11px] text-mint/85 backdrop-blur-xl transition hover:border-leaf/60 hover:text-white"
+            className="pointer-events-auto flex items-center gap-2 rounded-full border border-leaf/25 bg-ink/80 px-3 py-1.5 text-[11px] text-mint/85 transition hover:border-leaf/60 hover:text-white"
             title="Konum işaretini kaldır"
           >
             <Crosshair className="size-3.5 text-leaf" />
@@ -817,7 +836,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
 
       {/* Ekleme modu bandı */}
       {addMode && (
-        <div className="animate-rise absolute top-[88px] left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 rounded-full border border-leaf/40 bg-ink/90 py-2 pr-2 pl-4 text-[12.5px] text-mint shadow-xl shadow-black/50 backdrop-blur-xl">
+        <div className="animate-rise absolute top-[88px] left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 rounded-full border border-leaf/40 bg-ink/90 py-2 pr-2 pl-4 text-[12.5px] text-mint shadow-xl shadow-black/50">
           <MousePointerClick className="size-4 shrink-0 text-leaf" />
           <span>Keşfini bırakmak istediğin noktaya dokun</span>
           <button
@@ -1087,7 +1106,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         type="button"
         onClick={startAdd}
         aria-label="Haritaya iz bırak"
-        className="mobile-add-fab btn-gold-round fixed bottom-[calc(64px+env(safe-area-inset-bottom))] left-1/2 z-30 grid size-[44px] -translate-x-1/2 place-items-center rounded-full text-[#10241A] transition active:scale-95 md:hidden"
+        className={`mobile-add-fab btn-gold-round fixed bottom-[calc(64px+env(safe-area-inset-bottom))] left-1/2 z-30 grid size-[44px] -translate-x-1/2 place-items-center rounded-full text-[#10241A] transition active:scale-95 md:hidden${panelOpen ? " hidden" : ""}`}
       >
         <Plus className="size-[22px]" strokeWidth={2.4} />
       </button>
@@ -1095,7 +1114,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
       {toast && (
         <div
           role="status"
-          className="mobile-toast gold-frame animate-rise absolute top-[88px] left-1/2 z-50 -translate-x-1/2 rounded-full bg-ink-2/95 px-5 py-2.5 text-[13px] whitespace-nowrap text-mint backdrop-blur-xl"
+          className="mobile-toast gold-frame animate-rise absolute top-[88px] left-1/2 z-50 -translate-x-1/2 rounded-full bg-ink-2/95 px-5 py-2.5 text-[13px] whitespace-nowrap text-mint"
         >
           {toast}
         </div>

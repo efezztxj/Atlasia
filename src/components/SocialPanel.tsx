@@ -358,7 +358,7 @@ export default function SocialPanel({
     <>
       <section
         className={cn(
-          "social-panel gold-frame animate-rise fixed z-50 flex flex-col overflow-hidden bg-[#021915]/92 backdrop-blur-2xl md:z-40",
+          "social-panel gold-frame animate-rise fixed z-50 flex flex-col overflow-hidden bg-[#021915]/92 md:z-40",
           "inset-x-0 top-[calc(6px+env(safe-area-inset-top))] bottom-0 h-auto rounded-t-[24px] rounded-b-none pb-0 max-md:bg-[#021915]/98 md:top-auto md:bottom-0 md:h-[82dvh] md:rounded-b-none",
           "lg:inset-x-auto lg:bottom-4 lg:left-4 lg:h-[min(64vh,600px)] lg:w-[380px] lg:rounded-[26px] lg:pb-0",
         )}
@@ -464,7 +464,7 @@ export default function SocialPanel({
         </div>
 
         {/* Sekmeler */}
-        <div className="sticky top-0 z-10 flex items-center gap-2.5 bg-ink-2/95 px-3 py-2.5 backdrop-blur-xl">
+        <div className="sticky top-0 z-10 flex items-center gap-2.5 bg-ink-2/95 px-3 py-2.5">
           <div className="segmented min-w-0 flex-1" role="group" aria-label="İz filtresi">
             {(
               [

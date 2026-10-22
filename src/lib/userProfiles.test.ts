@@ -65,4 +65,11 @@ describe("searchProfilesLocal", () => {
     expect(searchProfilesLocal(list, "gezgin")).toEqual([]);
     expect(searchProfilesLocal(list, "Kaan").map((p) => p.displayName)).toEqual(["Kaan Ada"]);
   });
+
+  it("adsız/\"Gezgin\" gizlenir, \"Gezgin Can\" gibi gerçek ad gizlenmez", () => {
+    const list = [profile("Gezgin", 0), profile("Gezgin Can", 1), profile("", 2)];
+    expect(searchProfilesLocal(list, "gezgin c").map((p) => p.displayName)).toEqual(["Gezgin Can"]);
+    // Önek "Gezgin" ile başlayan gerçek adlar kalır; yalnız tam "Gezgin" ve boş ad gizlenir.
+    expect(searchProfilesLocal(list, "gezgin").map((p) => p.displayName)).toEqual(["Gezgin Can"]);
+  });
 });

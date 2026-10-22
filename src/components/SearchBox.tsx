@@ -90,7 +90,7 @@ export default function SearchBox({ places, onPick, onOpenFilters }: Props) {
         Yer, şehir veya ülke ara
       </label>
       <div className="relative">
-        <div className="mobile-search-field flex h-12 items-center gap-3 rounded-full border border-leaf/25 bg-ink/70 px-4 backdrop-blur-xl transition focus-within:border-sun/70 focus-within:bg-ink/90">
+        <div className="mobile-search-field flex h-12 items-center gap-3 rounded-full border border-leaf/25 bg-ink/[0.92] px-4 transition focus-within:border-sun/70 focus-within:bg-ink/90">
           <Search className="size-[18px] shrink-0 text-sun" />
           <input
             id="atlasia-search"
@@ -132,7 +132,7 @@ export default function SearchBox({ places, onPick, onOpenFilters }: Props) {
         </div>
 
         {showList && (
-          <div className="animate-fade thin-scroll absolute top-14 right-0 left-0 z-20 max-h-[min(50dvh,420px)] overflow-y-auto rounded-2xl border border-leaf/20 bg-ink-2/95 p-1.5 shadow-2xl shadow-black/50 backdrop-blur-xl">
+          <div className="animate-fade thin-scroll absolute top-14 right-0 left-0 z-20 max-h-[min(50dvh,420px)] overflow-y-auto rounded-2xl border border-leaf/20 bg-ink-2/95 p-1.5 shadow-2xl shadow-black/50">
             {combined.length === 0 && !loading && (
               <p className="px-3 py-3 text-[12px] text-mint/55">
                 {error ? "Harita aramasına ulaşılamadı. Kayıtlı yerleri kullanabilir veya biraz sonra tekrar deneyebilirsin." : "Sonuç bulunamadı. Yer adını veya şehir adını farklı yazmayı dene."}
