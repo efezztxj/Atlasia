@@ -57,13 +57,13 @@
 | ID | Görev | Tahmini süre | Tip | Bağımlılık | Durum |
 |---|---|---|---|---|---|
 | P13 | Harita etiket çakışması kusuru (kktc-label vs Esri) — doğrulama + kalibrasyon kilidi | ~3–4 sa | doğrulama | tarayıcı kanıtı | ✅ tamamlandı — kullanıcı onayıyla B düzeltmesi uygulandı (`teslimat-p13.md`) |
-| P14 | Overpass + Wikidata/Wikipedia içerik boru hattı (atıf dahil) | 1–2 gece | özellik | karar (f) seçili: 1 | ⏳ bekliyor |
-| P15 | Çevrimdışı saha paketi: tile önbelleği (lisans-güvenli kaynaklar) | 1 gece | özellik | P11 allowlist'e dokunmadan genişletme | ⏳ bekliyor |
+| P14 | Overpass + Wikidata/Wikipedia içerik boru hattı (atıf dahil) | 1–2 gece | özellik | karar (f) seçili: 1 | ✅ 2026-10-22 (UI/CSP açık) |
+| P15 | Çevrimdışı saha paketi: tile önbelleği (lisans-güvenli kaynaklar) | 1 gece | özellik | P11 allowlist'e dokunmadan genişletme | ✅ 2026-10-22 |
 | P16 | Testsiz modül kapsama maratonu (utils/lib/hooks) | 1 gece+ | test | yok | ✅ tamamlandı — utils/lib/hooks envanterinin tamamında ilişkili test var; kapanış: `teslimat-p16.md` (73 dosya / 399 test) |
 | P17 | track → taslak rota boru hattı (durak tespiti + sadeleştirme) | 1–2 gece | özellik | ROADMAP Adım 4 | ✅ çekirdek tamamlandı — PR #32 (`6a4d2aa`, main `38dfa3a`); `teslimat-p17-kurtarma-2026-10-21.md`. Onaylı kaydet akışı PR #35'te sürüyor (işaretlenmedi) |
-| P18 | Erişilebilirlik denetimi (klavye/odak/kontrast, tema çiftleri) | 1 gece | kalite | AGENTS tema kararı | ⏳ bekliyor |
+| P18 | Erişilebilirlik denetimi (klavye/odak/kontrast, tema çiftleri) | 1 gece | kalite | AGENTS tema kararı | ✅ 2026-10-22 (açık tema kararı) |
 | P19 | Bundle bütçesi + lazy-loading derin taraması (ölçüm, iddia yok) | ~3–5 sa | perf-araç | `lazyLoading.test.ts` | ✅ tamamlandı — Auth preload sızıntısı kapatıldı, bundle bütçesi kilitlendi; kapanış: `teslimat-p19.md` |
-| P20 | Rota paylaşım linki (yalnız istemci içi kodlama, Firestore'suz) | 1 gece | özellik | karar (c) ⛔ — buluta geçmeden | ⏳ bekliyor |
+| P20 | Rota paylaşım linki (yalnız istemci içi kodlama, Firestore'suz) | 1 gece | özellik | karar (c) ⛔ — buluta geçmeden | ✅ #43 |
 
 ### 3.1 Tamamlanan ek işler (P serisi dışı, 2026-10-21/22)
 
@@ -118,4 +118,5 @@ gece yarısı kendi başına geçilmez.
 | 2026-10-21 | P1–P4 prompt'ları ayrı dosyaya çıkarıldı, satırı ana listeden kaldırıldı; "biten görev tablodan kalkar" kuralı eklendi |
 | 2026-10-21 | P12 kapatıldı (PR #20, CI emulator kanıtlı) ve satırı kural gereği kaldırıldı; geçmişi `teslimat-p12.md` içinde |
 | 2026-10-22 | Tamamlananlar işaretlendi: P17 çekirdeği ✅, P11 main doğrulaması ✅, §3.1 ek işler tablosu (#31, #32, #33, #36); süren işler işaretlenmedi |
+| 2026-10-22 | P14, P15, P18 tamamlandı; P20 #43 ile kapandı (teslimat-p14/15/18/20) |
 | 2026-10-21 | P19 kapatıldı — Firebase Auth preload sızıntısı düzeltildi ve `scripts/bundle-budget.mjs` ile üretim bundle bütçesi kilitlendi; ayrıntı `teslimat-p19.md` içinde |
