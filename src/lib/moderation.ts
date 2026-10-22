@@ -5,6 +5,7 @@
  */
 import {
   collection,
+  collectionGroup,
   deleteDoc,
   doc,
   getDoc,
@@ -18,10 +19,14 @@ import {
   updateDoc,
   where,
   writeBatch,
+  type Query,
 } from "firebase/firestore";
 import { db, firebaseApp } from "./firebase";
 import { getAtlasAuth } from "./auth";
 import { createNotification } from "./notifications";
+import { friendshipIdFor } from "./friendships";
+import { deleteGroup } from "./groups";
+import { ACCOUNT_DATA_PAGE_SIZE } from "../config/firestoreLimits";
 
 export const REPORT_REASONS = ["spam", "harassment", "hate", "misinfo", "privacy", "other"] as const;
 export type ReportReason = (typeof REPORT_REASONS)[number];
@@ -227,158 +232,285 @@ export async function listBlockedUids(blockerUid: string): Promise<string[]> {
 
 /* ─────────────── Hesap silme (verisi kalkıyor) ─────────────── */
 
-async function deleteOwnedCollection(
-  uid: string,
-  collectionName: string,
-  uidField: string,
-): Promise<number> {
-  if (!db) return 0;
-  const q = query(collection(db, collectionName), where(uidField, "==", uid), limit(50));
-  let deleted = 0;
-  let snap = await getDocs(q);
-  while (snap.size > 0) {
-    const batch = writeBatch(db);
-    snap.docs.forEach((d) => batch.delete(d.ref));
-    await batch.commit();
-    deleted += snap.size;
-    snap = await getDocs(q);
-  }
-  return deleted;
+// KARAR: Her adım sırayla çalışır; bir adımın hatası YUTULMAZ, adım raporuna yazılır
+// ve hesap silme durur. Auth hesabı, tüm adımlar başarılı değilse SİLİNMEZ.
+// Tüm adımlar idempotenttir (olmayan belge atlanır), yeniden denenebilir.
+// Rules boundedList sınırlarının en küçüğü (users/{uid}/groups = 20); bkz. firestoreLimits.
+const DELETE_PAGE_SIZE = ACCOUNT_DATA_PAGE_SIZE;
+const DELETE_MAX_PAGES = 200;
+const JOIN_WINDOW_MS = 15 * 60 * 1000;
+// İstemci saati sunucudan geride olabilir: pencerenin dolduğu kesin değilse silinmez.
+const JOIN_CLOCK_SKEW_MS = 2 * 60 * 1000;
+
+const OWNED_TOP_LEVEL: Array<{ collectionName: string; uidField: string }> = [
+  { collectionName: "places", uidField: "authorUid" },
+  { collectionName: "posts", uidField: "authorUid" },
+  { collectionName: "stories", uidField: "authorUid" },
+  { collectionName: "routes", uidField: "authorUid" },
+  { collectionName: "tracks", uidField: "authorUid" },
+  { collectionName: "reports", uidField: "reporterUid" },
+  { collectionName: "blocks", uidField: "blockerUid" },
+  { collectionName: "verifications", uidField: "uid" },
+  // KARAR: geri bildirim hesapla birlikte silinir (kurallar yalnız sahibine liste/silme verir).
+  { collectionName: "feedback", uidField: "uid" },
+];
+
+// users/{uid}/... altında yalnız sahibin silebildiği koleksiyonlar (3a: blocks dahil).
+const OWN_SUBCOLLECTIONS = ["notifications", "savedPlaces", "friendRequests", "blocks"] as const;
+
+/** Adım sonucu: silinen sayısı; kilit penceresi dolmadığı için bırakılanlar ayrıca raporlanır. */
+export interface AccountDeletionOutcome {
+  deleted: number;
+  kept?: number;
 }
 
-async function deleteOwnedPlaces(uid: string): Promise<number> {
-  return deleteOwnedCollection(uid, "places", "authorUid");
-}
-
-async function deleteOwnedPosts(uid: string): Promise<number> {
-  return deleteOwnedCollection(uid, "posts", "authorUid");
-}
-
-async function deleteOwnedStories(uid: string): Promise<number> {
-  return deleteOwnedCollection(uid, "stories", "authorUid");
-}
-
-async function deleteOwnedReports(uid: string): Promise<number> {
-  return deleteOwnedCollection(uid, "reports", "reporterUid");
-}
-
-async function deleteOwnedBlocks(uid: string): Promise<number> {
-  if (!db) return 0;
-  const q = query(collection(db, "blocks"), where("blockerUid", "==", uid), limit(50));
-  let deleted = 0;
-  let snap = await getDocs(q);
-  while (snap.size > 0) {
-    const batch = writeBatch(db);
-    snap.docs.forEach((d) => batch.delete(d.ref));
-    await batch.commit();
-    deleted += snap.size;
-    snap = await getDocs(q);
-  }
-  return deleted;
-}
-
-async function deleteOwnSubcollection(uid: string, subcollection: "notifications" | "groups"): Promise<number> {
-  if (!db) return 0;
-  const q = query(collection(db, `users/${uid}/${subcollection}`), limit(50));
-  let deleted = 0;
-  let snap = await getDocs(q);
-  while (snap.size > 0) {
-    const batch = writeBatch(db);
-    snap.docs.forEach((d) => batch.delete(d.ref));
-    await batch.commit();
-    deleted += snap.size;
-    snap = await getDocs(q);
-  }
-  return deleted;
-}
-
-async function leaveOrDeleteGroups(uid: string): Promise<number> {
-  if (!db) return 0;
-  const indexSnap = await getDocs(query(collection(db, `users/${uid}/groups`), limit(50)));
-  let cleaned = 0;
-  for (const indexDoc of indexSnap.docs) {
-    const groupId = indexDoc.id;
-    try {
-      const groupRef = doc(db, "groups", groupId);
-      const snap = await getDoc(groupRef);
-      if (!snap.exists()) continue;
-      const data = snap.data();
-      // Kişinin kendi mesajlarını sil (kural: yalnız gönderen).
-      const messages = await getDocs(query(
-        collection(db, "groups", groupId, "messages"),
-        where("senderUid", "==", uid),
-        limit(50),
-      ));
-      if (messages.size > 0) {
-        const batch = writeBatch(db);
-        messages.docs.forEach((message) => batch.delete(message.ref));
-        await batch.commit();
-        cleaned += messages.size;
-      }
-      const members = Array.isArray(data.memberUids) ? (data.memberUids as string[]) : [];
-      if (data.ownerUid === uid) {
-        await deleteDoc(groupRef);
-      } else if (members.includes(uid)) {
-        await updateDoc(groupRef, {
-          memberUids: members.filter((member) => member !== uid),
-          updatedAt: serverTimestamp(),
-        });
-      }
-      cleaned += 1;
-    } catch (error) {
-      console.warn(`[Atlasia] ${groupId} grubundan ayrılma tamamlanamadı:`, error);
-    }
-  }
-  return cleaned;
-}
-
-async function deleteOwnedVerifications(uid: string): Promise<number> {
-  // Adım 14'te eklenir; yoksa sessizce 0 döner
-  if (!db) return 0;
-  try {
-    const q = query(collection(db, "verifications"), where("uid", "==", uid), limit(50));
-    let deleted = 0;
-    let snap = await getDocs(q);
-    while (snap.size > 0) {
-      const batch = writeBatch(db);
-      snap.docs.forEach((d) => batch.delete(d.ref));
-      await batch.commit();
-      deleted += snap.size;
-      snap = await getDocs(q);
-    }
-    return deleted;
-  } catch {
-    return 0;
-  }
-}
-
-export async function deleteUserData(uid: string): Promise<{ places: number; posts: number; stories: number; reports: number; blocks: number; verifications: number }> {
+function requireDb() {
   if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
+  return db;
+}
+
+/** Sorguyu sayfa sayfa boşaltır. Sınır aşılırsa sessizce bitmez, hata verir. */
+async function drainQuery(makeQuery: () => Query): Promise<number> {
+  const firestore = requireDb();
+  let deleted = 0;
+  for (let page = 0; page < DELETE_MAX_PAGES; page += 1) {
+    const snap = await getDocs(makeQuery());
+    if (snap.size === 0) return deleted;
+    const batch = writeBatch(firestore);
+    snap.docs.forEach((item) => batch.delete(item.ref));
+    await batch.commit();
+    deleted += snap.size;
+  }
+  throw dataError("data/delete-incomplete", "Veri silme turu sınırına ulaşıldı; tekrar deneyin.");
+}
+
+async function deleteOwnedTopLevel(uid: string, collectionName: string, uidField: string): Promise<number> {
+  const firestore = requireDb();
+  return drainQuery(() => query(collection(firestore, collectionName), where(uidField, "==", uid), limit(DELETE_PAGE_SIZE)));
+}
+
+async function deleteOwnSubcollection(uid: string, subcollection: string): Promise<number> {
+  const firestore = requireDb();
+  return drainQuery(() => query(collection(firestore, `users/${uid}/${subcollection}`), limit(DELETE_PAGE_SIZE)));
+}
+
+/** 3b: kullanıcının başka gönderilerdeki yanıtları (collection-group, yalnız authorUid == uid). */
+async function deleteOwnReplies(uid: string): Promise<number> {
+  const firestore = requireDb();
+  return drainQuery(() => query(collectionGroup(firestore, "replies"), where("authorUid", "==", uid), limit(DELETE_PAGE_SIZE)));
+}
+
+/**
+ * Kayıtlı rotalar: rota sayacı, silme ile aynı batch'te düşürülür (kural
+ * savedRouteCounterDecreased / routeCounterChange bunu zorunlu kılar).
+ */
+async function deleteOwnSavedRoutes(uid: string): Promise<number> {
+  const firestore = requireDb();
+  let deleted = 0;
+  for (let page = 0; page < DELETE_MAX_PAGES; page += 1) {
+    const snap = await getDocs(query(collection(firestore, `users/${uid}/savedRoutes`), limit(DELETE_PAGE_SIZE)));
+    if (snap.size === 0) return deleted;
+    for (const saved of snap.docs) {
+      const routeRef = doc(firestore, "routes", saved.id);
+      const routeSnap = await getDoc(routeRef);
+      const batch = writeBatch(firestore);
+      batch.delete(saved.ref);
+      if (routeSnap.exists()) {
+        const count = Number(routeSnap.data()?.saveCount ?? 0);
+        if (count <= 0) throw dataError("data/route-counter", "Kayıtlı rota sayacı tutarsız; hesap silinmedi.");
+        batch.update(routeRef, { saveCount: count - 1, updatedAt: serverTimestamp() });
+      }
+      await batch.commit();
+      deleted += 1;
+    }
+  }
+  throw dataError("data/delete-incomplete", "Kayıtlı rota silme sınırına ulaşıldı; tekrar deneyin.");
+}
+
+/** Arkadaşlık: friendships belgesi (varsa) + kendi arkadaş indeksi. */
+async function deleteOwnFriendships(uid: string): Promise<number> {
+  const firestore = requireDb();
+  let deleted = 0;
+  for (let page = 0; page < DELETE_MAX_PAGES; page += 1) {
+    const snap = await getDocs(query(collection(firestore, `users/${uid}/friends`), limit(DELETE_PAGE_SIZE)));
+    if (snap.size === 0) return deleted;
+    for (const index of snap.docs) {
+      const friendshipRef = doc(firestore, "friendships", friendshipIdFor(uid, index.id));
+      const friendship = await getDoc(friendshipRef);
+      const batch = writeBatch(firestore);
+      batch.delete(index.ref);
+      if (friendship.exists()) batch.delete(friendshipRef);
+      await batch.commit();
+      deleted += 1;
+    }
+  }
+  throw dataError("data/delete-incomplete", "Arkadaş silme sınırına ulaşıldı; tekrar deneyin.");
+}
+
+/** 3e: gelen davetler — grubun davet kaydı (varsa) ve kendi aynası birlikte silinir. */
+async function deleteOwnGroupInvites(uid: string): Promise<number> {
+  const firestore = requireDb();
+  let deleted = 0;
+  for (let page = 0; page < DELETE_MAX_PAGES; page += 1) {
+    const snap = await getDocs(query(collection(firestore, `users/${uid}/groupInvites`), limit(DELETE_PAGE_SIZE)));
+    if (snap.size === 0) return deleted;
+    for (const mirror of snap.docs) {
+      const inviteRef = doc(firestore, `groups/${mirror.id}/invites/${uid}`);
+      const invite = await getDoc(inviteRef);
+      const batch = writeBatch(firestore);
+      batch.delete(mirror.ref);
+      if (invite.exists()) batch.delete(inviteRef);
+      await batch.commit();
+      deleted += 1;
+    }
+  }
+  throw dataError("data/delete-incomplete", "Davet silme sınırına ulaşıldı; tekrar deneyin.");
+}
+
+async function deleteOwnProfile(uid: string): Promise<number> {
+  const firestore = requireDb();
+  const profileRef = doc(firestore, "userProfiles", uid);
+  const profile = await getDoc(profileRef);
+  if (!profile.exists()) return 0;
+  await deleteDoc(profileRef);
+  return 1;
+}
+
+/**
+ * 3d: katılma denemesi. Yalnız kendi belgesi ve pencere (15 dk + saat payı) dolmuşsa silinir.
+ * Pencere içindeki kayıt silinmez (sayaç atlatılmasın): "kept" olarak raporlanır.
+ */
+async function cleanupOwnJoinAttempt(groupId: string, uid: string): Promise<"none" | "deleted" | "kept"> {
+  const firestore = requireDb();
+  const attemptRef = doc(firestore, `groups/${groupId}/joinAttempts/${uid}`);
+  const attempt = await getDoc(attemptRef);
+  if (!attempt.exists()) return "none";
+  const windowStart = toMillis(attempt.data()?.windowStart);
+  if (windowStart + JOIN_WINDOW_MS + JOIN_CLOCK_SKEW_MS > Date.now()) return "kept";
+  await deleteDoc(attemptRef);
+  return "deleted";
+}
+
+/**
+ * Grup üyelikleri (3c: sayfalı). Her indeks kaydı için: katılma denemesi, kendi
+ * mesajları, sahipse grubun tamamı (mesajlar dahil, deleteGroup), değilse
+ * üyelikten çıkarma. Hata yutulmaz.
+ */
+async function leaveOrDeleteGroups(uid: string): Promise<AccountDeletionOutcome> {
+  const firestore = requireDb();
+  let processed = 0;
+  let kept = 0;
+  for (let page = 0; page < DELETE_MAX_PAGES; page += 1) {
+    const indexSnap = await getDocs(query(collection(firestore, `users/${uid}/groups`), limit(DELETE_PAGE_SIZE)));
+    if (indexSnap.size === 0) return { deleted: processed, kept };
+    for (const indexDoc of indexSnap.docs) {
+      const groupId = indexDoc.id;
+      const groupRef = doc(firestore, "groups", groupId);
+      const snap = await getDoc(groupRef);
+      if (snap.exists()) {
+        const data = snap.data();
+        if ((await cleanupOwnJoinAttempt(groupId, uid)) === "kept") kept += 1;
+        await drainQuery(() => query(
+          collection(firestore, `groups/${groupId}/messages`),
+          where("senderUid", "==", uid),
+          limit(DELETE_PAGE_SIZE),
+        ));
+        if (data.ownerUid === uid) {
+          // deleteGroup: sahibin grubu, tüm mesajları ve kendi indeksini siler.
+          await deleteGroup(groupId, uid);
+        } else {
+          const members = Array.isArray(data.memberUids) ? (data.memberUids as string[]) : [];
+          if (members.includes(uid)) {
+            await updateDoc(groupRef, {
+              memberUids: members.filter((member) => member !== uid),
+              updatedAt: serverTimestamp(),
+            });
+          }
+          await deleteDoc(indexDoc.ref);
+        }
+      } else {
+        await deleteDoc(indexDoc.ref);
+      }
+      processed += 1;
+    }
+  }
+  throw dataError("data/delete-incomplete", "Grup üyeliği temizleme sınırına ulaşıldı; tekrar deneyin.");
+}
+
+export interface AccountDataDeletionStep {
+  step: string;
+  deleted: number;
+  failed: boolean;
+  error?: string;
+  /** Kilit penceresi dolmadığı için silinemeyen kayıt sayısı (açık kalan). */
+  kept?: number;
+}
+
+export interface AccountDataDeletionReport {
+  ok: boolean;
+  steps: AccountDataDeletionStep[];
+}
+
+/**
+ * Tüm kullanıcı verisini adım adım siler. Hiçbir adımın hatası yutulmaz.
+ * Herhangi bir adım başarısızsa `data/delete-incomplete` fırlatılır; hata
+ * nesnesinde `steps` tam raporu taşır. Çağıran Auth hesabını silmemelidir.
+ */
+export async function deleteUserData(uid: string): Promise<AccountDataDeletionReport> {
+  requireDb();
   const cleanUid = uid.trim();
   if (!cleanUid) throw dataError("auth/required", "Hesap bilgisi geçersiz.");
-  const [places, posts, stories, reports, blocks, verifications] = await Promise.all([
-    deleteOwnedPlaces(cleanUid),
-    deleteOwnedPosts(cleanUid),
-    deleteOwnedStories(cleanUid),
-    deleteOwnedReports(cleanUid),
-    deleteOwnedBlocks(cleanUid),
-    deleteOwnedVerifications(cleanUid),
-  ]);
-  // Grup üyeliği, gönderdiği mesajlar ve bildirimler de kalkar.
-  try {
-    await leaveOrDeleteGroups(cleanUid);
-    await deleteOwnSubcollection(cleanUid, "groups");
-    await deleteOwnSubcollection(cleanUid, "notifications");
-  } catch (error) {
-    console.warn("[Atlasia] Grup/notification verisi temizlenemedi:", error);
+
+  const steps: Array<{ name: string; run: () => Promise<AccountDeletionOutcome> }> = [
+    ...OWNED_TOP_LEVEL.map(({ collectionName, uidField }) => ({
+      name: collectionName,
+      run: async () => ({ deleted: await deleteOwnedTopLevel(cleanUid, collectionName, uidField) }),
+    })),
+    ...OWN_SUBCOLLECTIONS.map((sub) => ({
+      name: `users/${sub}`,
+      run: async () => ({ deleted: await deleteOwnSubcollection(cleanUid, sub) }),
+    })),
+    { name: "replies", run: async () => ({ deleted: await deleteOwnReplies(cleanUid) }) },
+    { name: "users/savedRoutes", run: async () => ({ deleted: await deleteOwnSavedRoutes(cleanUid) }) },
+    { name: "users/friends+friendships", run: async () => ({ deleted: await deleteOwnFriendships(cleanUid) }) },
+    { name: "users/groupInvites", run: async () => ({ deleted: await deleteOwnGroupInvites(cleanUid) }) },
+    { name: "groups", run: () => leaveOrDeleteGroups(cleanUid) },
+    { name: "userProfiles", run: async () => ({ deleted: await deleteOwnProfile(cleanUid) }) },
+  ];
+
+  const report: AccountDataDeletionStep[] = [];
+  for (const step of steps) {
+    try {
+      const outcome = await step.run();
+      report.push({ step: step.name, deleted: outcome.deleted, failed: false, ...(outcome.kept !== undefined ? { kept: outcome.kept } : {}) });
+    } catch (error) {
+      const code = typeof (error as { code?: unknown })?.code === "string" ? (error as { code: string }).code : "unknown";
+      report.push({ step: step.name, deleted: 0, failed: true, error: code });
+    }
   }
-  return { places, posts, stories, reports, blocks, verifications };
+  const failed = report.filter((item) => item.failed);
+  if (failed.length > 0) {
+    const names = failed.map((item) => `${item.step} (${item.error})`).join(", ");
+    const err = dataError(
+      "data/delete-incomplete",
+      `Silme tamamlanamadı: ${names}. Hesabın silinmedi; tekrar dene.`,
+    ) as Error & { code: string; steps: AccountDataDeletionStep[] };
+    err.steps = report;
+    throw err;
+  }
+  return { ok: true, steps: report };
 }
 
-export async function deleteAccount(uid: string): Promise<void> {
-  // Önce verisini sil, sonra Auth hesabını sil
-  await deleteUserData(uid);
-  // Local storage temizliği
+export type AccountBackend = "firebase" | "device";
+
+export interface DeleteAccountInput {
+  uid: string;
+  backend: AccountBackend;
+  /** E-posta/şifre hesabında zorunlu; Google/Apple'da boş bırakılır (popup ile doğrulanır). */
+  password?: string;
+}
+
+function clearLocalAccountData(uid: string): void {
   try {
     const keysToRemove: string[] = [];
     for (let i = 0; i < localStorage.length; i += 1) {
@@ -389,18 +521,80 @@ export async function deleteAccount(uid: string): Promise<void> {
   } catch (error) {
     console.warn("[Atlasia] Yerel kayıtlar temizlenemedi:", error);
   }
+}
 
-  if (!firebaseApp) {
-    // Cihaz modu: local account sil
-    const { deleteDeviceAccount } = await import("./deviceAccounts");
-    await deleteDeviceAccount(uid);
+/**
+ * Silmeden ÖNCE kimlik doğrulaması. Başarısızsa hiçbir veri silinmez.
+ * E-posta/şifre: şifre ile; Google/Apple: popup ile yeniden doğrulama.
+ */
+export async function reauthenticateForAccountDeletion(
+  current: { email: string | null; providerData: Array<{ providerId: string }> },
+  password: string | undefined,
+  reauth: {
+    credential: (email: string, password: string) => unknown;
+    withCredential: (credential: unknown) => Promise<unknown>;
+    withPopup: (providerId: "google.com" | "apple.com") => Promise<unknown>;
+  },
+): Promise<void> {
+  const providers = current.providerData.map((item) => item.providerId);
+  const isPassword = providers.includes("password");
+  if (isPassword) {
+    if (!password) throw dataError("auth/password-required", "Hesabını silmek için şifreni gir. Hiçbir veri silinmedi.");
+    if (!current.email) throw dataError("auth/reauth-unsupported", "Hesap e-postası okunamadı; hiçbir veri silinmedi.");
+    try {
+      await reauth.withCredential(reauth.credential(current.email, password));
+    } catch (error) {
+      const code = typeof (error as { code?: unknown })?.code === "string" ? (error as { code: string }).code : "unknown";
+      const wrong = code === "auth/invalid-credential" || code === "auth/wrong-password" || code === "auth/invalid-login-credentials";
+      throw dataError(
+        "auth/reauth-failed",
+        wrong ? "Şifre yanlış. Hiçbir veri silinmedi." : `Yeniden doğrulama tamamlanamadı (${code}). Hiçbir veri silinmedi.`,
+      );
+    }
     return;
   }
+  const provider = providers.includes("google.com") ? "google.com" : providers.includes("apple.com") ? "apple.com" : null;
+  if (!provider) throw dataError("auth/reauth-unsupported", "Bu hesap türüyle yeniden doğrulama yapılamıyor; hiçbir veri silinmedi.");
+  try {
+    await reauth.withPopup(provider);
+  } catch (error) {
+    const code = typeof (error as { code?: unknown })?.code === "string" ? (error as { code: string }).code : "unknown";
+    throw dataError("auth/reauth-failed", `Yeniden doğrulama tamamlanamadı (${code}). Hiçbir veri silinmedi.`);
+  }
+}
+
+/**
+ * Hesap silme. KARAR: backend hesabın kendisinden gelir (firebaseApp varlığından değil).
+ * - device: yalnız cihaz hesabı + yerel veri; Firestore'a hiç dokunulmaz.
+ * - firebase: yeniden doğrulama → veri silme (hata varsa durur) → Auth hesabı.
+ */
+export async function deleteAccount(input: DeleteAccountInput): Promise<AccountDataDeletionReport | null> {
+  const uid = input.uid.trim();
+  if (!uid) throw dataError("auth/required", "Hesap bilgisi geçersiz.");
+
+  if (input.backend === "device") {
+    const { deleteDeviceAccount } = await import("./deviceAccounts");
+    await deleteDeviceAccount(uid);
+    clearLocalAccountData(uid);
+    return null;
+  }
+
+  if (!firebaseApp) throw dataError("auth/unavailable", "Firebase bu derlemede yapılandırılmamış; hesap silinemedi.");
   const auth = await getAtlasAuth();
   const current = auth.currentUser;
   if (!current || current.uid !== uid) throw dataError("auth/session-expired", "Oturumun doğrulanamadı, yeniden giriş yap.");
-  // Auth SDK'sı yalnız hesap silme gibi seyrek işlemlerde yüklenir; statik
-  // import, moderasyonu kullanan her ekranı başlangıç grafiğine bağlar.
-  const { deleteUser } = await import("firebase/auth");
-  await deleteUser(current);
+  // Auth SDK'sı yalnız hesap silme gibi seyrek işlemlerde yüklenir.
+  const authSdk = await import("firebase/auth");
+  await reauthenticateForAccountDeletion(current, input.password, {
+    credential: (email, pass) => authSdk.EmailAuthProvider.credential(email, pass),
+    withCredential: (credential) => authSdk.reauthenticateWithCredential(current, credential as Parameters<typeof authSdk.reauthenticateWithCredential>[1]),
+    withPopup: (providerId) => authSdk.reauthenticateWithPopup(
+      current,
+      providerId === "google.com" ? new authSdk.GoogleAuthProvider() : new authSdk.OAuthProvider("apple.com"),
+    ),
+  });
+  const report = await deleteUserData(uid);
+  await authSdk.deleteUser(current);
+  clearLocalAccountData(uid);
+  return report;
 }

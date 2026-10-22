@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import {
   AlertCircle,
   Bookmark,
+  Download,
   CheckCircle2,
   Loader2,
   LogOut,
@@ -22,6 +23,9 @@ import { useCollections } from "../hooks/useCollections";
 import { authErrorMessage } from "../lib/auth";
 import { usePanelAccess } from "../hooks/usePanelAccess";
 import { deleteAccount } from "../lib/moderation";
+// Seyrek kullanılan akışlar başlangıç paketine girmez (bundle bütçesi): yalnız
+// tıklanınca yüklenir.
+const FeedbackDialog = lazy(() => import("./FeedbackDialog"));
 
 interface Props {
   onClose: () => void;
@@ -40,7 +44,11 @@ export default function ProfilePanel({ onClose, onRecords }: Props) {
   const [verificationBusy, setVerificationBusy] = useState<"send" | "check" | null>(null);
   const [verificationSent, setVerificationSent] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [exporting, setExporting] = useState(false);
   const needsEmailVerification = user?.backend === "firebase" && !!user.email && !user.emailVerified;
 
   const sendVerification = async () => {
@@ -96,12 +104,31 @@ export default function ProfilePanel({ onClose, onRecords }: Props) {
     }
   };
 
+  // KVKK md. 11: kendi verisini tek JSON olarak indirir. Hata gösterilir; kısmi dosya indirilmez.
+  const exportData = async () => {
+    if (!user) return;
+    setExporting(true);
+    setStatus(null);
+    try {
+      const { downloadAccountExport, exportAccountData } = await import("../lib/accountExport");
+      const file = await exportAccountData({ uid: user.uid, backend: user.backend, account: { displayName: user.displayName, email: user.email } });
+      downloadAccountExport(file);
+      setStatus("Verilerin JSON dosyası hazırlandı.");
+    } catch (error) {
+      setStatus(`Veriler indirilemedi: ${(error as Error).message}`);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const completeDelete = async () => {
     if (!user) return;
     setDeleting(true);
     setStatus(null);
+    setDeleteError(null);
     try {
-      await deleteAccount(user.uid);
+      await deleteAccount({ uid: user.uid, backend: user.backend, password: deletePassword });
+      setDeletePassword("");
       setStatus("Hesabın ve tüm verilerin silindi.");
       // Oturum zaten kalktı; kısa gecikme sonrası kapan
       setTimeout(() => {
@@ -109,7 +136,7 @@ export default function ProfilePanel({ onClose, onRecords }: Props) {
         onClose();
       }, 800);
     } catch (error) {
-      setStatus(authErrorMessage(error) || (error as Error).message);
+      setDeleteError(authErrorMessage(error) || (error as Error).message);
     } finally {
       setDeleting(false);
     }
@@ -224,14 +251,14 @@ export default function ProfilePanel({ onClose, onRecords }: Props) {
           <Route size={15} className="mt-1 shrink-0" />
           Kaydettiğin yerler ve rotalar bu cihazda, hesabına özel tutulur.
         </p>
-        <section aria-labelledby="danger-title" className="mt-6 rounded-2xl border border-red-300/20 bg-red-400/5 p-4">
-          <h3 id="danger-title" className="flex items-center gap-2 text-[13px] font-semibold text-red-200"><Trash2 size={14} />Tehlikeli alan</h3>
-          <p className="mt-1 text-[12px] leading-relaxed text-mint/60">Hesabını silersen tüm izlerin, gönderilerin, hikâyelerin ve engelleme listelerin kalıcı olarak kalkar. Bu işlem geri alınamaz.</p>
-          <button type="button" onClick={() => setConfirmDelete(true)} className="mt-3 flex min-h-10 items-center gap-2 rounded-full border border-red-300/25 px-4 text-[12px] font-semibold text-red-200 hover:bg-red-400/10">
-            <Trash2 size={14} />Hesabımı ve verilerimi sil
-          </button>
-        </section>
+        <button type="button" onClick={() => setFeedbackOpen(true)} className="mt-6 flex min-h-10 items-center gap-2 rounded-full border border-sun/30 px-4 text-[12px] font-semibold text-sun">
+          Geri bildirim gönder
+        </button>
+        <button type="button" disabled={exporting} onClick={() => void exportData()} className="mt-2 flex min-h-10 items-center gap-2 rounded-full border border-white/15 px-4 text-[12px] font-semibold text-mint disabled:opacity-60">
+          {exporting ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}Verilerimi indir
+        </button>
       </div>
+      {feedbackOpen && <Suspense fallback={null}><FeedbackDialog uid={user?.uid ?? null} onClose={() => setFeedbackOpen(false)} /></Suspense>}
 
       <footer className="shrink-0 border-t border-white/10 bg-ink-2 px-6 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] md:pb-4">
         <button
@@ -240,6 +267,14 @@ export default function ProfilePanel({ onClose, onRecords }: Props) {
           className="flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-red-300/20 text-[14px] text-red-200/90 transition hover:bg-red-400/10"
         >
           <LogOut size={17} />Hesaptan çık
+        </button>
+        {/* Hesap silme panel kaydırılmadan görünür: alt alanda, çıkışın hemen altında. */}
+        <button
+          type="button"
+          onClick={() => { setDeleteError(null); setConfirmDelete(true); }}
+          className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-full text-[13px] font-semibold text-red-200/80 transition hover:bg-red-400/10"
+        >
+          <Trash2 size={15} />Hesabımı ve verilerimi sil
         </button>
       </footer>
 
@@ -262,7 +297,21 @@ export default function ProfilePanel({ onClose, onRecords }: Props) {
         <div className="absolute inset-0 z-20 grid place-items-end bg-black/65 p-4 backdrop-blur-sm md:place-items-center">
           <section role="alertdialog" aria-modal="true" aria-labelledby="delete-title" className="w-full rounded-[24px] border border-red-300/20 bg-[#1a0f0f] p-5 shadow-2xl">
             <h3 id="delete-title" className="font-display text-lg font-semibold text-red-200">Hesabın tamamen silinsin mi?</h3>
-            <p className="mt-2 text-[13px] leading-relaxed text-mint/70">Tüm izlerin, gönderilerin, hikâyelerin, raporların ve engellerin silinir. Oturumun kapanır ve verilerin geri getirilemez. Onaylıyor musun?</p>
+            <p className="mt-2 text-[13px] leading-relaxed text-mint/70">İzlerin, rotaların, kayıtların, gönderilerin, hikâyelerin, arkadaşlıkların, grup üyeliklerin, bildirimlerin, raporların, engellerin ve geri bildirimlerin silinir. Bir adım başarısız olursa hesabın silinmez ve tekrar deneyebilirsin. Bu işlem geri alınamaz. Onaylıyor musun?</p>
+            {user?.backend === "firebase" && (
+              <label className="mt-4 block text-[12px] text-mint/75">
+                Şifren (e-posta hesabıysan zorunlu; Google/Apple ile girdiysen boş bırak)
+                <input
+                  type="password"
+                  autoComplete="current-password"
+                  value={deletePassword}
+                  onChange={(event) => setDeletePassword(event.target.value)}
+                  disabled={deleting}
+                  className="mt-1 min-h-11 w-full rounded-xl border border-white/15 bg-black/30 px-3 text-sm text-mint focus-visible:outline focus-visible:outline-2 focus-visible:outline-sun"
+                />
+              </label>
+            )}
+            {deleteError && <p role="alert" className="mt-3 text-[13px] leading-relaxed text-red-200">{deleteError}</p>}
             <div className="mt-5 grid grid-cols-2 gap-2">
               <button type="button" disabled={deleting} onClick={() => setConfirmDelete(false)} className="min-h-11 rounded-full border border-white/15 text-sm text-mint disabled:opacity-50">Vazgeç</button>
               <button type="button" disabled={deleting} onClick={() => void completeDelete()} className="flex min-h-11 items-center justify-center gap-2 rounded-full bg-red-300 px-4 text-sm font-semibold text-[#30110f] disabled:opacity-60">
