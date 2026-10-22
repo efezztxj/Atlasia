@@ -794,7 +794,7 @@ describe("Firestore güvenlik kuralları", () => {
     await assertSucceeds(deleteDoc(doc(memberDb, "users/member/groups/group-1")));
   });
 
-  it("tazelik doğrulamasını yalnız kendi adına yazar, herkes sınırlı sayfada okur", async () => {
+  it("tazelik doğrulamasını yalnız kendi adına yazar; okuma giriş şartına bağlıdır", async () => {
     const memberDb = testEnv.authenticatedContext("member").firestore();
     const otherDb = testEnv.authenticatedContext("other").firestore();
     const guestDb = testEnv.unauthenticatedContext().firestore();
@@ -812,13 +812,37 @@ describe("Firestore güvenlik kuralları", () => {
     await assertFails(setDoc(doc(memberDb, "verifications/extra"), { ...valid, xp: 50 }));
     await assertSucceeds(setDoc(doc(memberDb, "verifications/vr-1"), valid));
 
-    await assertSucceeds(getDoc(doc(guestDb, "verifications/vr-1")));
+    // Aşama 3-A: anonim okuma kapalı (serbest metin `note` gizliliği).
+    await assertFails(getDoc(doc(guestDb, "verifications/vr-1")));
     await assertFails(getDocs(collection(guestDb, "verifications")));
-    await assertSucceeds(getDocs(query(collection(guestDb, "verifications"), limit(50))));
-    await assertFails(getDocs(query(collection(guestDb, "verifications"), limit(51))));
+    await assertFails(getDocs(query(collection(guestDb, "verifications"), limit(50))));
+    // Oturumlu okuma sınırlı sayfada açık.
+    await assertSucceeds(getDoc(doc(otherDb, "verifications/vr-1")));
+    await assertSucceeds(getDocs(query(collection(otherDb, "verifications"), limit(50))));
+    await assertFails(getDocs(query(collection(otherDb, "verifications"), limit(51))));
     await assertFails(updateDoc(doc(memberDb, "verifications/vr-1"), { status: "closed" }));
     await assertFails(deleteDoc(doc(otherDb, "verifications/vr-1")));
     await assertSucceeds(deleteDoc(doc(memberDb, "verifications/vr-1")));
+  });
+
+  // === Aşama 3-A — verifications.note yalnız oturumlu kullanıcıya açık ===
+  it("anonim tazelik okuması reddedilir; giriş yapınca get ve sınırlı list açılır", async () => {
+    await seed("verifications/vr-note", {
+      placeId: "place-1",
+      uid: "member",
+      status: "still_open",
+      note: "Giriş ücreti 200 TL oldu.",
+      createdAt: Timestamp.now(),
+    });
+    const guestDb = testEnv.unauthenticatedContext().firestore();
+    const memberDb = testEnv.authenticatedContext("member").firestore();
+    const otherDb = testEnv.authenticatedContext("other").firestore();
+
+    await assertFails(getDoc(doc(guestDb, "verifications/vr-note")));
+    await assertFails(getDocs(query(collection(guestDb, "verifications"), limit(50))));
+    await assertSucceeds(getDoc(doc(otherDb, "verifications/vr-note")));
+    await assertSucceeds(getDocs(query(collection(memberDb, "verifications"), limit(50))));
+    await assertFails(getDocs(query(collection(memberDb, "verifications"), limit(51))));
   });
 
   it("içerik bildirimini yalnız oturum sahibi adına ve sınırlı alanlarla kabul eder", async () => {

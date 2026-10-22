@@ -647,11 +647,12 @@ service cloud.firestore {
       allow delete: if signedIn() && resource.data.uid == request.auth.uid;
     }
 
-    // Tazelik doğrulamaları: herkese açık okuma, yalnız kendi adına yazma.
+    // Tazelik doğrulamaları: okuma GİRİŞ ŞARTI (Aşama 3-A), yalnız kendi adına yazma.
+    // `note` 280 karaktere kadar serbest metin taşıdığı için anonim okuma kapatıldı.
     // Liste isteği 50 kayıtla sınırlıdır; canlı dinleyici tek pencere tutar.
     match /verifications/{verificationId} {
-      allow get: if true;
-      allow list: if boundedList(50);
+      allow get: if signedIn();
+      allow list: if signedIn() && boundedList(50);
       allow create: if signedIn() && validVerification(request.resource.data);
       allow update: if false;
       allow delete: if signedIn() && resource.data.uid == request.auth.uid;
