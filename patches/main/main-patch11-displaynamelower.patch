@@ -1,0 +1,425 @@
+diff --git a/firestore.rules b/firestore.rules
+index b84fc438c1782f82312e8be4b38c441915bb88f5..57ef607ce1af088e7c94aacc69c86ca78b31a169 100644
+--- a/firestore.rules
++++ b/firestore.rules
+@@ -411,11 +411,15 @@ service cloud.firestore {
+     }
+ 
+     function validUserProfile(data, uid) {
+-      return data.keys().hasAll(['uid', 'displayName', 'createdAt', 'updatedAt'])
+-             && data.keys().hasOnly(['uid', 'displayName', 'photoURL', 'createdAt', 'updatedAt'])
++      return data.keys().hasAll(['uid', 'displayName', 'displayNameLower', 'createdAt', 'updatedAt'])
++             && data.keys().hasOnly(['uid', 'displayName', 'displayNameLower', 'photoURL', 'createdAt', 'updatedAt'])
+              && data.uid == uid
+              && data.uid == request.auth.uid
+              && stringBetween(data.displayName, 2, 40)
++             // Sunucu tarafında lower() YOK: Türkçe İ JS'ten ayrışır (§Aşama 2).
++             // Yalnız biçim doğrulanır; normalizasyonu istemci üretir.
++             && stringBetween(data.displayNameLower, 2, 40)
++             && data.displayNameLower.matches('[a-z0-9 ığüşöçâîû-]+')
+              && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 500 && data.photoURL.matches('https?://.*')))
+              && data.createdAt == request.time
+              && data.updatedAt == request.time;
+diff --git a/src/components/FriendsTab.tsx b/src/components/FriendsTab.tsx
+index 6ba6751d64f22743c544c713c93651c99498c739..4b9d8f8c1c7f4285baab6d03523e95f0af22b4c2 100644
+--- a/src/components/FriendsTab.tsx
++++ b/src/components/FriendsTab.tsx
+@@ -50,8 +50,8 @@ export default function FriendsTab({ currentUid, currentName, friends, requests,
+     }
+     let active = true;
+     void fetchUserProfile(invitedByUid)
+-      .then((profile) => { if (active) setInviter(profile ?? { uid: invitedByUid, displayName: "Atlasia gezgini", createdAt: 0, updatedAt: 0 }); })
+-      .catch(() => { if (active) setInviter({ uid: invitedByUid, displayName: "Atlasia gezgini", createdAt: 0, updatedAt: 0 }); });
++      .then((profile) => { if (active) setInviter(profile ?? { uid: invitedByUid, displayName: "Atlasia gezgini", displayNameLower: "atlasia gezgini", createdAt: 0, updatedAt: 0 }); })
++      .catch(() => { if (active) setInviter({ uid: invitedByUid, displayName: "Atlasia gezgini", displayNameLower: "atlasia gezgini", createdAt: 0, updatedAt: 0 }); });
+     return () => { active = false; };
+   }, [invitedByUid, currentUid, onInviteHandled]);
+ 
+diff --git a/src/lib/userProfiles.io.test.ts b/src/lib/userProfiles.io.test.ts
+index abcae1b0c16ebb741a4d382ca7b153a9d1ad0dfa..313e870df37d182f5e333bd13da737699527beaa 100644
+--- a/src/lib/userProfiles.io.test.ts
++++ b/src/lib/userProfiles.io.test.ts
+@@ -1,14 +1,18 @@
+ /**
+  * Profil dizini: kural `createdAt == request.time` istediği için var olan
+  * belge güncellenemez. syncUserProfile değişmemişse yazmaz, değişmişse
+- * sil + yeniden oluştur yapar. Arama iki önekle (yazıldığı gibi + baş harf büyük).
++ * sil + yeniden oluştur yapar.
++ *
++ * Aşama 2: arama artık `displayNameLower` (Türkçe küçük harf) üzerinden tek
++ * aralık sorgusu; patch 7'deki "baş harfi büyüt" ikinci sorgusu kaldırıldı.
++ * Eski belgelerde alan yoksa ilk senkronda bir kez yeniden yazılır (geçiş).
+  */
+ import { beforeEach, describe, expect, it, vi } from "vitest";
+ 
+ const h = vi.hoisted(() => ({
+   store: new Map<string, Record<string, unknown>>(),
+   ops: [] as string[],
+-  queries: [] as Array<{ path: string; from: string; to: string }>,
++  queries: [] as Array<{ path: string; field: string; from: string; to: string }>,
+ }));
+ 
+ vi.mock("./firebase", () => ({ db: {} }));
+@@ -19,20 +23,21 @@ vi.mock("firebase/firestore", () => ({
+   setDoc: async (ref: { path: string }, data: Record<string, unknown>) => { h.ops.push(`set:${ref.path}`); h.store.set(ref.path, data); },
+   deleteDoc: async (ref: { path: string }) => { h.ops.push(`delete:${ref.path}`); h.store.delete(ref.path); },
+   serverTimestamp: () => "TS",
+-  orderBy: () => ({}),
++  orderBy: (field: string) => ({ field }),
+   limit: () => ({}),
+   onSnapshot: () => () => {},
+   where: (field: string, op: string, value: string) => ({ field, op, value }),
+-  query: (target: { path: string }, ...parts: Array<{ op?: string; value?: string }>) => {
++  query: (target: { path: string }, ...parts: Array<{ field?: string; op?: string; value?: string }>) => {
+     const from = parts.find((part) => part.op === ">=")?.value ?? "";
+     const to = parts.find((part) => part.op === "<")?.value ?? "";
+-    return { path: target.path, from, to };
++    const field = parts.find((part) => part.op === ">=")?.field ?? "";
++    return { path: target.path, field, from, to };
+   },
+-  getDocs: async (q: { path: string; from: string; to: string }) => {
++  getDocs: async (q: { path: string; field: string; from: string; to: string }) => {
+     h.queries.push(q);
+     const docs = [...h.store.entries()]
+       .filter(([key]) => key.startsWith(`${q.path}/`))
+-      .filter(([, data]) => String(data.displayName) >= q.from && String(data.displayName) < q.to)
++      .filter(([, data]) => String(data[q.field]) >= q.from && String(data[q.field]) < q.to)
+       .map(([key, data]) => ({ id: key.split("/")[1], data: () => data }));
+     return { docs };
+   },
+@@ -47,22 +52,37 @@ beforeEach(() => {
+ });
+ 
+ describe("syncUserProfile", () => {
+-  it("ilk kez oluşturur", async () => {
++  it("ilk kez oluşturur ve displayNameLower'ı Türkçe küçük harfle yazar", async () => {
+     expect(await syncUserProfile({ uid: "u1", displayName: " Efe " })).toBe("created");
+-    expect(h.store.get("userProfiles/u1")).toEqual({ uid: "u1", displayName: "Efe", createdAt: "TS", updatedAt: "TS" });
++    expect(h.store.get("userProfiles/u1")).toEqual({
++      uid: "u1",
++      displayName: "Efe",
++      displayNameLower: "efe",
++      createdAt: "TS",
++      updatedAt: "TS",
++    });
++    expect(await syncUserProfile({ uid: "u2", displayName: "İrem" })).toBe("created");
++    expect(h.store.get("userProfiles/u2")).toMatchObject({ displayNameLower: "irem" });
+   });
+ 
+-  it("ad ve foto aynıysa hiç yazmaz", async () => {
+-    h.store.set("userProfiles/u1", { uid: "u1", displayName: "Efe", createdAt: 1, updatedAt: 1 });
++  it("ad, foto ve displayNameLower aynıysa hiç yazmaz", async () => {
++    h.store.set("userProfiles/u1", { uid: "u1", displayName: "Efe", displayNameLower: "efe", createdAt: 1, updatedAt: 1 });
+     expect(await syncUserProfile({ uid: "u1", displayName: "Efe" })).toBe("unchanged");
+     expect(h.ops).toEqual([]);
+   });
+ 
++  it("geçiş: alanı olmayan eski belgeyi bir kez yeniden yazar", async () => {
++    h.store.set("userProfiles/u1", { uid: "u1", displayName: "Efe", createdAt: 1, updatedAt: 1 });
++    expect(await syncUserProfile({ uid: "u1", displayName: "Efe" })).toBe("replaced");
++    expect(h.ops).toEqual(["delete:userProfiles/u1", "set:userProfiles/u1"]);
++    expect(h.store.get("userProfiles/u1")).toMatchObject({ displayNameLower: "efe" });
++  });
++
+   it("ad değiştiyse siler ve yeniden oluşturur (kural güncellemeye izin vermez)", async () => {
+-    h.store.set("userProfiles/u1", { uid: "u1", displayName: "Eski", createdAt: 1, updatedAt: 1 });
++    h.store.set("userProfiles/u1", { uid: "u1", displayName: "Eski", displayNameLower: "eski", createdAt: 1, updatedAt: 1 });
+     expect(await syncUserProfile({ uid: "u1", displayName: "Yeni", photoURL: "https://x.dev/a.png" })).toBe("replaced");
+     expect(h.ops).toEqual(["delete:userProfiles/u1", "set:userProfiles/u1"]);
+-    expect(h.store.get("userProfiles/u1")).toMatchObject({ displayName: "Yeni", photoURL: "https://x.dev/a.png", createdAt: "TS" });
++    expect(h.store.get("userProfiles/u1")).toMatchObject({ displayName: "Yeni", displayNameLower: "yeni", photoURL: "https://x.dev/a.png", createdAt: "TS" });
+   });
+ 
+   it("http(s) olmayan foto adresi yazılmaz", async () => {
+@@ -72,18 +92,27 @@ describe("syncUserProfile", () => {
+ });
+ 
+ describe("searchUserProfiles", () => {
+-  it("küçük harfle yazılsa da baş harfi büyük adı bulur; kendisi sonuçta yok", async () => {
+-    h.store.set("userProfiles/me", { uid: "me", displayName: "Efe Ben" });
+-    h.store.set("userProfiles/u2", { uid: "u2", displayName: "Efe Yılmaz" });
+-    h.store.set("userProfiles/u3", { uid: "u3", displayName: "Can" });
++  it("tek aralık sorgusu displayNameLower üzerinde; büyük harf ikinci sorgu yok", async () => {
++    h.store.set("userProfiles/me", { uid: "me", displayName: "Efe Ben", displayNameLower: "efe ben" });
++    h.store.set("userProfiles/u2", { uid: "u2", displayName: "Efe Yılmaz", displayNameLower: "efe yılmaz" });
++    h.store.set("userProfiles/u3", { uid: "u3", displayName: "Can", displayNameLower: "can" });
+     const found = await searchUserProfiles("efe", "me");
+     expect(found.map((profile) => profile.uid)).toEqual(["u2"]);
+-    expect(h.queries.map((q) => q.from)).toEqual(["efe", "Efe"]);
++    expect(h.queries).toHaveLength(1);
++    expect(h.queries[0]).toMatchObject({ field: "displayNameLower", from: "efe", to: "efe\uf8ff" });
++  });
++
++  it("Türkçe İ: 'İrem' yazımı da 'irem' önekiyle bulunur", async () => {
++    h.store.set("userProfiles/u4", { uid: "u4", displayName: "İrem", displayNameLower: "irem" });
++    const found = await searchUserProfiles("İrem", "me");
++    expect(found.map((profile) => profile.uid)).toEqual(["u4"]);
++    expect(h.queries[0].from).toBe("irem");
+   });
+ 
+-  it("Türkçe baş harf: 'ilkay' → 'İlkay'", () => {
+-    expect(profilePrefixes("ilkay")).toEqual(["ilkay", "İlkay"]);
+-    expect(profilePrefixes("Can")).toEqual(["Can"]);
++  it("Türkçe baş harf öneki: 'ilkay' → ['ilkay'] (tek önek)", () => {
++    expect(profilePrefixes("ilkay")).toEqual(["ilkay"]);
++    expect(profilePrefixes("İlkay")).toEqual(["ilkay"]);
++    expect(profilePrefixes("IŞIK")).toEqual(["ışık"]);
+     expect(profilePrefixes("  ")).toEqual([]);
+   });
+ });
+diff --git a/src/lib/userProfiles.test.ts b/src/lib/userProfiles.test.ts
+index ae521019afc1304c164e0d620031e7a9453beb41..2c8bdb5d40dcf5ea5653b131f9a8cce214aaf39c 100644
+--- a/src/lib/userProfiles.test.ts
++++ b/src/lib/userProfiles.test.ts
+@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
+ 
+ vi.mock("./firebase", () => ({ db: {} }));
+ 
+-import { DISPLAY_NAME_MAX, USER_PROFILES_LIMIT, normalizeUserProfile, searchProfilesLocal, validateDisplayName, type UserProfile } from "./userProfiles";
++import { DISPLAY_NAME_MAX, USER_PROFILES_LIMIT, normalizeUserProfile, profilePrefixes, searchProfilesLocal, validateDisplayName, type UserProfile } from "./userProfiles";
+ 
+ /** Denetim 2026-10-22: P16 sonrası eklenen modülün saf kısmı için karakterizasyon. */
+ describe("validateDisplayName", () => {
+@@ -16,12 +16,26 @@ describe("validateDisplayName", () => {
+ 
+ describe("normalizeUserProfile", () => {
+   it("eksik alanlara varsayılan; geçersiz foto alanı düşer", () => {
+-    expect(normalizeUserProfile("u1", { photoURL: 5, createdAt: { toMillis: () => 4 } })).toEqual({ uid: "u1", displayName: "Gezgin", photoURL: undefined, createdAt: 4, updatedAt: 0 });
++    expect(normalizeUserProfile("u1", { photoURL: 5, createdAt: { toMillis: () => 4 } })).toEqual({ uid: "u1", displayName: "Gezgin", displayNameLower: "gezgin", photoURL: undefined, createdAt: 4, updatedAt: 0 });
++  });
++});
++
++describe("displayNameLower (arama anahtarı)", () => {
++  it("Türkçe küçük harfe indirger; eski belgede alanı displayName'den türetir", () => {
++    expect(normalizeUserProfile("u1", { displayName: "İrem" }).displayNameLower).toBe("irem");
++    expect(normalizeUserProfile("u2", { displayName: "IŞIK" }).displayNameLower).toBe("ışık");
++    expect(normalizeUserProfile("u3", { displayName: "İrem", displayNameLower: "irem" }).displayNameLower).toBe("irem");
++  });
++
++  it("arama öneki tek ve küçük harfli; büyük harf hack'i yok", () => {
++    expect(profilePrefixes("İrem")).toEqual(["irem"]);
++    expect(profilePrefixes("IŞIK")).toEqual(["ışık"]);
++    expect(profilePrefixes("  ")).toEqual([]);
+   });
+ });
+ 
+ describe("searchProfilesLocal", () => {
+-  const profile = (displayName: string, i = 0): UserProfile => ({ uid: `u${i}`, displayName, createdAt: 0, updatedAt: 0 });
++  const profile = (displayName: string, i = 0): UserProfile => ({ uid: `u${i}`, displayName, displayNameLower: displayName.toLocaleLowerCase("tr"), createdAt: 0, updatedAt: 0 });
+ 
+   it("Türkçe büyük/küçük harf duyarsız arar (İ/ı)", () => {
+     const list = [profile("İlkay"), profile("Işık", 1), profile("Can", 2)];
+diff --git a/src/lib/userProfiles.ts b/src/lib/userProfiles.ts
+index e5543ce42d4b8983897611d9f5f9b6211b99785f..5b090673e84b8359768e050c699ea4d226c7d329 100644
+--- a/src/lib/userProfiles.ts
++++ b/src/lib/userProfiles.ts
+@@ -30,6 +30,8 @@ export const DISPLAY_NAME_MAX = 40;
+ export interface UserProfile {
+   uid: string;
+   displayName: string;
++  /** Arama anahtarı: displayName'in Türkçe küçük harfi (kural zorunlu tutar). */
++  displayNameLower: string;
+   photoURL?: string;
+   createdAt: number;
+   updatedAt: number;
+@@ -55,9 +57,15 @@ export function validateDisplayName(name: string): string | null {
+ }
+ 
+ export function normalizeUserProfile(uid: string, raw: DocumentData): UserProfile {
++  const displayName = typeof raw.displayName === "string" ? raw.displayName : "Gezgin";
+   return {
+     uid,
+-    displayName: typeof raw.displayName === "string" ? raw.displayName : "Gezgin",
++    displayName,
++    // Geçiş: eski belgelerde alan yok; okuma tarafında türetilir, yazma tarafı
++    // syncUserProfile'ın ilk oturumunda alanı kalıcılaştırır.
++    displayNameLower: typeof raw.displayNameLower === "string"
++      ? raw.displayNameLower
++      : displayName.toLocaleLowerCase("tr"),
+     photoURL: typeof raw.photoURL === "string" ? raw.photoURL : undefined,
+     createdAt: toMillis(raw.createdAt),
+     updatedAt: toMillis(raw.updatedAt),
+@@ -85,6 +93,7 @@ export async function syncUserProfile(input: { uid: string; displayName: string;
+   const invalid = validateDisplayName(input.displayName);
+   if (invalid) throw dataError(invalid, "Profil adi 2-40 karakter olmali.");
+   const displayName = input.displayName.trim().slice(0, DISPLAY_NAME_MAX);
++  const displayNameLower = displayName.toLocaleLowerCase("tr");
+   const photo = input.photoURL?.trim();
+   const photoURL = photo && /^https?:\/\//.test(photo) && photo.length <= 500 ? photo : undefined;
+   const ref = doc(db, "userProfiles", uid);
+@@ -93,12 +102,16 @@ export async function syncUserProfile(input: { uid: string; displayName: string;
+   if (existed) {
+     const current = existing.data();
+     const samePhoto = (typeof current.photoURL === "string" ? current.photoURL : undefined) === photoURL;
+-    if (current.displayName === displayName && samePhoto) return "unchanged";
++    // Geçiş: alan yoksa belge bir kez yeniden yazılır; aksi hâlde eski belge
++    // sonsuza dek kural dışı (displayNameLower'sız) kalırdı.
++    const sameLower = current.displayNameLower === displayNameLower;
++    if (current.displayName === displayName && samePhoto && sameLower) return "unchanged";
+     await deleteDoc(ref);
+   }
+   await setDoc(ref, withoutUndefined({
+     uid,
+     displayName,
++    displayNameLower,
+     photoURL,
+     createdAt: serverTimestamp(),
+     updatedAt: serverTimestamp(),
+@@ -106,12 +119,14 @@ export async function syncUserProfile(input: { uid: string; displayName: string;
+   return existed ? "replaced" : "created";
+ }
+ 
+-/** Arama öneklerini üretir: yazıldığı gibi + ilk harfi Türkçe büyük (efe → Efe). */
++/**
++ * Arama öneki: Türkçe küçük harfe indirgenmiş tek değer (İrem → irem).
++ * Patch 7'deki "ilk harfi büyüt" hack'i kaldırıldı; alan artık normalize.
++ */
+ export function profilePrefixes(text: string): string[] {
+   const clean = text.trim().slice(0, DISPLAY_NAME_MAX);
+   if (!clean) return [];
+-  const capital = clean.charAt(0).toLocaleUpperCase("tr") + clean.slice(1);
+-  return [...new Set([clean, capital])];
++  return [clean.toLocaleLowerCase("tr")];
+ }
+ 
+ /** İsimle tek seferlik arama (en çok 20 sonuç, kendisi hariç). */
+@@ -119,22 +134,19 @@ export async function searchUserProfiles(text: string, excludeUid: string): Prom
+   if (!db) return [];
+   const prefixes = profilePrefixes(text);
+   if (prefixes.length === 0) return [];
++  const prefix = prefixes[0];
+   const firestore = db;
+-  const snaps = await Promise.all(prefixes.map((prefix) => getDocs(query(
++  const snap = await getDocs(query(
+     collection(firestore, "userProfiles"),
+-    orderBy("displayName"),
+-    where("displayName", ">=", prefix),
+-    where("displayName", "<", `${prefix}\uf8ff`),
++    orderBy("displayNameLower"),
++    where("displayNameLower", ">=", prefix),
++    where("displayNameLower", "<", `${prefix}\uf8ff`),
+     limit(USER_PROFILES_LIMIT),
+-  ))));
+-  const seen = new Map<string, UserProfile>();
+-  for (const snap of snaps) {
+-    for (const item of snap.docs) {
+-      if (item.id === excludeUid || seen.has(item.id)) continue;
+-      seen.set(item.id, normalizeUserProfile(item.id, item.data()));
+-    }
+-  }
+-  return [...seen.values()].slice(0, USER_PROFILES_LIMIT);
++  ));
++  return snap.docs
++    .filter((item) => item.id !== excludeUid)
++    .map((item) => normalizeUserProfile(item.id, item.data()))
++    .slice(0, USER_PROFILES_LIMIT);
+ }
+ 
+ export function subscribeUserProfiles(
+@@ -147,13 +159,13 @@ export function subscribeUserProfiles(
+     onChange([]);
+     return () => {};
+   }
+-  const start = clean;
+-  const end = `${clean}\uf8ff`;
++  const start = clean.toLocaleLowerCase("tr");
++  const end = `${start}\uf8ff`;
+   const q = query(
+     collection(db, "userProfiles"),
+-    orderBy("displayName"),
+-    where("displayName", ">=", start),
+-    where("displayName", "<", end),
++    orderBy("displayNameLower"),
++    where("displayNameLower", ">=", start),
++    where("displayNameLower", "<", end),
+     limit(USER_PROFILES_LIMIT),
+   );
+   return onSnapshot(
+diff --git a/tests/firestore.rules.test.ts b/tests/firestore.rules.test.ts
+index 5992296e41da41e59fb3a2772a55a6499633ff26..3914d938dcd7883d08de05d311f83a563ca9afb0 100644
+--- a/tests/firestore.rules.test.ts
++++ b/tests/firestore.rules.test.ts
+@@ -1562,6 +1562,7 @@ describe("Firestore güvenlik kuralları", () => {
+       setDoc(doc(aliceDb, "userProfiles/alice"), {
+         uid: "alice",
+         displayName: "Alice",
++        displayNameLower: "alice",
+         photoURL: "https://example.com/a.jpg",
+         createdAt: serverTimestamp(),
+         updatedAt: serverTimestamp(),
+@@ -1572,6 +1573,7 @@ describe("Firestore güvenlik kuralları", () => {
+       setDoc(doc(aliceDb, "userProfiles/alice2"), {
+         uid: "alice2",
+         displayName: "Alice2",
++        displayNameLower: "alice2",
+         email: "alice@example.com",
+         createdAt: serverTimestamp(),
+         updatedAt: serverTimestamp(),
+@@ -1582,6 +1584,7 @@ describe("Firestore güvenlik kuralları", () => {
+       setDoc(doc(bobDb, "userProfiles/alice"), {
+         uid: "alice",
+         displayName: "Hacked",
++        displayNameLower: "hacked",
+         createdAt: serverTimestamp(),
+         updatedAt: serverTimestamp(),
+       }),
+@@ -1592,6 +1595,59 @@ describe("Firestore güvenlik kuralları", () => {
+     await assertSucceeds(getDocs(query(collection(aliceDb, "userProfiles"), limit(20))));
+     await assertFails(getDocs(query(collection(aliceDb, "userProfiles"), limit(21))));
+   });
++
++  // === Aşama 2 — displayNameLower: zorunlu alan + Türkçe İ emülatör kanıtı ===
++  it("displayNameLower zorunlu; biçim denetimi Türkçe İ'yi istemcinin ürettiği gibi kabul eder", async () => {
++    const aliceDb = testEnv.authenticatedContext("alice").firestore();
++    const bobDb = testEnv.authenticatedContext("bob").firestore();
++    const profile = (uid: string, lower?: string) => ({
++      uid,
++      displayName: "İrem",
++      ...(lower === undefined ? {} : { displayNameLower: lower }),
++      createdAt: serverTimestamp(),
++      updatedAt: serverTimestamp(),
++    });
++
++    // Alan yok → FAIL (zorunlu)
++    await assertFails(setDoc(doc(aliceDb, "userProfiles/alice"), profile("alice")));
++    // Büyük harfli biçim → FAIL (kural lower() yapmaz; biçim ister)
++    await assertFails(setDoc(doc(aliceDb, "userProfiles/alice"), profile("alice", "İrem")));
++    // Birleşik noktalı "i̇rem" (JS'in dilsiz toLowerCase çıktısı) → FAIL
++    await assertFails(setDoc(doc(bobDb, "userProfiles/bob"), profile("bob", "i\u0307rem")));
++    // İstemcinin toLocaleLowerCase("tr") çıktısı → SUCCEED (kazanan varyant)
++    await assertSucceeds(setDoc(doc(aliceDb, "userProfiles/alice"), profile("alice", "irem")));
++  });
++
++  it("geçiş: displayNameLower'sız eski belge okunur, güncellenemez, yeniden yazılır", async () => {
++    await seed("userProfiles/alice", {
++      uid: "alice",
++      displayName: "İrem",
++      createdAt: Timestamp.now(),
++      updatedAt: Timestamp.now(),
++    });
++    const aliceDb = testEnv.authenticatedContext("alice").firestore();
++    const bobDb = testEnv.authenticatedContext("bob").firestore();
++
++    // Okuma etkilenmez (liste/get kuralı alan istemez).
++    await assertSucceeds(getDoc(doc(bobDb, "userProfiles/alice")));
++    // Güncelleme zaten kapalı: createdAt == request.time çelişkisi.
++    await assertFails(updateDoc(doc(aliceDb, "userProfiles/alice"), {
++      uid: "alice",
++      displayName: "İrem",
++      displayNameLower: "irem",
++      createdAt: serverTimestamp(),
++      updatedAt: serverTimestamp(),
++    }));
++    // Geçiş yolu: sil + alanla yeniden oluştur.
++    await assertSucceeds(deleteDoc(doc(aliceDb, "userProfiles/alice")));
++    await assertSucceeds(setDoc(doc(aliceDb, "userProfiles/alice"), {
++      uid: "alice",
++      displayName: "İrem",
++      displayNameLower: "irem",
++      createdAt: serverTimestamp(),
++      updatedAt: serverTimestamp(),
++    }));
++  });
+   // Hesap silme ve "Verilerimi indir", tek tek belge silmeden ÖNCE bu liste
+   // sorgularını çalıştırır. Sayfa boyutu herhangi bir boundedList sınırını
+   // aşarsa sorgu reddedilir ve hesap silme hiç tamamlanmaz.

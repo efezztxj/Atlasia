@@ -30,6 +30,8 @@ export const DISPLAY_NAME_MAX = 40;
 export interface UserProfile {
   uid: string;
   displayName: string;
+  /** Arama anahtarı: displayName'in Türkçe küçük harfi (kural zorunlu tutar). */
+  displayNameLower: string;
   photoURL?: string;
   createdAt: number;
   updatedAt: number;
@@ -55,9 +57,15 @@ export function validateDisplayName(name: string): string | null {
 }
 
 export function normalizeUserProfile(uid: string, raw: DocumentData): UserProfile {
+  const displayName = typeof raw.displayName === "string" ? raw.displayName : "Gezgin";
   return {
     uid,
-    displayName: typeof raw.displayName === "string" ? raw.displayName : "Gezgin",
+    displayName,
+    // Geçiş: eski belgelerde alan yok; okuma tarafında türetilir, yazma tarafı
+    // syncUserProfile'ın ilk oturumunda alanı kalıcılaştırır.
+    displayNameLower: typeof raw.displayNameLower === "string"
+      ? raw.displayNameLower
+      : displayName.toLocaleLowerCase("tr"),
     photoURL: typeof raw.photoURL === "string" ? raw.photoURL : undefined,
     createdAt: toMillis(raw.createdAt),
     updatedAt: toMillis(raw.updatedAt),
@@ -85,6 +93,7 @@ export async function syncUserProfile(input: { uid: string; displayName: string;
   const invalid = validateDisplayName(input.displayName);
   if (invalid) throw dataError(invalid, "Profil adi 2-40 karakter olmali.");
   const displayName = input.displayName.trim().slice(0, DISPLAY_NAME_MAX);
+  const displayNameLower = displayName.toLocaleLowerCase("tr");
   const photo = input.photoURL?.trim();
   const photoURL = photo && /^https?:\/\//.test(photo) && photo.length <= 500 ? photo : undefined;
   const ref = doc(db, "userProfiles", uid);
@@ -93,12 +102,16 @@ export async function syncUserProfile(input: { uid: string; displayName: string;
   if (existed) {
     const current = existing.data();
     const samePhoto = (typeof current.photoURL === "string" ? current.photoURL : undefined) === photoURL;
-    if (current.displayName === displayName && samePhoto) return "unchanged";
+    // Geçiş: alan yoksa belge bir kez yeniden yazılır; aksi hâlde eski belge
+    // sonsuza dek kural dışı (displayNameLower'sız) kalırdı.
+    const sameLower = current.displayNameLower === displayNameLower;
+    if (current.displayName === displayName && samePhoto && sameLower) return "unchanged";
     await deleteDoc(ref);
   }
   await setDoc(ref, withoutUndefined({
     uid,
     displayName,
+    displayNameLower,
     photoURL,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -106,12 +119,14 @@ export async function syncUserProfile(input: { uid: string; displayName: string;
   return existed ? "replaced" : "created";
 }
 
-/** Arama öneklerini üretir: yazıldığı gibi + ilk harfi Türkçe büyük (efe → Efe). */
+/**
+ * Arama öneki: Türkçe küçük harfe indirgenmiş tek değer (İrem → irem).
+ * Patch 7'deki "ilk harfi büyüt" hack'i kaldırıldı; alan artık normalize.
+ */
 export function profilePrefixes(text: string): string[] {
   const clean = text.trim().slice(0, DISPLAY_NAME_MAX);
   if (!clean) return [];
-  const capital = clean.charAt(0).toLocaleUpperCase("tr") + clean.slice(1);
-  return [...new Set([clean, capital])];
+  return [clean.toLocaleLowerCase("tr")];
 }
 
 /** İsimle tek seferlik arama (en çok 20 sonuç, kendisi hariç). */
@@ -119,22 +134,19 @@ export async function searchUserProfiles(text: string, excludeUid: string): Prom
   if (!db) return [];
   const prefixes = profilePrefixes(text);
   if (prefixes.length === 0) return [];
+  const prefix = prefixes[0];
   const firestore = db;
-  const snaps = await Promise.all(prefixes.map((prefix) => getDocs(query(
+  const snap = await getDocs(query(
     collection(firestore, "userProfiles"),
-    orderBy("displayName"),
-    where("displayName", ">=", prefix),
-    where("displayName", "<", `${prefix}\uf8ff`),
+    orderBy("displayNameLower"),
+    where("displayNameLower", ">=", prefix),
+    where("displayNameLower", "<", `${prefix}\uf8ff`),
     limit(USER_PROFILES_LIMIT),
-  ))));
-  const seen = new Map<string, UserProfile>();
-  for (const snap of snaps) {
-    for (const item of snap.docs) {
-      if (item.id === excludeUid || seen.has(item.id)) continue;
-      seen.set(item.id, normalizeUserProfile(item.id, item.data()));
-    }
-  }
-  return [...seen.values()].slice(0, USER_PROFILES_LIMIT);
+  ));
+  return snap.docs
+    .filter((item) => item.id !== excludeUid)
+    .map((item) => normalizeUserProfile(item.id, item.data()))
+    .slice(0, USER_PROFILES_LIMIT);
 }
 
 export function subscribeUserProfiles(
@@ -147,13 +159,13 @@ export function subscribeUserProfiles(
     onChange([]);
     return () => {};
   }
-  const start = clean;
-  const end = `${clean}\uf8ff`;
+  const start = clean.toLocaleLowerCase("tr");
+  const end = `${start}\uf8ff`;
   const q = query(
     collection(db, "userProfiles"),
-    orderBy("displayName"),
-    where("displayName", ">=", start),
-    where("displayName", "<", end),
+    orderBy("displayNameLower"),
+    where("displayNameLower", ">=", start),
+    where("displayNameLower", "<", end),
     limit(USER_PROFILES_LIMIT),
   );
   return onSnapshot(
