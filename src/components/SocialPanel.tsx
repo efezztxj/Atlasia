@@ -145,6 +145,28 @@ export default function SocialPanel({
   }, [socialTarget, onSocialTargetHandled]);
 
   const listRef = useRef<HTMLDivElement>(null);
+  const [dragY, setDragY] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const dragStartY = useRef<number | null>(null);
+
+  const startPanelDrag = (event: React.PointerEvent<HTMLElement>) => {
+    if ((event.target as HTMLElement).closest("button")) return;
+    dragStartY.current = event.clientY;
+    setDragging(true);
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+  const movePanelDrag = (event: React.PointerEvent<HTMLElement>) => {
+    if (dragStartY.current === null) return;
+    setDragY(Math.max(0, Math.min(260, event.clientY - dragStartY.current)));
+  };
+  const endPanelDrag = (event: React.PointerEvent<HTMLElement>) => {
+    if (dragStartY.current === null) return;
+    const distance = Math.max(0, event.clientY - dragStartY.current);
+    dragStartY.current = null;
+    setDragging(false);
+    setDragY(0);
+    if (distance > 90) onClose();
+  };
   const replyInputRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -336,8 +358,18 @@ export default function SocialPanel({
           "lg:inset-x-auto lg:bottom-4 lg:left-4 lg:h-[min(64vh,600px)] lg:w-[380px] lg:rounded-[26px] lg:pb-0",
         )}
         aria-label="İzler"
+        style={{ translate: `0 ${dragY}px`, transition: dragging ? "none" : "translate 180ms ease" }}
       >
-        <span aria-hidden className="sheet-handle mt-2.5 shrink-0 lg:hidden" />
+        <div
+          data-panel-drag-handle
+          onPointerDown={startPanelDrag}
+          onPointerMove={movePanelDrag}
+          onPointerUp={endPanelDrag}
+          onPointerCancel={endPanelDrag}
+          className="shrink-0 cursor-grab touch-none select-none active:cursor-grabbing"
+          title="Aşağı kaydırarak küçült"
+        >
+        <span aria-hidden className="sheet-handle mt-2.5 lg:hidden" />
         {/* Başlık */}
         <div className="flex items-center gap-2 border-b border-white/[0.07] px-4 py-3">
           <h2 className="font-display text-[17px] font-semibold tracking-tight text-white">İzler</h2>
@@ -358,9 +390,12 @@ export default function SocialPanel({
             <Minus className="size-4" />
           </button>
         </div>
+        </div>
 
+        {/* Kayan alan: story şeridi akışla kayar, filtre üstte sabitlenir */}
+        <div ref={listRef} className="thin-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain">
         {/* Story şeridi */}
-        <div className="no-scrollbar fade-x flex shrink-0 gap-3 overflow-x-auto border-b border-white/[0.07] px-4 py-3">
+        <div className="no-scrollbar fade-x flex gap-3 overflow-x-auto border-b border-white/[0.07] px-4 py-3">
           <button
             onClick={() => setComposerOpen(true)}
             className="flex w-[58px] shrink-0 flex-col items-center gap-1.5"
@@ -424,7 +459,7 @@ export default function SocialPanel({
         </div>
 
         {/* Sekmeler */}
-        <div className="flex shrink-0 items-center gap-2.5 px-3 pt-2.5">
+        <div className="sticky top-0 z-10 flex items-center gap-2.5 bg-ink-2/95 px-3 py-2.5 backdrop-blur-xl">
           <div className="segmented min-w-0 flex-1" role="group" aria-label="İz filtresi">
             {(
               [
@@ -456,7 +491,7 @@ export default function SocialPanel({
         )}
 
         {/* Gönderiler */}
-        <div ref={listRef} className="thin-scroll flex-1 overflow-y-auto px-3 py-2">
+        <div className="px-3 py-2">
           {visiblePosts.length === 0 && (
             <div className="px-3 py-10 text-center">
               <Sparkles className="mx-auto mb-2 size-5 text-leaf/70" />
@@ -651,6 +686,7 @@ export default function SocialPanel({
               Daha eski gönderileri yükle
             </button>
           )}
+        </div>
         </div>
 
         {/* Yazma alanı */}

@@ -9,7 +9,7 @@ import BottomPanel from "./components/BottomPanel";
 import AddDiscoveryModal from "./components/AddDiscoveryModal";
 import Drawer from "./components/Drawer";
 import SocialPanel from "./components/SocialPanel";
-import SettingsPanel from "./components/SettingsPanel";
+import SettingsPanel, { type SettingsContentProps } from "./components/SettingsPanel";
 import AtlasAssistant from "./components/AtlasAssistant";
 import Onboarding from "./components/Onboarding";
 import PlaceDetails from "./components/PlaceDetails";
@@ -510,6 +510,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
     setLocationLabel(preciseLabel ?? "Konumun");
     mapRef.current?.showMe(geo.fix.lng, geo.fix.lat, geo.fix.accuracy, true);
     closeSettings();
+    setProfileOpen(false);
   };
 
   const handleClearLocation = useCallback(() => {
@@ -605,6 +606,29 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   const mobileExplore = () => { closePanels(); setPanelOpen(true); };
   const openMyPlaces = () => { closePanels(); setMyPlacesOpen(true); };
   const mobileTab = myPlacesOpen ? "İzlerim" : recordsOpen ? "Kaydet" : feedOpen ? "Topluluk" : profileOpen ? "Profil" : "Keşfet";
+  const settingsContentProps: SettingsContentProps = {
+    theme,
+    onTheme: setTheme,
+    baseMap,
+    onBaseMap: setBaseMap,
+    installApp,
+    mapBounds: mapViewport?.bounds ?? null,
+    location: {
+      supported: geo.supported,
+      secure: geo.secure,
+      permission: geo.permission,
+      status: geo.status,
+      fix: geo.fix,
+      label: preciseLabel,
+    },
+    onAllowLocation: handleAllowLocation,
+    onClearLocation: handleClearLocation,
+    onShowLocation: handleShowLocation,
+    showLabels: labels,
+    onToggleLabels: () => setLabels((value) => !value),
+    terrainEnabled: terrain,
+    onToggleTerrain: () => setTerrain((value) => !value),
+  };
 
   return (
     <div className="space-bg relative h-screen w-full overflow-hidden">
@@ -885,7 +909,20 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
           setToast(visibility === "private" ? "Rota hesabında özel olarak kaydedildi." : "Rota yayımlandı. Kalıcı bağlantı hazır.");
         }}
       />}
-      {profileOpen && <Suspense fallback={null}><ProfilePanel onClose={() => setProfileOpen(false)} onRecords={openRecords} /></Suspense>}
+      {profileOpen && (
+        <Suspense fallback={null}>
+          <ProfilePanel
+            onClose={() => setProfileOpen(false)}
+            onRecords={openRecords}
+            settings={settingsContentProps}
+            myPlacesCount={myPlaces.length}
+            onMyPlaces={openMyPlaces}
+            unreadCount={unreadCount}
+            onNotifications={() => { closePanels(); setNotificationsOpen(true); }}
+            onAtlasAI={openAtlas}
+          />
+        </Suspense>
+      )}
       {myPlacesOpen && (
         <MyPlacesPanel
           places={myPlaces}
@@ -931,26 +968,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
       )}
 
       {settingsOpen && (
-        <SettingsPanel
-          onClose={closeSettings}
-          theme={theme}
-          onTheme={setTheme}
-          baseMap={baseMap}
-          onBaseMap={setBaseMap}
-          installApp={installApp}
-          mapBounds={mapViewport?.bounds ?? null}
-          location={{
-            supported: geo.supported,
-            secure: geo.secure,
-            permission: geo.permission,
-            status: geo.status,
-            fix: geo.fix,
-            label: preciseLabel,
-          }}
-          onAllowLocation={handleAllowLocation}
-          onClearLocation={handleClearLocation}
-          onShowLocation={handleShowLocation}
-        />
+        <SettingsPanel onClose={closeSettings} {...settingsContentProps} />
       )}
 
       {onboarding && (

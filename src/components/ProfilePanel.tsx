@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState } from "react";
 import {
   AlertCircle,
+  Bell,
   Bookmark,
   ChevronRight,
   Download,
@@ -8,6 +9,7 @@ import {
   Loader2,
   LogOut,
   Mail,
+  MapPin,
   Monitor,
   Phone,
   RefreshCw,
@@ -15,6 +17,8 @@ import {
   Copy,
   Send,
   ShieldCheck,
+  SlidersHorizontal,
+  Sparkles,
   Trash2,
   UserRound,
   X,
@@ -24,6 +28,7 @@ import { useCollections } from "../hooks/useCollections";
 import { authErrorMessage } from "../lib/auth";
 import { usePanelAccess } from "../hooks/usePanelAccess";
 import { deleteAccount } from "../lib/moderation";
+import { SettingsContent, type SettingsContentProps } from "./SettingsPanel";
 // Seyrek kullanılan akışlar başlangıç paketine girmez (bundle bütçesi): yalnız
 // tıklanınca yüklenir.
 const FeedbackDialog = lazy(() => import("./FeedbackDialog"));
@@ -31,9 +36,15 @@ const FeedbackDialog = lazy(() => import("./FeedbackDialog"));
 interface Props {
   onClose: () => void;
   onRecords: () => void;
+  settings: SettingsContentProps;
+  myPlacesCount: number;
+  onMyPlaces: () => void;
+  unreadCount: number;
+  onNotifications: () => void;
+  onAtlasAI: () => void;
 }
 
-export default function ProfilePanel({ onClose, onRecords }: Props) {
+export default function ProfilePanel({ onClose, onRecords, settings, myPlacesCount, onMyPlaces, unreadCount, onNotifications, onAtlasAI }: Props) {
   const { user, logout, setName, resendVerification, refreshSession } = useAuth();
   const { savedPlaces, savedRoutes } = useCollections();
   const panelRef = usePanelAccess(true, onClose);
@@ -50,7 +61,18 @@ export default function ProfilePanel({ onClose, onRecords }: Props) {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deletePassword, setDeletePassword] = useState("");
   const [exporting, setExporting] = useState(false);
+  const [activeSection, setActiveSection] = useState("profile-account");
   const needsEmailVerification = user?.backend === "firebase" && !!user.email && !user.emailVerified;
+  const accountType = user?.backend === "device" ? "Bu cihaza özel" : "Bulut hesabı";
+  const verificationLabel = user?.backend === "device" ? "Cihaz hesabı" : needsEmailVerification ? "Doğrulama bekliyor" : user?.emailVerified ? "Doğrulandı" : "Kayıtlı";
+
+  const scrollToSection = (id: string) => {
+    setActiveSection(id);
+    document.getElementById(id)?.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+      block: "start",
+    });
+  };
 
   const sendVerification = async () => {
     setVerificationBusy("send");
@@ -149,10 +171,13 @@ export default function ProfilePanel({ onClose, onRecords }: Props) {
       role="dialog"
       aria-modal="false"
       aria-labelledby="profile-title"
-      className="settings-sheet gold-frame fixed top-[68px] right-0 bottom-0 z-[55] flex w-full max-w-[390px] flex-col overflow-hidden border-l bg-ink-2 md:top-[88px] md:right-4 md:bottom-4 md:rounded-3xl md:border"
+      className="settings-sheet gold-frame fixed top-[68px] right-0 bottom-0 z-[55] flex w-full max-w-[390px] flex-col overflow-hidden border-l bg-ink-2 md:top-[88px] md:right-4 md:bottom-4 md:max-w-[430px] md:rounded-3xl md:border"
     >
       <header className="flex shrink-0 items-center justify-between px-6 pt-5 pb-3">
-        <h2 id="profile-title" className="font-display text-xl font-semibold">Profilim</h2>
+        <div>
+          <h2 id="profile-title" className="font-display text-xl font-semibold">Profilim</h2>
+          <p className="mt-0.5 text-[12px] text-mint/70">Hesabın, kayıtların ve tüm ayarların</p>
+        </div>
         <button type="button" onClick={onClose} aria-label="Profili kapat" className="grid size-11 place-items-center rounded-full hover:bg-white/5">
           <X size={19} />
         </button>
@@ -182,20 +207,53 @@ export default function ProfilePanel({ onClose, onRecords }: Props) {
             </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-2 divide-x divide-white/10 border-t border-white/10 pt-3.5 text-center">
-            <div className="px-2">
-              <p className="font-display text-[22px] leading-none font-bold text-white tabular-nums">{savedPlaces.length}</p>
+          <div className="mt-4 grid grid-cols-3 divide-x divide-white/10 border-t border-white/10 pt-3.5 text-center">
+            <div className="px-1.5">
+              <p className="font-display text-[21px] leading-none font-bold text-white tabular-nums">{myPlacesCount}</p>
+              <p className="mt-1.5 text-[12px] text-mint/70">izim</p>
+            </div>
+            <div className="px-1.5">
+              <p className="font-display text-[21px] leading-none font-bold text-white tabular-nums">{savedPlaces.length}</p>
               <p className="mt-1.5 text-[12px] text-mint/70">yer kaydı</p>
             </div>
-            <div className="px-2">
-              <p className="font-display text-[22px] leading-none font-bold text-white tabular-nums">{savedRoutes.length}</p>
+            <div className="px-1.5">
+              <p className="font-display text-[21px] leading-none font-bold text-white tabular-nums">{savedRoutes.length}</p>
               <p className="mt-1.5 text-[12px] text-mint/70">rota kaydı</p>
             </div>
           </div>
         </section>
 
-        <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-3.5">
-          <p className="text-[12px] text-mint/70">Hesap kimliğin (grup daveti için paylaş)</p>
+        <nav aria-label="Profil bölümleri" className="no-scrollbar sticky top-0 z-10 -mx-6 mt-4 flex gap-2 overflow-x-auto border-y border-white/[0.06] bg-ink-2/95 px-6 py-2 backdrop-blur-xl">
+          {[
+            { id: "profile-account", label: "Hesabım", icon: UserRound },
+            { id: "profile-library", label: "Kayıtlar", icon: Bookmark },
+            { id: "profile-settings", label: "Ayarlar", icon: SlidersHorizontal },
+            { id: "location-settings", label: "Konum", icon: MapPin },
+          ].map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={activeSection === id}
+              onClick={() => scrollToSection(id)}
+              className={`flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[12px] font-semibold transition ${activeSection === id ? "border-sun/55 bg-sun/12 text-sun" : "border-white/12 text-mint/75 hover:border-sun/40 hover:text-mint"}`}
+            >
+              <Icon size={14} />{label}
+            </button>
+          ))}
+        </nav>
+
+        <div id="profile-account" className="mt-4 scroll-mt-20 rounded-2xl border border-white/10 bg-white/[0.03] p-3.5">
+          <div className="grid grid-cols-2 gap-3 border-b border-white/[0.07] pb-3">
+            <div>
+              <p className="text-[11px] text-mint/70">Hesap türü</p>
+              <p className="mt-1 text-[13px] font-semibold text-mint">{accountType}</p>
+            </div>
+            <div>
+              <p className="text-[11px] text-mint/70">Doğrulama</p>
+              <p className="mt-1 text-[13px] font-semibold text-mint">{verificationLabel}</p>
+            </div>
+          </div>
+          <p className="mt-3 text-[12px] text-mint/70">Hesap kimliğin (grup daveti için paylaş)</p>
           <div className="mt-1 flex items-center gap-2">
             <code className="min-w-0 flex-1 truncate text-[11px] text-mint/85">{user?.uid}</code>
             <button
@@ -254,34 +312,78 @@ export default function ProfilePanel({ onClose, onRecords }: Props) {
 
         {status && <p role="status" className="mt-3 text-sm text-sun">{status}</p>}
 
-        <div className="mt-8 divide-y divide-white/[0.07] overflow-hidden rounded-[20px] border border-white/10 bg-white/[0.02]">
-          <button
-            type="button"
-            onClick={onRecords}
-            className="flex min-h-[56px] w-full items-center gap-3 px-4 text-left transition hover:bg-white/[0.04]"
-          >
-            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-sun/12 text-sun ring-1 ring-sun/30"><Bookmark size={16} /></span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm font-semibold">Kayıtlarım</span>
-              <span className="mt-0.5 block text-[12px] text-mint/70">{savedPlaces.length} yer · {savedRoutes.length} rota</span>
-            </span>
-            <ChevronRight size={16} className="shrink-0 text-mint/70" />
-          </button>
-          <button type="button" onClick={() => setFeedbackOpen(true)} className="flex min-h-[56px] w-full items-center gap-3 px-4 text-left transition hover:bg-white/[0.04]">
-            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-leaf/12 text-leaf ring-1 ring-leaf/30"><Send size={15} /></span>
-            <span className="min-w-0 flex-1 text-sm font-semibold">Geri bildirim gönder</span>
-            <ChevronRight size={16} className="shrink-0 text-mint/70" />
-          </button>
-          <button type="button" disabled={exporting} onClick={() => void exportData()} className="flex min-h-[56px] w-full items-center gap-3 px-4 text-left transition hover:bg-white/[0.04] disabled:opacity-60">
-            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-white/[0.06] text-mint ring-1 ring-white/15">{exporting ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}</span>
-            <span className="min-w-0 flex-1 text-sm font-semibold">Verilerimi indir</span>
-            <ChevronRight size={16} className="shrink-0 text-mint/70" />
-          </button>
-        </div>
-        <p className="mt-3.5 flex items-start gap-2 px-1 text-[12px] leading-relaxed text-mint/70">
-          <Route size={14} className="mt-0.5 shrink-0" />
-          Kaydettiğin yerler ve rotalar bu cihazda, hesabına özel tutulur.
-        </p>
+        <section id="profile-library" aria-labelledby="profile-library-title" className="mt-8 scroll-mt-20">
+          <h3 id="profile-library-title" className="text-[12px] font-bold tracking-[0.16em] text-mint/70 uppercase">Keşiflerim</h3>
+          <div className="mt-3 divide-y divide-white/[0.07] overflow-hidden rounded-[20px] border border-white/10 bg-white/[0.02]">
+            <button
+              type="button"
+              onClick={onRecords}
+              className="flex min-h-[56px] w-full items-center gap-3 px-4 text-left transition hover:bg-white/[0.04]"
+            >
+              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-sun/12 text-sun ring-1 ring-sun/30"><Bookmark size={16} /></span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold">Kayıtlarım</span>
+                <span className="mt-0.5 block text-[12px] text-mint/70">{savedPlaces.length} yer · {savedRoutes.length} rota</span>
+              </span>
+              <ChevronRight size={16} className="shrink-0 text-mint/70" />
+            </button>
+            <button type="button" onClick={onMyPlaces} className="flex min-h-[56px] w-full items-center gap-3 px-4 text-left transition hover:bg-white/[0.04] md:hidden">
+              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-leaf/12 text-leaf ring-1 ring-leaf/30"><MapPin size={16} /></span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold">İzlerim</span>
+                <span className="mt-0.5 block text-[12px] text-mint/70">{myPlacesCount} iz · haritaya bıraktığın noktalar</span>
+              </span>
+              <ChevronRight size={16} className="shrink-0 text-mint/70" />
+            </button>
+            <button type="button" onClick={onNotifications} className="flex min-h-[56px] w-full items-center gap-3 px-4 text-left transition hover:bg-white/[0.04]">
+              <span className="relative grid size-9 shrink-0 place-items-center rounded-full bg-white/[0.06] text-mint ring-1 ring-white/15">
+                <Bell size={16} />
+                {unreadCount > 0 && <span aria-hidden className="absolute -top-1 -right-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-sun px-1 text-[10px] leading-none font-bold text-ink ring-2 ring-ink-2">{unreadCount > 9 ? "9+" : unreadCount}</span>}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold">Bildirimler</span>
+                <span className="mt-0.5 block text-[12px] text-mint/70">{unreadCount > 0 ? `${unreadCount} yeni bildirimin var` : "Yeni bildirim yok"}</span>
+              </span>
+              <ChevronRight size={16} className="shrink-0 text-mint/70" />
+            </button>
+            <button type="button" onClick={onAtlasAI} className="flex min-h-[56px] w-full items-center gap-3 px-4 text-left transition hover:bg-white/[0.04]">
+              <span className="btn-gold grid size-9 shrink-0 place-items-center rounded-full"><Sparkles size={16} /></span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold">Atlas AI ile planla</span>
+                <span className="mt-0.5 block text-[12px] text-mint/70">Rota önerisi ve yakındaki izler</span>
+              </span>
+              <ChevronRight size={16} className="shrink-0 text-mint/70" />
+            </button>
+          </div>
+          <p className="mt-3.5 flex items-start gap-2 px-1 text-[12px] leading-relaxed text-mint/70">
+            <Route size={14} className="mt-0.5 shrink-0" />
+            Kaydettiğin yerler ve rotalar bu cihazda, hesabına özel tutulur.
+          </p>
+        </section>
+
+        <section id="profile-settings" aria-labelledby="profile-settings-title" className="mt-9 scroll-mt-20">
+          <h3 id="profile-settings-title" className="font-display text-lg font-semibold">Ayarlar</h3>
+          <p className="mt-1 text-[12px] leading-relaxed text-mint/70">Görünüm, harita, çevrimdışı kullanım, uygulama ve konum tercihlerinin tamamı burada.</p>
+          <div className="mt-5">
+            <SettingsContent {...settings} />
+          </div>
+        </section>
+
+        <section aria-labelledby="profile-support-title" className="mt-9">
+          <h3 id="profile-support-title" className="text-[12px] font-bold tracking-[0.16em] text-mint/70 uppercase">Destek ve verilerin</h3>
+          <div className="mt-3 divide-y divide-white/[0.07] overflow-hidden rounded-[20px] border border-white/10 bg-white/[0.02]">
+            <button type="button" onClick={() => setFeedbackOpen(true)} className="flex min-h-[56px] w-full items-center gap-3 px-4 text-left transition hover:bg-white/[0.04]">
+              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-leaf/12 text-leaf ring-1 ring-leaf/30"><Send size={15} /></span>
+              <span className="min-w-0 flex-1 text-sm font-semibold">Geri bildirim gönder</span>
+              <ChevronRight size={16} className="shrink-0 text-mint/70" />
+            </button>
+            <button type="button" disabled={exporting} onClick={() => void exportData()} className="flex min-h-[56px] w-full items-center gap-3 px-4 text-left transition hover:bg-white/[0.04] disabled:opacity-60">
+              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-white/[0.06] text-mint ring-1 ring-white/15">{exporting ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}</span>
+              <span className="min-w-0 flex-1 text-sm font-semibold">Verilerimi indir</span>
+              <ChevronRight size={16} className="shrink-0 text-mint/70" />
+            </button>
+          </div>
+        </section>
       </div>
       {feedbackOpen && <Suspense fallback={null}><FeedbackDialog uid={user?.uid ?? null} onClose={() => setFeedbackOpen(false)} /></Suspense>}
 

@@ -108,3 +108,64 @@ tüm test paketi yeşil.
 Gerçek cihazda (iOS Safari + Android Chrome) alt çubuk/safe-area ve yürüyüş
 kaydı canlı istatistik ekranının saha kontrolü; beğenilirse aynı altın çerçeve
 dilinin PlaceDetails ve SettingsPanel'e taşınması.
+
+---
+
+# Ek Tur — İzler kaydırma + kapsamlı Profil (2026-10-22)
+
+Kullanıcı isteği: (1) İzler panelinin üst kısmı aşağı kayabilsin,
+(2) Profil daha kapsamlı olsun, ayarların hepsi Profil sekmesinde yer alsın.
+
+## Yapılanlar
+
+### İzler (`SocialPanel.tsx`)
+
+- Story şeridi, filtre ve gönderiler tek dikey kaydırma alanına alındı:
+  üst içerik akışla birlikte kayıyor; `Tümü / Yakınımda` filtresi
+  kaydırırken üstte sabit (sticky) kalıyor; yazma alanı sabit.
+- Panel tutamacı/başlığı aşağı sürüklenebiliyor: ~90px üstü çekiş paneli
+  mevcut "daralt" davranışıyla kapatıyor (CSS `translate` kullanıldığı
+  için giriş animasyonuyla çakışma yok; butonlardan sürükleme başlamıyor).
+
+### Profil + Ayarlar (`ProfilePanel.tsx`, `SettingsPanel.tsx`, `App.tsx`)
+
+- Ayar içeriği paylaşılan `SettingsContent` bileşenine ayrıldı; Ayarlar
+  penceresi kabuğu/odak tuzağı/başlık aynen korundu, iki görünüm de aynı
+  `settingsContentProps` kaynağından besleniyor.
+- Profil artık tüm ayarları içeriyor: koyu/açık tema, 4 harita altlığı,
+  yer adları, 3B arazi, çevrimdışı harita, uygulama kurulumu,
+  konum durumu/izin/yenileme/haritada gösterme/temizleme + gizlilik
+  açıklamaları (`location-settings` bölümü).
+- Profil özeti genişletildi: izim / yer kaydı / rota kaydı istatistikleri,
+  hesap türü + doğrulama satırları, bölüm çipleriyle hızlı gezinme
+  (Hesabım / Kayıtlar / Ayarlar / Konum), Keşiflerim grubunda Kayıtlarım,
+  İzlerim (mobil), Bildirimler (okunmamış rozeti) ve Atlas AI kısayolları;
+  Destek ve veriler grubu. İsim düzenleme, e-posta doğrulama, Hesap kimligi
+  kopyalama, geri bildirim, veri indirme, çıkış ve hesap silme akışları
+  değişmedi. Masaüstü panel genişliği içeriğe göre 430px'e çıkarıldı.
+- Yeni davranış testi: `src/components/SettingsPanel.test.ts`
+  (bölüm eksiksizliği + tema/altlık/anahtar bağlantıları).
+
+## Doğrulama (ek tur)
+
+| Komut | Sonuç |
+| --- | --- |
+| `npm run typecheck` | ✅ |
+| `npm run lint` | ✅ (0 uyarı) |
+| `npm run test:run` | ✅ 104 dosya / 721 test |
+| `npm run test:scripts` | ✅ |
+| `npm run build` (+ bundle bütçesi) | ✅ "Bundle bütçesi içinde" |
+| `npm run audit:check` | ✅ bilinen açık yok |
+| `npm run verify:social-metadata` | ✅ |
+| `npm run test:rules:emulator` | ⚠️ Ortamda Java yok; Rules değişmedi, CI'da koşulacak |
+
+Gerçek uygulama görüntüleri (dev sunucusu, cihaz hesabı ile):
+`design-vizyon/gercek-profil-ust.png`, `gercek-profil-ayarlar.png`,
+`gercek-profil-konum.png`, `gercek-izler.png` (git kapsamı dışında).
+
+## Notlar
+
+- Bölüm çiplerindeki aktif durum tıklamayla güncellenir (kaydırma
+  casusu yok); istenirse sonraki turda eklenebilir.
+- İzler'de sürükleyerek kapatma eşiği gerçek cihazda hissiyatla
+  ayarlanabilir (şu an ~90px).
