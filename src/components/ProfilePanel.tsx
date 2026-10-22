@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import {
   AlertCircle,
   Bookmark,
@@ -23,8 +23,9 @@ import { useCollections } from "../hooks/useCollections";
 import { authErrorMessage } from "../lib/auth";
 import { usePanelAccess } from "../hooks/usePanelAccess";
 import { deleteAccount } from "../lib/moderation";
-import { downloadAccountExport, exportAccountData } from "../lib/accountExport";
-import FeedbackDialog from "./FeedbackDialog";
+// Seyrek kullanılan akışlar başlangıç paketine girmez (bundle bütçesi): yalnız
+// tıklanınca yüklenir.
+const FeedbackDialog = lazy(() => import("./FeedbackDialog"));
 
 interface Props {
   onClose: () => void;
@@ -109,6 +110,7 @@ export default function ProfilePanel({ onClose, onRecords }: Props) {
     setExporting(true);
     setStatus(null);
     try {
+      const { downloadAccountExport, exportAccountData } = await import("../lib/accountExport");
       const file = await exportAccountData({ uid: user.uid, backend: user.backend, account: { displayName: user.displayName, email: user.email } });
       downloadAccountExport(file);
       setStatus("Verilerin JSON dosyası hazırlandı.");
@@ -256,7 +258,7 @@ export default function ProfilePanel({ onClose, onRecords }: Props) {
           {exporting ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}Verilerimi indir
         </button>
       </div>
-      {feedbackOpen && <FeedbackDialog uid={user?.uid ?? null} onClose={() => setFeedbackOpen(false)} />}
+      {feedbackOpen && <Suspense fallback={null}><FeedbackDialog uid={user?.uid ?? null} onClose={() => setFeedbackOpen(false)} /></Suspense>}
 
       <footer className="shrink-0 border-t border-white/10 bg-ink-2 px-6 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] md:pb-4">
         <button
