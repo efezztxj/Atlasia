@@ -17,9 +17,16 @@ const h = vi.hoisted(() => {
       .map(([key, data]) => ({ id: key.slice(path.length + 1), ref: ref(key), data: () => data }));
     return { size: docs.length, docs };
   };
+  const snapOfGroup = (name: string, filters: Array<{ field: string; value: unknown }> = []) => {
+    const docs = [...store.entries()]
+      .filter(([key]) => key.split("/").length % 2 === 0 && key.split("/").at(-2) === name)
+      .filter(([, data]) => filters.every((filter) => data[filter.field] === filter.value))
+      .map(([key, data]) => ({ id: key.split("/").at(-1) ?? "", ref: ref(key), data: () => data }));
+    return { size: docs.length, docs };
+  };
   // Bir koleksiyonun okuması permission-denied ile düşürülür (hata yutulmamalı testi).
   const failure: { failCollection: string | null } = { failCollection: null };
-  return { store, ref, snapOf, failure };
+  return { store, ref, snapOf, snapOfGroup, failure };
 });
 
 vi.mock("./firebase", () => ({ db: {}, firebaseApp: {}, firebaseConfigured: true, isCloudReady: true }));
@@ -30,10 +37,13 @@ vi.mock("./notifications", () => ({
 vi.mock("firebase/firestore", () => ({
   collection: (_db: unknown, ...segments: string[]) => ({ path: segments.join("/") }),
   doc: (_db: unknown, ...segments: string[]) => h.ref(segments.join("/")),
-  query: (target: { path: string }, ...constraints: Array<{ field?: string; value?: unknown; limit?: number }>) => ({
+  query: (target: { path: string; group?: boolean }, ...constraints: Array<{ field?: string; value?: unknown; limit?: number }>) => ({
     path: target.path,
+    group: target.group === true,
+    limit: constraints.find((item) => typeof item.limit === "number")?.limit,
     filters: constraints.filter((item) => typeof item.field === "string"),
   }),
+  collectionGroup: (_db: unknown, name: string) => ({ path: name, group: true }),
   where: (field: string, _op: string, value: unknown) => ({ field, value }),
   limit: (value: number) => ({ limit: value }),
   orderBy: () => ({}),
@@ -44,11 +54,15 @@ vi.mock("firebase/firestore", () => ({
     data: () => h.store.get(docRef.path),
     ref: docRef,
   }),
-  getDocs: async (q: { path: string; filters?: Array<{ field: string; value: unknown }> }) => {
+  getDocs: async (q: { path: string; group?: boolean; limit?: number; filters?: Array<{ field: string; value: unknown }> }) => {
     if (h.failure.failCollection && q.path === h.failure.failCollection) {
       throw Object.assign(new Error("Missing or insufficient permissions."), { code: "permission-denied" });
     }
-    return h.snapOf(q.path, q.filters ?? []);
+    const snap = q.group ? h.snapOfGroup(q.path, q.filters ?? []) : h.snapOf(q.path, q.filters ?? []);
+    if (typeof q.limit === "number" && snap.docs.length > q.limit) {
+      return { size: q.limit, docs: snap.docs.slice(0, q.limit) };
+    }
+    return snap;
   },
   setDoc: async (docRef: { path: string }, data: Record<string, unknown>) => { h.store.set(docRef.path, data); },
   deleteDoc: async (docRef: { path: string }) => { h.store.delete(docRef.path); },
@@ -224,5 +238,70 @@ describe("moderasyon yazımı ve hesap verisi silme", () => {
     expect(h.store.has("userProfiles/u9")).toBe(true);
     expect(h.store.has("feedback/fb1")).toBe(false);
     expect(h.store.has("feedback/fb9")).toBe(true);
+  });
+  it("3a: kullanıcının engelleme alt koleksiyonu (users/{uid}/blocks) silinir", async () => {
+    h.store.set("users/u1/blocks/u9", { blockedId: "u9", blockerUid: "u1" });
+    h.store.set("users/u2/blocks/u9", { blockedId: "u9", blockerUid: "u2" });
+
+    const report = await deleteUserData("u1");
+
+    expect(report.steps.find((item) => item.step === "users/blocks")).toMatchObject({ deleted: 1, failed: false });
+    expect(h.store.has("users/u1/blocks/u9")).toBe(false);
+    expect(h.store.has("users/u2/blocks/u9")).toBe(true);
+  });
+
+  it("3b: kullanıcının başkalarının gönderilerindeki yanıtları silinir; başkasının yanıtı kalır", async () => {
+    h.store.set("posts/p9/replies/r1", { authorUid: "u1", text: "Katılıyorum" });
+    h.store.set("posts/p9/replies/r2", { authorUid: "u2", text: "Ben de" });
+
+    const report = await deleteUserData("u1");
+
+    expect(report.steps.find((item) => item.step === "replies")).toMatchObject({ deleted: 1, failed: false });
+    expect(h.store.has("posts/p9/replies/r1")).toBe(false);
+    expect(h.store.has("posts/p9/replies/r2")).toBe(true);
+  });
+
+  it("3c: grup indeksi 50'den fazlaysa tüm sayfalar işlenir ve indeks boşalır", async () => {
+    for (let i = 0; i < 60; i += 1) {
+      h.store.set(`users/u1/groups/g${i}`, { groupId: `g${i}`, name: "Ekip", role: "member" });
+      h.store.set(`groups/g${i}`, { name: "Ekip", ownerUid: "u9", memberUids: ["u9", "u1"], createdAt: 1, updatedAt: 1 });
+    }
+
+    const report = await deleteUserData("u1");
+
+    expect(report.steps.find((item) => item.step === "groups")).toMatchObject({ failed: false });
+    expect([...h.store.keys()].filter((key) => key.startsWith("users/u1/groups/"))).toEqual([]);
+    expect(h.store.get("groups/g59")?.memberUids).toEqual(["u9"]);
+  });
+
+  it("3d: katılma denemesi yalnız pencere dolmuşsa silinir; açık pencere 'kept' olarak raporlanır", async () => {
+    const now = Date.now();
+    h.store.set("users/u1/groups/gx", { groupId: "gx", name: "A", role: "member" });
+    h.store.set("users/u1/groups/gy", { groupId: "gy", name: "B", role: "member" });
+    h.store.set("groups/gx", { name: "A", ownerUid: "u9", memberUids: ["u9", "u1"], createdAt: 1, updatedAt: 1 });
+    h.store.set("groups/gy", { name: "B", ownerUid: "u9", memberUids: ["u9", "u1"], createdAt: 1, updatedAt: 1 });
+    // gx: pencere 20 dk önce açıldı → dolmuş → silinir.
+    h.store.set("groups/gx/joinAttempts/u1", { code: "123456", attempts: 3, at: now - 20 * 60_000, windowStart: now - 20 * 60_000 });
+    // gy: pencere 5 dk önce açıldı → açık → kalır ve raporlanır.
+    h.store.set("groups/gy/joinAttempts/u1", { code: "654321", attempts: 2, at: now - 5 * 60_000, windowStart: now - 5 * 60_000 });
+
+    const report = await deleteUserData("u1");
+
+    expect(report.steps.find((item) => item.step === "groups")).toMatchObject({ failed: false, kept: 1 });
+    expect(h.store.has("groups/gx/joinAttempts/u1")).toBe(false);
+    expect(h.store.has("groups/gy/joinAttempts/u1")).toBe(true);
+  });
+
+  it("3e: gelen grup davetleri ve grubun davet kaydı birlikte silinir; başkasınınki kalır", async () => {
+    h.store.set("users/u1/groupInvites/g3", { groupId: "g3", groupName: "Üçüncü", inviterUid: "u9" });
+    h.store.set("groups/g3/invites/u1", { invitedUid: "u1", inviterUid: "u9", groupId: "g3" });
+    h.store.set("groups/g3/invites/u2", { invitedUid: "u2", inviterUid: "u9", groupId: "g3" });
+
+    const report = await deleteUserData("u1");
+
+    expect(report.steps.find((item) => item.step === "users/groupInvites")).toMatchObject({ deleted: 1, failed: false });
+    expect(h.store.has("users/u1/groupInvites/g3")).toBe(false);
+    expect(h.store.has("groups/g3/invites/u1")).toBe(false);
+    expect(h.store.has("groups/g3/invites/u2")).toBe(true);
   });
 });

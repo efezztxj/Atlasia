@@ -5,6 +5,7 @@
  */
 import {
   collection,
+  collectionGroup,
   deleteDoc,
   doc,
   getDoc,
@@ -24,6 +25,7 @@ import { db, firebaseApp } from "./firebase";
 import { getAtlasAuth } from "./auth";
 import { createNotification } from "./notifications";
 import { friendshipIdFor } from "./friendships";
+import { deleteGroup } from "./groups";
 
 export const REPORT_REASONS = ["spam", "harassment", "hate", "misinfo", "privacy", "other"] as const;
 export type ReportReason = (typeof REPORT_REASONS)[number];
@@ -229,11 +231,14 @@ export async function listBlockedUids(blockerUid: string): Promise<string[]> {
 
 /* ─────────────── Hesap silme (verisi kalkıyor) ─────────────── */
 
-// KARAR: Her adım sırayla çalışır; bir adımın hatası YUTULMAZ, toplanır ve sonunda
-// fırlatılır. Herhangi bir adım başarısızsa Auth hesabı SİLİNMEZ. Tüm adımlar
-// idempotenttir (olmayan belge atlanır), bu yüzden kullanıcı yeniden deneyebilir.
+// KARAR: Her adım sırayla çalışır; bir adımın hatası YUTULMAZ, adım raporuna yazılır
+// ve hesap silme durur. Auth hesabı, tüm adımlar başarılı değilse SİLİNMEZ.
+// Tüm adımlar idempotenttir (olmayan belge atlanır), yeniden denenebilir.
 const DELETE_PAGE_SIZE = 50;
 const DELETE_MAX_PAGES = 200;
+const JOIN_WINDOW_MS = 15 * 60 * 1000;
+// İstemci saati sunucudan geride olabilir: pencerenin dolduğu kesin değilse silinmez.
+const JOIN_CLOCK_SKEW_MS = 2 * 60 * 1000;
 
 const OWNED_TOP_LEVEL: Array<{ collectionName: string; uidField: string }> = [
   { collectionName: "places", uidField: "authorUid" },
@@ -248,8 +253,14 @@ const OWNED_TOP_LEVEL: Array<{ collectionName: string; uidField: string }> = [
   { collectionName: "feedback", uidField: "uid" },
 ];
 
-// users/{uid}/... altında yalnız sahibin silebildiği koleksiyonlar.
-const OWN_SUBCOLLECTIONS = ["notifications", "savedPlaces", "friendRequests", "groupInvites"] as const;
+// users/{uid}/... altında yalnız sahibin silebildiği koleksiyonlar (3a: blocks dahil).
+const OWN_SUBCOLLECTIONS = ["notifications", "savedPlaces", "friendRequests", "blocks"] as const;
+
+/** Adım sonucu: silinen sayısı; kilit penceresi dolmadığı için bırakılanlar ayrıca raporlanır. */
+export interface AccountDeletionOutcome {
+  deleted: number;
+  kept?: number;
+}
 
 function requireDb() {
   if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
@@ -273,11 +284,7 @@ async function drainQuery(makeQuery: () => Query): Promise<number> {
 
 async function deleteOwnedTopLevel(uid: string, collectionName: string, uidField: string): Promise<number> {
   const firestore = requireDb();
-  return drainQuery(() => query(
-    collection(firestore, collectionName),
-    where(uidField, "==", uid),
-    limit(DELETE_PAGE_SIZE),
-  ));
+  return drainQuery(() => query(collection(firestore, collectionName), where(uidField, "==", uid), limit(DELETE_PAGE_SIZE)));
 }
 
 async function deleteOwnSubcollection(uid: string, subcollection: string): Promise<number> {
@@ -285,10 +292,15 @@ async function deleteOwnSubcollection(uid: string, subcollection: string): Promi
   return drainQuery(() => query(collection(firestore, `users/${uid}/${subcollection}`), limit(DELETE_PAGE_SIZE)));
 }
 
+/** 3b: kullanıcının başka gönderilerdeki yanıtları (collection-group, yalnız authorUid == uid). */
+async function deleteOwnReplies(uid: string): Promise<number> {
+  const firestore = requireDb();
+  return drainQuery(() => query(collectionGroup(firestore, "replies"), where("authorUid", "==", uid), limit(DELETE_PAGE_SIZE)));
+}
+
 /**
  * Kayıtlı rotalar: rota sayacı, silme ile aynı batch'te düşürülür (kural
  * savedRouteCounterDecreased / routeCounterChange bunu zorunlu kılar).
- * Rota artık yoksa yalnız kayıt silinir.
  */
 async function deleteOwnSavedRoutes(uid: string): Promise<number> {
   const firestore = requireDb();
@@ -303,9 +315,7 @@ async function deleteOwnSavedRoutes(uid: string): Promise<number> {
       batch.delete(saved.ref);
       if (routeSnap.exists()) {
         const count = Number(routeSnap.data()?.saveCount ?? 0);
-        if (count <= 0) {
-          throw dataError("data/route-counter", "Kayıtlı rota sayacı tutarsız; hesap silinmedi.");
-        }
+        if (count <= 0) throw dataError("data/route-counter", "Kayıtlı rota sayacı tutarsız; hesap silinmedi.");
         batch.update(routeRef, { saveCount: count - 1, updatedAt: serverTimestamp() });
       }
       await batch.commit();
@@ -315,11 +325,7 @@ async function deleteOwnSavedRoutes(uid: string): Promise<number> {
   throw dataError("data/delete-incomplete", "Kayıtlı rota silme sınırına ulaşıldı; tekrar deneyin.");
 }
 
-/**
- * Arkadaşlık: önce friendships belgesi (yalnız varsa; yoksa batch hata verir),
- * sonra kendi arkadaş indeksi. Karşı tarafın indeksi kuralla yazılamaz; UI
- * indeksi friendships belgesiyle doğrular (açık nokta: teslimat dosyası).
- */
+/** Arkadaşlık: friendships belgesi (varsa) + kendi arkadaş indeksi. */
 async function deleteOwnFriendships(uid: string): Promise<number> {
   const firestore = requireDb();
   let deleted = 0;
@@ -327,8 +333,7 @@ async function deleteOwnFriendships(uid: string): Promise<number> {
     const snap = await getDocs(query(collection(firestore, `users/${uid}/friends`), limit(DELETE_PAGE_SIZE)));
     if (snap.size === 0) return deleted;
     for (const index of snap.docs) {
-      const friendUid = index.id;
-      const friendshipRef = doc(firestore, "friendships", friendshipIdFor(uid, friendUid));
+      const friendshipRef = doc(firestore, "friendships", friendshipIdFor(uid, index.id));
       const friendship = await getDoc(friendshipRef);
       const batch = writeBatch(firestore);
       batch.delete(index.ref);
@@ -338,6 +343,26 @@ async function deleteOwnFriendships(uid: string): Promise<number> {
     }
   }
   throw dataError("data/delete-incomplete", "Arkadaş silme sınırına ulaşıldı; tekrar deneyin.");
+}
+
+/** 3e: gelen davetler — grubun davet kaydı (varsa) ve kendi aynası birlikte silinir. */
+async function deleteOwnGroupInvites(uid: string): Promise<number> {
+  const firestore = requireDb();
+  let deleted = 0;
+  for (let page = 0; page < DELETE_MAX_PAGES; page += 1) {
+    const snap = await getDocs(query(collection(firestore, `users/${uid}/groupInvites`), limit(DELETE_PAGE_SIZE)));
+    if (snap.size === 0) return deleted;
+    for (const mirror of snap.docs) {
+      const inviteRef = doc(firestore, `groups/${mirror.id}/invites/${uid}`);
+      const invite = await getDoc(inviteRef);
+      const batch = writeBatch(firestore);
+      batch.delete(mirror.ref);
+      if (invite.exists()) batch.delete(inviteRef);
+      await batch.commit();
+      deleted += 1;
+    }
+  }
+  throw dataError("data/delete-incomplete", "Davet silme sınırına ulaşıldı; tekrar deneyin.");
 }
 
 async function deleteOwnProfile(uid: string): Promise<number> {
@@ -350,51 +375,73 @@ async function deleteOwnProfile(uid: string): Promise<number> {
 }
 
 /**
- * Grup üyelikleri: sahip olunan grup silinir (KARAR: grup sahibi ayrılamaz, grup
- * kalkar); diğer gruplarda yalnız üyelik çıkarılır. Mesaj silme sahibin kendi
- * mesajlarıyla sınırlıdır (kural). Hata yutulmaz.
+ * 3d: katılma denemesi. Yalnız kendi belgesi ve pencere (15 dk + saat payı) dolmuşsa silinir.
+ * Pencere içindeki kayıt silinmez (sayaç atlatılmasın): "kept" olarak raporlanır.
  */
-async function leaveOrDeleteGroups(uid: string): Promise<number> {
+async function cleanupOwnJoinAttempt(groupId: string, uid: string): Promise<"none" | "deleted" | "kept"> {
   const firestore = requireDb();
-  const indexSnap = await getDocs(query(collection(firestore, `users/${uid}/groups`), limit(DELETE_PAGE_SIZE)));
-  let cleaned = 0;
-  for (const indexDoc of indexSnap.docs) {
-    const groupId = indexDoc.id;
-    const groupRef = doc(firestore, "groups", groupId);
-    const snap = await getDoc(groupRef);
-    if (!snap.exists()) continue;
-    const data = snap.data();
-    const messages = await getDocs(query(
-      collection(firestore, "groups", groupId, "messages"),
-      where("senderUid", "==", uid),
-      limit(DELETE_PAGE_SIZE),
-    ));
-    if (messages.size > 0) {
-      const batch = writeBatch(firestore);
-      messages.docs.forEach((message) => batch.delete(message.ref));
-      await batch.commit();
-      cleaned += messages.size;
-    }
-    const members = Array.isArray(data.memberUids) ? (data.memberUids as string[]) : [];
-    if (data.ownerUid === uid) {
-      await deleteDoc(groupRef);
-    } else if (members.includes(uid)) {
-      await updateDoc(groupRef, {
-        memberUids: members.filter((member) => member !== uid),
-        updatedAt: serverTimestamp(),
-      });
-    }
-    cleaned += 1;
-  }
-  return cleaned;
+  const attemptRef = doc(firestore, `groups/${groupId}/joinAttempts/${uid}`);
+  const attempt = await getDoc(attemptRef);
+  if (!attempt.exists()) return "none";
+  const windowStart = toMillis(attempt.data()?.windowStart);
+  if (windowStart + JOIN_WINDOW_MS + JOIN_CLOCK_SKEW_MS > Date.now()) return "kept";
+  await deleteDoc(attemptRef);
+  return "deleted";
 }
 
-/** Her adımın sonucu: silinen belge sayısı, başarısızlık ve hata kodu. */
+/**
+ * Grup üyelikleri (3c: sayfalı). Her indeks kaydı için: katılma denemesi, kendi
+ * mesajları, sahipse grubun tamamı (mesajlar dahil, deleteGroup), değilse
+ * üyelikten çıkarma. Hata yutulmaz.
+ */
+async function leaveOrDeleteGroups(uid: string): Promise<AccountDeletionOutcome> {
+  const firestore = requireDb();
+  let processed = 0;
+  let kept = 0;
+  for (let page = 0; page < DELETE_MAX_PAGES; page += 1) {
+    const indexSnap = await getDocs(query(collection(firestore, `users/${uid}/groups`), limit(DELETE_PAGE_SIZE)));
+    if (indexSnap.size === 0) return { deleted: processed, kept };
+    for (const indexDoc of indexSnap.docs) {
+      const groupId = indexDoc.id;
+      const groupRef = doc(firestore, "groups", groupId);
+      const snap = await getDoc(groupRef);
+      if (snap.exists()) {
+        const data = snap.data();
+        if ((await cleanupOwnJoinAttempt(groupId, uid)) === "kept") kept += 1;
+        await drainQuery(() => query(
+          collection(firestore, `groups/${groupId}/messages`),
+          where("senderUid", "==", uid),
+          limit(DELETE_PAGE_SIZE),
+        ));
+        if (data.ownerUid === uid) {
+          // deleteGroup: sahibin grubu, tüm mesajları ve kendi indeksini siler.
+          await deleteGroup(groupId, uid);
+        } else {
+          const members = Array.isArray(data.memberUids) ? (data.memberUids as string[]) : [];
+          if (members.includes(uid)) {
+            await updateDoc(groupRef, {
+              memberUids: members.filter((member) => member !== uid),
+              updatedAt: serverTimestamp(),
+            });
+          }
+          await deleteDoc(indexDoc.ref);
+        }
+      } else {
+        await deleteDoc(indexDoc.ref);
+      }
+      processed += 1;
+    }
+  }
+  throw dataError("data/delete-incomplete", "Grup üyeliği temizleme sınırına ulaşıldı; tekrar deneyin.");
+}
+
 export interface AccountDataDeletionStep {
   step: string;
   deleted: number;
   failed: boolean;
   error?: string;
+  /** Kilit penceresi dolmadığı için silinemeyen kayıt sayısı (açık kalan). */
+  kept?: number;
 }
 
 export interface AccountDataDeletionReport {
@@ -406,40 +453,36 @@ export interface AccountDataDeletionReport {
  * Tüm kullanıcı verisini adım adım siler. Hiçbir adımın hatası yutulmaz.
  * Herhangi bir adım başarısızsa `data/delete-incomplete` fırlatılır; hata
  * nesnesinde `steps` tam raporu taşır. Çağıran Auth hesabını silmemelidir.
- * Tekrar çağrı güvenlidir (idempotent): silinmiş belgeler atlanır.
  */
 export async function deleteUserData(uid: string): Promise<AccountDataDeletionReport> {
   requireDb();
   const cleanUid = uid.trim();
   if (!cleanUid) throw dataError("auth/required", "Hesap bilgisi geçersiz.");
 
-  const steps: Array<{ name: string; run: () => Promise<number> }> = [
+  const steps: Array<{ name: string; run: () => Promise<AccountDeletionOutcome> }> = [
     ...OWNED_TOP_LEVEL.map(({ collectionName, uidField }) => ({
       name: collectionName,
-      run: () => deleteOwnedTopLevel(cleanUid, collectionName, uidField),
+      run: async () => ({ deleted: await deleteOwnedTopLevel(cleanUid, collectionName, uidField) }),
     })),
-    ...OWN_SUBCOLLECTIONS.map((sub) => ({ name: `users/${sub}`, run: () => deleteOwnSubcollection(cleanUid, sub) })),
-    { name: "users/savedRoutes", run: () => deleteOwnSavedRoutes(cleanUid) },
-    { name: "users/friends+friendships", run: () => deleteOwnFriendships(cleanUid) },
-    {
-      name: "groups",
-      run: async () => {
-        const left = await leaveOrDeleteGroups(cleanUid);
-        const index = await deleteOwnSubcollection(cleanUid, "groups");
-        return left + index;
-      },
-    },
-    { name: "userProfiles", run: () => deleteOwnProfile(cleanUid) },
+    ...OWN_SUBCOLLECTIONS.map((sub) => ({
+      name: `users/${sub}`,
+      run: async () => ({ deleted: await deleteOwnSubcollection(cleanUid, sub) }),
+    })),
+    { name: "replies", run: async () => ({ deleted: await deleteOwnReplies(cleanUid) }) },
+    { name: "users/savedRoutes", run: async () => ({ deleted: await deleteOwnSavedRoutes(cleanUid) }) },
+    { name: "users/friends+friendships", run: async () => ({ deleted: await deleteOwnFriendships(cleanUid) }) },
+    { name: "users/groupInvites", run: async () => ({ deleted: await deleteOwnGroupInvites(cleanUid) }) },
+    { name: "groups", run: () => leaveOrDeleteGroups(cleanUid) },
+    { name: "userProfiles", run: async () => ({ deleted: await deleteOwnProfile(cleanUid) }) },
   ];
 
   const report: AccountDataDeletionStep[] = [];
   for (const step of steps) {
     try {
-      report.push({ step: step.name, deleted: await step.run(), failed: false });
+      const outcome = await step.run();
+      report.push({ step: step.name, deleted: outcome.deleted, failed: false, ...(outcome.kept !== undefined ? { kept: outcome.kept } : {}) });
     } catch (error) {
-      const code = typeof (error as { code?: unknown })?.code === "string"
-        ? (error as { code: string }).code
-        : "unknown";
+      const code = typeof (error as { code?: unknown })?.code === "string" ? (error as { code: string }).code : "unknown";
       report.push({ step: step.name, deleted: 0, failed: true, error: code });
     }
   }

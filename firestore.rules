@@ -603,6 +603,14 @@ service cloud.firestore {
                     && savedRouteCounterDecreased(routeId);
     }
 
+    // Yanıtların collection-group listesi: yalnız yazarın kendi yanıtları (hesap silme).
+    // Doğrudan posts/{id}/replies kuralları değişmez; bu yalnız collection-group sorgusuna uygulanır.
+    match /{path=**}/replies/{replyId} {
+      allow list: if signedIn()
+                  && resource.data.authorUid == request.auth.uid
+                  && boundedList(50);
+    }
+
     // P4 geri bildirim kanalı. KARAR: yalnız giriş yapmış kullanıcı en fazla
     // dar şemalı kayıt yazar. get/update yok. Liste ve silme yalnız sahibine
     // açıktır; bu, hesap silmenin kendi geri bildirimini silebilmesi içindir.
@@ -789,7 +797,11 @@ service cloud.firestore {
                           && request.resource.data.windowStart == request.time
                         )
                       );
-        allow delete: if false;
+        // Hesap silme: yalnız kendi belgesi ve 15 dk penceresi dolmuşsa silinir.
+        // Pencere içindeki kayıt silinemez (sayaç atlatılmasın); hesap silmede açık kalır.
+        allow delete: if signedIn()
+                      && joinId == request.auth.uid
+                      && request.time >= resource.data.windowStart + duration.value(15, 'm');
       }
 
       // Grup davetleri: yalniz kurucu davet edebilir, yalniz davetli gorebilir/kabul edebilir

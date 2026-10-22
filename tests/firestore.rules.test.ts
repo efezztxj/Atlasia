@@ -8,6 +8,7 @@ import {
 import {
   arrayUnion,
   collection,
+  collectionGroup,
   deleteDoc,
   deleteField,
   doc,
@@ -674,6 +675,71 @@ describe("Firestore güvenlik kuralları", () => {
     await assertFails(updateDoc(doc(memberDb, "groups/group-1/messages/m-1"), { text: "Değiştirildi" }));
     await assertFails(deleteDoc(doc(ownerDb, "groups/group-1/messages/m-1")));
     await assertSucceeds(deleteDoc(doc(memberDb, "groups/group-1/messages/m-1")));
+  });
+
+  it("katılma denemesi kaydını yalnız kendisi ve pencere dolduktan sonra silebilir", async () => {
+    await seed("groups/group-1", {
+      name: "Kapadokya ekibi",
+      ownerUid: "owner",
+      memberUids: ["owner"],
+      joinCode: "123456",
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
+    const openWindow = Timestamp.fromMillis(Date.now() - 5 * 60_000);
+    const closedWindow = Timestamp.fromMillis(Date.now() - 20 * 60_000);
+    const attempt = (windowStart: Timestamp) => ({
+      code: "000000",
+      attempts: 2,
+      at: windowStart,
+      windowStart,
+    });
+    await seed("groups/group-1/joinAttempts/open", attempt(openWindow));
+    await seed("groups/group-1/joinAttempts/closed", attempt(closedWindow));
+    const openDb = testEnv.authenticatedContext("open").firestore();
+    const closedDb = testEnv.authenticatedContext("closed").firestore();
+    const otherDb = testEnv.authenticatedContext("other").firestore();
+
+    // Pencere açıkken silinemez: sayaç sıfırlanıp atlatılamaz.
+    await assertFails(deleteDoc(doc(openDb, "groups/group-1/joinAttempts/open")));
+    // Başkasının kaydı silinemez.
+    await assertFails(deleteDoc(doc(otherDb, "groups/group-1/joinAttempts/closed")));
+    // Kendi kaydı, pencere dolduktan sonra silinebilir.
+    await assertSucceeds(deleteDoc(doc(closedDb, "groups/group-1/joinAttempts/closed")));
+  });
+
+  it("yanıtların collection-group listesi yalnız kendi yanıtlarını döndürür", async () => {
+    await seed("posts/p-1", {
+      author: "Yazar",
+      authorUid: "author",
+      text: "Gönderi",
+      createdAt: Timestamp.now(),
+      likes: 0,
+      likedBy: [],
+      kind: "user",
+    });
+    await seed("posts/p-1/replies/r-mine", { authorUid: "member", text: "Benim", createdAt: Timestamp.now() });
+    await seed("posts/p-1/replies/r-other", { authorUid: "other", text: "Başkası", createdAt: Timestamp.now() });
+    const memberDb = testEnv.authenticatedContext("member").firestore();
+    const guestDb = testEnv.unauthenticatedContext().firestore();
+
+    await assertSucceeds(getDocs(query(
+      collectionGroup(memberDb, "replies"),
+      where("authorUid", "==", "member"),
+      limit(50),
+    )));
+    // Başkasının yanıtlarını listeleme veya filtresiz listeleme reddedilir.
+    await assertFails(getDocs(query(
+      collectionGroup(memberDb, "replies"),
+      where("authorUid", "==", "other"),
+      limit(50),
+    )));
+    await assertFails(getDocs(query(collectionGroup(memberDb, "replies"), limit(50))));
+    await assertFails(getDocs(query(
+      collectionGroup(guestDb, "replies"),
+      where("authorUid", "==", "member"),
+      limit(50),
+    )));
   });
 
   it("grup indeksini yalnız sahibi yazar ve sınırlı listeler", async () => {
