@@ -1,5 +1,4 @@
 import type { Place } from "../types";
-import { isWithinNorthernCyprus, KKTC_NAME } from "../data/regions";
 import { normalize } from "./text";
 
 export { normalize } from "./text";
@@ -38,9 +37,7 @@ export function toSearchResult(feature: PhotonFeature, queryText: string, index 
   return {
     id: `osm-${properties.osm_type}-${properties.osm_id ?? index}`,
     label: properties.name ?? properties.city ?? queryText,
-    sub: isWithinNorthernCyprus(lng, lat)
-      ? KKTC_NAME
-      : [properties.city, properties.state, properties.country].filter(Boolean).join(" · "),
+    sub: [properties.city, properties.state, properties.country].filter(Boolean).join(" · "),
     lng,
     lat,
     bbox: properties.extent,
@@ -83,15 +80,14 @@ export async function searchWorld(q: string, signal?: AbortSignal): Promise<Sear
 export async function reverseName(lat: number, lng: number, signal?: AbortSignal): Promise<string | null> {
   const key = `${lat.toFixed(3)},${lng.toFixed(3)}`;
   if (reverseCache.has(key)) return reverseCache.get(key)!;
-  const north = isWithinNorthernCyprus(lng, lat);
   try {
     const data = await json<{ features: PhotonFeature[] }>(`${endpoint}/reverse?lat=${lat}&lon=${lng}&limit=1&lang=en`, signal);
     if (signal?.aborted) return null;
     const p = data.features[0]?.properties;
-    const name = p ? [p.city ?? p.district ?? p.state ?? p.name, north ? KKTC_NAME : p.country].filter(Boolean).join(" · ") : north ? KKTC_NAME : null;
+    const name = p ? [p.city ?? p.district ?? p.state ?? p.name, p.country].filter(Boolean).join(" · ") || null : null;
     if (name) reverseCache.set(key, name);
     return name;
-  } catch { return north ? KKTC_NAME : null; }
+  } catch { return null; }
 }
 
 export const formatCoords = (lat: number, lng: number) =>

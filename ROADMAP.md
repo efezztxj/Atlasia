@@ -30,7 +30,7 @@ Atlasia bir **topluluk seyahat uygulamasıdır**: bir yere gidildiğinde o yerin
 
 Bölge ölçeğinde motor zaten var ve iyi. Site ölçeğinde motor **çalışmaz** (§7 Antipattern A) ve çalışmasına gerek yoktur; sıra bilinen bir turdur.
 
-**Lansman kaması:** KKTC. Topluluk uygulamaları yoğunlukla yaşar; 500 kişi tek bölgede işe yarar, dünyada işe yaramaz. `KKTC_GEOMETRY`, ayrı `kktc-outline`/`kktc-label` katmanları ve kayıt formundaki ülke seçeneği zaten mevcut.
+**Lansman kaması:** tek pilot bölgesi (yer kararı açık). Topluluk uygulamaları yoğunlukla yaşar; 500 kişi tek bölgede işe yarar, dünyada işe yaramaz. Kodda hiçbir bölgeye özel harita katmanı ya da arama kaydı yoktur (KKTC'ye özel sınır/isim katmanı, `regions.ts` ve ters-geokod üzerine yazma 2026-10-22 kullanıcı kararıyla kaldırıldı).
 
 ## 2. Kanıtlanmış mevcut durum
 
@@ -100,7 +100,7 @@ Hiçbir moderasyon yapısı yok: `report`, `şikayet`, `block`, `ban` araması g
 | 6 | Eski sosyal katman yardımcıları | gerçek `src/` taraması | eski `awardXp`/`followUser` ailesi bu checkout'ta mevcut değil. Karar (d): XP yeniden eklenmez; rozet/takip yalnız sunucu tarafı (Cloud Functions) ile gelir |
 | 7 | Story `seen` alanı global dokümanda | `types.ts`, `firestoreData.ts`, rules | tamamlandı: Firestore şemasından çıkarıldı; UI yalnız cihaz bazlı `atlasia.feed.seen.v1` kullanır |
 | 8 | Reply veri yolu sözleşmesi | `firestoreData.ts`, README, rules | tamamlandı: başlık, yazma/okuma, rules ve doküman aynı alt koleksiyon modelini kullanır |
-| 9 | Sokak/topoğrafik altlıklarda `kktc-label` ile Esri'nin gömülü etiketleri üst üste gelebiliyordu | `MapView.tsx` efektler | tamamlandı (2026-10-21, B seçeneği): `kktc-outline` korunur, `kktc-label` yalnız dark/satellite altlıklarında görünür; sözleşme `mapLabelVisibility.test.ts` ile kilitli |
+| 9 | Sokak/topoğrafik altlıklarda `kktc-label` ile Esri'nin gömülü etiketleri üst üste gelebiliyordu | `MapView.tsx` efektler | kapandı: KKTC'ye özel `kktc-outline`/`kktc-label` katmanları 2026-10-22 kullanıcı kararıyla tamamen kaldırıldı; yokluğu `mapLabelVisibility.test.ts` ile kilitli |
 
 ### 2.5 Adım durumu (2026-10-22, main `0ad774f` üzerinde commit ataları doğrulanarak)
 

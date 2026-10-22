@@ -5,7 +5,7 @@ import style from "../data/openFreeMapDarkStyle.json";
 /**
  * MapView kendi katmanlarını OpenFreeMap glyph sunucusuyla çizer. Sunucuda
  * olmayan bir yazı tipi istenirse glyph isteği 404 olur ve etiket hiç
- * görünmez (KKTC etiketi "Open Sans Semibold" istiyordu). Burada izinli
+ * görünmez (eski özel bölge etiketi "Open Sans Semibold" istiyordu). Burada izinli
  * küme, paketlenmiş stilin gerçekten kullandığı yazı tipleridir.
  */
 function styleFonts(): Set<string> {
@@ -24,7 +24,7 @@ describe("harita yazı tipleri", () => {
     const source = readFileSync("src/components/MapView.tsx", "utf8");
     const requested = [...source.matchAll(/"text-font":\s*\[([^\]]*)\]/g)]
       .flatMap((match) => [...match[1].matchAll(/"([^"]+)"/g)].map((font) => font[1]));
-    expect(requested.length).toBeGreaterThan(0);
+    // MapView'in kendi metin katmanı olmayabilir; olursa izinli kümeden seçmelidir.
     for (const font of requested) expect(allowed.has(font), font).toBe(true);
   });
 });

@@ -8,8 +8,8 @@ import { describe, expect, it } from "vitest";
  * Kanıtlanan sözleşme (stil kurulumu + efekt aynı kuralı uygular):
  *  - OpenFreeMap symbol (etiket) katmanları: yalnız dark ve satellite altlıklarda.
  *  - OpenFreeMap symbol olmayan katmanlar: yalnız dark altlıkta.
- *  - kktc-outline: yalnız `labels` bayrağına bağlı; her altlıkta aynı davranır.
- *  - kktc-label: `labels` + dark/satellite koşuluna bağlı.
+ *  - Bölgeye özel katman yoktur: KKTC sınır çizgisi ve sarı isim katmanı
+ *    2026-10-22 kullanıcı kararıyla kaldırıldı.
  *
  * Kullanıcının onayladığı B seçeneği kusur #9'u kapatır: street/topographic
  * (Esri raster) altlıkları kendi gömülü etiketleriyle geldiğinden özel KKTC
@@ -19,12 +19,6 @@ import { describe, expect, it } from "vitest";
 
 const mapViewPath = fileURLToPath(new URL("../components/MapView.tsx", import.meta.url));
 const mapSource = readFileSync(mapViewPath, "utf8");
-
-function styleBlock(layerId: string): string {
-  const start = mapSource.indexOf(`id: "${layerId}"`);
-  if (start < 0) throw new Error(`${layerId} katmanı MapView'da bulunamadı`);
-  return mapSource.slice(start, start + 700);
-}
 
 describe("harita etiket görünürlük matrisi (P13)", () => {
   it("OpenFreeMap etiketleri yalnız dark/satellite altlıklarında görünürdür", () => {
@@ -51,38 +45,10 @@ describe("harita etiket görünürlük matrisi (P13)", () => {
     expect(visibilityFn).not.toContain('"topographic" ? "visible"');
   });
 
-  it("kktc-outline her altlıkta kalır; kktc-label yalnız dark/satellite'de görünürdür", () => {
-    const outline = styleBlock("kktc-outline");
-    const label = styleBlock("kktc-label");
-    const helper = mapSource.slice(
-      mapSource.indexOf("function kktcLabelVisible"),
-      mapSource.indexOf("function openFreeMapLayers"),
-    );
-
-    expect(helper).toContain(
-      'return labels && (baseMap === "dark" || baseMap === "satellite")',
-    );
-    // Çizgi ilk kurulumda ve güncellemede altlığa değil yalnız labels'a bağlıdır.
-    expect(outline).toContain('visibility: labels ? "visible" : "none"');
-    expect(mapSource).toContain(
-      'map.setLayoutProperty("kktc-outline", "visibility", showLabels ? "visible" : "none")',
-    );
-    // Etiket aynı yardımcı koşulu ilk kurulumda ve güncellemede kullanır;
-    // böylece street/topographic'te Esri'nin gömülü etiketiyle çakışmaz.
-    expect(label).toContain(
-      'visibility: kktcLabelVisible(labels, baseMap) ? "visible" : "none"',
-    );
-    expect(mapSource).toContain('kktcLabelVisible(showLabels, baseMap)');
-    expect(mapSource.match(/kktcLabelVisible\(/g)).toHaveLength(3); // tanım + 2 çağrı
-    // Koşul kapsamındaki altlıklarda mevcut çizim sözleşmesi değişmez.
-    expect(label).toContain('"text-allow-overlap": true');
-  });
-
-  it("KKTC etiketi zoom aralığı ve konumu sözleşmeye kilitlidir (kaza değişimine kapanır)", () => {
-    const label = styleBlock("kktc-label");
-    expect(label).toContain("minzoom: 5.2");
-    expect(label).toContain("maxzoom: 11");
-    expect(mapSource).toContain("KUZEY KIBRIS");
-    expect(mapSource).toContain("coordinates: [33.58, 35.265]");
+  it("KKTC'ye özel sınır çizgisi ve sarı isim katmanı yoktur (kullanıcı kararı 2026-10-22)", () => {
+    // Harita hiçbir bölgeyi özel olarak işaretlemez; isimler altlığın kendi etiketlerinden gelir.
+    expect(mapSource.toLowerCase()).not.toContain("kktc");
+    expect(mapSource).not.toContain("KUZEY KIBRIS");
+    expect(mapSource).not.toContain("#ffdb8d");
   });
 });

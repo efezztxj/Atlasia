@@ -9,7 +9,6 @@ import {
   type MapStyleLayer,
 } from "../config/mapLabelCalibration";
 import openFreeMapDarkStyle from "../data/openFreeMapDarkStyle.json";
-import { KKTC_GEOMETRY, KKTC_NAME } from "../data/regions";
 import type { PlaceViewport } from "../lib/firestoreData";
 import type { Place, RouteLeg, ViewState } from "../types";
 import { shouldAdvanceSpin } from "../utils/mapLifecycle";
@@ -85,13 +84,6 @@ function openFreeMapLayerVisible(layerId: string, labels: boolean, baseMap: Base
     return labels && (baseMap === "dark" || baseMap === "satellite");
   }
   return baseMap === "dark";
-}
-
-function kktcLabelVisible(labels: boolean, baseMap: BaseMapStyle) {
-  // Street/topographic Esri altlıklarının gömülü etiketleri vardır; özel KKTC
-  // yazısı orada ikinci bir isim katmanı oluşturur. Sınır çizgisi metin
-  // çakışmasına yol açmadığı için bu koşul yalnız etikete uygulanır.
-  return labels && (baseMap === "dark" || baseMap === "satellite");
 }
 
 function openFreeMapLayers(
@@ -197,19 +189,6 @@ function buildStyle(
         encoding: "terrarium",
         attribution: "Terrain data: AWS Terrain Tiles",
       },
-      "kktc-region": {
-        type: "geojson",
-        data: { type: "Feature", properties: { name: KKTC_NAME }, geometry: KKTC_GEOMETRY },
-        attribution: "Regional geography: Natural Earth / Datahub (public domain)",
-      },
-      "kktc-name": {
-        type: "geojson",
-        data: {
-          type: "Feature",
-          properties: { name: "KUZEY KIBRIS\nTÜRK CUMHURİYETİ" },
-          geometry: { type: "Point", coordinates: [33.58, 35.265] },
-        },
-      },
     },
     terrain: terrainEnabled ? { source: "terrain", exaggeration: 1.08 } : undefined,
     layers: [
@@ -255,44 +234,6 @@ function buildStyle(
         },
       },
       ...openFreeMapLayers(labels, baseMap, theme),
-      {
-        id: "kktc-outline",
-        type: "line",
-        source: "kktc-region",
-        minzoom: 6,
-        maxzoom: 13,
-        layout: { visibility: labels ? "visible" : "none" },
-        paint: {
-          "line-color": "#eab54f",
-          "line-width": 1,
-          "line-opacity": 0.45,
-          "line-dasharray": [3, 3],
-        },
-      },
-      {
-        id: "kktc-label",
-        type: "symbol",
-        source: "kktc-name",
-        minzoom: 5.2,
-        maxzoom: 11,
-        layout: {
-          visibility: kktcLabelVisible(labels, baseMap) ? "visible" : "none",
-          "text-field": ["get", "name"],
-          "text-font": ["Noto Sans Regular"], // glyph sunucusunda olan tek yazı tipi (stil JSON ile aynı)
-          "text-size": ["interpolate", ["linear"], ["zoom"], 5, 10, 8, 14],
-          "text-letter-spacing": 0.08,
-          "text-line-height": 1.4,
-          "text-max-width": 18,
-          "text-allow-overlap": true,
-          "text-pitch-alignment": "viewport",
-        },
-        paint: {
-          "text-color": "#ffdb8d",
-          "text-halo-color": "#031d17",
-          "text-halo-width": 1.6,
-          "text-halo-blur": 0.6,
-        },
-      },
     ],
   };
 }
@@ -732,12 +673,6 @@ export default function MapView({
       map.setPaintProperty(layerId, "text-halo-width", paint["text-halo-width"]);
       map.setPaintProperty(layerId, "text-halo-blur", paint["text-halo-blur"]);
     }
-    map.setLayoutProperty("kktc-outline", "visibility", showLabels ? "visible" : "none");
-    map.setLayoutProperty(
-      "kktc-label",
-      "visibility",
-      kktcLabelVisible(showLabels, baseMap) ? "visible" : "none",
-    );
   }, [baseMap, showLabels, ready, theme]);
 
   // Yakınlaşınca gerçek yükseklik verisini ister; düşük güçlü cihazlarda kapatılabilir.
