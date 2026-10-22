@@ -370,17 +370,20 @@ değiştirilmedi**: varlık-gizleme amacı olabilir; istemci tarafında zaten
 probe ile sarmalanmış durumda. Kural değişikliği ayrı onay gerektirir.
 
 ### Kilitler
-- `src/config/firestoreRulesStructure.test.ts` +6 statik test (yerelde KOŞULDU,
-  27/27): beş sertleştirme de metin düzeyinde kilitlendi; gevşetme yokluğu
-  (catch-all, list:false) ayrıca doğrulanır.
+- `src/config/firestoreRulesStructure.test.ts` +7 statik test (yerelde KOŞULDU,
+  28/28): beş sertleştirme de metin düzeyinde kilitlendi; gevşetme yokluğu
+  (catch-all, list:false) ayrıca doğrulanır; Ek tur 3b'deki negatif kilit
+  (hikâye `allow list` satırı `resource.data`'ya dokunamaz) dahil.
 - `tests/firestore.rules.test.ts` +3 emülatör vakası (süresi dolmuş hikâye,
   updatedAt'siz lastMessage, silinmiş grup mesajı) ve 2 mevcut vaka yeni rıza
   modeline uyarlandı (grup create artık [kurucu] ile; indeks testi grup
-  tohumlar). **Bu emülatör vakaları yerelde KOŞULAMADI (Java 21 yok)** —
-  typecheck'ten geçer, nihai kanıt CI'dadır.
+  tohumlar). **Bu vakalar yerelde KOŞULAMADI (Java 21 ve JAR indirme adresi
+  yok)** — kanıt CI'dan geldi: run 39801673414'te rules adımı `success`
+  (48 vakanın tamamı). İlk koşuda düşen tek vaka Ek tur 3b'de düzeltildi.
 
-Doğrulama: typecheck 0 · lint 0 · test:run 53 dosya / 374 test · build başarılı.
-Kurallar DEPLOY EDİLMEDİ.
+Doğrulama: typecheck 0 · lint 0 · test:run 53 dosya / 375 test · build başarılı.
+CI (run 39801673414, head `39e2daa`): typecheck · lint · unit · owner-index ·
+**Firestore emülatör kuralları** · build → tümü `success`. Kurallar DEPLOY EDİLMEDİ.
 
 ---
 
