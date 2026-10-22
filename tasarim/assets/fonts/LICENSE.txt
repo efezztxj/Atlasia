@@ -1,0 +1,6 @@
+Yazı tipleri
+------------
+DM Sans — Copyright 2014 The DM Sans Project Authors (https://github.com/googlefonts/dm-fonts)
+Bricolage Grotesque — Copyright 2022 The Bricolage Grotesque Project Authors (https://github.com/ateliertriay/bricolage)
+Her iki aile de SIL Open Font License 1.1 ile lisanslıdır.
+Dosyalar Fontsource (https://fontsource.org) dağıtımından alınmıştır; yalnız latin ve latin-ext alt kümeleri kullanılır.

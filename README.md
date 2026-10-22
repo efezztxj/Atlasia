@@ -100,3 +100,4 @@ GitHub Actions her pull request, `main` ve `arena/**` branch güncellemesinde ü
 
 - [Kimlik doğrulama kurulumu](AUTH_SETUP.md)
 - [Sürüm değişiklik günlüğü](CHANGELOG.md)
+- [Telefon & masaüstü UI kiti](docs/teslimatlar/teslimat-ui-telefon-pc-2026-10-22.md) — `tasarim/index.html`

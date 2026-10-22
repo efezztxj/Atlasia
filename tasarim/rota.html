@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#02120f" />
+    <title>Atlasia UI · Rota planlayıcı</title>
+    <link rel="stylesheet" href="css/base.css" />
+    <link rel="stylesheet" href="css/screens.css" />
+  </head>
+  <body class="showcase" data-screen="rota">
+    <main class="showcase__stage">
+      <div class="showcase__inner">
+        <div class="caption">
+          <div>
+            <p class="caption__kicker">Masaüstü · 06 Rota planlayıcı</p>
+            <h1>Açıklanabilir rota: her durak gerekçeli.</h1>
+            <p>
+              Süre, tempo ve ulaşım sol panelde seçilir; sonuç haritada numaralı duraklar ve yükseklik profiliyle
+              görünür. Kaydetmeden önce onay adımı korunur.
+            </p>
+          </div>
+          <div class="caption__meta">
+            <span><svg class="i" data-icon="route"></svg>6 durak · 6,4 km</span>
+            <span><svg class="i" data-icon="mountain"></svg>Yükseklik profili</span>
+            <span><svg class="i" data-icon="moon"></svg>Koyu tema</span>
+          </div>
+        </div>
+
+        <div class="browser">
+          <div class="browser__bar">
+            <div class="traffic" aria-hidden="true"><span></span><span></span><span></span></div>
+            <div class="browser__nav" aria-hidden="true">
+              <svg class="i i--sm" data-icon="chevron-left"></svg>
+              <svg class="i i--sm" data-icon="chevron-right"></svg>
+            </div>
+            <div class="browser__url"><svg class="i" data-icon="lock"></svg>atlasia.app/rota/yeni</div>
+            <div class="browser__actions" aria-hidden="true">
+              <svg class="i i--xs" data-icon="share-2"></svg>
+              <svg class="i i--xs" data-icon="plus"></svg>
+            </div>
+          </div>
+          <div class="browser__screen">
+            <section class="screen screen--desktop grain" aria-label="Masaüstü rota planlayıcı ekranı">
+              <div class="map">
+                <img class="map__img" src="assets/harita.jpg" alt="Rota bölgesinin uydu görüntüsü" style="object-position: 52% 48%; filter: saturate(0.94) contrast(1.02) brightness(0.82)" />
+                <div class="map__scrim" style="background: linear-gradient(180deg, rgba(2,16,13,.72) 0%, rgba(2,16,13,.16) 22%, rgba(2,16,13,0) 45%, rgba(2,15,12,.55) 78%, rgba(2,15,12,.9) 100%)"></div>
+                <div class="map__glow" style="background: radial-gradient(40% 32% at 66% 30%, rgba(242,198,102,.14), transparent 70%)"></div>
+                <div class="map__labels" aria-hidden="true">
+                  <span class="map-label map-label--water" style="left: 24%; top: 62%">Ege Denizi</span>
+                  <span class="map-label map-label--town" style="left: 46%; top: 24%">Şirince</span>
+                  <span class="map-label map-label--town" style="left: 41%; top: 41%">Selçuk</span>
+                  <span class="map-label map-label--town" style="left: 62%; top: 66%">Belevi</span>
+                </div>
+
+                <svg class="route-layer" viewBox="0 0 1440 900" aria-hidden="true">
+                  <defs>
+                    <linearGradient id="routeGrad" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0%" stop-color="#ffe6ab" />
+                      <stop offset="55%" stop-color="#f2c666" />
+                      <stop offset="100%" stop-color="#d99a33" />
+                    </linearGradient>
+                    <filter id="routeGlow" x="-30%" y="-30%" width="160%" height="160%">
+                      <feGaussianBlur stdDeviation="7" result="blur" />
+                      <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                    </filter>
+                  </defs>
+                  <!-- arazi gölgesi -->
+                  <path d="M604 470 C 660 440, 700 404, 762 412 S 866 366, 918 398 S 1006 452, 1058 512"
+                        fill="none" stroke="rgba(2,14,11,.55)" stroke-width="12" stroke-linecap="round" />
+                  <!-- yol bacağı (düz) -->
+                  <path d="M604 470 C 660 440, 700 404, 762 412" fill="none" stroke="url(#routeGrad)" stroke-width="4.5" stroke-linecap="round" />
+                  <!-- patika bacağı (kesikli) -->
+                  <path d="M762 412 S 866 366, 918 398" fill="none" stroke="url(#routeGrad)" stroke-width="4" stroke-linecap="round" stroke-dasharray="9 8" />
+                  <path d="M918 398 S 1006 452, 1058 512" fill="none" stroke="url(#routeGrad)" stroke-width="4.5" stroke-linecap="round" />
+                  <!-- önizleme yön oku -->
+                  <path d="M1000 470 l 14 6 -14 6" fill="none" stroke="#ffe6ab" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity=".9" />
+                </svg>
+
+                <div class="stop-marker stop-marker--start" style="left: 604px; top: 470px">1</div>
+                <div class="stop-marker" style="left: 762px; top: 412px">2</div>
+                <div class="stop-marker stop-marker--active" style="left: 918px; top: 398px">3</div>
+                <div class="stop-marker" style="left: 1058px; top: 512px">4</div>
+                <div class="stop-marker" style="left: 900px; top: 648px">5</div>
+                <div class="stop-marker stop-marker--end" style="left: 742px; top: 600px">6</div>
+                <div class="stop-callout" style="left: 946px; top: 330px">
+                  <p class="stop-callout__time">09:00 – 09:22 · 22 dk</p>
+                  <strong>Celsus Kütüphanesi</strong>
+                  <small>1.284 değerlendirme · içeri gir</small>
+                </div>
+
+                <div class="pin pin--glass" style="left: 38%; top: 50%">
+                  <div class="pin__body"><svg class="i" data-icon="landmark"></svg></div>
+                </div>
+                <div class="pin pin--glass" style="left: 47%; top: 35%">
+                  <div class="pin__body"><svg class="i" data-icon="utensils-crossed"></svg></div>
+                </div>
+              </div>
+
+              <header class="topbar">
+                <div class="topbar__brand">
+                  <span class="topbar__wordmark">Atlasia<span>.</span></span>
+                  <span class="topbar__rule" aria-hidden="true"></span>
+                  <p class="topbar__tagline">Gezginlerin gözünden, dünyanın her köşesi</p>
+                </div>
+                <nav class="topbar__nav" aria-label="Ana menü">
+                  <a href="#"><svg class="i" data-icon="compass"></svg>Keşfet</a>
+                  <a href="#"><svg class="i" data-icon="users"></svg>İzler</a>
+                  <a href="#"><svg class="i" data-icon="bookmark"></svg>Kayıtlarım</a>
+                  <a class="is-active" href="#" aria-current="page"><svg class="i" data-icon="route"></svg>Rotalar</a>
+                </nav>
+                <div class="topbar__right">
+                  <div class="searchbar" role="search">
+                    <svg class="i" data-icon="search"></svg>
+                    <span>Yer, bölge veya gezgin ara</span>
+                    <kbd>⌘K</kbd>
+                  </div>
+                  <button class="icon-btn icon-btn--outline" type="button" aria-label="Bildirimler">
+                    <svg class="i" data-icon="bell"></svg>
+                  </button>
+                  <a class="btn btn--gold btn--sm" href="#"><svg class="i i--xs" data-icon="plus"></svg>İz bırak</a>
+                  <button class="topbar__user" type="button" aria-label="Profil menüsü">
+                    <span class="avatar avatar--sm">E</span>
+                    <span style="text-align: left"><strong>Elif Karaca</strong><small>Gezgin · 128 iz</small></span>
+                    <svg class="i i--xs" data-icon="chevron-down" style="color: var(--text-3)"></svg>
+                  </button>
+                </div>
+              </header>
+
+              <aside class="drota__panel" aria-label="Rota planlayıcı paneli">
+                <div class="drota__head">
+                  <div class="drota__headTop">
+                    <div>
+                      <p class="kicker">Yeni rota · Efes &amp; çevresi</p>
+                      <h1>Gününü<br /><span>planla.</span></h1>
+                      <p><svg class="i" data-icon="map-pin"></svg>Başlangıç: Selçuk merkez · otel</p>
+                    </div>
+                    <div class="drota__head-actions">
+                      <button class="icon-btn" type="button" aria-label="Taslağı kaydet"><svg class="i" data-icon="bookmark"></svg></button>
+                      <button class="icon-btn" type="button" aria-label="Paneli kapat"><svg class="i" data-icon="x"></svg></button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="drota__body scroll">
+                  <div class="field">
+                    <div class="field__label">Zaman<span>1 gün</span></div>
+                    <div class="seg" role="group" aria-label="Zaman">
+                      <button type="button">Yarım gün</button>
+                      <button type="button" class="is-active">1 gün</button>
+                      <button type="button">2 gün</button>
+                      <button type="button">3+</button>
+                    </div>
+                  </div>
+
+                  <div class="field">
+                    <div class="field__label">Tempo<span>Dengeli</span></div>
+                    <div class="seg" role="group" aria-label="Tempo">
+                      <button type="button">Rahat</button>
+                      <button type="button" class="is-active">Dengeli</button>
+                      <button type="button">Yoğun</button>
+                    </div>
+                  </div>
+
+                  <div class="field">
+                    <div class="field__label">İlgi alanları<span>Tarih, doğa</span></div>
+                    <div class="chip-row" role="group" aria-label="İlgi alanları">
+                      <span class="chip is-active"><svg class="i" data-icon="landmark"></svg>Tarih</span>
+                      <span class="chip is-active"><svg class="i" data-icon="sprout"></svg>Doğa</span>
+                      <span class="chip"><svg class="i" data-icon="utensils-crossed"></svg>Yemek</span>
+                      <span class="chip"><svg class="i" data-icon="camera"></svg>Fotoğraf</span>
+                      <span class="chip"><svg class="i" data-icon="waves"></svg>Plaj</span>
+                      <span class="chip"><svg class="i" data-icon="sparkles"></svg>Gizli yerler</span>
+                    </div>
+                  </div>
+
+                  <div class="field">
+                    <div class="field__label">Ulaşım<span>Yürüyüş</span></div>
+                    <div class="seg" role="group" aria-label="Ulaşım">
+                      <button type="button" class="is-active"><svg class="i" data-icon="footprints"></svg>Yürüyüş</button>
+                      <button type="button"><svg class="i" data-icon="map"></svg>Araç</button>
+                      <button type="button"><svg class="i" data-icon="users"></svg>Toplu</button>
+                    </div>
+                  </div>
+
+                  <div class="toggles">
+                    <div class="toggle-row">
+                      <div class="t"><strong>Yağmuru gözet</strong><small>İç mekân öne alınır</small></div>
+                      <span class="switch is-on" role="switch" aria-checked="true" aria-label="Yağmuru gözet"></span>
+                    </div>
+                    <div class="toggle-row">
+                      <div class="t"><strong>Sesli rehber</strong><small>Duraklarda hazır olsun</small></div>
+                      <span class="switch is-on" role="switch" aria-checked="true" aria-label="Sesli rehber"></span>
+                    </div>
+                  </div>
+
+                  <div class="drota__stopsHead">
+                    <h3>Duraklar<span>6 durak · 6,4 km</span></h3>
+                    <div class="row" aria-label="Durak sıralama">
+                      <button class="icon-btn" type="button" aria-label="Otomatik sırala" title="Otomatik sırala"><svg class="i" data-icon="sparkles"></svg></button>
+                      <button class="icon-btn" type="button" aria-label="Durak ekle"><svg class="i" data-icon="plus"></svg></button>
+                    </div>
+                  </div>
+
+                  <div class="stop-row">
+                    <span class="stop-row__n">1</span>
+                    <div class="stop-row__t"><strong>Selçuk merkez · başlangıç</strong><small><svg class="i" data-icon="map-pin"></svg>Önerilen çıkış 07:40</small></div>
+                    <time>07:40</time>
+                    <span class="stop-row__grip" aria-hidden="true"><svg class="i" data-icon="grip-vertical"></svg></span>
+                  </div>
+                  <div class="stop-row">
+                    <span class="stop-row__n">2</span>
+                    <div class="stop-row__t"><strong>Magnesia Kapısı</strong><small><svg class="i" data-icon="ticket"></svg>Bilet · 8 dk yürüyüş</small></div>
+                    <time>08:00</time>
+                    <span class="stop-row__grip" aria-hidden="true"><svg class="i" data-icon="grip-vertical"></svg></span>
+                  </div>
+                  <div class="stop-row is-active">
+                    <span class="stop-row__n">3</span>
+                    <div class="stop-row__t"><strong>Celsus Kütüphanesi</strong><small><svg class="i" data-icon="clock-3"></svg>22 dk · ilk ışık</small></div>
+                    <time>09:00</time>
+                    <span class="stop-row__grip" aria-hidden="true"><svg class="i" data-icon="grip-vertical"></svg></span>
+                  </div>
+                  <div class="stop-row">
+                    <span class="stop-row__n">4</span>
+                    <div class="stop-row__t"><strong>Mermer Cadde</strong><small><svg class="i" data-icon="clock-3"></svg>18 dk · gölge</small></div>
+                    <time>09:30</time>
+                    <span class="stop-row__grip" aria-hidden="true"><svg class="i" data-icon="grip-vertical"></svg></span>
+                  </div>
+                  <div class="stop-row">
+                    <span class="stop-row__n">5</span>
+                    <div class="stop-row__t"><strong>Büyük Tiyatro</strong><small><svg class="i" data-icon="clock-3"></svg>20 dk · manzara</small></div>
+                    <time>10:10</time>
+                    <span class="stop-row__grip" aria-hidden="true"><svg class="i" data-icon="grip-vertical"></svg></span>
+                  </div>
+                  <div class="stop-row">
+                    <span class="stop-row__n">6</span>
+                    <div class="stop-row__t"><strong>Şirince · kahvaltı</strong><small><svg class="i" data-icon="utensils-crossed"></svg>Mola · 9 km araç</small></div>
+                    <time>11:15</time>
+                    <span class="stop-row__grip" aria-hidden="true"><svg class="i" data-icon="grip-vertical"></svg></span>
+                  </div>
+
+                  <button class="btn btn--ghost btn--sm" type="button" style="width: 100%; margin-top: 8px; height: 34px">
+                    <svg class="i i--xs" data-icon="plus"></svg>Durak ekle
+                  </button>
+                </div>
+
+                <div class="drota__foot">
+                  <div class="drota__summary">
+                    <svg class="i" data-icon="route"></svg>6,4 km
+                    <span class="sep"></span>
+                    <svg class="i" data-icon="clock-3"></svg>4 sa 20 dk
+                    <span class="sep"></span>
+                    <svg class="i" data-icon="trending-up"></svg>320 m
+                    <span class="hint">1 gün · dengeli</span>
+                  </div>
+                  <div class="drota__footRow">
+                    <button class="btn btn--gold" type="button">
+                      <svg class="i i--sm" data-icon="check"></svg>Rotayı kaydet
+                    </button>
+                    <button class="btn btn--soft btn--icon" type="button" aria-label="Haritada önizle">
+                      <svg class="i i--sm" data-icon="map"></svg>
+                    </button>
+                    <button class="btn btn--soft btn--icon" type="button" aria-label="Rotayı paylaş">
+                      <svg class="i i--sm" data-icon="share-2"></svg>
+                    </button>
+                  </div>
+                </div>
+              </aside>
+
+              <div class="drota__style">
+                <div class="seg seg--map">
+                  <button type="button" class="is-active">Uydu</button>
+                  <button type="button">Sokak</button>
+                  <button type="button">Topoğrafya</button>
+                  <button type="button">Koyu</button>
+                </div>
+              </div>
+
+              <aside class="drota__elev" aria-label="Yükseklik profili">
+                <div class="drota__elevHead">
+                  <h3><svg class="i" data-icon="mountain"></svg>Yükseklik profili</h3>
+                  <span><strong>+320 m</strong> · en yüksek <strong>410 m</strong></span>
+                </div>
+                <svg viewBox="0 0 340 66" preserveAspectRatio="none" role="img" aria-label="Rota yükseklik profili, 6 durak">
+                  <defs>
+                    <linearGradient id="elevFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="#f2c666" stop-opacity=".32" />
+                      <stop offset="100%" stop-color="#f2c666" stop-opacity="0" />
+                    </linearGradient>
+                  </defs>
+                  <g stroke="rgba(228,245,234,.1)" stroke-width="1">
+                    <line x1="0" y1="16" x2="340" y2="16" />
+                    <line x1="0" y1="36" x2="340" y2="36" />
+                    <line x1="0" y1="56" x2="340" y2="56" />
+                  </g>
+                  <path d="M0 52 L46 44 L78 36 L112 30 L152 22 L196 30 L232 40 L268 34 L304 44 L340 50 L340 66 L0 66 Z" fill="url(#elevFill)" />
+                  <path d="M0 52 L46 44 L78 36 L112 30 L152 22 L196 30 L232 40 L268 34 L304 44 L340 50" fill="none" stroke="#f2c666" stroke-width="1.8" stroke-linejoin="round" />
+                  <path d="M112 30 L152 22 L196 30" fill="none" stroke="#ffe6ab" stroke-width="2.4" stroke-dasharray="4 3" stroke-linejoin="round" />
+                  <g fill="#03201a" stroke="#f2c666" stroke-width="1.6">
+                    <circle cx="0" cy="52" r="2.6" />
+                    <circle cx="78" cy="36" r="2.6" />
+                    <circle cx="152" cy="22" r="3.2" fill="#f2c666" />
+                    <circle cx="232" cy="40" r="2.6" />
+                    <circle cx="340" cy="50" r="2.6" />
+                  </g>
+                </svg>
+                <div class="drota__elevFoot">
+                  <span>Km 0</span>
+                  <span class="sep"></span>
+                  <span>Durak 3 · Celsus · 410 m</span>
+                  <span class="sep"></span>
+                  <span>Km 6,4</span>
+                  <span class="legend">
+                    <span><i></i>Yol</span>
+                    <span class="trail"><i></i>Patika</span>
+                  </span>
+                </div>
+              </aside>
+
+              <button class="drota__ai" type="button" aria-label="Atlas AI ile rota sor">
+                <span class="orb"><svg class="i" data-icon="sparkles"></svg></span>
+                <span><strong>Atlas AI</strong><small>"Daha az yürü" de</small></span>
+              </button>
+
+              <div class="dkesif__foot">
+                <div class="scalebar"><span class="scalebar__bar"></span>2 km</div>
+                <p class="attribution">Rota çizimi temsilidir</p>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </main>
+    <script src="js/ui.js"></script>
+  </body>
+</html>

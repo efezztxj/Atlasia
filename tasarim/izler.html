@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#02120f" />
+    <title>Atlasia UI · İzler</title>
+    <link rel="stylesheet" href="css/base.css" />
+    <link rel="stylesheet" href="css/screens.css" />
+  </head>
+  <body class="showcase" data-screen="izler">
+    <main class="showcase__stage">
+      <div class="showcase__inner">
+        <div class="caption">
+          <div>
+            <p class="caption__kicker">Mobil · 02 İzler</p>
+            <h1>Akış, haritanın insan yüzü.</h1>
+            <p>
+              Hikâyeler, filtre ve gönderiler tek kaydırma alanında; yazma alanı sabit. Beğeni ve yanıt
+              sayaçları kural tarafında atomik, arayüzde tek satır.
+            </p>
+          </div>
+          <div class="caption__meta">
+            <span><svg class="i" data-icon="smartphone"></svg>390 × 844</span>
+            <span><svg class="i" data-icon="users"></svg>Sosyal akış</span>
+            <span><svg class="i" data-icon="moon"></svg>Koyu tema</span>
+          </div>
+        </div>
+
+        <div class="device">
+          <div class="device__screen">
+            <section class="screen izler grain" aria-label="Mobil İzler ekranı">
+              <header class="statusbar" data-statusbar></header>
+
+              <div class="izler__top">
+                <div>
+                  <p class="kicker" style="font-size: 9px; letter-spacing: 0.2em">Topluluk</p>
+                  <h1>İzler</h1>
+                </div>
+                <div class="row gap-6" style="margin-left: auto">
+                  <button class="icon-btn icon-btn--outline" type="button" aria-label="İzlerde ara">
+                    <svg class="i" data-icon="search"></svg>
+                  </button>
+                  <button class="icon-btn icon-btn--outline" type="button" aria-label="Bildirimler: 2 yeni" style="position: relative">
+                    <svg class="i" data-icon="bell"></svg>
+                    <span class="badge badge--dot" style="position: absolute; top: 8px; right: 9px; border-color: var(--surface)"></span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="izler__body scroll">
+                <div class="izler__stories hscroll" aria-label="Hikâyeler">
+                  <button class="story story--add" type="button">
+                    <span class="story__ring story__ring--add"><span class="story__avatar"><svg class="i" data-icon="plus"></svg></span></span>
+                    <span class="story__name">İz bırak</span>
+                  </button>
+                  <button class="story" type="button">
+                    <span class="story__ring story__ring--live"><span class="story__avatar">E</span></span>
+                    <span class="story__name">Elif K.</span>
+                  </button>
+                  <button class="story" type="button">
+                    <span class="story__ring"><span class="story__avatar story__avatar--photo"><img src="assets/kapadokya.jpg" alt="" /></span></span>
+                    <span class="story__name">Deniz</span>
+                  </button>
+                  <button class="story" type="button">
+                    <span class="story__ring"><span class="story__avatar story__avatar--photo"><img src="assets/pamukkale.jpg" alt="" /></span></span>
+                    <span class="story__name">Mert</span>
+                  </button>
+                  <button class="story" type="button">
+                    <span class="story__ring story__ring--seen"><span class="story__avatar story__avatar--photo"><img src="assets/galata.jpg" alt="" /></span></span>
+                    <span class="story__name">Selin</span>
+                  </button>
+                  <button class="story" type="button">
+                    <span class="story__ring story__ring--seen"><span class="story__avatar story__avatar--photo"><img src="assets/likya.jpg" alt="" /></span></span>
+                    <span class="story__name">Can</span>
+                  </button>
+                </div>
+
+                <div class="izler__filters">
+                  <div class="seg seg--solid" role="group" aria-label="Akış filtresi">
+                    <button type="button" class="is-active">Tümü</button>
+                    <button type="button"><svg class="i" data-icon="crosshair"></svg>Yakınımda</button>
+                  </div>
+                  <span class="izler__count"><strong>24</strong> ipucu</span>
+                </div>
+
+                <article class="post">
+                  <div class="post__head">
+                    <span class="avatar avatar--sm">D<span class="avatar__status"></span></span>
+                    <div class="post__who">
+                      <strong>Deniz Aksoy</strong>
+                      <span><svg class="i" data-icon="map-pin"></svg>Likya Yolu · Faralya<span class="sep"></span>2 sa</span>
+                    </div>
+                    <span class="chip chip--sm chip--gold"><svg class="i" data-icon="footprints"></svg>Patika</span>
+                    <button class="icon-btn icon-btn--sm" type="button" aria-label="Gönderi menüsü">
+                      <svg class="i" data-icon="sliders-horizontal"></svg>
+                    </button>
+                  </div>
+                  <div class="post__media">
+                    <img src="assets/likya.jpg" alt="Likya Yolu'nda denize bakan patika" />
+                    <span class="post__place"><svg class="i" data-icon="map-pin"></svg>Faralya · Muğla</span>
+                    <span class="post__count">1 / 3</span>
+                  </div>
+                  <div class="post__actions">
+                    <button class="post__act is-liked" type="button" aria-pressed="true">
+                      <svg class="i" data-icon="heart"></svg>128
+                    </button>
+                    <button class="post__act" type="button"><svg class="i" data-icon="message-circle"></svg>14</button>
+                    <button class="post__act" type="button"><svg class="i" data-icon="navigation"></svg>Rotaya ekle</button>
+                    <button class="post__act post__act--end" type="button" aria-label="Kaydet"><svg class="i" data-icon="bookmark"></svg></button>
+                  </div>
+                  <p class="post__caption">
+                    <b>Kelebekler Vadisi'ne inen patika</b> sabah 07:00'de bomboş. Suyu 2 litre alın, iniş
+                    40 dakika sürüyor.
+                  </p>
+                  <div class="post__tags">
+                    <span>#likyayolu</span><span>#faralya</span><span>#gizlicennet</span>
+                  </div>
+                </article>
+
+                <article class="post">
+                  <div class="post__head">
+                    <span class="avatar avatar--sm">M</span>
+                    <div class="post__who">
+                      <strong>Mert Yıldız</strong>
+                      <span><svg class="i" data-icon="map-pin"></svg>Pamukkale · Denizli<span class="sep"></span>5 sa</span>
+                    </div>
+                    <span class="chip chip--sm chip--leaf"><svg class="i" data-icon="waves"></svg>Doğa</span>
+                    <button class="icon-btn icon-btn--sm" type="button" aria-label="Gönderi menüsü">
+                      <svg class="i" data-icon="sliders-horizontal"></svg>
+                    </button>
+                  </div>
+                  <div class="post__media post__media--short">
+                    <img src="assets/pamukkale.jpg" alt="Pamukkale travertenleri" />
+                    <span class="post__place"><svg class="i" data-icon="map-pin"></svg>Travertenler · Denizli</span>
+                  </div>
+                  <div class="post__actions">
+                    <button class="post__act" type="button"><svg class="i" data-icon="heart"></svg>86</button>
+                    <button class="post__act" type="button"><svg class="i" data-icon="message-circle"></svg>9</button>
+                    <button class="post__act" type="button"><svg class="i" data-icon="navigation"></svg>Rotaya ekle</button>
+                    <button class="post__act post__act--end" type="button" aria-label="Kaydet"><svg class="i" data-icon="bookmark"></svg></button>
+                  </div>
+                  <p class="post__caption">
+                    Teraslarda ayakkabı yasak; <b>gün batımı 19:20</b>. Kalabalık için üst kapıdan girin.
+                  </p>
+                </article>
+
+                <article class="post post--skeleton" aria-hidden="true">
+                  <div class="post__head">
+                    <span class="skeleton skeleton--circle"></span>
+                    <div class="post__who">
+                      <span class="skeleton" style="width: 108px"></span>
+                      <span class="skeleton" style="width: 148px; margin-top: 6px"></span>
+                    </div>
+                  </div>
+                  <div class="post__media post__media--short skeleton"></div>
+                </article>
+              </div>
+
+              <div class="izler__composer">
+                <span class="avatar avatar--sm">E</span>
+                <p>Bir iz bırak…</p>
+                <button class="icon-btn icon-btn--sm" type="button" aria-label="Fotoğraf ekle">
+                  <svg class="i" data-icon="camera"></svg>
+                </button>
+                <button class="izler__compose-go" type="button" aria-label="İz bırak">
+                  <svg class="i i--sm" data-icon="plus"></svg>
+                </button>
+              </div>
+
+              <nav class="tabbar" aria-label="Ana sekmeler">
+                <a class="tab" href="kesif.html">
+                  <span class="tab__icon"><svg class="i" data-icon="compass"></svg></span>
+                  Keşfet
+                </a>
+                <a class="tab is-active" href="#" aria-current="page">
+                  <span class="tab__icon"><svg class="i" data-icon="users"></svg></span>
+                  İzler
+                </a>
+                <a class="tab tab--center" href="#" aria-label="İz bırak">
+                  <span class="tab__add"><svg class="i" data-icon="plus"></svg></span>
+                  <span>İz bırak</span>
+                </a>
+                <a class="tab" href="#">
+                  <span class="tab__icon"><svg class="i" data-icon="bookmark"></svg></span>
+                  Kayıtlar
+                </a>
+                <a class="tab" href="#">
+                  <span class="tab__icon"><svg class="i" data-icon="user-round"></svg></span>
+                  Profil
+                </a>
+              </nav>
+              <span class="home-indicator" aria-hidden="true"></span>
+            </section>
+          </div>
+        </div>
+      </div>
+    </main>
+    <script src="js/ui.js"></script>
+  </body>
+</html>

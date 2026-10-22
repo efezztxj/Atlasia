@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#02120f" />
+    <title>Atlasia UI · Mobil keşif</title>
+    <link rel="stylesheet" href="css/base.css" />
+    <link rel="stylesheet" href="css/screens.css" />
+  </head>
+  <body class="showcase" data-screen="kesif">
+    <main class="showcase__stage">
+      <div class="showcase__inner">
+        <div class="caption">
+          <div>
+            <p class="caption__kicker">Mobil · 01 Keşif</p>
+            <h1>Harita önce okunur, sonra kullanılır.</h1>
+            <p>
+              Arama, kategoriler ve yakın izler tek bakışta. Altın yalnız seçili filtrede ve birincil eylemde;
+              harita üstündeki paneller opak, okunabilirlik için blur kullanılmıyor.
+            </p>
+          </div>
+          <div class="caption__meta">
+            <span><svg class="i" data-icon="smartphone"></svg>390 × 844</span>
+            <span><svg class="i" data-icon="mouse-pointer-click"></svg>44 px hedef</span>
+            <span><svg class="i" data-icon="moon"></svg>Koyu tema</span>
+          </div>
+        </div>
+
+        <div class="device">
+          <div class="device__screen">
+            <section class="screen kesif grain" aria-label="Mobil keşif ekranı">
+              <div class="map">
+                <img class="map__img" src="assets/harita-mobil.jpg" alt="Selçuk çevresinde Ege kıyısının uydu görüntüsü" style="object-position: 58% 46%" />
+                <div class="map__scrim"></div>
+                <div class="map__glow"></div>
+                <div class="map__labels" aria-hidden="true">
+                  <span class="map-label map-label--water" style="left:13%; top:31%">Ege Denizi</span>
+                  <span class="map-label map-label--town" style="left:70%; top:16%">Şirince</span>
+                  <span class="map-label map-label--town" style="left:64%; top:53%">Selçuk</span>
+                  <span class="map-label map-label--town" style="left:19%; top:58%">Kuşadası</span>
+                </div>
+
+                  <div class="pin" style="left: 72%; top: 21%">
+                    <div class="pin__body"><svg class="i" data-icon="utensils-crossed"></svg></div>
+                  </div>
+                  <div class="pin pin--leaf" style="left: 45%; top: 28%">
+                    <div class="pin__body"><svg class="i" data-icon="sprout"></svg></div>
+                  </div>
+                  <div class="pin is-active" style="left: 57%; top: 37%">
+                    <span class="pin__pulse"></span>
+                    <span class="pin__pulse"></span>
+                    <div class="pin__tag">Efes Antik Kenti <small>2 sa</small></div>
+                    <div class="pin__body"><svg class="i" data-icon="landmark"></svg></div>
+                  </div>
+                  <div class="pin pin--dot" style="left: 48%; top: 44%">
+                    <div class="pin__body"></div>
+                  </div>
+                  <div class="pin pin--dot" style="left: 65%; top: 49%">
+                    <div class="pin__body"></div>
+                  </div>
+                  <div class="pin pin--glass" style="left: 29%; top: 46%">
+                    <div class="pin__body"><svg class="i" data-icon="waves"></svg></div>
+                  </div>
+                  <div class="pin pin--glass" style="left: 80%; top: 57%">
+                    <div class="pin__body"><svg class="i" data-icon="headphones"></svg></div>
+                  </div>
+              </div>
+
+              <header class="statusbar" data-statusbar="light"></header>
+
+              <div class="kesif__top">
+                <span class="kesif__brand">atlasia<span>.</span></span>
+                <span class="kesif__weather"><svg class="i" data-icon="cloud-sun"></svg>22°</span>
+                <span class="spacer"></span>
+                <button class="icon-btn icon-btn--photo" type="button" aria-label="Bildirimler: 2 yeni" style="position: relative">
+                  <svg class="i i--md" data-icon="bell"></svg>
+                  <span class="badge badge--dot" style="position: absolute; top: 7px; right: 8px; border-color: #08201a"></span>
+                </button>
+                <button class="icon-btn icon-btn--photo" type="button" aria-label="Keşif menüsü">
+                  <svg class="i i--md" data-icon="menu"></svg>
+                </button>
+              </div>
+
+              <div class="kesif__search" role="search" aria-label="Yer ara">
+                <svg class="i" data-icon="search"></svg>
+                <p>Nereye gitmek istersin?</p>
+                <span class="divider" aria-hidden="true"></span>
+                <button class="icon-btn" type="button" aria-label="Sesle ara">
+                  <svg class="i" data-icon="mic"></svg>
+                </button>
+                <button class="go" type="button" aria-label="Aramayı başlat">
+                  <svg class="i i--sm" data-icon="arrow-right"></svg>
+                </button>
+              </div>
+
+              <div class="kesif__cats" role="group" aria-label="Kategoriler">
+                <button class="chip is-active" type="button"><svg class="i" data-icon="compass"></svg>Tümü</button>
+                <button class="chip" type="button"><svg class="i" data-icon="landmark"></svg>Tarih</button>
+                <button class="chip" type="button"><svg class="i" data-icon="sprout"></svg>Doğa</button>
+                <button class="chip" type="button"><svg class="i" data-icon="waves"></svg>Plajlar</button>
+                <button class="chip" type="button"><svg class="i" data-icon="utensils-crossed"></svg>Yeme içme</button>
+                <button class="chip" type="button"><svg class="i" data-icon="camera"></svg>Fotoğraf</button>
+              </div>
+
+              <div class="kesif__nearby">
+                <span class="dot" aria-hidden="true"></span>
+                <strong>Selçuk, İzmir</strong>
+                <span class="sep" aria-hidden="true"></span>
+                <em>12 iz · 3 km</em>
+                <svg class="i" data-icon="chevron-down"></svg>
+              </div>
+
+              <div class="map-rail kesif__rail" role="toolbar" aria-label="Harita görünümü">
+                <button type="button" aria-label="Harita katmanları"><svg class="i" data-icon="layers"></svg></button>
+                <button type="button" aria-label="Konumuma git"><svg class="i" data-icon="locate-fixed"></svg></button>
+                <button type="button" class="is-active" aria-label="Yer adları açık" aria-pressed="true">
+                  <svg class="i" data-icon="tags"></svg>
+                </button>
+                <button type="button" aria-label="3B arazi kapalı" aria-pressed="false">
+                  <svg class="i" data-icon="globe-2"></svg>
+                </button>
+                <button type="button" aria-label="Hava katmanı"><svg class="i" data-icon="cloud-sun"></svg></button>
+              </div>
+
+              <button class="kesif__ai" type="button" aria-label="Atlas AI: rota öner">
+                <span class="kesif__ai__orb"><svg class="i" data-icon="sparkles"></svg></span>
+                <p>Atlas AI<span>Rota öner</span></p>
+              </button>
+
+              <article class="kesif__card" aria-label="Seçili keşif: Efes Antik Kenti">
+                <div class="kesif__cardhead">
+                  <div class="kesif__thumb">
+                    <img src="assets/efes.jpg" alt="Celsus Kütüphanesi cephesi" />
+                    <span><svg class="i" data-icon="compass"></svg>ATLASIA</span>
+                  </div>
+                  <div class="kesif__cardbody">
+                    <p class="kicker">Atlasia rehberi · Tarih</p>
+                    <h3>Efes Antik Kenti</h3>
+                    <p class="region">Selçuk, İzmir · Türkiye</p>
+                    <div class="kesif__meta">
+                      <svg class="i" data-icon="map-pin"></svg>3,2 km
+                      <span class="sep"></span>
+                      <svg class="i" data-icon="clock-3"></svg>2 sa
+                      <span class="sep"></span>
+                      <svg class="i" data-icon="star"></svg>4.8
+                    </div>
+                  </div>
+                  <button class="kesif__close" type="button" aria-label="Keşif kartını kapat">
+                    <svg class="i" data-icon="x"></svg>
+                  </button>
+                </div>
+                <div class="kesif__cardfoot">
+                  <button class="btn btn--gold" type="button">
+                    Haritada gör
+                    <svg class="i i--sm" data-icon="arrow-right"></svg>
+                  </button>
+                  <button class="btn btn--ghost btn--icon" type="button" aria-label="Kaydet">
+                    <svg class="i" data-icon="bookmark"></svg>
+                  </button>
+                </div>
+              </article>
+
+              <nav class="tabbar" aria-label="Ana sekmeler">
+                <a class="tab is-active" href="#" aria-current="page">
+                  <span class="tab__icon"><svg class="i" data-icon="compass"></svg></span>
+                  Keşfet
+                </a>
+                <a class="tab" href="#">
+                  <span class="tab__icon"><svg class="i" data-icon="users"></svg></span>
+                  İzler
+                </a>
+                <a class="tab tab--center" href="#" aria-label="İz bırak">
+                  <span class="tab__add"><svg class="i" data-icon="plus"></svg></span>
+                  <span>İz bırak</span>
+                </a>
+                <a class="tab" href="#">
+                  <span class="tab__icon"><svg class="i" data-icon="bookmark"></svg></span>
+                  Kayıtlar
+                </a>
+                <a class="tab" href="#">
+                  <span class="tab__icon"><svg class="i" data-icon="user-round"></svg></span>
+                  Profil
+                </a>
+              </nav>
+              <span class="home-indicator home-indicator--inverse" aria-hidden="true"></span>
+            </section>
+          </div>
+        </div>
+      </div>
+    </main>
+    <script src="js/ui.js"></script>
+  </body>
+</html>

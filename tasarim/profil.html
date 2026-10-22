@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#02120f" />
+    <title>Atlasia UI · Profil &amp; ayarlar</title>
+    <link rel="stylesheet" href="css/base.css" />
+    <link rel="stylesheet" href="css/screens.css" />
+  </head>
+  <body class="showcase" data-screen="profil">
+    <main class="showcase__stage">
+      <div class="showcase__inner">
+        <div class="caption">
+          <div>
+            <p class="caption__kicker">Masaüstü · 07 Profil &amp; ayarlar</p>
+            <h1>Kayıtlar, konum ve tema tek yerde.</h1>
+            <p>
+              Sol sütun kimlik ve gezinme, orta sütun istatistiklerle ayar grupları, sağ sütun ise son izler ve
+              yıllık hedef. Konum izni her zaman açık eylemle istenir; arka planda başlamaz.
+            </p>
+          </div>
+          <div class="caption__meta">
+            <span><svg class="i" data-icon="grid-2x2"></svg>3 sütun</span>
+            <span><svg class="i" data-icon="lock"></svg>İzin açık onayla</span>
+            <span><svg class="i" data-icon="moon"></svg>Koyu tema</span>
+          </div>
+        </div>
+
+        <div class="browser">
+          <div class="browser__bar">
+            <div class="traffic" aria-hidden="true"><span></span><span></span><span></span></div>
+            <div class="browser__nav" aria-hidden="true">
+              <svg class="i i--sm" data-icon="chevron-left"></svg>
+              <svg class="i i--sm" data-icon="chevron-right"></svg>
+            </div>
+            <div class="browser__url"><svg class="i" data-icon="lock"></svg>atlasia.app/profil</div>
+            <div class="browser__actions" aria-hidden="true">
+              <svg class="i i--xs" data-icon="share-2"></svg>
+              <svg class="i i--xs" data-icon="settings"></svg>
+            </div>
+          </div>
+          <div class="browser__screen">
+            <section class="screen screen--desktop grain" aria-label="Masaüstü profil ve ayarlar ekranı">
+              <div class="map">
+                <img class="map__img" src="assets/harita.jpg" alt="Profil arka planında harita" style="object-position: 40% 60%; filter: saturate(0.5) brightness(0.45) blur(1px)" />
+                <div class="map__scrim" style="background: linear-gradient(180deg, rgba(2,18,15,.92) 0%, rgba(2,18,15,.86) 30%, rgba(2,18,15,.92) 100%)"></div>
+              </div>
+
+              <header class="topbar">
+                <div class="topbar__brand">
+                  <span class="topbar__wordmark">Atlasia<span>.</span></span>
+                  <span class="topbar__rule" aria-hidden="true"></span>
+                  <p class="topbar__tagline">Gezginlerin gözünden, dünyanın her köşesi</p>
+                </div>
+                <nav class="topbar__nav" aria-label="Ana menü">
+                  <a href="#"><svg class="i" data-icon="compass"></svg>Keşfet</a>
+                  <a href="#"><svg class="i" data-icon="users"></svg>İzler</a>
+                  <a href="#"><svg class="i" data-icon="bookmark"></svg>Kayıtlarım</a>
+                  <a href="#"><svg class="i" data-icon="route"></svg>Rotalar</a>
+                </nav>
+                <div class="topbar__right">
+                  <div class="searchbar" role="search">
+                    <svg class="i" data-icon="search"></svg>
+                    <span>Yer, bölge veya gezgin ara</span>
+                    <kbd>⌘K</kbd>
+                  </div>
+                  <button class="icon-btn icon-btn--outline" type="button" aria-label="Bildirimler" style="position: relative">
+                    <svg class="i" data-icon="bell"></svg>
+                    <span class="badge" style="position: absolute; top: 4px; right: 4px; border: 2px solid var(--surface); height: 16px; min-width: 16px; font-size: 9px">2</span>
+                  </button>
+                  <a class="btn btn--gold btn--sm" href="#"><svg class="i i--xs" data-icon="plus"></svg>İz bırak</a>
+                  <button class="topbar__user" type="button" aria-label="Profil menüsü">
+                    <span class="avatar avatar--sm">E</span>
+                    <span style="text-align: left"><strong>Elif Karaca</strong><small>Gezgin · 128 iz</small></span>
+                    <svg class="i i--xs" data-icon="chevron-down" style="color: var(--text-3)"></svg>
+                  </button>
+                </div>
+              </header>
+
+              <aside class="dprofil__side" aria-label="Hesap özeti">
+                <div class="dprofil__me">
+                  <span class="avatar avatar--lg">E<span class="avatar__status"></span></span>
+                  <div>
+                    <h2>Elif Karaca</h2>
+                    <p>elif@atlasia.app · 2024'ten beri</p>
+                  </div>
+                  <span class="chip chip--sm chip--gold"><svg class="i" data-icon="shield-check"></svg>Doğrulanmış gezgin</span>
+                </div>
+
+                <nav class="dprofil__nav" aria-label="Profil bölümleri">
+                  <a class="is-active" href="#"><svg class="i" data-icon="user-round"></svg>Hesabım</a>
+                  <a href="#"><svg class="i" data-icon="bookmark"></svg>Kaydettiklerim<span class="count">18</span></a>
+                  <a href="#"><svg class="i" data-icon="map-pin"></svg>İzlerim<span class="count">14</span></a>
+                  <a href="#"><svg class="i" data-icon="route"></svg>Rotalarım<span class="count">6</span></a>
+                  <a href="#"><svg class="i" data-icon="bell"></svg>Bildirimler<span class="badge">2</span></a>
+                  <a href="#"><svg class="i" data-icon="settings"></svg>Ayarlar<span class="count">8</span></a>
+                  <a href="#"><svg class="i" data-icon="shield-check"></svg>Gizlilik</a>
+                </nav>
+
+                <div class="dprofil__install">
+                  <div class="row">
+                    <svg class="i" data-icon="download"></svg>
+                    <strong>Atlasia'yı yükle</strong>
+                  </div>
+                  <small>Ana ekrana ekle, çevrimdışı haritayı kullan.</small>
+                  <button class="btn btn--gold" type="button">Cihaza kur</button>
+                </div>
+                <button class="dprofil__logout" type="button"><svg class="i" data-icon="log-out"></svg>Çıkış yap</button>
+              </aside>
+
+              <main class="dprofil__main" aria-label="Profil ve ayarlar">
+                <div class="dprofil__mainHead">
+                  <div>
+                    <p class="kicker">Profil · Elif Karaca</p>
+                    <h1>Keşif özetin</h1>
+                    <p>Son güncelleme: bugün 09:41 · cihaz hesabı değil, bulut hesabı</p>
+                  </div>
+                  <div class="row gap-6">
+                    <span class="chip"><svg class="i" data-icon="moon"></svg><span data-theme-swatch>Koyu</span> tema</span>
+                    <span class="loc-status"><svg class="i" data-icon="crosshair" style="width: 10px; height: 10px"></svg>Konum açık</span>
+                  </div>
+                </div>
+
+                <div class="dprofil__body scroll">
+                  <div class="stat-row">
+                    <div class="stat-tile">
+                      <div class="top"><svg class="i" data-icon="map-pin"></svg>İzim<em><svg class="i" data-icon="trending-up"></svg>+3 bu ay</em></div>
+                      <strong>128</strong>
+                      <div class="bar"><i style="width: 64%"></i></div>
+                    </div>
+                    <div class="stat-tile">
+                      <div class="top"><svg class="i" data-icon="bookmark"></svg>Kaydettiklerim</div>
+                      <strong>18</strong>
+                      <div class="bar"><i style="width: 32%"></i></div>
+                    </div>
+                    <div class="stat-tile">
+                      <div class="top"><svg class="i" data-icon="route"></svg>Rota<em><svg class="i" data-icon="trending-up"></svg>+1</em></div>
+                      <strong>6</strong>
+                      <div class="bar"><i style="width: 22%"></i></div>
+                    </div>
+                    <div class="stat-tile">
+                      <div class="top"><svg class="i" data-icon="footprints"></svg>Yürüyüş</div>
+                      <strong>42,8<small>km</small></strong>
+                      <div class="bar"><i style="width: 48%"></i></div>
+                    </div>
+                  </div>
+
+                  <div class="settings-card">
+                    <div class="settings-card__head">
+                      <span class="settings-card__icon"><svg class="i" data-icon="compass"></svg></span>
+                      <div>
+                        <h3>Görünüm</h3>
+                        <small>Tema ve harita altlığı</small>
+                      </div>
+                      <div class="end">
+                        <div class="seg" role="group" aria-label="Tema" data-theme-seg>
+                          <button type="button" class="is-active" data-theme-value="dark"><svg class="i" data-icon="moon"></svg>Koyu</button>
+                          <button type="button" data-theme-value="light"><svg class="i" data-icon="sun"></svg>Açık</button>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="settings-card__row no-border" style="display: block">
+                      <div class="mapstyles">
+                        <button class="mapstyle is-active" type="button">
+                          <span class="mapstyle__img"><img src="assets/harita.jpg" alt="" /><span>Uydu</span></span>
+                          <span class="mapstyle__label"><svg class="i" data-icon="check"></svg>Uydu</span>
+                        </button>
+                        <button class="mapstyle" type="button">
+                          <span class="mapstyle__img mapstyle__img--topo"><span>Topo</span></span>
+                          <span class="mapstyle__label">Topoğrafya</span>
+                        </button>
+                        <button class="mapstyle" type="button">
+                          <span class="mapstyle__img mapstyle__img--street"><span>Sokak</span></span>
+                          <span class="mapstyle__label">Sokak</span>
+                        </button>
+                        <button class="mapstyle" type="button">
+                          <span class="mapstyle__img mapstyle__flat"><span>Koyu</span></span>
+                          <span class="mapstyle__label">Koyu</span>
+                        </button>
+                      </div>
+                      <div class="settings-card__row" style="border-top: 1px solid var(--line)">
+                        <div class="t"><strong>Yer adları ve 3B arazi</strong><small>Harita etiketleri ve yükseklik kabartması</small></div>
+                        <span class="switch is-on" role="switch" aria-checked="true" aria-label="Yer adları"></span>
+                        <span class="switch is-on" role="switch" aria-checked="true" aria-label="3B arazi"></span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="settings-card">
+                    <div class="settings-card__head">
+                      <span class="settings-card__icon"><svg class="i" data-icon="crosshair"></svg></span>
+                      <div>
+                        <h3>Konum</h3>
+                        <small>Yalnızca sen istediğinde açılır</small>
+                      </div>
+                      <div class="end">
+                        <span class="loc-status"><svg class="i" data-icon="check" style="width: 10px; height: 10px"></svg>GPS · ±4 m</span>
+                      </div>
+                    </div>
+                    <div class="settings-card__row no-border">
+                      <div class="t"><strong>Hassas konum</strong><small>Cihaz izni tarayıcı ayarlarından yönetilir</small></div>
+                      <span class="switch is-on" role="switch" aria-checked="true" aria-label="Hassas konum"></span>
+                    </div>
+                    <div class="loc-actions">
+                      <button class="btn btn--ghost" type="button"><svg class="i i--xs" data-icon="locate-fixed"></svg>Konumu yenile</button>
+                      <button class="btn btn--ghost" type="button"><svg class="i i--xs" data-icon="map-pin"></svg>Haritada göster</button>
+                      <button class="btn btn--ghost" type="button" style="color: var(--danger)"><svg class="i i--xs" data-icon="trash-2"></svg>Konum verisini sil</button>
+                    </div>
+                  </div>
+
+                  <div class="settings-card">
+                    <div class="settings-card__head">
+                      <span class="settings-card__icon"><svg class="i" data-icon="shield-check"></svg></span>
+                      <div>
+                        <h3>Hesap ve güvenlik</h3>
+                        <small>Kimlik, doğrulama ve veri</small>
+                      </div>
+                    </div>
+                    <div class="account-line">
+                      <svg class="i" data-icon="mail"></svg>E-posta
+                      <span class="v">elif@atlasia.app<svg class="i" data-icon="check" style="color: var(--leaf)"></svg></span>
+                    </div>
+                    <div class="account-line">
+                      <svg class="i" data-icon="user-round"></svg>Görünen ad
+                      <span class="v">Elif Karaca<button class="copy" type="button" aria-label="Düzenle"><svg class="i" data-icon="pencil"></svg></button></span>
+                    </div>
+                    <div class="account-line">
+                      <svg class="i" data-icon="lock"></svg>Hesap kimliği
+                      <span class="v mono">usr_8f21c4 <button class="copy" type="button" aria-label="Kimliği kopyala"><svg class="i" data-icon="copy"></svg></button></span>
+                    </div>
+                    <div class="account-line">
+                      <svg class="i" data-icon="download"></svg>Verilerimi indir
+                      <span class="v"><button class="copy" type="button" aria-label="İndir"><svg class="i" data-icon="arrow-up-right"></svg></button></span>
+                    </div>
+                  </div>
+                </div>
+              </main>
+
+              <aside class="dprofil__right" aria-label="Kayıtlar ve hedef">
+                <div class="side-card">
+                  <div class="side-card__head">
+                    <h3>Son izler</h3>
+                    <a href="#">Tümü<svg class="i" data-icon="chevron-right"></svg></a>
+                  </div>
+                  <div class="recent-row">
+                    <img src="assets/efes.jpg" alt="" />
+                    <div class="t"><strong>Efes Antik Kenti</strong><small>Selçuk · 3 gün önce</small></div>
+                    <svg class="i" data-icon="chevron-right"></svg>
+                  </div>
+                  <div class="recent-row">
+                    <img src="assets/kapadokya.jpg" alt="" />
+                    <div class="t"><strong>Kapadokya</strong><small>Göreme · 6 gün önce</small></div>
+                    <svg class="i" data-icon="chevron-right"></svg>
+                  </div>
+                  <div class="recent-row">
+                    <img src="assets/likya.jpg" alt="" />
+                    <div class="t"><strong>Likya Yolu · Faralya</strong><small>Muğla · 2 hafta önce</small></div>
+                    <svg class="i" data-icon="chevron-right"></svg>
+                  </div>
+                </div>
+
+                <div class="side-card">
+                  <div class="side-card__head">
+                    <h3>Keşif haritan</h3>
+                    <span>128 iz</span>
+                  </div>
+                  <div class="summary-map">
+                    <img src="assets/harita.jpg" alt="Keşiflerin özet haritası" />
+                    <svg viewBox="0 0 260 84" aria-hidden="true">
+                      <path d="M38 62 C 74 54, 96 40, 128 44 S 186 30, 214 22" fill="none" stroke="rgba(242,198,102,.55)" stroke-width="1.4" stroke-dasharray="3 4" />
+                    </svg>
+                    <span class="badge-pin"><svg class="i" data-icon="map-pin" style="width: 9px; height: 9px"></svg>Selçuk</span>
+                  </div>
+                  <div class="summary-stats">
+                    <div><strong>7</strong><small>BÖLGE</small></div>
+                    <div><strong>4</strong><small>ÜLKE</small></div>
+                    <div><strong>42,8</strong><small>KM</small></div>
+                  </div>
+                  <div class="goal">
+                    <div class="goal__row"><span>2026 hedefi · 20 iz</span><strong>14 / 20</strong></div>
+                    <div class="goal__bar"><i style="width: 70%"></i></div>
+                  </div>
+                </div>
+
+                <div class="ai-promo">
+                  <span class="ai-promo__orb"><svg class="i" data-icon="sparkles"></svg></span>
+                  <h4>Kayıtlarından rota çıkar</h4>
+                  <p>128 izinin 18'i hiç ziyaret edilmedi. Atlas AI bunları tek günde birleştirebilir.</p>
+                  <button class="btn btn--gold" type="button">Rota öner<svg class="i i--xs" data-icon="arrow-right"></svg></button>
+                </div>
+              </aside>
+
+              <p class="dprofil__version">Atlasia v0.1.0 · tasarım önizlemesi · veriler örnektir</p>
+            </section>
+          </div>
+        </div>
+      </div>
+    </main>
+    <script src="js/ui.js"></script>
+  </body>
+</html>

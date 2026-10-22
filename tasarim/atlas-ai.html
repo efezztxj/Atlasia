@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#02120f" />
+    <title>Atlasia UI · Atlas AI</title>
+    <link rel="stylesheet" href="css/base.css" />
+    <link rel="stylesheet" href="css/screens.css" />
+  </head>
+  <body class="showcase" data-screen="atlas-ai">
+    <main class="showcase__stage">
+      <div class="showcase__inner">
+        <div class="caption">
+          <div>
+            <p class="caption__kicker">Mobil · 04 Atlas AI</p>
+            <h1>Sohbetten rota kartına.</h1>
+            <p>
+              Yanıt serbest metin değil, doğrulanabilir bir plan: saat, süre ve mesafe durakların yanında.
+              "Haritada göster" onayı olmadan hiçbir şey çizilmiyor.
+            </p>
+          </div>
+          <div class="caption__meta">
+            <span><svg class="i" data-icon="sparkles"></svg>Atlas AI</span>
+            <span><svg class="i" data-icon="shield-check"></svg>Onaylı rota</span>
+            <span><svg class="i" data-icon="moon"></svg>Koyu tema</span>
+          </div>
+        </div>
+
+        <div class="device">
+          <div class="device__screen">
+            <section class="screen ai" aria-label="Mobil Atlas AI ekranı">
+              <header class="statusbar" data-statusbar></header>
+
+              <div class="ai__top">
+                <button class="icon-btn" type="button" aria-label="Asistanı kapat">
+                  <svg class="i i--md" data-icon="chevron-down"></svg>
+                </button>
+                <span class="ai__orb"><svg class="i" data-icon="sparkles"></svg></span>
+                <div class="ai__who">
+                  <strong>Atlas AI</strong>
+                  <span><span class="dot"></span>Çevrimiçi · rota uzmanı</span>
+                </div>
+                <button class="icon-btn" type="button" aria-label="Sohbet geçmişi" style="margin-left: auto">
+                  <svg class="i" data-icon="clock-3"></svg>
+                </button>
+                <button class="icon-btn" type="button" aria-label="Yeni sohbet">
+                  <svg class="i" data-icon="plus"></svg>
+                </button>
+              </div>
+
+              <div class="ai__ctx">
+                <svg class="i" data-icon="map-pin"></svg>
+                <span>Bağlam: <strong>Efes Antik Kenti</strong> · Selçuk</span>
+                <span class="change">Değiştir<svg class="i" data-icon="chevron-down"></svg></span>
+              </div>
+
+              <div class="ai__chat scroll">
+                <div class="ai__day">Bugün · 09:41</div>
+
+                <div class="ai-msg ai-msg--me">
+                  <div class="ai-bubble">Efes için yarım günlük, kalabalıktan kaçan bir rota.</div>
+                  <span class="ai-msg__time">09:41</span>
+                </div>
+
+                <div class="ai-msg">
+                  <span class="ai-msg__who"><svg class="i" data-icon="sparkles"></svg>Atlas AI</span>
+                  <div class="ai-bubble">
+                    Efes'e <b>08:00 açılışında</b> girmek kalabalığı iki saat öne çekiyor. Yamaç Evler'i
+                    ilk sıraya aldım; toplam <b>2,1 km</b>, <b>3 saat</b>.
+                  </div>
+                </div>
+
+                <div class="ai-msg" style="max-width: 332px">
+                  <div class="route-card">
+                    <div class="route-card__head">
+                      <p class="kicker">Önerilen rota · doğrulanabilir</p>
+                      <strong>Efes · Sessiz sabah turu</strong>
+                      <div class="route-card__meta">
+                        <svg class="i" data-icon="map-pin"></svg>4 durak
+                        <span aria-hidden="true">·</span>
+                        <svg class="i" data-icon="clock-3"></svg>3 sa
+                        <span aria-hidden="true">·</span>
+                        <svg class="i" data-icon="route"></svg>2,1 km
+                      </div>
+                    </div>
+                    <div class="route-card__stops">
+                      <div class="route-stop">
+                        <span class="route-stop__rail"><span class="route-stop__dot">1</span><span class="route-stop__line"></span></span>
+                        <div class="route-stop__t"><strong>Magnesia Kapısı</strong><small>Giriş · bilet kontrolü</small></div>
+                        <time>08:00</time>
+                      </div>
+                      <div class="route-stop">
+                        <span class="route-stop__rail"><span class="route-stop__dot">2</span><span class="route-stop__line"></span></span>
+                        <div class="route-stop__t"><strong>Yamaç Evler</strong><small>25 dk · kalabalık öncesi</small></div>
+                        <time>08:20</time>
+                      </div>
+                      <div class="route-stop">
+                        <span class="route-stop__rail"><span class="route-stop__dot">3</span><span class="route-stop__line"></span></span>
+                        <div class="route-stop__t"><strong>Celsus Kütüphanesi</strong><small>22 dk · ilk ışık</small></div>
+                        <time>09:00</time>
+                      </div>
+                      <div class="route-stop">
+                        <span class="route-stop__rail"><span class="route-stop__dot">4</span></span>
+                        <div class="route-stop__t"><strong>Büyük Tiyatro</strong><small>Çıkış · Aşağı Kapı</small></div>
+                        <time>09:30</time>
+                      </div>
+                    </div>
+                    <button class="route-card__more" type="button">
+                      +5 durak daha<svg class="i" data-icon="chevron-down"></svg>
+                    </button>
+                    <div class="route-card__foot">
+                      <button class="btn btn--gold" type="button">
+                        <svg class="i i--sm" data-icon="map"></svg>Haritada göster
+                      </button>
+                      <button class="btn btn--soft btn--icon" type="button" aria-label="Rotayı kaydet">
+                        <svg class="i i--sm" data-icon="bookmark"></svg>
+                      </button>
+                      <button class="btn btn--soft btn--icon" type="button" aria-label="Rotayı düzenle">
+                        <svg class="i i--sm" data-icon="pencil"></svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="ai-msg">
+                  <div class="ai-bubble" style="border-color: var(--line)">
+                    <span class="ai__typing" style="padding: 0">
+                      <span class="dots"><i></i><i></i><i></i></span>
+                      Yağmur olasılığını kontrol ediyorum…
+                    </span>
+                  </div>
+                </div>
+
+                <div class="ai-suggests">
+                  <button class="chip" type="button"><svg class="i" data-icon="cloud-sun"></svg>Yağmura göre kaydır</button>
+                  <button class="chip" type="button"><svg class="i" data-icon="utensils-crossed"></svg>Yakında kahvaltı</button>
+                  <button class="chip" type="button"><svg class="i" data-icon="headphones"></svg>Sesli rehber ekle</button>
+                </div>
+              </div>
+
+              <div class="ai__composer">
+                <button class="icon-btn" type="button" aria-label="Fotoğraf ekle">
+                  <svg class="i" data-icon="camera"></svg>
+                </button>
+                <p>Rotayı değiştir veya yeni bir yer sor…</p>
+                <button class="send" type="button" aria-label="Gönder">
+                  <svg class="i" data-icon="arrow-up-right"></svg>
+                </button>
+              </div>
+              <p class="ai__legal">Atlas AI saat ve ücretleri doğrular; gitmeden resmî kaynaktan kontrol et.</p>
+
+              <span class="home-indicator" aria-hidden="true"></span>
+            </section>
+          </div>
+        </div>
+      </div>
+    </main>
+    <script src="js/ui.js"></script>
+  </body>
+</html>

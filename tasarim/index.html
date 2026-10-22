@@ -1,0 +1,548 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#02120f" />
+    <meta
+      name="description"
+      content="Atlasia UI Kiti — telefon ve masaüstü için keşif, yer detayı, Atlas AI, rota planlayıcı ve profil ekranları. Canlı önizleme, tasarım token'ları ve bileşen kütüphanesi."
+    />
+    <title>Atlasia UI Kiti — Telefon &amp; masaüstü tasarım sistemi</title>
+    <link rel="stylesheet" href="css/base.css" />
+    <link rel="stylesheet" href="css/screens.css" />
+    <link rel="stylesheet" href="css/gallery.css" />
+  </head>
+  <body class="gallery" data-gallery data-no-toolbar>
+    <header class="ghead">
+      <div class="ghead__brand">
+        <span class="ghead__mark"><svg class="i i--md" data-icon="compass"></svg></span>
+        <span class="ghead__name">atlasia<span>.</span></span>
+        <span class="ghead__rule" aria-hidden="true"></span>
+        <span class="ghead__kicker">UI Kiti · 2026</span>
+      </div>
+      <nav class="ghead__nav" aria-label="Sayfa bölümleri">
+        <a href="#ekranlar">Ekranlar</a>
+        <a href="#sistem">Tasarım sistemi</a>
+        <a href="#bilesenler">Bileşenler</a>
+        <a href="#erisim">Erişilebilirlik</a>
+      </nav>
+      <div class="ghead__actions">
+        <span class="chip chip--sm"><svg class="i" data-icon="smartphone"></svg>Mobil</span>
+        <span class="chip chip--sm"><svg class="i" data-icon="monitor"></svg>Masaüstü</span>
+        <button class="icon-btn icon-btn--outline" type="button" data-theme-toggle aria-label="Tema değiştir">
+          <svg class="i" data-icon="sun"></svg>
+        </button>
+        <a class="btn btn--gold btn--sm" href="kesif.html">
+          <svg class="i i--xs" data-icon="play"></svg>Sunumu aç
+        </a>
+      </div>
+    </header>
+
+    <main>
+      <!-- ------------------------------------------------------------- hero -->
+      <section class="hero">
+        <div class="hero__copy">
+          <p class="kicker">Telefon + masaüstü · Atlasia ürün dili</p>
+          <h1>
+            Dünyayı merakınla<br />
+            <span>keşfet.</span>
+          </h1>
+          <p class="hero__lead">
+            Atlasia'nın mevcut siyah-yeşil kimliği ve altın vurgusu korunarak yeniden çizilmiş bir arayüz
+            kiti. Aynı bileşenler 390 px telefonda ve 1440 px masaüstünde çalışır; hiçbir ekran okunabilirlik
+            için harita üstünde bulanıklık kullanmaz.
+          </p>
+          <div class="hero__stats">
+            <div>
+              <strong>7</strong>
+              <span>hazır ekran</span>
+            </div>
+            <div>
+              <strong>2</strong>
+              <span>tema · koyu / açık</span>
+            </div>
+            <div>
+              <strong>44<small>px</small></strong>
+              <span>en küçük dokunma hedefi</span>
+            </div>
+            <div>
+              <strong>4.5:1</strong>
+              <span>en düşük metin kontrastı</span>
+            </div>
+          </div>
+          <div class="hero__cta">
+            <a class="btn btn--gold btn--lg" href="kesif.html">Mobil keşifle başla<svg class="i i--sm" data-icon="arrow-right"></svg></a>
+            <a class="btn btn--ghost btn--lg" href="masaustu-kesif.html"><svg class="i i--sm" data-icon="monitor"></svg>Masaüstü görünüm</a>
+          </div>
+          <p class="hero__hint">
+            <svg class="i i--xs" data-icon="mouse-pointer-click"></svg>
+            Tüm kartlar canlıdır: tıkla, kaydır, tema düğmesini dene.
+          </p>
+        </div>
+
+        <div class="hero__stage">
+          <div class="hero__desk">
+            <div class="device device--sm" aria-hidden="true">
+              <div class="device__screen" data-preview="mobile" data-size="390x844">
+                <iframe src="kesif.html?embed=1" title="Mobil keşif önizlemesi" loading="eager" data-theme-sync tabindex="-1"></iframe>
+              </div>
+            </div>
+          </div>
+          <div class="hero__browser">
+            <div class="hero__frame" data-preview="desktop" data-size="1462x946" data-fit="contain">
+              <iframe src="masaustu-kesif.html?embed=1" title="Masaüstü keşif önizlemesi" loading="lazy" data-theme-sync tabindex="-1"></iframe>
+            </div>
+          </div>
+          <div class="hero__tag hero__tag--a">
+            <span class="dot"></span>Canlı önizleme
+          </div>
+          <div class="hero__tag hero__tag--c">
+            <svg class="i i--xs" data-icon="moon"></svg>Koyu &amp; açık tema
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------------------------------------------------------- ekranlar -->
+      <section id="ekranlar" class="section">
+        <div class="section__head">
+          <div>
+            <p class="kicker">01 · Ekranlar</p>
+            <h2>Yedi ekran, iki cihaz sınıfı.</h2>
+            <p>
+              Mobil taraf tek elle kullanılır: alt çubuk 58 px, birincil eylem başparmak menzilinde. Masaüstü
+              ise korunan yerleşimi sürdürür — başlık solda, arama sağda, Atlas AI sağ altta.
+            </p>
+          </div>
+          <div class="filters" role="group" aria-label="Ekran filtresi">
+            <button class="chip is-active" type="button" data-filter="all">Tümü<span class="badge" style="margin-left: 4px">7</span></button>
+            <button class="chip" type="button" data-filter="mobile"><svg class="i" data-icon="smartphone"></svg>Mobil</button>
+            <button class="chip" type="button" data-filter="desktop"><svg class="i" data-icon="monitor"></svg>Masaüstü</button>
+          </div>
+        </div>
+
+        <div class="grid-screens">
+          <a class="scard scard--mobile" href="kesif.html" data-kind="mobile">
+            <div class="scard__frame scard__frame--phone">
+              <div class="mini-device">
+                <div class="mini-device__screen" data-preview="mobile" data-size="390x844">
+                  <iframe src="kesif.html?embed=1" title="Keşif ekranı önizlemesi" loading="lazy" data-theme-sync tabindex="-1"></iframe>
+                </div>
+              </div>
+            </div>
+            <div class="scard__meta">
+              <span class="scard__no">01</span>
+              <div>
+                <strong>Keşif</strong>
+                <small>Arama, kategori, pin ve keşif kartı</small>
+              </div>
+              <span class="scard__go"><svg class="i i--sm" data-icon="arrow-up-right"></svg></span>
+            </div>
+          </a>
+
+          <a class="scard scard--mobile" href="izler.html" data-kind="mobile">
+            <div class="scard__frame scard__frame--phone">
+              <div class="mini-device">
+                <div class="mini-device__screen" data-preview="mobile" data-size="390x844">
+                  <iframe src="izler.html?embed=1" title="İzler ekranı önizlemesi" loading="lazy" data-theme-sync tabindex="-1"></iframe>
+                </div>
+              </div>
+            </div>
+            <div class="scard__meta">
+              <span class="scard__no">02</span>
+              <div>
+                <strong>İzler</strong>
+                <small>Hikâyeler, akış filtresi, gönderi kartı</small>
+              </div>
+              <span class="scard__go"><svg class="i i--sm" data-icon="arrow-up-right"></svg></span>
+            </div>
+          </a>
+
+          <a class="scard scard--mobile" href="yer.html" data-kind="mobile">
+            <div class="scard__frame scard__frame--phone">
+              <div class="mini-device">
+                <div class="mini-device__screen" data-preview="mobile" data-size="390x844">
+                  <iframe src="yer.html?embed=1" title="Yer detayı ekranı önizlemesi" loading="lazy" data-theme-sync tabindex="-1"></iframe>
+                </div>
+              </div>
+            </div>
+            <div class="scard__meta">
+              <span class="scard__no">03</span>
+              <div>
+                <strong>Yer detayı</strong>
+                <small>Görsel, künye, sesli rehber, yakın izler</small>
+              </div>
+              <span class="scard__go"><svg class="i i--sm" data-icon="arrow-up-right"></svg></span>
+            </div>
+          </a>
+
+          <a class="scard scard--mobile" href="atlas-ai.html" data-kind="mobile">
+            <div class="scard__frame scard__frame--phone">
+              <div class="mini-device">
+                <div class="mini-device__screen" data-preview="mobile" data-size="390x844">
+                  <iframe src="atlas-ai.html?embed=1" title="Atlas AI ekranı önizlemesi" loading="lazy" data-theme-sync tabindex="-1"></iframe>
+                </div>
+              </div>
+            </div>
+            <div class="scard__meta">
+              <span class="scard__no">04</span>
+              <div>
+                <strong>Atlas AI</strong>
+                <small>Sohbet, gerekçeli rota kartı, onay</small>
+              </div>
+              <span class="scard__go"><svg class="i i--sm" data-icon="arrow-up-right"></svg></span>
+            </div>
+          </a>
+
+          <a class="scard scard--desktop" href="masaustu-kesif.html" data-kind="desktop">
+            <div class="scard__frame scard__frame--desktop" data-preview="desktop" data-fit="contain">
+              <iframe src="masaustu-kesif.html?embed=1" title="Masaüstü keşif önizlemesi" loading="lazy" data-theme-sync tabindex="-1"></iframe>
+            </div>
+            <div class="scard__meta">
+              <span class="scard__no">05</span>
+              <div>
+                <strong>Masaüstü keşif</strong>
+                <small>Sol liste, harita, tek alt panel</small>
+              </div>
+              <span class="scard__go"><svg class="i i--sm" data-icon="arrow-up-right"></svg></span>
+            </div>
+          </a>
+
+          <a class="scard scard--desktop" href="rota.html" data-kind="desktop">
+            <div class="scard__frame scard__frame--desktop" data-preview="desktop" data-fit="contain">
+              <iframe src="rota.html?embed=1" title="Rota planlayıcı önizlemesi" loading="lazy" data-theme-sync tabindex="-1"></iframe>
+            </div>
+            <div class="scard__meta">
+              <span class="scard__no">06</span>
+              <div>
+                <strong>Rota planlayıcı</strong>
+                <small>Duraklar, harita çizgisi, yükseklik profili</small>
+              </div>
+              <span class="scard__go"><svg class="i i--sm" data-icon="arrow-up-right"></svg></span>
+            </div>
+          </a>
+
+          <a class="scard scard--desktop" href="profil.html" data-kind="desktop">
+            <div class="scard__frame scard__frame--desktop" data-preview="desktop" data-fit="contain">
+              <iframe src="profil.html?embed=1" title="Profil ekranı önizlemesi" loading="lazy" data-theme-sync tabindex="-1"></iframe>
+            </div>
+            <div class="scard__meta">
+              <span class="scard__no">07</span>
+              <div>
+                <strong>Profil &amp; ayarlar</strong>
+                <small>İstatistik, tema, konum, hesap</small>
+              </div>
+              <span class="scard__go"><svg class="i i--sm" data-icon="arrow-up-right"></svg></span>
+            </div>
+          </a>
+        </div>
+      </section>
+
+      <!-- ----------------------------------------------------------- sistem -->
+      <section id="sistem" class="section section--split">
+        <div class="section__head">
+          <div>
+            <p class="kicker">02 · Tasarım sistemi</p>
+            <h2>Renk, tipografi, yüzey.</h2>
+            <p>
+              Tek bir token katmanı iki temayı da besler. Altın yalnız birincil eylemde ve seçili durumda
+              kullanılır; yeşil "canlı/doğrulanmış" anlamına gelir.
+            </p>
+          </div>
+        </div>
+
+        <div class="system">
+          <div class="system__col">
+            <h3 class="system__title">Renk</h3>
+            <div class="swatches">
+              <div class="swatch" style="background: #02120f; color: #eaf5ed"><span>Ink</span><code>#02120F</code></div>
+              <div class="swatch" style="background: #05201a; color: #eaf5ed"><span>Surface</span><code>#05201A</code></div>
+              <div class="swatch" style="background: #0a352b; color: #eaf5ed"><span>Surface 3</span><code>#0A352B</code></div>
+              <div class="swatch" style="background: #f2c666; color: #10241a"><span>Gold</span><code>#F2C666</code></div>
+              <div class="swatch" style="background: #eab54f; color: #10241a"><span>Gold strong</span><code>#EAB54F</code></div>
+              <div class="swatch" style="background: #5be0a6; color: #06231c"><span>Leaf</span><code>#5BE0A6</code></div>
+              <div class="swatch" style="background: #fffdf7; color: #12241c"><span>Light surface</span><code>#FFFDF7</code></div>
+              <div class="swatch" style="background: #f5f3ea; color: #12241c"><span>Light bg</span><code>#F5F3EA</code></div>
+            </div>
+            <div class="system__note">
+              <svg class="i i--xs" data-icon="info"></svg>
+              Koyu tema siyah-yeşil kalır; açık tema kremsi beyazdır. Altın açık temada <code>#A9711F</code>
+              değerine düşer (AA kontrast).
+            </div>
+
+            <h3 class="system__title" style="margin-top: 26px">Tipografi</h3>
+            <div class="type">
+              <div class="type__row">
+                <span class="type__label">Display · Bricolage Grotesque 600</span>
+                <p class="display" style="font-size: 42px">Efes Antik Kenti</p>
+              </div>
+              <div class="type__row">
+                <span class="type__label">Başlık · 20 / -0.04em</span>
+                <p class="display" style="font-size: 22px">Yakındaki izler</p>
+              </div>
+              <div class="type__row">
+                <span class="type__label">Gövde · DM Sans 400 / 12–14 px</span>
+                <p style="font-size: 13px; color: var(--text-2); line-height: 1.6">
+                  Celsus Kütüphanesi'nden yokuş yukarı yürüyün; günün ilk ışıkları taşlarda.
+                </p>
+              </div>
+              <div class="type__row">
+                <span class="type__label">Üst etiket · 700 / 0.2em</span>
+                <p class="kicker">Atlasia rehberi · Tarih</p>
+              </div>
+              <div class="type__row">
+                <span class="type__label">Sayısal · tabular</span>
+                <p class="mono" style="font-size: 13px">08:00 · 09:22 · 6,4 km · ₺400</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="system__col">
+            <h3 class="system__title">Yüzey &amp; gölge</h3>
+            <div class="system__tiles">
+              <div class="tile panel">.panel<span>Kart · 22 px yarıçap</span></div>
+              <div class="tile panel panel--map">.panel--map<span>Harita üstü · altın çizgi</span></div>
+              <div class="tile panel--soft" style="padding: 18px; border-radius: 16px">.panel--soft<span>İkincil blok</span></div>
+              <div class="tile glass-tile">.grain<span>İnce film grenli yüzey</span></div>
+            </div>
+
+            <h3 class="system__title" style="margin-top: 26px">Ölçü &amp; boşluk</h3>
+            <div class="scale-list">
+              <div><span>Dokunma hedefi</span><strong>≥ 44 px</strong></div>
+              <div><span>Mobil alt çubuk</span><strong>58 px + safe area</strong></div>
+              <div><span>Masaüstü üst bar</span><strong>76 px</strong></div>
+              <div><span>Yarıçap ölçeği</span><strong>8 / 12 / 16 / 22 / 28</strong></div>
+              <div><span>Gövde metni</span><strong>12–14 px · 1.55</strong></div>
+            </div>
+
+            <h3 class="system__title" style="margin-top: 26px">Hareket</h3>
+            <div class="motion">
+              <div><span class="motion__demo motion__demo--pulse"></span><strong>pin-pulse · 3 s</strong><small>Aktif pin halkası</small></div>
+              <div><span class="motion__demo motion__demo--rise"></span><strong>ease-out · 180 ms</strong><small>Basış geri bildirimi</small></div>
+              <div><span class="motion__demo motion__demo--dots"><i></i><i></i><i></i></span><strong>AI yazıyor · 1.4 s</strong><small>Yalnız durum bildirimi</small></div>
+            </div>
+            <div class="system__note">
+              <svg class="i i--xs" data-icon="accessibility"></svg>
+              <code>prefers-reduced-motion</code> açıksa tüm animasyonlar durur.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- -------------------------------------------------------- bileşenler -->
+      <section id="bilesenler" class="section">
+        <div class="section__head">
+          <div>
+            <p class="kicker">03 · Bileşenler</p>
+            <h2>Tek dil, iki cihaz.</h2>
+            <p>Aynı düğme ve çip seti mobilde 44 px, masaüstünde 38–44 px yüksekliğe uyarlanır.</p>
+          </div>
+        </div>
+
+        <div class="comp-grid">
+          <article class="comp">
+            <h3>Düğmeler</h3>
+            <div class="comp__row">
+              <button class="btn btn--gold" type="button">Birincil<svg class="i i--sm" data-icon="arrow-right"></svg></button>
+              <button class="btn btn--leaf" type="button"><svg class="i i--sm" data-icon="map"></svg>Haritada gör</button>
+              <button class="btn btn--soft" type="button">İkincil</button>
+              <button class="btn btn--ghost" type="button">Hayalet</button>
+              <button class="btn btn--ghost btn--icon" type="button" aria-label="Kaydet"><svg class="i" data-icon="bookmark"></svg></button>
+            </div>
+            <p class="comp__note">Altın = birincil eylem. Yeşil = harita/sesli rehber gibi ikincil ama canlı eylem.</p>
+          </article>
+
+          <article class="comp">
+            <h3>Çipler &amp; segment</h3>
+            <div class="comp__row">
+              <span class="chip is-active"><svg class="i" data-icon="compass"></svg>Tümü</span>
+              <span class="chip">Tarih</span>
+              <span class="chip chip--gold"><svg class="i" data-icon="sparkles"></svg>Doğrulanmış</span>
+              <span class="chip chip--leaf"><svg class="i" data-icon="volume-2"></svg>Sesli</span>
+            </div>
+            <div class="comp__row">
+              <div class="seg">
+                <button type="button" class="is-active">Yakınlık</button>
+                <button type="button">Yeni</button>
+                <button type="button">Popüler</button>
+              </div>
+              <div class="seg">
+                <button type="button" class="is-active"><svg class="i" data-icon="footprints"></svg>Yürüyüş</button>
+                <button type="button"><svg class="i" data-icon="map"></svg>Araç</button>
+              </div>
+            </div>
+          </article>
+
+          <article class="comp">
+            <h3>Form &amp; anahtar</h3>
+            <div class="comp__row" style="gap: 10px">
+              <label class="input">
+                <svg class="i i--sm" data-icon="search"></svg>
+                <input value="Efes" aria-label="Yer ara" />
+              </label>
+              <span class="switch is-on" role="switch" aria-checked="true" aria-label="Örnek anahtar"></span>
+            </div>
+            <div class="comp__row">
+              <div class="field" style="width: 100%; margin: 0">
+                <div class="field__label">Zaman<span>1 gün</span></div>
+                <div class="seg" style="width: 100%">
+                  <button type="button">Yarım gün</button>
+                  <button type="button" class="is-active">1 gün</button>
+                  <button type="button">2 gün</button>
+                </div>
+              </div>
+            </div>
+            <p class="comp__note">Arama alanı 50 px yüksekliğinde; odak halkası 3 px altın.</p>
+          </article>
+
+          <article class="comp">
+            <h3>Harita dili</h3>
+            <div class="comp__row comp__row--map">
+              <div class="pin is-active" style="position: static; transform: none">
+                <div class="pin__body"><svg class="i" data-icon="landmark"></svg></div>
+              </div>
+              <div class="pin pin--leaf" style="position: static; transform: none">
+                <div class="pin__body"><svg class="i" data-icon="sprout"></svg></div>
+              </div>
+              <div class="pin pin--dot" style="position: static; transform: none">
+                <div class="pin__body"></div>
+              </div>
+              <div class="pin pin--glass" style="position: static; transform: none">
+                <div class="pin__body"><svg class="i" data-icon="headphones"></svg></div>
+              </div>
+              <div class="stop-marker stop-marker--start" style="position: static; transform: none">1</div>
+              <div class="stop-marker stop-marker--active" style="position: static; transform: none">3</div>
+              <div class="stop-marker stop-marker--end" style="position: static; transform: none">6</div>
+            </div>
+            <div class="comp__row">
+              <div class="map-rail" style="position: static; flex-direction: row">
+                <button type="button" aria-label="Katmanlar"><svg class="i" data-icon="layers"></svg></button>
+                <button type="button" aria-label="Konum"><svg class="i" data-icon="locate-fixed"></svg></button>
+                <button type="button" class="is-active" aria-label="Etiketler"><svg class="i" data-icon="tags"></svg></button>
+                <button type="button" aria-label="Arazi"><svg class="i" data-icon="globe-2"></svg></button>
+              </div>
+              <div class="scalebar"><span class="scalebar__bar"></span>2 km</div>
+            </div>
+            <p class="comp__note">Pin'ler 26–32 px gövde; aktif pin nabız halkasıyla ayrışır. Duraklar numaralıdır.</p>
+          </article>
+
+          <article class="comp">
+            <h3>Rota kartı</h3>
+            <div class="route-card" style="width: 100%">
+              <div class="route-card__head">
+                <p class="kicker">Önerilen rota · doğrulanabilir</p>
+                <strong>Efes · Sessiz sabah turu</strong>
+                <div class="route-card__meta">
+                  <svg class="i" data-icon="map-pin"></svg>4 durak<span aria-hidden="true">·</span>
+                  <svg class="i" data-icon="clock-3"></svg>3 sa<span aria-hidden="true">·</span>
+                  <svg class="i" data-icon="route"></svg>2,1 km
+                </div>
+              </div>
+              <div class="route-card__stops">
+                <div class="route-stop">
+                  <span class="route-stop__rail"><span class="route-stop__dot">1</span><span class="route-stop__line"></span></span>
+                  <div class="route-stop__t"><strong>Magnesia Kapısı</strong><small>Giriş · bilet kontrolü</small></div>
+                  <time>08:00</time>
+                </div>
+                <div class="route-stop">
+                  <span class="route-stop__rail"><span class="route-stop__dot">2</span></span>
+                  <div class="route-stop__t"><strong>Celsus Kütüphanesi</strong><small>22 dk · ilk ışık</small></div>
+                  <time>09:00</time>
+                </div>
+              </div>
+              <div class="route-card__foot">
+                <button class="btn btn--gold btn--sm" type="button" style="flex: 1">Haritada göster</button>
+                <button class="btn btn--soft btn--sm btn--icon" type="button" aria-label="Kaydet"><svg class="i i--xs" data-icon="bookmark"></svg></button>
+              </div>
+            </div>
+          </article>
+
+          <article class="comp">
+            <h3>Sesli rehber &amp; durum</h3>
+            <div class="audio" style="margin-top: 0; width: 100%">
+              <button class="audio__play" type="button" aria-label="Oynat"><svg class="i" data-icon="play"></svg></button>
+              <div class="audio__text">
+                <p class="kicker">Konum tabanlı rehber</p>
+                <strong>Kütüphanenin 12.000 rulosu</strong>
+                <small>07:42 · Türkçe · çevrimdışı hazır</small>
+              </div>
+              <div class="audio__wave" data-wave aria-hidden="true"></div>
+            </div>
+            <div class="comp__row" style="margin-top: 12px">
+              <span class="chip chip--sm chip--leaf"><span class="dot" style="width: 5px; height: 5px; box-shadow: none"></span>Konum açık</span>
+              <span class="chip chip--sm chip--gold"><svg class="i" data-icon="shield-check"></svg>Doğrulanmış</span>
+              <span class="chip chip--sm"><svg class="i" data-icon="wifi-off" style="display: none"></svg><svg class="i" data-icon="download"></svg>Çevrimdışı paket hazır</span>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <!-- ------------------------------------------------------------ erişim -->
+      <section id="erisim" class="section section--access">
+        <div class="section__head">
+          <div>
+            <p class="kicker">04 · Erişilebilirlik &amp; ürün kararları</p>
+            <h2>Değişmeyen kurallar.</h2>
+          </div>
+        </div>
+        <div class="rules">
+          <article>
+            <span class="rules__n">01</span>
+            <h3>Yerleşim korunur</h3>
+            <p>Masaüstünde başlık solda, arama sağda; Atlas AI sağ altta; sağ harita kontrolleri yerinde; tek alt keşif paneli var.</p>
+          </article>
+          <article>
+            <span class="rules__n">02</span>
+            <h3>Harita üstünde blur yok</h3>
+            <p>Harita üzerindeki paneller opak yüzey kullanır. Bulanıklık yalnız sunum kabuğunda, ürün arayüzünde değil.</p>
+          </article>
+          <article>
+            <span class="rules__n">03</span>
+            <h3>Altın kıtlığı</h3>
+            <p>Altın yalnız birincil eylemde ve seçili durumda. Pasif öğeler nötr mint yüzeylerde kalır.</p>
+          </article>
+          <article>
+            <span class="rules__n">04</span>
+            <h3>Dokunma hedefi ≥ 44 px</h3>
+            <p>Mobil düğmeler 44 px, alt çubuk öğeleri 54 px yüksekliğinde. Metin en az 12 px, gövde 13–14 px.</p>
+          </article>
+          <article>
+            <span class="rules__n">05</span>
+            <h3>İzin açık onayla</h3>
+            <p>Konum, mikrofon ve ses kendiliğinden açılmaz. Kritik işlemler öncesi onay adımı korunur.</p>
+          </article>
+          <article>
+            <span class="rules__n">06</span>
+            <h3>İki gerçek tema</h3>
+            <p>Koyu tema siyah-yeşil, açık tema gerçek krem-beyaz. Her ikisi de aynı token'lardan üretilir.</p>
+          </article>
+        </div>
+      </section>
+
+      <footer class="gfoot">
+        <div>
+          <p class="gfoot__brand">atlasia<span>.</span></p>
+          <p class="gfoot__note">UI Kiti · statik HTML/CSS önizleme · ürün verisi örnektir, Firebase'e bağlanmaz.</p>
+        </div>
+        <div class="gfoot__files">
+          <span><svg class="i i--xs" data-icon="folder"></svg>tasarim/</span>
+          <code>index.html</code>
+          <code>kesif.html</code>
+          <code>izler.html</code>
+          <code>yer.html</code>
+          <code>atlas-ai.html</code>
+          <code>masaustu-kesif.html</code>
+          <code>rota.html</code>
+          <code>profil.html</code>
+          <code>css/base.css</code>
+          <code>css/screens.css</code>
+          <code>css/gallery.css</code>
+          <code>js/ui.js</code>
+        </div>
+      </footer>
+    </main>
+
+    <script src="js/gallery.js"></script>
+    <script src="js/ui.js"></script>
+  </body>
+</html>
