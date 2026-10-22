@@ -633,7 +633,7 @@ body,
     padding: 10px;
   }
 
-  /* Alt yığın: hap ve harita kontrolleri keşif kartının üst kenarına yaslanır */
+  /* Alt yığın: harita kontrolleri keşif kartının üst kenarına yaslanır */
   .mobile-bottom-stack-control {
     bottom: max(
       calc(var(--mobile-stack-base, 118px) + env(safe-area-inset-bottom)),
@@ -849,7 +849,7 @@ body,
   place-items: center;
   border-radius: 9999px;
   padding: 2.5px;
-  background: conic-gradient(from 210deg, #f3c870, #eab54f, #5be0a6, #4fb3d9, #f3c870);
+  background: linear-gradient(135deg, #f7d774 0%, #eab54f 48%, #c98a2d 100%);
   box-shadow: 0 6px 18px rgba(234, 181, 79, .22);
 }
 .avatar-gold-ring > * {
