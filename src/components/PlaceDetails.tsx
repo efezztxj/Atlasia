@@ -192,6 +192,13 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDele
 
           {status && <p role="status" className="mt-2 text-[13px] text-sun">{status}</p>}
           <p className="mt-5 text-[15px] leading-[1.8] text-mint/90">{story}</p>
+          {place.historySource ? (
+            <p className="mt-2 text-[11px] leading-relaxed text-mint/70" data-testid="place-attribution">
+              Metin: <a href={place.historySource.url} target="_blank" rel="noreferrer" className="underline underline-offset-2">{place.historySource.name} · {place.historySource.title}</a> ({place.historySource.license}, özetlendi). Konum verisi © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="underline underline-offset-2">OpenStreetMap katkıcıları</a> (ODbL).
+            </p>
+          ) : place.dataSources?.length ? (
+            <p className="mt-2 text-[11px] leading-relaxed text-mint/70" data-testid="place-attribution">Kaynak: {place.dataSources.join(" · ")}</p>
+          ) : null}
 
           <section aria-labelledby="freshness-title" className="mt-7 rounded-2xl border border-leaf/25 bg-white/[0.03] p-3.5">
             <h3 id="freshness-title" className="flex items-center gap-2 text-[13px] font-semibold"><Clock3 size={16} className="text-leaf" />Tazelik</h3>

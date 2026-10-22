@@ -17,6 +17,35 @@ const MAX_RADIUS_M = 2000;
 const FETCH_TIMEOUT_MS = 9000;
 const WIKI_TIMEOUT_MS = 6500;
 
+/**
+ * Tarihçe içerik politikası (P14) — tek yer:
+ * - Dil: önce Türkçe, yoksa İngilizce madde; başka dil kullanılmaz.
+ * - Eşleştirme: yalnız OSM `wikipedia`/`wikidata` etiketi. Etiket yoksa isim
+ *   ya da konum yakınlığıyla tahmin YAPILMAZ (yanlış yere yanlış tarihçe).
+ * - Uzunluk: özet en fazla HISTORY_SUMMARY_MAX_CHARS, cümle sınırında kesilir.
+ * - Atıf: her özetle madde adı, adresi ve CC BY-SA 4.0 lisansı taşınır.
+ */
+export const HISTORY_SUMMARY_LANGS = ["tr", "en"] as const;
+export const HISTORY_SUMMARY_MAX_CHARS = 600;
+export const OSM_ATTRIBUTION = "© OpenStreetMap contributors (ODbL)";
+export const WIKIPEDIA_LICENSE = "CC BY-SA 4.0";
+type HistoryLang = (typeof HISTORY_SUMMARY_LANGS)[number];
+
+function isHistoryLang(value: string): value is HistoryLang {
+  return (HISTORY_SUMMARY_LANGS as readonly string[]).includes(value);
+}
+
+/** Wikipedia özetini politika uzunluğuna indirir; mümkünse cümle sonunda keser. */
+export function clampSummary(text: string, max = HISTORY_SUMMARY_MAX_CHARS): string {
+  const clean = text.replace(/\s+/g, " ").trim();
+  if (clean.length <= max) return clean;
+  const cut = clean.slice(0, max);
+  const sentenceEnd = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("! "), cut.lastIndexOf("? "));
+  if (sentenceEnd >= max * 0.5) return cut.slice(0, sentenceEnd + 1);
+  const space = cut.lastIndexOf(" ");
+  return `${cut.slice(0, space > 0 ? space : max).trimEnd()}…`;
+}
+
 interface CacheStore {
   [cacheId: string]: { places: Place[]; fetchedAt: number; dataSources: string[] };
 }
@@ -30,7 +59,7 @@ interface MemoryEntry {
 const memoryCache = new Map<string, MemoryEntry>();
 
 // Wikipedia özet önbelleği (başlık → metin)
-const wikiSummaryCache = new Map<string, { text: string; at: number }>();
+const wikiSummaryCache = new Map<string, { summary: WikiSummary; at: number }>();
 const WIKI_CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
 
 function cacheIdFor(center: { lat: number; lng: number }, radius: number) {
@@ -67,13 +96,15 @@ function writePersistent(store: CacheStore) {
   }
 }
 
-function getCached(center: { lat: number; lng: number }, radius: number): MemoryEntry | null {
+function getCached(center: { lat: number; lng: number }, radius: number, allowStale = false): MemoryEntry | null {
   const id = cacheIdFor(center, radius);
   const mem = memoryCache.get(id);
   if (mem && Date.now() - mem.fetchedAt < MEMORY_TTL_MS) return mem;
   const store = readPersistent();
-  const entry = store[id];
+  const entry = store[id] ?? (allowStale ? mem : undefined);
   if (!entry) return null;
+  // Süresi geçmiş kayıt yalnız ağ hatasında "eski veri" olarak kullanılır (stale-while-error).
+  if (allowStale) return entry;
   if (Date.now() - entry.fetchedAt > CACHE_TTL_MS) return null;
   memoryCache.set(id, entry);
   return entry;
@@ -104,7 +135,7 @@ export function clearHistoricCache() {
   }
 }
 
-function buildOverpassQuery(lat: number, lng: number, radius: number) {
+export function buildOverpassQuery(lat: number, lng: number, radius: number) {
   const r = Math.min(Math.max(200, Math.round(radius)), MAX_RADIUS_M);
   return `[out:json][timeout:25];(node["historic"](around:${r},${lat},${lng});way["historic"](around:${r},${lat},${lng});relation["historic"](around:${r},${lat},${lng}););out center;`;
 }
@@ -215,63 +246,49 @@ function wikiCacheKey(lang: string, title: string) {
   return `${lang}:${title.toLowerCase()}`;
 }
 
-async function fetchWikipediaSummary(lang: string, title: string, signal?: AbortSignal): Promise<string | null> {
+interface WikiSummary { text: string; title: string; lang: HistoryLang; url: string }
+
+async function fetchWikipediaSummary(lang: HistoryLang, title: string, signal?: AbortSignal): Promise<WikiSummary | null> {
   const key = wikiCacheKey(lang, title);
   const cached = wikiSummaryCache.get(key);
-  if (cached && Date.now() - cached.at < WIKI_CACHE_TTL) return cached.text;
-  const url = `https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`;
+  if (cached && Date.now() - cached.at < WIKI_CACHE_TTL) return cached.summary;
+  const url = `https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title.replace(/ /g, "_"))}`;
   try {
     const res = await fetchWithTimeout(url, signal, WIKI_TIMEOUT_MS);
     if (!res.ok) return null;
-    const data = (await res.json()) as { extract?: string; extract_html?: string; description?: string };
-    const text = (data.extract ?? "").trim();
+    const data = (await res.json()) as { extract?: string; title?: string; type?: string; content_urls?: { desktop?: { page?: string } } };
+    // Anlam ayrımı sayfası tarihçe değildir.
+    if (data.type === "disambiguation") return null;
+    const text = clampSummary(data.extract ?? "");
     if (text.length < 20) return null;
-    wikiSummaryCache.set(key, { text, at: Date.now() });
-    return text;
+    const pageTitle = data.title?.trim() || title;
+    const summary: WikiSummary = {
+      text,
+      title: pageTitle,
+      lang,
+      url: data.content_urls?.desktop?.page ?? `https://${lang}.wikipedia.org/wiki/${encodeURIComponent(pageTitle.replace(/ /g, "_"))}`,
+    };
+    wikiSummaryCache.set(key, { summary, at: Date.now() });
+    return summary;
   } catch {
     return null;
   }
 }
 
-async function fetchWikidataSitelink(qid: string, signal?: AbortSignal): Promise<{ lang: string; title: string } | null> {
+async function fetchWikidataSitelink(qid: string, signal?: AbortSignal): Promise<{ lang: HistoryLang; title: string } | null> {
+  if (!/^Q\d+$/.test(qid)) return null;
   const url = `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${encodeURIComponent(qid)}&props=sitelinks&format=json&origin=*`;
   try {
     const res = await fetchWithTimeout(url, signal, WIKI_TIMEOUT_MS);
     if (!res.ok) return null;
     const data = (await res.json()) as { entities?: Record<string, { sitelinks?: Record<string, { title: string }> }> };
-    const entity = data.entities?.[qid];
-    const links = entity?.sitelinks;
+    const links = data.entities?.[qid]?.sitelinks;
     if (!links) return null;
-    // prefer trwiki, then enwiki
-    const candidates = ["trwiki", "enwiki", "dewiki", "frwiki"];
-    for (const key of candidates) {
-      const link = links[key];
-      if (link?.title) {
-        const lang = key.replace("wiki", "");
-        return { lang, title: link.title };
-      }
-    }
-    // fallback first available
-    const first = Object.entries(links)[0];
-    if (first) {
-      const lang = first[0].replace("wiki", "");
-      return { lang, title: first[1].title };
+    for (const lang of HISTORY_SUMMARY_LANGS) {
+      const link = links[`${lang}wiki`];
+      if (link?.title) return { lang, title: link.title };
     }
     return null;
-  } catch {
-    return null;
-  }
-}
-
-async function fetchGeosearchSummary(lat: number, lng: number, signal?: AbortSignal): Promise<string | null> {
-  const url = `https://en.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=${lat}|${lng}&gsradius=1000&gslimit=3&format=json&origin=*`;
-  try {
-    const res = await fetchWithTimeout(url, signal, WIKI_TIMEOUT_MS);
-    if (!res.ok) return null;
-    const data = (await res.json()) as { query?: { geosearch?: { title: string }[] } };
-    const first = data.query?.geosearch?.[0]?.title;
-    if (!first) return null;
-    return await fetchWikipediaSummary("en", first, signal);
   } catch {
     return null;
   }
@@ -288,40 +305,28 @@ async function enrichPlacesWithWikipedia(places: Place[], signal?: AbortSignal):
       const idx = cursor++;
       const place = enriched[idx];
       const tags = (place as Place & { _wikiTags?: Record<string, string> })._wikiTags;
-      let summary: string | null = null;
+      let summary: WikiSummary | null = null;
       try {
-        if (tags?.wikipedia) {
-          const raw = tags.wikipedia;
-          const sep = raw.indexOf(":");
-          if (sep > 0) {
-            const lang = raw.slice(0, sep);
-            const title = raw.slice(sep + 1);
-            summary = await fetchWikipediaSummary(lang, title, signal);
-          } else {
-            summary = await fetchWikipediaSummary("en", raw, signal);
-          }
-        } else if (tags?.wikidata) {
-          const qid = tags.wikidata.split(";")[0].trim();
-          const link = await fetchWikidataSitelink(qid, signal);
+        const raw = tags?.wikipedia ?? "";
+        const sep = raw.indexOf(":");
+        const tagLang = sep > 0 ? raw.slice(0, sep) : "";
+        // Etiketteki madde politika dilindeyse doğrudan; değilse wikidata'dan tr/en bağlantısı aranır.
+        if (sep > 0 && isHistoryLang(tagLang)) summary = await fetchWikipediaSummary(tagLang, raw.slice(sep + 1), signal);
+        if (!summary && tags?.wikidata) {
+          const link = await fetchWikidataSitelink(tags.wikidata.split(";")[0].trim(), signal);
           if (link) summary = await fetchWikipediaSummary(link.lang, link.title, signal);
         }
-        if (!summary) {
-          // fallback geosearch near coords
-          summary = await fetchGeosearchSummary(place.lat, place.lng, signal);
-        }
+        // Etiket yoksa tahmin yok: konum/isim yakınlığıyla madde aranmaz.
       } catch {
         summary = null;
       }
-      if (summary && summary.length >= 20) {
+      if (summary) {
         enriched[idx] = {
           ...place,
-          story: summary,
-          dataSources: ["© OpenStreetMap contributors (ODbL)", "Wikipedia contributors (CC BY-SA)"],
+          story: summary.text,
+          dataSources: [OSM_ATTRIBUTION, `Wikipedia (${summary.lang}): ${summary.title} — ${WIKIPEDIA_LICENSE}`],
+          historySource: { name: "Wikipedia", title: summary.title, url: summary.url, license: WIKIPEDIA_LICENSE, lang: summary.lang },
         };
-      } else {
-        // keep ODbL only, but ensure story not empty for fallback? Keep original note as disclaimer,
-        // story will remain undefined -> but for offline fixture we already have stories.
-        // We do not fabricate LLM content.
       }
       // temizle internal tag
       delete (enriched[idx] as Place & { _wikiTags?: unknown })._wikiTags;
@@ -339,54 +344,69 @@ async function enrichPlacesWithWikipedia(places: Place[], signal?: AbortSignal):
   return enriched;
 }
 
+export type HistoricFetchStatus = "fresh" | "cache" | "fixture" | "stale" | "error";
+
+export interface HistoricFetchResult {
+  places: Place[];
+  status: HistoricFetchStatus;
+  /** "stale" ve "error" durumlarında kullanıcıya gösterilecek Türkçe açıklama. */
+  message?: string;
+}
+
+const STALE_MESSAGE = "Bağlantı kurulamadı; tarihî yerler daha önce kaydedilen (eski olabilir) veriden gösteriliyor.";
+const ERROR_MESSAGE = "Tarihî yer listesi şu an alınamıyor. Bağlantını kontrol edip tekrar dene.";
+
 /**
  * Ana giriş: Overpass envanteri + Wikidata/Wikipedia tarihçesi.
  * - Yarıçap 200-2000m arası, agresif değil.
- * - Bellek + localStorage önbellek.
+ * - Bellek + localStorage önbellek (7 gün); aynı bölge için tekrar sorgu yok.
+ * - Ağ hatasında süresi geçmiş kayıt "stale" olarak döner; hiç kayıt yoksa
+ *   "error" + mesaj döner — hata sessiz boş listeye dönüşmez.
  * - Efes için çevrimdışı fixture döndürür (kanıt).
  */
+export async function fetchHistoricSitesDetailed(
+  center: { lat: number; lng: number },
+  radiusM = 1200,
+  signal?: AbortSignal,
+): Promise<HistoricFetchResult> {
+  const radius = Math.min(Math.max(200, Math.round(radiusM)), MAX_RADIUS_M);
+
+  const cached = getCached(center, radius);
+  if (cached) return { places: cached.places, status: "cache" };
+
+  if (isEphesusArea(center)) {
+    const places = EPHESUS_HISTORIC_SITES.map((p) => ({ ...p }));
+    setCached(center, radius, places, [OSM_ATTRIBUTION, `Wikipedia contributors (${WIKIPEDIA_LICENSE})`]);
+    return { places, status: "fixture" };
+  }
+
+  try {
+    const rawPlaces = await fetchOverpass(center, radius, signal);
+    if (rawPlaces.length === 0) {
+      setCached(center, radius, [], [OSM_ATTRIBUTION]); // negatif önbellek
+      return { places: [], status: "fresh" };
+    }
+    const enriched = await enrichPlacesWithWikipedia(rawPlaces, signal);
+    const dataSources = enriched.some((p) => p.historySource)
+      ? [OSM_ATTRIBUTION, `Wikipedia contributors (${WIKIPEDIA_LICENSE})`]
+      : [OSM_ATTRIBUTION];
+    setCached(center, radius, enriched, dataSources);
+    return { places: enriched, status: "fresh" };
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    const stale = getCached(center, radius, true);
+    if (stale) return { places: stale.places, status: "stale", message: STALE_MESSAGE };
+    return { places: [], status: "error", message: ERROR_MESSAGE };
+  }
+}
+
+/** Geriye uyumlu kısa yol: yalnız yer listesi. Durum/mesaj için fetchHistoricSitesDetailed. */
 export async function fetchHistoricSites(
   center: { lat: number; lng: number },
   radiusM = 1200,
   signal?: AbortSignal,
 ): Promise<Place[]> {
-  const radius = Math.min(Math.max(200, Math.round(radiusM)), MAX_RADIUS_M);
-
-  // 1) önbellek hit?
-  const cached = getCached(center, radius);
-  if (cached) return cached.places;
-
-  // 2) Efes bölgesi için fixture önceliği (çevrimdışı kanıt, agresif sorgu yok)
-  if (isEphesusArea(center)) {
-    // Klonla, atıf zaten içinde
-    const places = EPHESUS_HISTORIC_SITES.map((p) => ({ ...p }));
-    const dataSources = ["© OpenStreetMap contributors (ODbL)", "Wikipedia contributors (CC BY-SA)"];
-    setCached(center, radius, places, dataSources);
-    return places;
-  }
-
-  // 3) Canlı Overpass + Wikipedia
-  try {
-    const rawPlaces = await fetchOverpass(center, radius, signal);
-    if (rawPlaces.length === 0) {
-      // boş sonuç da önbelleklenir (negatif cache)
-      const dataSources = ["© OpenStreetMap contributors (ODbL)"];
-      setCached(center, radius, [], dataSources);
-      return [];
-    }
-    const enriched = await enrichPlacesWithWikipedia(rawPlaces, signal);
-    const dataSources = enriched.some((p) => p.dataSources?.some((s) => s.includes("Wikipedia")))
-      ? ["© OpenStreetMap contributors (ODbL)", "Wikipedia contributors (CC BY-SA)"]
-      : ["© OpenStreetMap contributors (ODbL)"];
-    setCached(center, radius, enriched, dataSources);
-    return enriched;
-  } catch (error) {
-    // ağ hatasında önbellek varsa döndür, yoksa boş dön (fixture dışı bölgede)
-    const fallback = getCached(center, radius);
-    if (fallback) return fallback.places;
-    if (signal?.aborted) throw error;
-    return [];
-  }
+  return (await fetchHistoricSitesDetailed(center, radiusM, signal)).places;
 }
 
 /** Efes özelinde hızlı erişim: doğrudan fixture */
@@ -395,7 +415,7 @@ export function getEphesusFixture(): Place[] {
 }
 
 export function getHistoricDataSources(): string[] {
-  return ["© OpenStreetMap contributors (ODbL)", "Wikipedia contributors (CC BY-SA)"];
+  return [OSM_ATTRIBUTION, `Wikipedia contributors (${WIKIPEDIA_LICENSE})`];
 }
 
 export const HISTORIC_OVERPASS_QUERY_EXAMPLE = buildOverpassQuery(EPHESUS_CENTER.lat, EPHESUS_CENTER.lng, 1200);
