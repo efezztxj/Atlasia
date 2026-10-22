@@ -108,6 +108,21 @@ describe("Cloudflare Pages security headers", () => {
     }
   });
 
+  it("P14: tarihçe kaynakları yalnız connect-src'de ve tam host olarak izinli (joker yok)", () => {
+    const policy = block("/*").get("content-security-policy") ?? "";
+    const directives = new Map(policy.split(";").map((entry) => {
+      const [name, ...values] = entry.trim().split(/\s+/);
+      return [name, values];
+    }));
+    const connect = directives.get("connect-src") ?? [];
+    for (const host of ["https://overpass-api.de", "https://tr.wikipedia.org", "https://en.wikipedia.org", "https://www.wikidata.org"]) {
+      expect(connect).toContain(host);
+      for (const name of ["script-src", "frame-src", "img-src", "style-src"]) expect(directives.get(name) ?? []).not.toContain(host);
+    }
+    expect(policy).not.toContain("*.wikipedia.org");
+    expect(policy).not.toContain("*.wikidata.org");
+  });
+
   it("keeps Firebase OAuth, Apple sign-in, phone reCAPTCHA, and map embeds usable", () => {
     const policy = block("/*").get("content-security-policy") ?? "";
     const frameSources = policy.match(/frame-src ([^;]+)/)?.[1] ?? "";

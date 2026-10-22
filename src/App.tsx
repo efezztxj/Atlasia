@@ -951,6 +951,10 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
           }}
           canDelete={canManagePlace(liveStoryPlace)}
           onDelete={() => handleDelete(liveStoryPlace)}
+          onOpenPlace={(next) => {
+            focusPlace(next, 16);
+            setStoryPlace(next);
+          }}
           onVerify={(status, note) => {
             const target = liveStoryPlace;
             if (!target) return Promise.resolve();
