@@ -1225,6 +1225,23 @@ describe("Firestore güvenlik kuralları", () => {
     await assertFails(getDoc(doc(bobDb, "users/alice/friends/bob")));
   });
 
+  // === Canlı hata 2026-10-22: sendFriendRequest başkasının istek kutusunu ve var
+  // olmayan arkadaşlık belgesini okuyordu → permission-denied. İstemci akışı:
+  // yalnız kendi belgelerini okur, sonra karşı tarafın kutusuna create yapar.
+  it("arkadaşlık isteği istemci akışı: okumalar yalnız kendi belgeleri, create başarılı; ikinci istek ve eski okumalar FAIL", async () => {
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    // Eski istemcinin yaptığı ve kuralın reddettiği okumalar
+    await assertFails(getDoc(doc(aliceDb, "users/bob/friendRequests/alice")));
+    await assertFails(getDoc(doc(aliceDb, "friendships/alice_bob")));
+    // Yeni istemci: kendi arkadaş listesi + kendi kutusundaki ters istek
+    await assertSucceeds(getDoc(doc(aliceDb, "users/alice/friends/bob")));
+    await assertSucceeds(getDoc(doc(aliceDb, "users/alice/friendRequests/bob")));
+    const request = { fromUid: "alice", fromName: "Alice", toUid: "bob", createdAt: serverTimestamp() };
+    await assertSucceeds(setDoc(doc(aliceDb, "users/bob/friendRequests/alice"), request));
+    // Aynı isteği yeniden yazmak update sayılır → FAIL (istemci "zaten gönderdin" der)
+    await assertFails(setDoc(doc(aliceDb, "users/bob/friendRequests/alice"), request));
+  });
+
   // === C2 — Katılma kodu en az 6 hane + deneme sınırı ve kilit ===
   it("C2 kod en az 6 hane olmalı; yeni grup kodlu oluşur, 4 hane reddedilir", async () => {
     const ownerDb = testEnv.authenticatedContext("owner").firestore();

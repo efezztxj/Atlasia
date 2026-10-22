@@ -10,6 +10,10 @@ import {
   optimizeForRain,
   rainExposure,
   rainRisk,
+  fetchWeatherSeriesBatched,
+  routeStopArrivalWeather,
+  routeStopWeatherId,
+  routeStopWeatherPoints,
   weatherAtClock,
   weatherLabel,
   type WeatherHour,
@@ -196,6 +200,14 @@ describe("fetchWeatherSeries (fixture ile; ağ yok)", () => {
     expect(series.b).toHaveLength(2);
   });
 
+  it("10'dan fazla noktayı 10'luk parçalarla ister ve tümünü eşler", async () => {
+    const points = Array.from({ length: 12 }, (_, index) => ({ id: `p${index}`, lat: 51 + index / 100, lng: 31 + index / 100 }));
+    const series = await fetchWeatherSeriesBatched(points);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(Object.keys(series)).toHaveLength(12);
+    expect(series.p11).toHaveLength(2);
+  });
+
   it("aynı koordinat farklı kimlikle istenirse veri yeni kimliğe eşlenir (önbellek regresyonu)", async () => {
     await fetchWeatherSeries([{ id: "center", lat: 41.01, lng: 28.01 }]);
     const second = await fetchWeatherSeries([{ id: "pin-7", lat: 41.01, lng: 28.01 }]);
@@ -342,5 +354,26 @@ describe("assessWeatherRisk — kötü hava uyarısı (Adım 15)", () => {
     expect(assessWeatherRisk([])).toBeNull();
     expect(assessWeatherRisk([at({})], { date: "2026-11-01" })).toBeNull();
     expect(assessWeatherRisk([at({})], { fromClock: "20:00", toClock: "21:00" })).toBeNull();
+  });
+});
+
+describe("kayıtlı rota durak havası (Adım 15)", () => {
+  it("konumlu durakları sırayla noktaya çevirir; sınırı aşanı ve konumsuzu almaz", () => {
+    const broken = { ...stop("x", "11:00"), lat: Number.NaN };
+    const value = route([stop("a", "09:00"), broken, stop("b", "10:00"), stop("c", "12:00")]);
+    expect(routeStopWeatherPoints(value).map((point) => point.id)).toEqual(["durak-0-0", "durak-0-2", "durak-0-3"]);
+    expect(routeStopWeatherPoints(value, 2).map((point) => point.id)).toEqual(["durak-0-0", "durak-0-2"]);
+  });
+
+  it("varış saatindeki saati eşler; geçersiz saat ve eksik seri bilinmiyor (null) kalır", () => {
+    const value = route([stop("a", "10:00"), stop("b", "--:--"), stop("c", "14:00")]);
+    const series = {
+      [routeStopWeatherId(0, 0)]: hours([[9, 10, 1], [10, 70, 61]]),
+      [routeStopWeatherId(0, 1)]: hours([[10, 10, 1]]),
+    };
+    const result = routeStopArrivalWeather(value, series);
+    expect(result[0][0]).toMatchObject({ arrival: `${BASE}T10:00`, risk: "rainy", precipitationProbability: 70 });
+    expect(result[0][1]).toBeNull();
+    expect(result[0][2]).toBeNull();
   });
 });

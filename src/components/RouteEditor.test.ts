@@ -19,7 +19,7 @@ vi.mock("../hooks/useCollections", () => ({
 vi.mock("../utils/weather", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../utils/weather")>();
   // Saf değerlendirme gerçek; yalnız ağ çağrısı sahtedir (test ağı yok).
-  return { ...actual, fetchWeatherSeries: h.fetchWeatherSeries };
+  return { ...actual, fetchWeatherSeries: h.fetchWeatherSeries, fetchWeatherSeriesBatched: h.fetchWeatherSeries };
 });
 
 vi.mock("../utils/elevation", async (importOriginal) => {
@@ -176,12 +176,13 @@ describe("RouteEditor hava riski (Adım 15)", () => {
 
   it("fırtınalı günde uyarı rozeti + neden görünür", async () => {
     h.fetchWeatherSeries.mockResolvedValue({
-      "gun-0-nokta-0": [hour("2030-01-05T10:00", { weatherCode: 95 })],
+      "durak-0-0": [hour("2030-01-05T10:00", { weatherCode: 95 })],
     });
     renderEditor(route());
     fireEvent.click(screen.getByRole("button", { name: /Hava riskini denetle/ }));
     expect(await screen.findByText(/Kötü hava uyarısı/)).toBeTruthy();
-    expect(screen.getByText(/fırtına/)).toBeTruthy();
+    // Gün nedeni + durak satırı: ikisi de fırtınayı söyler.
+    expect(screen.getAllByText(/fırtına/).length).toBeGreaterThanOrEqual(2);
   });
 
   it("veri yoksa 'bilinmiyor' rozeti çıkar; 'risk yok' sanılmaz", async () => {
@@ -202,11 +203,31 @@ describe("RouteEditor hava riski (Adım 15)", () => {
 
   it("sakin tahminde 'belirgin risk yok' rozeti çıkar", async () => {
     h.fetchWeatherSeries.mockResolvedValue({
-      "gun-0-nokta-0": [hour("2030-01-05T10:00")],
+      "durak-0-0": [hour("2030-01-05T10:00")],
     });
     renderEditor(route());
     fireEvent.click(screen.getByRole("button", { name: /Hava riskini denetle/ }));
     expect(await screen.findByText(/Belirgin risk yok/)).toBeTruthy();
+  });
+
+  it("durak satırında başlama saatindeki hava görünür (Adım 15)", async () => {
+    h.fetchWeatherSeries.mockResolvedValue({
+      "durak-0-0": [hour("2030-01-05T09:00", { temperature: 12 }), hour("2030-01-05T10:00", { temperature: 17 })],
+    });
+    renderEditor(route());
+    fireEvent.click(screen.getByRole("button", { name: /Hava riskini denetle/ }));
+    expect(await screen.findByText(/Varışta: 17°/)).toBeTruthy();
+    expect(screen.getByText(/10:00 · Başlangıç/)).toBeTruthy();
+  });
+
+  it("durağın saati tahmin dışındaysa 'varış havası bilinmiyor' yazar", async () => {
+    h.fetchWeatherSeries.mockResolvedValue({
+      "durak-0-0": [hour("2030-01-05T15:00")],
+    });
+    renderEditor(route());
+    fireEvent.click(screen.getByRole("button", { name: /Hava riskini denetle/ }));
+    expect(await screen.findByText(/Varış havası bilinmiyor/)).toBeTruthy();
+    expect(screen.queryByText(/Varışta:/)).toBeNull();
   });
 });
 

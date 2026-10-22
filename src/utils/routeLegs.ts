@@ -1,5 +1,5 @@
 import { haversineKm } from "./geo";
-import type { LegMode } from "../types";
+import type { AtlasRoute, LegMode, RouteLeg } from "../types";
 
 /**
  * Adım 10 — Erişim tipi duraklar + bacak modu
@@ -89,4 +89,20 @@ export function createLeg(
 export function legacyDuration(distanceKm: number): number {
   const raw = distanceKm / 1.25; // haversine geri
   return Math.max(3, Math.round((raw * 1.25) / 4 * 60)); // walking 4 km/h global
+}
+
+/**
+ * Haritada bacak bazlı (mod ayrımlı) çizim için rotanın tüm bacakları.
+ * Her günün geçerli bacağı (en az 2 nokta) yoksa `null` döner ve çağıran
+ * düz çizgiye düşer: yarım bacaklı karışık çizim yanıltıcı olurdu.
+ */
+export function routeDrawLegs(route: AtlasRoute): RouteLeg[] | null {
+  if (route.days.length === 0) return null;
+  const legs: RouteLeg[] = [];
+  for (const day of route.days) {
+    const valid = (day.legs ?? []).filter((leg) => leg.coords.length >= 2);
+    if (valid.length === 0) return null;
+    legs.push(...valid);
+  }
+  return legs;
 }

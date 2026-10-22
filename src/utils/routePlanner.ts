@@ -178,6 +178,9 @@ export function reorderRoute(route: AtlasRoute, dayIndex: number, from: number, 
     });
     item.summary = `${item.stops.length} durak, ${Math.round(dayMinutes)} dakika.`;
     item.polyline = encodePolyline(coords);
+    // Sıra değişti: bu günün (ve başlangıcı ona bağlı sonraki günlerin) bacak
+    // geometrisi artık duraklarla eşleşmez. Eski bacak çizilmez/saklanmaz.
+    if (currentDayIndex >= dayIndex) delete item.legs;
   });
   return { ...route, days, totalDistanceKm: Math.round(distance * 10) / 10, totalDurationHours: Math.round(duration / 60 * 10) / 10 };
 }

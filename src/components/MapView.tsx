@@ -134,6 +134,14 @@ const LEG_STYLE: Record<string, { color: string; dash?: number[]; width: number 
   transit: { color: "#94a3b8", dash: [8, 4], width: 2.6 },
 };
 
+/** `atlas-leg-*` katmanlarını `from` sırasından itibaren siler (dizin bitişiktir). */
+function clearLegLayers(map: maplibregl.Map, from = 0) {
+  for (let i = from; map.getLayer(`atlas-leg-line-${i}`) || map.getSource(`atlas-leg-${i}`); i++) {
+    if (map.getLayer(`atlas-leg-line-${i}`)) map.removeLayer(`atlas-leg-line-${i}`);
+    if (map.getSource(`atlas-leg-${i}`)) map.removeSource(`atlas-leg-${i}`);
+  }
+}
+
 function baseZoom(el: HTMLElement) {
   const d = Math.min(el.clientHeight * 0.6, el.clientWidth * 0.9);
   return Math.max(1.1, Math.log2((d * Math.PI) / 512));
@@ -271,7 +279,7 @@ function buildStyle(
         layout: {
           visibility: kktcLabelVisible(labels, baseMap) ? "visible" : "none",
           "text-field": ["get", "name"],
-          "text-font": ["Open Sans Semibold"],
+          "text-font": ["Noto Sans Regular"], // glyph sunucusunda olan tek yazı tipi (stil JSON ile aynı)
           "text-size": ["interpolate", ["linear"], ["zoom"], 5, 10, 8, 14],
           "text-letter-spacing": 0.08,
           "text-line-height": 1.4,
@@ -486,6 +494,7 @@ export default function MapView({
         geometry: { type: "LineString" as const, coordinates: coords },
       };
       const paint = () => {
+        clearLegLayers(map); // önceki bacaklı rota düz çizginin altında kalmasın
         const src = map.getSource("atlas-route") as maplibregl.GeoJSONSource | undefined;
         if (src) src.setData(data);
         else {
@@ -515,6 +524,7 @@ export default function MapView({
       if (map.getSource("atlas-route")) map.removeSource("atlas-route");
 
       const paint = () => {
+        clearLegLayers(map, legs.length); // önceki rotadan artan bacaklar
         legs.forEach((leg, idx) => {
           const sourceId = `atlas-leg-${idx}`;
           const layerId = `atlas-leg-line-${idx}`;
@@ -527,7 +537,10 @@ export default function MapView({
           const existing = map.getSource(sourceId) as maplibregl.GeoJSONSource | undefined;
           if (existing) {
             existing.setData(data);
+            map.setPaintProperty(layerId, "line-color", style.color);
+            map.setPaintProperty(layerId, "line-width", preview ? style.width - 0.8 : style.width);
             map.setPaintProperty(layerId, "line-opacity", preview ? 0.42 : 0.9);
+            map.setPaintProperty(layerId, "line-dasharray", style.dash); // undefined = varsayılana dön (düz çizgi)
             return;
           }
           map.addSource(sourceId, { type: "geojson", data });
@@ -553,13 +566,7 @@ export default function MapView({
       if (!map) return;
       if (map.getLayer("atlas-route-line")) map.removeLayer("atlas-route-line");
       if (map.getSource("atlas-route")) map.removeSource("atlas-route");
-      // bacak katmanlarını da temizle
-      for (let i = 0; i < 20; i++) {
-        const layerId = `atlas-leg-line-${i}`;
-        const sourceId = `atlas-leg-${i}`;
-        if (map.getLayer(layerId)) map.removeLayer(layerId);
-        if (map.getSource(sourceId)) map.removeSource(sourceId);
-      }
+      clearLegLayers(map); // bacak katmanlarını da temizle (20 sınırı yok)
       pulseRef.current?.remove();
       pulseRef.current = null;
     },
