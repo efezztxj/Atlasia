@@ -501,27 +501,35 @@ service cloud.firestore {
              && (!('targetId' in data) || stringBetween(data.targetId, 1, 200));
     }
 
+    // Ret kanıtı (#55, ayrı kilit): friend_declined ancak decliner'ın kendi ret
+    // belgesiyle yazılır; diğer tipler bu kapıdan etkilenmez.
+    function friendDeclineProof(data) {
+      return data.type != 'friend_declined'
+             || ('targetId' in data
+                 && exists(/databases/$(database)/documents/friendDeclines/$(data.targetId))
+                 && get(/databases/$(database)/documents/friendDeclines/$(data.targetId)).data.declinerUid == data.actorUid
+                 && get(/databases/$(database)/documents/friendDeclines/$(data.targetId)).data.requesterUid == data.recipientUid);
+    }
+
     /**
-     * Bildirim yazımının İLİŞKİ kanıtı (#61 p6'dan taşındı; friend_declined dalı
-     * #55'in friendDeclines kanıtıdır). Her tip, istemcinin gerçekten ürettiği
-     * bir belgeye bağlanır; böylece herhangi bir oturum herhangi bir kullanıcıya
-     * serbest metinli bildirim gönderemez. Kanıtlanamayan tipler (blocked,
-     * system, report_actioned) istemciye kapalıdır: bunlar yönetici/sunucu
-     * yazımıdır, bu projede sunucu yok. Kanıt belgeleri istemci akışında
-     * bildirimden ÖNCE commit edilir (friendRequest, friendship batch'i,
-     * friendDeclines batch'i, davet batch'i, mesaj batch'i, rapor belgesi);
-     * bu yüzden exists() yeterlidir, existsAfter gerekmez.
+     * Bildirim yazımının İLİŞKİ kanıtı (#61 p6'dan taşındı). Her tip, istemcinin
+     * gerçekten ürettiği bir belgeye bağlanır; böylece herhangi bir oturum
+     * herhangi bir kullanıcıya serbest metinli bildirim gönderemez.
+     * Kanıtlanamayan tipler (blocked, system, report_actioned) istemciye
+     * kapalıdır: bunlar yönetici/sunucu yazımıdır, bu projede sunucu yok.
+     * friend_declined bu fonksiyondan geçmez; onun kanıtı ayrı kilitte
+     * (friendDeclineProof) ve create kuralı İKİ kapıyı birden ister.
+     * Kanıt belgeleri istemci akışında bildirimden ÖNCE commit edilir
+     * (friendRequest, friendship batch'i, friendDeclines batch'i, davet
+     * batch'i, mesaj batch'i, rapor belgesi); bu yüzden exists() yeterlidir,
+     * existsAfter gerekmez.
      */
     function notificationProof(data) {
-      return (data.type == 'friend_request'
+      return data.type == 'friend_declined'
+             || (data.type == 'friend_request'
               && exists(/databases/$(database)/documents/users/$(data.recipientUid)/friendRequests/$(data.actorUid)))
              || (data.type == 'friend_accepted'
                  && isAcceptedFriendship(data.actorUid, data.recipientUid))
-             || (data.type == 'friend_declined'
-                 && 'targetId' in data
-                 && exists(/databases/$(database)/documents/friendDeclines/$(data.targetId))
-                 && get(/databases/$(database)/documents/friendDeclines/$(data.targetId)).data.declinerUid == data.actorUid
-                 && get(/databases/$(database)/documents/friendDeclines/$(data.targetId)).data.requesterUid == data.recipientUid)
              || (data.type == 'group_invite'
                  && 'targetId' in data
                  && exists(/databases/$(database)/documents/groups/$(data.targetId)/invites/$(data.recipientUid))
@@ -988,8 +996,9 @@ service cloud.firestore {
     match /users/{uid}/notifications/{notificationId} {
       allow get: if signedIn() && uid == request.auth.uid;
       allow list: if signedIn() && uid == request.auth.uid && boundedList(50);
-      // İlişki kanıtı olmadan bildirim yazılamaz (notificationProof).
-      allow create: if signedIn() && validNotification(request.resource.data) && request.resource.data.recipientUid == uid && notificationProof(request.resource.data);
+      // İlişki kanıtı olmadan bildirim yazılamaz: genel kanıt (notificationProof)
+      // + ret kanıtı (friendDeclineProof) birlikte zorunlu.
+      allow create: if signedIn() && validNotification(request.resource.data) && request.resource.data.recipientUid == uid && notificationProof(request.resource.data) && friendDeclineProof(request.resource.data);
       allow update: if signedIn() && uid == request.auth.uid
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read'])
                     && request.resource.data.read is bool;
@@ -1073,7 +1082,7 @@ service cloud.firestore {
     }
 
     // Ret kanıtı: reddeden kullanıcı, isteği sildiği batch'te yazar.
-    // Kanıt yoksa friend_declined bildirimi de yazılamaz (notificationProof).
+    // Kanıt yoksa friend_declined bildirimi de yazılamaz (friendDeclineProof).
     match /friendDeclines/{fid} {
       allow get: if signedIn() && request.auth.uid in resource.data.users;
       allow list: if false;

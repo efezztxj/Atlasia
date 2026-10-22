@@ -7,8 +7,9 @@ import { collection, deleteDoc, doc, limit, onSnapshot, orderBy, query, serverTi
 import { db } from "./firebase";
 
 /**
- * Kurallar (firestore.rules → notificationProof) her tipi bir İLİŞKİ kanıtına
- * bağlar; kanıt belgesi bildirimden ÖNCE commit edilmiş olmalıdır.
+ * Kurallar (firestore.rules → notificationProof + friendDeclineProof) her
+ * tipi bir İLİŞKİ kanıtına bağlar; kanıt belgesi bildirimden ÖNCE commit
+ * edilmiş olmalıdır.
  * İstemcinin yazabildiği tipler ve kanıtları:
  * - friend_request  → users/{alıcı}/friendRequests/{aktör}
  * - friend_accepted → kabul edilmiş friendships belgesi

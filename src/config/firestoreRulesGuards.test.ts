@@ -114,10 +114,10 @@ describe("firestore.rules — teslim edilen sözleşme yolları", () => {
   });
 });
 
-describe("firestore.rules — notificationProof", () => {
+describe("firestore.rules — notificationProof + friendDeclineProof", () => {
   const proof = block("function notificationProof");
 
-  it.each(["friend_request", "friend_accepted", "friend_declined", "group_invite", "group_message", "report_received"])(
+  it.each(["friend_request", "friend_accepted", "group_invite", "group_message", "report_received"])(
     "%s tipi bir kanıt belgesine bağlı",
     (type) => {
       expect(proof).toContain(`'${type}'`);
@@ -131,9 +131,16 @@ describe("firestore.rules — notificationProof", () => {
     },
   );
 
-  it("bildirim create kapısı kanıtı zorunlu tutar", () => {
+  it("friend_declined kanıtı ayrı kilit olan friendDeclineProof'ta kalır", () => {
+    const decline = block("function friendDeclineProof");
+    expect(decline).toContain("data.type != 'friend_declined'");
+    expect(decline).toContain("documents/friendDeclines/$(data.targetId)");
+  });
+
+  it("bildirim create kapısı iki kanıtı birlikte zorunlu tutar", () => {
     const notifications = block("match /users/{uid}/notifications/{notificationId}");
     expect(notifications).toContain("notificationProof(request.resource.data)");
+    expect(notifications).toContain("friendDeclineProof(request.resource.data)");
   });
 });
 
