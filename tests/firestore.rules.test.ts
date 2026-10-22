@@ -673,8 +673,40 @@ describe("Firestore güvenlik kuralları", () => {
     await assertFails(getDocs(collection(memberDb, "groups/group-1/messages")));
     await assertFails(getDocs(query(collection(outsiderDb, "groups/group-1/messages"), limit(50))));
     await assertFails(updateDoc(doc(memberDb, "groups/group-1/messages/m-1"), { text: "Değiştirildi" }));
-    await assertFails(deleteDoc(doc(ownerDb, "groups/group-1/messages/m-1")));
+    // Üye, kurucunun mesajını silemez (sahip dalı yalnız kurucuya açık).
+    await assertFails(deleteDoc(doc(memberDb, "groups/group-1/messages/m-2")));
     await assertSucceeds(deleteDoc(doc(memberDb, "groups/group-1/messages/m-1")));
+  });
+
+  it("grup kurucusu yetim mesajları silebilir; üye ve yabancı başkasının mesajını silemez", async () => {
+    await seed("groups/group-1", {
+      name: "Kapadokya ekibi",
+      ownerUid: "owner",
+      memberUids: ["owner", "member"],
+      joinCode: "123456",
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
+    await seed("groups/group-1/messages/m-member", {
+      senderUid: "member",
+      senderName: "Üye",
+      text: "Merhaba",
+      createdAt: Timestamp.now(),
+    });
+    await seed("groups/group-1/messages/m-owner", {
+      senderUid: "owner",
+      senderName: "Kurucu",
+      text: "Hoş geldiniz",
+      createdAt: Timestamp.now(),
+    });
+    const ownerDb = testEnv.authenticatedContext("owner").firestore();
+    const memberDb = testEnv.authenticatedContext("member").firestore();
+    const outsiderDb = testEnv.authenticatedContext("outsider").firestore();
+
+    await assertFails(deleteDoc(doc(memberDb, "groups/group-1/messages/m-owner")));
+    await assertFails(deleteDoc(doc(outsiderDb, "groups/group-1/messages/m-member")));
+    await assertSucceeds(deleteDoc(doc(ownerDb, "groups/group-1/messages/m-member")));
+    await assertSucceeds(deleteDoc(doc(ownerDb, "groups/group-1/messages/m-owner")));
   });
 
   it("katılma denemesi kaydını yalnız kendisi ve pencere dolduktan sonra silebilir", async () => {

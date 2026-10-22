@@ -541,11 +541,35 @@ export async function leaveGroup(groupId: string, uid: string): Promise<void> {
   await batch.commit();
 }
 
+const GROUP_CLEANUP_PAGE = 50;
+const GROUP_CLEANUP_MAX_PAGES = 200;
+
+/**
+ * Grubun TÜM mesajlarını sayfalı siler (yalnız grup sahibi başkasının mesajını
+ * silebilir: kural). Hata yutulmaz; sınır aşılırsa fırlatır.
+ */
+export async function deleteAllGroupMessages(groupId: string): Promise<number> {
+  if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
+  const firestore = db;
+  let deleted = 0;
+  for (let page = 0; page < GROUP_CLEANUP_MAX_PAGES; page += 1) {
+    const snap = await getDocs(query(collection(firestore, `groups/${groupId}/messages`), limit(GROUP_CLEANUP_PAGE)));
+    if (snap.size === 0) return deleted;
+    const batch = writeBatch(firestore);
+    snap.docs.forEach((item) => batch.delete(item.ref));
+    await batch.commit();
+    deleted += snap.size;
+  }
+  throw dataError("data/delete-incomplete", "Grup mesajları silme sınırına ulaşıldı; tekrar deneyin.");
+}
+
+/** Sahip grubu siler: önce yetim mesajlar (sayfalı), sonra grup ve sahibin indeksi. */
 export async function deleteGroup(groupId: string, uid: string): Promise<void> {
   if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
   const group = await fetchGroup(groupId);
   if (!group) return;
   if (group.ownerUid !== uid) throw dataError("group/not-owner", "Yalnız grup sahibi silebilir.");
+  await deleteAllGroupMessages(groupId);
   const batch = writeBatch(db);
   batch.delete(doc(db, "groups", groupId));
   batch.delete(doc(db, `users/${uid}/groups/${groupId}`));

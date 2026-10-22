@@ -758,7 +758,12 @@ service cloud.firestore {
                       && request.auth.uid in groupMembers()
                       && validGroupMessage(request.resource.data);
         allow update: if false;
-        allow delete: if signedIn() && resource.data.senderUid == request.auth.uid;
+        // Gönderen kendi mesajını siler; grup sahibi grup silinirken yetim mesajları
+        // temizleyebilir (yalnız sahibi; üye başkasının mesajını silemez).
+        allow delete: if signedIn() && (
+                        resource.data.senderUid == request.auth.uid
+                        || get(/databases/$(database)/documents/groups/$(groupId)).data.ownerUid == request.auth.uid
+                      );
       }
 
       // Katılma denemesi (sunucu zorunlu sayaç): yalnız kendi belgesini okur/yazar,

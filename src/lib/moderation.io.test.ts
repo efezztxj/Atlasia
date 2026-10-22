@@ -157,10 +157,11 @@ describe("moderasyon yazımı ve hesap verisi silme", () => {
     expect(h.store.has("blocks/b1")).toBe(false);
     expect(h.store.has("users/u1/groups/g1")).toBe(false);
     expect(h.store.has("users/u1/notifications/n1")).toBe(false);
-    // Grup sahibiydi: grup dokümanı ve kendi mesajı kalkar; arkadaşının mesajı kalır.
+    // Grup sahibiydi: grup dokümanı ve tüm mesajları kalkar.
     expect(h.store.has("groups/g1")).toBe(false);
     expect(h.store.has("groups/g1/messages/m1")).toBe(false);
-    expect(h.store.has("groups/g1/messages/m2")).toBe(true);
+    // Grup sahibi grubu silince yetim mesajlar da kalkar (görev 6); başkasının mesajı dahil.
+    expect(h.store.has("groups/g1/messages/m2")).toBe(false);
   });
 
   it("grup sahibi olmayan üye silinince gruptan çıkarılır, grup yaşar", async () => {
@@ -303,5 +304,17 @@ describe("moderasyon yazımı ve hesap verisi silme", () => {
     expect(h.store.has("users/u1/groupInvites/g3")).toBe(false);
     expect(h.store.has("groups/g3/invites/u1")).toBe(false);
     expect(h.store.has("groups/g3/invites/u2")).toBe(true);
+  });
+
+  it("görev 6: kullanıcının kurucu olduğu grup silinirken tüm mesajlar (başkasınınki dahil) önce temizlenir", async () => {
+    h.store.set("users/u1/groups/g4", { groupId: "g4", name: "Dört", role: "owner" });
+    h.store.set("groups/g4", { name: "Dört", ownerUid: "u1", memberUids: ["u1", "u2"], createdAt: 1, updatedAt: 1 });
+    h.store.set("groups/g4/messages/m1", { senderUid: "u1", text: "a" });
+    h.store.set("groups/g4/messages/m2", { senderUid: "u2", text: "b" });
+
+    await deleteUserData("u1");
+
+    expect(h.store.has("groups/g4")).toBe(false);
+    expect([...h.store.keys()].filter((key) => key.startsWith("groups/g4/"))).toEqual([]);
   });
 });
