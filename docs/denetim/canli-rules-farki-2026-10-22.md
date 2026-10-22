@@ -22,3 +22,15 @@
 
 ## Ne yapılmalı
 Depodaki `firestore.rules` olduğu gibi Console → Firestore → Rules'a yapıştırılıp **Publish**. İndeksler (`firestore.indexes.json`: places×2 + replies fieldOverride) ayrıca yüklenmeli. Kurallar gevşetilmez; yalnız depo sürümü yayınlanır.
+
+## Canlı deploy durumu (2026-10-22, kullanıcı Console'dan yaptı)
+
+| Öğe | Durum |
+|---|---|
+| `firestore.rules` (main `2b03f2f`) | ✅ Console → Rules → Publish edildi |
+| `places` authorUid ↑ createdAt ↓ | ✅ Zaten vardı (`CICAgJiUpoMK`, Enabled) |
+| `places` lat ↑ lng ↑ | ✅ Zaten vardı (`CICAgOi3kJAK`, Enabled) |
+| `places` createdAt ↓ authorUid ↑ | Depoda yok, canlıda fazladan; zararsız, silinmedi (`CICAgOjXh4EK`) |
+| `replies.authorUid` exemption | ✅ Eklendi: Collection Asc/Desc/Arrays açık, Collection group yalnız Ascending açık; oluşturma sürüyordu |
+
+Bu nedenle sosyal özelliklerde hâlâ "Missing or insufficient permissions" görülürse sebep artık kural farkı olmaz. Ayrı bir yetki/App Check teşhisi gerekir.
