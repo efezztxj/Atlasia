@@ -15,7 +15,11 @@ import {
   type TrackPoint,
 } from "../utils/track";
 
-export type TrackRecorderStatus = "idle" | "recording" | "saving" | "error";
+/**
+ * `finishing`: kayıt kapatılıyor, taslak hesaplanıyor. Buluta yazma **bu
+ * durumda olmaz**; yazma yalnız açık `save` eylemiyle yapılır (P17-Tur2).
+ */
+export type TrackRecorderStatus = "idle" | "recording" | "finishing" | "error";
 
 export interface FinishedTrack {
   track: AtlasTrack;
@@ -59,7 +63,7 @@ export function useTrackRecorder(uid: string, onPreview?: (coords: [number, numb
   useEffect(() => () => { generation.current += 1; clearWatch(); }, [clearWatch]);
 
   const start = useCallback(() => {
-    if (status === "recording" || status === "saving") return;
+    if (status === "recording" || status === "finishing") return;
     if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
       setStatus("error");
       setError("Bu tarayıcı konum kaydını desteklemiyor.");
@@ -119,11 +123,16 @@ export function useTrackRecorder(uid: string, onPreview?: (coords: [number, numb
     }, 1000);
   }, [clearWatch, status]);
 
+  /**
+   * "Bitir": kaydı kapatır ve **taslak** üretir. Hiçbir yere yazmaz.
+   * Ad çözümlemesi (ağ) burada yapılır; başarısız olursa adlar boş kalır ama
+   * taslak yine gösterilir (kullanıcı işini kaybetmez).
+   */
   const finish = useCallback(async (): Promise<FinishedTrack> => {
     if (status !== "recording") throw new Error("Etkin bir yürüyüş kaydı yok.");
     generation.current += 1;
     clearWatch();
-    setStatus("saving");
+    setStatus("finishing");
     setError(null);
     const rawPoints = [...points.current];
     if (rawPoints.length === 0) {
@@ -131,15 +140,19 @@ export function useTrackRecorder(uid: string, onPreview?: (coords: [number, numb
       throw new Error("Henüz konum ölçümü alınmadı. Biraz bekleyip tekrar bitir.");
     }
     try {
-      // Önce saf taslak + kural ön denetimi + bulut kaydı; ad çözümlemesi (ağ)
-      // ancak iz güvenle yazıldıktan sonra yapılır. Aynı girdilerle ikinci
-      // çağrı aynı izi verir, yalnız durak adları dolar.
       const input = { points: rawPoints, dwell: dwell.current, uid, trackId: makeId(), now: Date.now() };
       const { track } = buildTrackDraft(input);
       const violation = trackRuleViolation(track);
       if (violation) throw new Error(violation);
-      await createTrack(uid, track);
-      const stopNames = await Promise.all(track.stops.map((stop) => reverseName(stop.lat, stop.lng)));
+      const stopNames = await Promise.all(track.stops.map(async (stop) => {
+        try {
+          return await reverseName(stop.lat, stop.lng);
+        } catch (failure) {
+          // Ad çözümlemesi ağ işidir: başarısızsa ad boş kalır, taslak yine açılır.
+          console.warn("[Atlasia] Durak adı çözümlenemedi, ad boş bırakıldı:", failure);
+          return null;
+        }
+      }));
       const { route, stats } = buildTrackDraft({ ...input, stopNames });
       points.current = [];
       dwell.current = { candidate: null, stops: [] };
@@ -147,11 +160,21 @@ export function useTrackRecorder(uid: string, onPreview?: (coords: [number, numb
       return { track, route, stats };
     } catch (failure) {
       setStatus("error");
-      const message = failure instanceof Error ? failure.message : "İz buluta kaydedilemedi.";
+      const message = failure instanceof Error ? failure.message : "Taslak hazırlanamadı.";
       setError(message);
       throw failure;
     }
   }, [clearWatch, status, uid]);
+
+  /**
+   * Açık kullanıcı eylemi: taslağın ham izini **yalnız sahibi** için yazar.
+   * Yayınlama/paylaşım burada yapılmaz; ham iz hiçbir zaman paylaşılmaz.
+   */
+  const save = useCallback(async (track: AtlasTrack): Promise<void> => {
+    const violation = trackRuleViolation(track);
+    if (violation) throw new Error(violation);
+    await createTrack(uid, track);
+  }, [uid]);
 
   const discard = useCallback(() => {
     generation.current += 1;
@@ -166,5 +189,5 @@ export function useTrackRecorder(uid: string, onPreview?: (coords: [number, numb
     previewRef.current?.([]);
   }, [clearWatch]);
 
-  return { status, elapsedSeconds, distanceKm, pointCount, error, start, finish, discard };
+  return { status, elapsedSeconds, distanceKm, pointCount, error, start, finish, save, discard };
 }

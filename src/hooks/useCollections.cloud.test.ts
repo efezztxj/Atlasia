@@ -13,7 +13,7 @@ const h = vi.hoisted(() => {
     unsubscribe: ReturnType<typeof vi.fn>;
   }> = [];
   return {
-    user: { uid: "u1" } as { uid: string },
+    user: { uid: "u1", backend: "firebase" } as { uid: string; backend: string },
     subscriptions,
     toggleSavedPlace: vi.fn(async () => undefined),
     saveRouteReference: vi.fn(async () => undefined),
@@ -47,7 +47,7 @@ vi.mock("../lib/routeData", () => ({
   },
 }));
 
-import { CollectionsProvider, useCollections } from "./useCollections";
+import { CollectionsProvider, isCloudAccount, useCollections } from "./useCollections";
 
 const wrapper = ({ children }: { children: ReactNode }) =>
   createElement(CollectionsProvider, null, children);
@@ -79,7 +79,7 @@ const route = (id: string): AtlasRoute => ({
 });
 
 beforeEach(() => {
-  h.user = { uid: "u1" };
+  h.user = { uid: "u1", backend: "firebase" };
   h.subscriptions.length = 0;
   h.toggleSavedPlace.mockReset().mockResolvedValue(undefined);
   h.saveRouteReference.mockReset().mockResolvedValue(undefined);
@@ -142,7 +142,7 @@ describe("useCollections (bulut modu)", () => {
     const item = route("r1");
 
     await act(async () => {
-      await result.current.publishRoute(item, "unlisted");
+      await result.current.publishRoute(item, "unlisted", true);
     });
     expect(h.publishRoute).toHaveBeenCalledWith("u1", item, "unlisted");
     expect(h.saveRouteReference).toHaveBeenCalledWith("u1", item);
@@ -152,8 +152,26 @@ describe("useCollections (bulut modu)", () => {
 
     h.publishRoute.mockRejectedValueOnce(new Error("Yayın reddedildi"));
     h.saveRouteReference.mockClear();
-    await expect(result.current.publishRoute(item, "public")).rejects.toThrow("Yayın reddedildi");
+    await expect(result.current.publishRoute(item, "public", true)).rejects.toThrow("Yayın reddedildi");
     expect(h.saveRouteReference).not.toHaveBeenCalled();
+  });
+
+  it("paylaşım onayı olmadan private dışı yayın ÇALIŞMAZ; bulut hiç çağrılmaz", async () => {
+    const { result } = renderHook(() => useCollections(), { wrapper });
+    const item = route("r-onaysiz");
+
+    await expect(result.current.publishRoute(item, "public", false))
+      .rejects.toThrow("ayrı bir onay ister");
+    await expect(result.current.publishRoute(item, "unlisted", false))
+      .rejects.toThrow("ayrı bir onay ister");
+    expect(h.publishRoute).not.toHaveBeenCalled();
+    expect(h.saveRouteReference).not.toHaveBeenCalled();
+
+    // private kayıt onay istemez: aynı çağrı onaysız da kapıdan geçer.
+    await act(async () => {
+      await result.current.publishRoute(item, "private", false);
+    });
+    expect(h.publishRoute).toHaveBeenCalledWith("u1", item, "private");
   });
 
   it("kullanıcı nesnesi değişince eski aboneliği kapatıp yeni uid ile açar", () => {
@@ -161,7 +179,7 @@ describe("useCollections (bulut modu)", () => {
     act(() => h.subscriptions[0].onChange({ places: [], routes: [] }));
     expect(result.current.loading).toBe(false);
 
-    h.user = { uid: "u2" };
+    h.user = { uid: "u2", backend: "firebase" };
     rerender();
 
     expect(h.subscriptions[0].unsubscribe).toHaveBeenCalledTimes(1);
@@ -171,5 +189,46 @@ describe("useCollections (bulut modu)", () => {
 
     unmount();
     expect(h.subscriptions[1].unsubscribe).toHaveBeenCalledTimes(1);
+  });
+
+  // Madde 12 regresyonu: cihaz hesabının uid'si Firestore'da yetkisizdir.
+  // Koleksiyon yalnız `firebaseConfigured`a bakarsa cihaz kullanıcısının
+  // kayıtları ne buluta yazılır ne yerelde tutulur (sessiz kayıp).
+  it("cihaz hesabı bulut yoluna girmez; koleksiyon cihazda çalışır (Madde 12)", async () => {
+    h.user = { uid: "u-cihaz", backend: "device" };
+    const { result } = renderHook(() => useCollections(), { wrapper });
+
+    // Firestore aboneliği hiç açılmaz; bekleme durumu da olmaz.
+    expect(h.subscriptions).toHaveLength(0);
+    expect(result.current.loading).toBe(false);
+
+    act(() => result.current.savePlace(place("p1")));
+    act(() => result.current.saveRoute(route("r1")));
+    expect(result.current.savedPlaces.map((item) => item.id)).toEqual(["p1"]);
+    expect(result.current.savedRoutes.map((item) => item.id)).toEqual(["r1"]);
+    expect(
+      (JSON.parse(window.localStorage.getItem("atlasia.member.u-cihaz.routes") ?? "[]") as AtlasRoute[])
+        .map((item) => item.id),
+    ).toEqual(["r1"]);
+
+    expect(h.toggleSavedPlace).not.toHaveBeenCalled();
+    expect(h.saveRouteReference).not.toHaveBeenCalled();
+    expect(h.publishRoute).not.toHaveBeenCalled();
+
+    // Yayın: cihazda saklanır + bulut hesabı gerektiği açıkça söylenir.
+    let failure: unknown;
+    await act(async () => {
+      failure = await result.current.publishRoute(route("r2"), "private", false).catch((error: unknown) => error);
+    });
+    expect((failure as Error).message).toContain("Bulut hesabı bağlı değil");
+    expect(result.current.savedRoutes.map((item) => item.id)).toContain("r2");
+  });
+});
+
+describe("isCloudAccount — bulut/yerel ayrımının tek koşulu (yapılandırılmış derleme)", () => {
+  it("yalnız Firebase hesabı bulut sayılır; cihaz hesabı ve oturumsuz durum yereldir", () => {
+    expect(isCloudAccount("firebase")).toBe(true);
+    expect(isCloudAccount("device")).toBe(false);
+    expect(isCloudAccount(undefined)).toBe(false);
   });
 });

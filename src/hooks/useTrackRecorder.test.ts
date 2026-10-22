@@ -148,7 +148,7 @@ describe("useTrackRecorder", () => {
     expect(second).toHaveBeenCalledWith([[27.14, 38.42]]);
   });
 
-  it("finish tam çözünürlükten durak, sadeleştirilmiş polyline ve taslak rota üretip kaydeder", async () => {
+  it("finish tam çözünürlükten durak, sadeleştirilmiş polyline ve taslak rota üretir; buluta YAZMAZ", async () => {
     const { result } = renderHook(() => useTrackRecorder("u1"));
     act(() => result.current.start());
     feed(38.42, 27.14, 5, BASE);
@@ -163,8 +163,8 @@ describe("useTrackRecorder", () => {
     });
 
     expect(result.current.status).toBe("idle");
-    expect(h.createTrack).toHaveBeenCalledTimes(1);
-    expect(h.createTrack.mock.calls[0][0]).toBe("u1");
+    // P17-Tur2: "Bitir" yalnız taslak üretir. Yazma açık "Hesabıma kaydet" eylemiyle olur.
+    expect(h.createTrack).not.toHaveBeenCalled();
     expect(finished?.track).toMatchObject({
       authorUid: "u1",
       startedAt: BASE,
@@ -173,6 +173,7 @@ describe("useTrackRecorder", () => {
       accuracy: { sampleCount: 3, meanMeters: 10, maxMeters: 15 },
     });
     expect(finished?.track.id).toMatch(/^track-/);
+    // İki köşeli sadeleşmiş çizgide durağın aralığı ilk köşeye iner.
     expect(finished?.track.stops).toEqual([
       {
         startedAt: BASE,
@@ -180,6 +181,8 @@ describe("useTrackRecorder", () => {
         lat: 38.42,
         lng: 27.14,
         pointCount: 2,
+        startPointIndex: 0,
+        endPointIndex: 0,
       },
     ]);
     expect(decodePolyline(finished!.track.polyline)).toEqual([
@@ -246,21 +249,26 @@ describe("useTrackRecorder", () => {
     expect(finished?.stats.maxDeviationM).toBeLessThanOrEqual(7);
   });
 
-  it("bulut kaydı reddi hatayı aynen yüzeye çıkarır ve rota adı çözümlemesi yapmaz", async () => {
-    h.createTrack.mockRejectedValueOnce(new Error("Buluta kaydetme izni reddedildi."));
+  it("save bulut reddini aynen yüzeye çıkarır; taslak üretimi (finish) bundan etkilenmez", async () => {
     const { result } = renderHook(() => useTrackRecorder("cihaz-u"));
     act(() => result.current.start());
     feed(38.42, 27.14, 5, BASE);
 
+    let draft: FinishedTrack | undefined;
+    await act(async () => {
+      draft = await result.current.finish();
+    });
+    expect(draft).toBeDefined();
+    expect(h.createTrack).not.toHaveBeenCalled();
+
+    h.createTrack.mockRejectedValueOnce(new Error("Buluta kaydetme izni reddedildi."));
     let failure: unknown;
     await act(async () => {
-      failure = await result.current.finish().catch((error: unknown) => error);
+      failure = await result.current.save(draft!.track).catch((error: unknown) => error);
     });
 
     expect(failure).toEqual(new Error("Buluta kaydetme izni reddedildi."));
-    expect(result.current.status).toBe("error");
-    expect(result.current.error).toBe("Buluta kaydetme izni reddedildi.");
-    expect(h.reverseName).not.toHaveBeenCalled();
+    expect(h.createTrack).toHaveBeenCalledTimes(1);
   });
 
   it("konum hatalarını Türkçeleştirir; nokta yoksa kaydı kapatır, varsa sürdürür", () => {
@@ -310,6 +318,78 @@ describe("useTrackRecorder", () => {
     feed(38.42, 27.15, 5, BASE + 1000);
     act(() => vi.advanceTimersByTime(1000));
     expect(result.current.pointCount).toBe(0);
+  });
+
+  it("save yalnız açık çağrıda createTrack yapar ve kural ön denetimini uygular", async () => {
+    const { result } = renderHook(() => useTrackRecorder("u1"));
+    act(() => result.current.start());
+    feed(38.42, 27.14, 5, BASE);
+    feed(38.42, 27.14, 15, BASE + 180_000);
+    feed(38.42, 27.15, 10, BASE + 480_000);
+
+    let finished: FinishedTrack | undefined;
+    await act(async () => {
+      finished = await result.current.finish();
+    });
+    expect(h.createTrack).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await result.current.save(finished!.track);
+    });
+    expect(h.createTrack).toHaveBeenCalledTimes(1);
+    expect(h.createTrack).toHaveBeenCalledWith("u1", finished!.track);
+
+    // Kural ön denetimi: geçersiz iz yazılmaya çalışılmaz, Türkçe hata yüzeye çıkar.
+    let violation: unknown;
+    await act(async () => {
+      violation = await result.current
+        .save({ ...finished!.track, endedAt: finished!.track.startedAt - 1 })
+        .catch((error: unknown) => error);
+    });
+    expect(violation).toEqual(new Error("İz bitişi başlangıcından önce."));
+    expect(h.createTrack).toHaveBeenCalledTimes(1);
+  });
+
+  it("ad çözümlemesi ağ hatası verse de taslak açılır, adlar boş kalır", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    h.reverseName.mockRejectedValue(new Error("ağ yok"));
+    const { result } = renderHook(() => useTrackRecorder("u1"));
+    act(() => result.current.start());
+    feed(38.42, 27.14, 5, BASE);
+    feed(38.42, 27.14, 15, BASE + 180_000);
+    feed(38.42, 27.15, 10, BASE + 480_000);
+
+    let finished: FinishedTrack | undefined;
+    await act(async () => {
+      finished = await result.current.finish();
+    });
+
+    expect(result.current.status).toBe("idle");
+    expect(h.createTrack).not.toHaveBeenCalled();
+    expect(finished?.track.stops).toHaveLength(1);
+    expect(finished?.route.days[0].stops[0].name).toBe("Durak 1");
+    expect(warn).toHaveBeenCalledWith(
+      "[Atlasia] Durak adı çözümlenemedi, ad boş bırakıldı:",
+      expect.any(Error),
+    );
+    warn.mockRestore();
+  });
+
+  it("kayıt sırasında durum finishing olur, taslak hazır olunca idle'a döner", async () => {
+    const { result } = renderHook(() => useTrackRecorder("u1"));
+    act(() => result.current.start());
+    feed(38.42, 27.14, 5, BASE);
+
+    let pending: Promise<FinishedTrack> | undefined;
+    act(() => {
+      pending = result.current.finish();
+    });
+    expect(result.current.status).toBe("finishing");
+
+    await act(async () => {
+      await pending;
+    });
+    expect(result.current.status).toBe("idle");
   });
 
   it("unmount watch ve interval'i temizler", () => {

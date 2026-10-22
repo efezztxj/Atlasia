@@ -23,7 +23,7 @@ import RecordsDock from "./components/RecordsDock";
 import TrackRecorderPanel from "./components/TrackRecorderPanel";
 import RouteEditor from "./components/RouteEditor";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
-import { CollectionsProvider } from "./hooks/useCollections";
+import { CollectionsProvider, isCloudAccount } from "./hooks/useCollections";
 import { GUIDE_PLACES } from "./data/places";
 import { EPHESUS_CENTER } from "./data/ephesusFixture";
 import { EPHESUS_TOUR } from "./data/siteTours";
@@ -34,7 +34,9 @@ import { useTheme } from "./hooks/useTheme";
 import { useInstallApp, type InstallAppController } from "./hooks/useInstallApp";
 import { isCloudReady, firebaseConfigSummary } from "./lib/firebase";
 import type { PlaceViewport } from "./lib/firestoreData";
-import { getPublishedRoute } from "./lib/routeData";
+import { ROUTE_OPEN_MESSAGES, openPublishedRoute } from "./lib/publishedRouteOpen";
+import { placeDeleteErrorMessage } from "./lib/firestoreValue";
+import { parseRouteShareLink, readShareTokenFromUrl } from "./utils/shareLink";
 import type { AtlasRoute, CategoryId, Place, RouteVisibility, ViewState } from "./types";
 import { haversineKm, reverseName, type SearchResult } from "./utils/geo";
 import { storageGet, storageSet } from "./utils/storage";
@@ -67,14 +69,6 @@ function MapLoadingSkeleton() {
   );
 }
 
-function placeDeleteErrorMessage(error: unknown) {
-  const code = (error as { code?: string })?.code ?? (error as Error)?.message ?? "";
-  if (code === "place/not-owner" || code.includes("permission-denied")) return "Bu iz başka bir hesaba ait. Yalnızca bırakan hesap silebilir.";
-  if (code === "place/owner-missing") return "Bu eski izin sahiplik kaydı eksik. Güvenli taşıma yapılmadan silinemez.";
-  if (code.includes("unavailable") || code.includes("network")) return "Bağlantı kurulamadı. İnternetini kontrol edip tekrar dene.";
-  return "İz silinemedi. Kayıt korunuyor; biraz sonra tekrar deneyebilirsin.";
-}
-
 function Explorer({ installApp }: { installApp: InstallAppController }) {
   const mapRef = useRef<MapViewHandle>(null);
   const { user } = useAuth();
@@ -84,15 +78,18 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
 
   // Yerel veri yalnız yapılandırmasız mod ve ilk canlı liste görünümü için yedektir.
   const local = useAtlasData(user!.uid);
+  // Cihaz hesabı Firestore'a giremez (Rules request.auth ister): okuma/yazma
+  // ancak bulut hesabıyla uzaktan olur; cihaz hesabı baştan sona yerel çalışır.
+  const cloudAccount = isCloudAccount(user!.backend);
   const remote = useFirestoreAtlasData({
     uid: user!.uid,
-    enabled: isCloudReady,
+    enabled: cloudAccount,
     viewport: mapViewport,
   });
-  // Bulut yapılandırılmışsa yazma/silme işlemleri her zaman Firestore'a gider.
+  // Bulut hesabı varsa yazma/silme işlemleri her zaman Firestore'a gider.
   // İlk canlı snapshot gelene kadar yalnız görünür liste için yerel içerik kullanılır;
   // böylece açılış anındaki hızlı bir işlem cihazda mahsur kalmaz.
-  const cloud = isCloudReady
+  const cloud = cloudAccount
     ? {
         ...remote,
         places: remote.ready ? remote.places : local.places,
@@ -113,14 +110,14 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
 
   // Kullanıcıya bulut bağlantısı durumunu bildir
   useEffect(() => {
-    if (isCloudReady && !remote.ready && remote.error) {
+    if (cloudAccount && !remote.ready && remote.error) {
       setToast("Canlı veriler yüklenemedi. Yeni işlemler için bağlantını kontrol et.");
       console.warn("[Atlasia] Config özeti:", firebaseConfigSummary);
     } else if (!isCloudReady) {
       setToast("Firebase yapılandırması eksik, yerel veri kullanılıyor.");
       console.warn("[Atlasia] Config özeti:", firebaseConfigSummary);
     }
-  }, [remote.ready, remote.error]);
+  }, [cloudAccount, remote.ready, remote.error]);
   const { blockedSet, isBlocked } = useBlocks(user?.uid);
   const freshness = useFreshness(user?.uid);
   const rawDiscoveries = cloud.places;
@@ -180,22 +177,50 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   useEffect(() => { if (user?.displayName) storageSet("atlasia.author", user.displayName); }, [user?.displayName]);
   useEffect(() => { storageSet(MAP_STYLE_KEY, baseMap); }, [baseMap]);
 
+  const handledShareLinkRef = useRef<string | null>(null);
   useEffect(() => {
-    const routeId = new URLSearchParams(window.location.search).get("route");
-    if (!routeId) return;
     let active = true;
-    void getPublishedRoute(routeId).then((result) => {
-      if (!active) return;
-      if (!result) { setToast("Bu rota bulunamadı veya artık paylaşılmıyor."); return; }
-      setResumeRoute(result.route);
-      setAtlasOpen(true);
-      setToast("Paylaşılan rota açıldı. Kendi kayıtlarına ekleyebilirsin.");
-    }).catch((failure: unknown) => {
-      if (active) setToast(failure instanceof Error && failure.message.includes("permission-denied")
-        ? "Bu rota özel. Yalnız sahibi açabilir."
-        : "Rota yüklenemedi. Bağlantıyı ve internetini kontrol et.");
-    });
-    return () => { active = false; };
+    const openFromLocation = () => {
+      const params = new URLSearchParams(window.location.search);
+      const routeId = params.get("route");
+      // P20 fragment'tadır (#r=); eski ?r= biçimi de okunur. Yayınlanmış
+      // rotanın ?route= bağlantısı (Adım 5) öncelikli ve değişmedi.
+      const shareToken = readShareTokenFromUrl(window.location.href);
+      const linkKey = routeId ? `route:${routeId}` : shareToken ? `share:${shareToken}` : null;
+      // Aynı bağlantı iki kez açılmaz (açılış + hash değişimi çift tetiklemesin).
+      if (!linkKey || handledShareLinkRef.current === linkKey) return;
+      handledShareLinkRef.current = linkKey;
+      if (routeId) {
+        void openPublishedRoute(routeId).then((outcome) => {
+          if (!active) return;
+          if (outcome.status === "opened") {
+            setResumeRoute(outcome.route);
+            setAtlasOpen(true);
+          }
+          setToast(outcome.message);
+        });
+      } else if (shareToken) {
+        // P20: rota bağlantının içinde gelir. Doğrulama shareLink'te; burada
+        // yalnız önizleme açılır — kaydetmek kullanıcının açık eylemidir.
+        void parseRouteShareLink(shareToken).then((outcome) => {
+          if (!active) return;
+          if (outcome.ok) {
+            setResumeRoute(outcome.route);
+            setAtlasOpen(true);
+            setToast(ROUTE_OPEN_MESSAGES.opened);
+          } else {
+            setToast(outcome.message);
+          }
+        });
+      }
+    };
+    openFromLocation();
+    // Uygulama açıkken adrese yapıştırılan #r= bağlantısı da açılsın.
+    window.addEventListener("hashchange", openFromLocation);
+    return () => {
+      active = false;
+      window.removeEventListener("hashchange", openFromLocation);
+    };
   }, []);
 
   const closePanels = () => {
@@ -489,7 +514,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
     setCategory(null);
     setPanelOpen(true);
     focusPlace(created, Math.max(view.zoom, 8));
-    setToast(isCloudReady ? "İzin Atlasia haritasına eklendi." : "İzin bu cihazdaki haritana eklendi.");
+    setToast(cloudAccount ? "İzin Atlasia haritasına eklendi." : "İzin bu cihazdaki haritana eklendi.");
   };
 
   const handleDelete = async (p: Place): Promise<boolean> => {
@@ -534,7 +559,6 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
 
   const heroHidden = view.zoom > 3.4;
   const dockVisible = !recordsOpen && !profileOpen && !myPlacesOpen && !storyPlace && !atlasOpen && !settingsOpen && !drawerOpen && !feedOpen;
-  const discoveryPanelVisible = dockVisible;
   const mobileExplore = () => { closePanels(); setPanelOpen(true); };
   const openMyPlaces = () => { closePanels(); setMyPlacesOpen(true); };
   const mobileTab = myPlacesOpen ? "İzlerim" : recordsOpen ? "Kaydet" : feedOpen ? "Topluluk" : profileOpen ? "Profil" : "Keşfet";
@@ -718,7 +742,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         </div>
       )}
 
-      {discoveryPanelVisible && <BottomPanel
+      {dockVisible && <BottomPanel
         open={panelOpen}
         onToggle={() => setPanelOpen((v) => !v)}
         category={category}

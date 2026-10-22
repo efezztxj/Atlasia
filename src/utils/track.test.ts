@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   TRACK_DETECTION,
   TRACK_MAX_STOPS,
+  buildStopLegs,
   buildTrackDraft,
   capTrackStops,
   finishDwellDetection,
@@ -12,6 +13,7 @@ import {
   simplifyTrackWithStats,
   trackRuleViolation,
   trackWindow,
+  vertexRangeForStop,
   type DwellState,
   type TrackPoint,
 } from "./track";
@@ -213,18 +215,30 @@ describe("P17 fixture tablosu — uçtan uca (tespit → sadeleştirme → tasla
     expect(track.accuracy.sampleCount).toBe(points.length);
     expect(track.accuracy.maxMeters).toBeGreaterThanOrEqual(track.accuracy.meanMeters);
 
-    // Rota: tek yürüyüş bacağı, aynı geometri, duraklar sıralı ve dürüst metinli.
+    // Rota: bacaklar aynı geometrinin bölünmüş hâli, duraklar sıralı ve dürüst metinli.
+    // Bu fixture düz çizgide yürür; DP yalnız uç köşeleri tutar, bölme tek
+    // bacağa iner — asıl bölme davranışı dönüşlü senaryoda ayrıca sınanır.
     const day = route.days[0];
     const legs = day.legs ?? [];
-    expect(legs).toHaveLength(1);
-    expect(legs[0].mode).toBe("walking");
-    // Geometri aynı: polyline 5 ondalığa yuvarlar, bu yüzden yakınlık karşılaştırılır.
+    expect(legs.length).toBeGreaterThanOrEqual(1);
+    expect(legs.every((leg) => leg.mode === "walking")).toBe(true);
+    // Bacaklar sınır köşesini paylaşır: birleştirirken yinelenen köşe atılır.
+    const joined = legs.flatMap((leg, index) => (index === 0 ? leg.coords : leg.coords.slice(1)));
     const decoded = decodePolyline(track.polyline);
-    expect(legs[0].coords).toHaveLength(decoded.length);
+    expect(joined).toHaveLength(decoded.length);
     decoded.forEach(([lng, lat], index) => {
-      expect(legs[0].coords[index][0]).toBeCloseTo(lng, 5);
-      expect(legs[0].coords[index][1]).toBeCloseTo(lat, 5);
+      expect(joined[index][0]).toBeCloseTo(lng, 5);
+      expect(joined[index][1]).toBeCloseTo(lat, 5);
     });
+    // Bacak mesafeleri toplamı iz mesafesine eşittir (yuvarlama payı içinde).
+    const legTotal = legs.reduce((sum, leg) => sum + leg.distanceKm, 0);
+    expect(Math.abs(legTotal - track.distanceKm)).toBeLessThanOrEqual(0.02 * legs.length);
+    // Duraklar köşe aralığı taşır; aralıklar sıralı ve çizgi sınırları içinde.
+    for (const stop of track.stops) {
+      expect(stop.startPointIndex).toBeGreaterThanOrEqual(0);
+      expect(stop.endPointIndex).toBeGreaterThanOrEqual(stop.startPointIndex ?? 0);
+      expect(stop.endPointIndex).toBeLessThan(decoded.length);
+    }
     expect(day.stops.map((stop) => stop.name)).toEqual(["Çeşme başı", "Durak 2"]);
     expect(day.stops.map((stop) => stop.order)).toEqual([1, 2]);
     expect(day.stops.every((stop) => stop.durationMinutes >= 3)).toBe(true);
@@ -272,5 +286,149 @@ describe("P17 fixture tablosu — uçtan uca (tespit → sadeleştirme → tasla
   it("taslak üretimi boş kayıtta açık hata verir (sessiz boş rota yok)", () => {
     expect(() => buildTrackDraft({ points: [], dwell: freshDwell(), uid: "u", trackId: "track-x" }))
       .toThrow(/ölçüm/i);
+  });
+});
+
+describe("durak köşe aralığı (vertexRangeForStop)", () => {
+  it("pencereye düşen ilk ve son köşeyi seçer", () => {
+    expect(vertexRangeForStop({ startedAt: 12, endedAt: 28 }, [0, 10, 20, 30]))
+      .toEqual({ startPointIndex: 2, endPointIndex: 2 });
+    expect(vertexRangeForStop({ startedAt: 10, endedAt: 20 }, [0, 10, 20, 30]))
+      .toEqual({ startPointIndex: 1, endPointIndex: 2 });
+    expect(vertexRangeForStop({ startedAt: 0, endedAt: 30 }, [0, 10, 20, 30]))
+      .toEqual({ startPointIndex: 0, endPointIndex: 3 });
+  });
+
+  it("pencereye köşe düşmüyorsa zamanca en yakın köşeye iner", () => {
+    // Durak bütün kayıttan sonra: en yakın köşe son köşe.
+    expect(vertexRangeForStop({ startedAt: 100, endedAt: 200 }, [0, 10, 20, 30]))
+      .toEqual({ startPointIndex: 3, endPointIndex: 3 });
+    // Durak iki köşe arasında sıkışmış (sadeleştirme iç köşeleri atmış).
+    expect(vertexRangeForStop({ startedAt: 13, endedAt: 17 }, [0, 10, 20, 30]))
+      .toEqual({ startPointIndex: 1, endPointIndex: 1 });
+  });
+
+  it("köşe yoksa null döner", () => {
+    expect(vertexRangeForStop({ startedAt: 0, endedAt: 10 }, [])).toBeNull();
+  });
+});
+
+describe("durak-durak bacak bölme (buildStopLegs)", () => {
+  const line: [number, number][] = [
+    [27.1, 38.4], [27.101, 38.4], [27.102, 38.4], [27.103, 38.4], [27.104, 38.4], [27.105, 38.4],
+  ];
+  const stopAt = (endPointIndex: number, startedAt: number, endedAt: number) => ({
+    startedAt, endedAt, lat: 38.4, lng: 27.1, pointCount: 10, startPointIndex: endPointIndex, endPointIndex,
+  });
+
+  it("durak bitiş köşelerinden böler; bacaklar sınır köşesini paylaşır", () => {
+    const legs = buildStopLegs(line, [stopAt(2, 60_000, 240_000), stopAt(4, 360_000, 540_000)], { startedAt: 0, endedAt: 600_000 }, "track-t");
+    expect(legs.map((leg) => leg.coords)).toEqual([
+      line.slice(0, 3),
+      line.slice(2, 5),
+      line.slice(4, 6),
+    ]);
+    expect(legs.map((leg) => leg.id)).toEqual(["leg-track-t-1", "leg-track-t-2", "leg-track-t-3"]);
+    // Süreler ölçülen zamanlardan: duruş süreleri bacaklara yazılmaz.
+    expect(legs.map((leg) => leg.durationMinutes)).toEqual([1, 2, 1]);
+    // Mesafe toplamı bütün çizgiye eşittir (paylaşılan köşe çift sayılmaz).
+    const total = legs.reduce((sum, leg) => sum + leg.distanceKm, 0);
+    expect(Math.abs(total - simplifiedDistanceKm(line))).toBeLessThanOrEqual(0.03);
+  });
+
+  it("indeks taşımayan eski duraklar bölme üretmez: tek bacak, eski kimlik", () => {
+    const legacy = [{ startedAt: 60_000, endedAt: 240_000, lat: 38.4, lng: 27.1, pointCount: 10 }];
+    const legs = buildStopLegs(line, legacy, { startedAt: 0, endedAt: 600_000 }, "track-eski");
+    expect(legs).toHaveLength(1);
+    expect(legs[0].id).toBe("leg-track-eski");
+    expect(legs[0].coords).toEqual(line);
+  });
+
+  it("son köşede biten durak boş kuyruk bacağı üretmez; aynı sınır tekillenir", () => {
+    const legs = buildStopLegs(
+      line,
+      [stopAt(5, 500_000, 600_000), stopAt(2, 60_000, 120_000), stopAt(2, 130_000, 200_000)],
+      { startedAt: 0, endedAt: 600_000 },
+      "track-uc",
+    );
+    expect(legs).toHaveLength(2);
+    expect(legs[1].coords).toEqual(line.slice(2));
+  });
+
+  it("boş geometri bacak üretmez", () => {
+    expect(buildStopLegs([], [], { startedAt: 0, endedAt: 0 }, "track-bos")).toEqual([]);
+  });
+});
+
+describe("dönüşlü yürüyüşte uçtan uca bacak bölme", () => {
+  const M_PER_DEG = 111_320;
+  const at = (eastM: number, northM: number, timestamp: number): TrackPoint => ({
+    lng: 27.1 + eastM / (M_PER_DEG * Math.cos((38.4 * Math.PI) / 180)),
+    lat: 38.4 + northM / M_PER_DEG,
+    timestamp,
+    accuracy: 8,
+  });
+
+  /** Doğu → mola → kuzey → mola → doğu: köşeler DP'de durur, bölme gerçek olur. */
+  function turningWalk(): TrackPoint[] {
+    const points: TrackPoint[] = [];
+    let t = Date.UTC(2026, 9, 3, 6, 0, 0);
+    const step = 6.25; // 1.25 m/s × 5 sn
+    const walk = (fromE: number, fromN: number, toE: number, toN: number) => {
+      const length = Math.hypot(toE - fromE, toN - fromN);
+      const count = Math.round(length / step);
+      for (let i = 0; i <= count; i += 1) {
+        points.push(at(fromE + ((toE - fromE) * i) / count, fromN + ((toN - fromN) * i) / count, t));
+        t += 5000;
+      }
+    };
+    const stand = (eastM: number, northM: number, minutes: number) => {
+      const count = (minutes * 60) / 5;
+      for (let i = 0; i <= count; i += 1) {
+        points.push(at(eastM, northM, t));
+        t += 5000;
+      }
+    };
+    walk(0, 0, 240, 0);
+    stand(240, 0, 4);
+    walk(240, 0, 240, 240);
+    stand(240, 240, 4);
+    walk(240, 240, 480, 240);
+    return points;
+  }
+
+  it("iki mola üç bacak üretir; aralıklar iç köşeleri gösterir", () => {
+    const points = turningWalk();
+    const dwell = points.reduce(recordDwellPoint, freshDwell());
+    const { track, route } = buildTrackDraft({ points, dwell, uid: "u", trackId: "track-donus", now: 1 });
+
+    expect(track.stops).toHaveLength(2);
+    const vertexCount = decodePolyline(track.polyline).length;
+    // Başlangıç + iki köşe (durak noktaları) + bitiş: dönüşler köşe olarak kalır.
+    expect(vertexCount).toBe(4);
+    const [first, second] = track.stops;
+    // Aralıklar çizginin İÇİNDE: ilk durak başlangıç köşesinde değil,
+    // ikinci durak bitiş köşesinde değil ve aralıklar sıralı.
+    expect(first.startPointIndex).toBeGreaterThan(0);
+    expect(second.endPointIndex).toBeLessThan(vertexCount - 1);
+    expect(second.startPointIndex).toBeGreaterThanOrEqual(first.endPointIndex ?? 0);
+
+    const legs = route.days[0].legs ?? [];
+    expect(legs).toHaveLength(3);
+    expect(legs.map((leg) => leg.id)).toEqual(["leg-track-donus-1", "leg-track-donus-2", "leg-track-donus-3"]);
+    // Her bacak bir sonrakiyle sınır köşesini birebir paylaşır.
+    expect(legs[0].coords[legs[0].coords.length - 1]).toEqual(legs[1].coords[0]);
+    expect(legs[1].coords[legs[1].coords.length - 1]).toEqual(legs[2].coords[0]);
+    // Toplam: 3 × 240 m ≈ 0,72 km; bacak toplamı iz toplamıyla uyumlu.
+    const total = legs.reduce((sum, leg) => sum + leg.distanceKm, 0);
+    expect(track.distanceKm).toBeGreaterThan(0.65);
+    expect(track.distanceKm).toBeLessThan(0.8);
+    expect(Math.abs(total - track.distanceKm)).toBeLessThanOrEqual(0.03);
+    // Bacak süreleri yürüyüş süresidir (≈3'er dk); 4'er dk'lık molalar içinde değil.
+    for (const leg of legs) {
+      expect(leg.durationMinutes).toBeGreaterThanOrEqual(2);
+      expect(leg.durationMinutes).toBeLessThanOrEqual(5);
+    }
+    expect(trackRuleViolation(track)).toBeNull();
   });
 });

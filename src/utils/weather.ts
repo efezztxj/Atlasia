@@ -15,6 +15,10 @@ export interface WeatherHour {
   precipitationMm: number;
   precipitationProbability: number;
   weatherCode: number;
+  /** 10 m rüzgâr hızı (km/sa). Eski/üçüncü kaynak saatlerde olmayabilir. */
+  windSpeedKmh?: number;
+  /** Rüzgâr hamlesi (km/sa). */
+  windGustKmh?: number;
 }
 
 export interface StopWeather {
@@ -25,6 +29,8 @@ export interface StopWeather {
   weatherCode: number;
   label: string;
   risk: "clear" | "possible" | "rainy";
+  windSpeedKmh?: number;
+  windGustKmh?: number;
 }
 
 export interface WeatherPoint {
@@ -35,7 +41,28 @@ export interface WeatherPoint {
 
 const ENDPOINT = "https://api.open-meteo.com/v1/forecast";
 const CACHE_TTL_MS = 10 * 60 * 1000;
-const cache = new Map<string, { at: number; data: Record<string, WeatherHour[]> }>();
+/**
+ * Nokta bazlı önbellek: anahtar yalnız koordinattır, sonuç çağıranın verdiği
+ * kimliklerle yeniden eşlenir. (Eski toplu anahtar, aynı koordinata farklı
+ * kimlikle gelen ikinci isteğe eski kimlikli veri döndürüyordu.)
+ */
+const pointCache = new Map<string, { at: number; hours: WeatherHour[] }>();
+/** Uzun oturumda bellek sınırı: en eski girdiler düşer. */
+const CACHE_MAX_POINTS = 50;
+
+function coordKey(point: WeatherPoint): string {
+  return `${point.lat.toFixed(2)},${point.lng.toFixed(2)}`;
+}
+
+function rememberPoint(key: string, hours: WeatherHour[]): void {
+  pointCache.delete(key);
+  pointCache.set(key, { at: Date.now(), hours });
+  while (pointCache.size > CACHE_MAX_POINTS) {
+    const oldest = pointCache.keys().next().value;
+    if (oldest === undefined) break;
+    pointCache.delete(oldest);
+  }
+}
 
 const WEATHER_LABELS: Record<number, string> = {
   0: "Açık",
@@ -78,12 +105,144 @@ export function rainRisk(probability: number): StopWeather["risk"] {
   return "clear";
 }
 
+/**
+ * Kötü hava uyarısı eşikleri (Adım 15 kalanı). Uyarı seviyesi yürüyüş/
+ * bisiklet güvenliği içindir; "dikkat" bir alt basamaktır. Yağış olasılığı
+ * basamakları `rainRisk` ile aynıdır (30/60) ki iki sözleşme çelişmesin.
+ */
+export const WEATHER_RISK_THRESHOLDS = {
+  warningPrecipitationProbabilityPct: 60,
+  warningPrecipitationMmPerHour: 2,
+  warningWindKmh: 40,
+  warningWindGustKmh: 60,
+  warningHeatC: 35,
+  warningColdC: 0,
+  cautionPrecipitationProbabilityPct: 30,
+  cautionPrecipitationMmPerHour: 0.5,
+  cautionWindKmh: 25,
+  cautionWindGustKmh: 40,
+  cautionHeatC: 30,
+  cautionColdC: 3,
+} as const;
+
+/** WMO kodlarında gök gürültülü fırtına aralığı (95–99). */
+export function isStormWeatherCode(code: number): boolean {
+  return code >= 95 && code <= 99;
+}
+
+export type WeatherRiskLevel = "none" | "caution" | "warning";
+
+export interface WeatherRiskAssessment {
+  level: WeatherRiskLevel;
+  /** En çok 4 kısa Türkçe neden; önce uyarı nedenleri. `level: "none"`da boş. */
+  reasons: string[];
+  /** Pencerede değerlendirilen saat sayısı. */
+  hourCount: number;
+}
+
+/** Değerlendirme penceresi: gün öneki ("2026-10-22") ve/veya saat aralığı. */
+export interface WeatherRiskWindow {
+  date?: string;
+  fromClock?: string;
+  toClock?: string;
+}
+
+function clockOf(hour: WeatherHour): string {
+  return hour.time.slice(11, 16);
+}
+
+function inWindow(hour: WeatherHour, window: WeatherRiskWindow): boolean {
+  if (window.date && !hour.time.startsWith(window.date)) return false;
+  const clock = clockOf(hour);
+  if (window.fromClock && clock < window.fromClock) return false;
+  if (window.toClock && clock > window.toClock) return false;
+  return true;
+}
+
+function finiteOr(value: number | undefined, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+/**
+ * Bir saat penceresinin en kötü hava riskini değerlendirir (saf fonksiyon).
+ * Pencerede **hiç saat yoksa `null`** döner: veri yokluğu "risk yok"
+ * değildir, çağıran bunu "hava durumu bilinmiyor" olarak göstermelidir;
+ * tahmin uydurulmaz. Rüzgâr verisi olmayan saatler (eski kayıtlar) rüzgâr
+ * koşulunu tetikleyemez ama diğer koşullarda değerlendirilir.
+ */
+export function assessWeatherRisk(
+  hourly: readonly WeatherHour[],
+  window: WeatherRiskWindow = {},
+): WeatherRiskAssessment | null {
+  const hours = hourly.filter((hour) => inWindow(hour, window));
+  if (hours.length === 0) return null;
+  const t = WEATHER_RISK_THRESHOLDS;
+
+  let storm: WeatherHour | null = null;
+  let worstRain: WeatherHour | null = null;
+  let worstWind: WeatherHour | null = null;
+  let hottest: WeatherHour | null = null;
+  let coldest: WeatherHour | null = null;
+  for (const hour of hours) {
+    if (!storm && isStormWeatherCode(hour.weatherCode)) storm = hour;
+    if (!worstRain
+      || hour.precipitationMm > worstRain.precipitationMm
+      || (hour.precipitationMm === worstRain.precipitationMm
+        && hour.precipitationProbability > worstRain.precipitationProbability)) worstRain = hour;
+    const wind = Math.max(finiteOr(hour.windSpeedKmh, 0), finiteOr(hour.windGustKmh, 0));
+    if (!worstWind
+      || wind > Math.max(finiteOr(worstWind.windSpeedKmh, 0), finiteOr(worstWind.windGustKmh, 0))) worstWind = hour;
+    if (!hottest || hour.temperature > hottest.temperature) hottest = hour;
+    if (!coldest || hour.temperature < coldest.temperature) coldest = hour;
+  }
+
+  const warnings: string[] = [];
+  const cautions: string[] = [];
+  if (storm) {
+    warnings.push(`${clockOf(storm)} · ${weatherLabel(storm.weatherCode).toLocaleLowerCase("tr")}`);
+  }
+  if (worstRain) {
+    const { precipitationProbability: prob, precipitationMm: mm } = worstRain;
+    if (prob >= t.warningPrecipitationProbabilityPct || mm >= t.warningPrecipitationMmPerHour) {
+      warnings.push(`${clockOf(worstRain)} · kuvvetli yağış olasılığı (%${Math.round(prob)}${mm > 0 ? `, ${mm} mm` : ""})`);
+    } else if (prob >= t.cautionPrecipitationProbabilityPct || mm >= t.cautionPrecipitationMmPerHour) {
+      cautions.push(`${clockOf(worstRain)} · yağış ihtimali (%${Math.round(prob)})`);
+    }
+  }
+  if (worstWind) {
+    const speed = finiteOr(worstWind.windSpeedKmh, 0);
+    const gust = finiteOr(worstWind.windGustKmh, 0);
+    const detail = `${clockOf(worstWind)} · rüzgâr ${Math.round(speed)} km/sa${gust > speed ? ` (hamle ${Math.round(gust)})` : ""}`;
+    if (speed >= t.warningWindKmh || gust >= t.warningWindGustKmh) warnings.push(detail);
+    else if (speed >= t.cautionWindKmh || gust >= t.cautionWindGustKmh) cautions.push(detail);
+  }
+  if (hottest) {
+    if (hottest.temperature >= t.warningHeatC) {
+      warnings.push(`${clockOf(hottest)} · aşırı sıcak ${Math.round(hottest.temperature)}°C`);
+    } else if (hottest.temperature >= t.cautionHeatC) {
+      cautions.push(`${clockOf(hottest)} · yüksek sıcaklık ${Math.round(hottest.temperature)}°C`);
+    }
+  }
+  if (coldest) {
+    if (coldest.temperature <= t.warningColdC) {
+      warnings.push(`${clockOf(coldest)} · dondurucu soğuk ${Math.round(coldest.temperature)}°C`);
+    } else if (coldest.temperature <= t.cautionColdC) {
+      cautions.push(`${clockOf(coldest)} · serin hava ${Math.round(coldest.temperature)}°C`);
+    }
+  }
+
+  const level: WeatherRiskLevel = warnings.length > 0 ? "warning" : cautions.length > 0 ? "caution" : "none";
+  return { level, reasons: [...warnings, ...cautions].slice(0, 4), hourCount: hours.length };
+}
+
 interface OpenMeteoHourly {
   time?: string[];
   temperature_2m?: number[];
   precipitation?: number[];
   precipitation_probability?: number[];
   weather_code?: number[];
+  wind_speed_10m?: number[];
+  wind_gusts_10m?: number[];
 }
 
 interface OpenMeteoResponse {
@@ -100,12 +259,19 @@ function parseHours(raw: OpenMeteoHourly | undefined): WeatherHour[] {
     precipitationMm: raw.precipitation?.[index] ?? 0,
     precipitationProbability: raw.precipitation_probability?.[index] ?? 0,
     weatherCode: raw.weather_code?.[index] ?? 0,
+    windSpeedKmh: raw.wind_speed_10m?.[index] ?? Number.NaN,
+    windGustKmh: raw.wind_gusts_10m?.[index] ?? Number.NaN,
   })).filter((hour) => Number.isFinite(hour.temperature));
 }
 
 /**
  * Birden çok nokta için TEK istek: Open-Meteo virgülle ayrılmış koordinatları
  * destekler. Böylece 7 duraklı rota 7 okuma yapmaz; ücretsiz kotada kalır.
+ * Önbellekteki noktalar isteğe hiç girmez; yalnız eksikler çekilir.
+ *
+ * Hata sözleşmesi: mesajlar Türkçedir ve kullanıcıya gösterilebilir.
+ * Dışarıdan iptal (çağıranın `signal`'ı) `AbortError` olarak korunur;
+ * 8 sn'lik iç zaman aşımı ondan ayırt edilebilir bir hatayla döner.
  */
 export async function fetchWeatherSeries(
   points: WeatherPoint[],
@@ -117,37 +283,72 @@ export async function fetchWeatherSeries(
     .slice(0, 10);
   if (!unique.length) return {};
 
-  const key = unique.map((point) => `${point.lat.toFixed(2)},${point.lng.toFixed(2)}`).join("|");
-  const cached = cache.get(key);
-  if (cached && Date.now() - cached.at < CACHE_TTL_MS) return cached.data;
-
-  const controller = new AbortController();
-  const abort = () => controller.abort();
-  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
-  signal?.addEventListener("abort", abort, { once: true });
-  const timer = globalThis.setTimeout(abort, 8000);
-  const lat = unique.map((point) => point.lat.toFixed(3)).join(",");
-  const lng = unique.map((point) => point.lng.toFixed(3)).join(",");
-  const url = `${ENDPOINT}?latitude=${lat}&longitude=${lng}`
-    + "&hourly=temperature_2m,precipitation,precipitation_probability,weather_code"
-    + "&forecast_days=3&timezone=auto";
-
-  try {
-    const response = await fetch(url, { signal: controller.signal, headers: { Accept: "application/json" } });
-    if (!response.ok) throw new Error(`Weather service ${response.status}`);
-    const payload = await response.json() as OpenMeteoResponse | OpenMeteoResponse[];
-    const entries = Array.isArray(payload) ? payload : [payload];
-    const data: Record<string, WeatherHour[]> = {};
-    unique.forEach((point, index) => {
-      data[point.id] = parseHours(entries[index]?.hourly);
-    });
-    if (Object.values(data).every((hours) => hours.length === 0)) throw new Error("Weather data empty");
-    cache.set(key, { at: Date.now(), data });
-    return data;
-  } finally {
-    globalThis.clearTimeout(timer);
-    signal?.removeEventListener("abort", abort);
+  const now = Date.now();
+  const data: Record<string, WeatherHour[]> = {};
+  const misses: WeatherPoint[] = [];
+  const missKeys = new Set<string>();
+  for (const point of unique) {
+    const key = coordKey(point);
+    const cached = pointCache.get(key);
+    if (cached && now - cached.at < CACHE_TTL_MS) {
+      data[point.id] = cached.hours;
+    } else if (!missKeys.has(key)) {
+      missKeys.add(key);
+      misses.push(point);
+    }
   }
+
+  if (misses.length > 0) {
+    const controller = new AbortController();
+    const abort = () => controller.abort();
+    if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+    signal?.addEventListener("abort", abort, { once: true });
+    let timedOut = false;
+    const timer = globalThis.setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, 8000);
+    const lat = misses.map((point) => point.lat.toFixed(3)).join(",");
+    const lng = misses.map((point) => point.lng.toFixed(3)).join(",");
+    const url = `${ENDPOINT}?latitude=${lat}&longitude=${lng}`
+      + "&hourly=temperature_2m,precipitation,precipitation_probability,weather_code,wind_speed_10m,wind_gusts_10m"
+      // 7 gün: çok günlü rota planlarında gün kartları da veri bulsun;
+      // daha uzak günler "bilinmiyor" kalır, tahmin uydurulmaz.
+      + "&forecast_days=7&timezone=auto";
+
+    try {
+      const response = await fetch(url, { signal: controller.signal, headers: { Accept: "application/json" } });
+      if (!response.ok) throw new Error(`Hava durumu servisi yanıt vermedi (HTTP ${response.status}).`);
+      const payload = await response.json() as OpenMeteoResponse | OpenMeteoResponse[];
+      const entries = Array.isArray(payload) ? payload : [payload];
+      misses.forEach((point, index) => {
+        rememberPoint(coordKey(point), parseHours(entries[index]?.hourly));
+      });
+    } catch (failure) {
+      if (signal?.aborted) throw failure;
+      if (timedOut) {
+        throw Object.assign(new Error("Hava durumu isteği zaman aşımına uğradı. Bağlantını kontrol edip tekrar dene."), { cause: failure });
+      }
+      if (failure instanceof Error && failure.message.startsWith("Hava durumu")) throw failure;
+      throw Object.assign(new Error("Hava durumuna ulaşılamadı. Bağlantını kontrol edip tekrar dene."), { cause: failure });
+    } finally {
+      globalThis.clearTimeout(timer);
+      signal?.removeEventListener("abort", abort);
+    }
+
+    // Bu turun eksikleri önbellekten (yeni yazıldı) kimliklere eşlenir; aynı
+    // koordinatı paylaşan ikinci kimlik de aynı seriyi alır.
+    for (const point of unique) {
+      if (data[point.id] === undefined) {
+        data[point.id] = pointCache.get(coordKey(point))?.hours ?? [];
+      }
+    }
+  }
+
+  if (Object.values(data).every((hours) => hours.length === 0)) {
+    throw new Error("Hava durumu verisi boş döndü. Biraz sonra tekrar dene.");
+  }
+  return data;
 }
 
 function addDays(isoDate: string, days: number): string {
@@ -155,6 +356,16 @@ function addDays(isoDate: string, days: number): string {
   const date = new Date(Date.UTC(year, month - 1, day));
   date.setUTCDate(date.getUTCDate() + days);
   return date.toISOString().slice(0, 10);
+}
+
+/**
+ * Planın `dayIndex`'inci gününün tahmin serisindeki tarih anahtarı
+ * ("2026-10-22"). Sözleşme `weatherAtClock` ile aynı: 0. gün, serinin
+ * ilk günüdür. Seri boşsa `null`.
+ */
+export function dateKeyForDayIndex(hours: readonly WeatherHour[], dayIndex: number): string | null {
+  if (!hours.length) return null;
+  return addDays(hours[0].time.slice(0, 10), Math.max(0, dayIndex));
 }
 
 /** "09:30" + gün ofseti → tahmindeki saatlik dilim. */
@@ -178,6 +389,13 @@ export function toStopWeather(hour: WeatherHour): StopWeather {
     weatherCode: hour.weatherCode,
     label: weatherLabel(hour.weatherCode),
     risk: rainRisk(hour.precipitationProbability),
+    // NaN kalıcı veriye sızmasın: rüzgâr yalnız ölçülmüşse taşınır.
+    ...(typeof hour.windSpeedKmh === "number" && Number.isFinite(hour.windSpeedKmh)
+      ? { windSpeedKmh: hour.windSpeedKmh }
+      : {}),
+    ...(typeof hour.windGustKmh === "number" && Number.isFinite(hour.windGustKmh)
+      ? { windGustKmh: hour.windGustKmh }
+      : {}),
   };
 }
 

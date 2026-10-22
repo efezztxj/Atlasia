@@ -1,5 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
-import { buildElevationProfile, sampleTerrainElevation, terrariumToElevation, type TerrainSampler } from "./elevation";
+import {
+  buildElevationProfile,
+  buildElevationProfileFromTiles,
+  elevationTileUrl,
+  lngLatToTilePixel,
+  sampleTerrainElevation,
+  terrariumToElevation,
+  type TerrainSampler,
+} from "./elevation";
 import type { RouteLeg } from "../types";
 import { ACCESS_EXAMPLE_ROUTE } from "../data/accessExample";
 
@@ -86,5 +94,98 @@ describe("elevation – terrain raster-dem'den tırmanış (Adım 11)", () => {
     ], rampTerrain());
     expect(profile.samples[0].slopePercent).toBe(0);
     expect(profile.samples.every((sample) => Number.isFinite(sample.slopePercent))).toBe(true);
+  });
+});
+
+describe("karo tabanlı örnekleme (Tur 4 — haritasız profil)", () => {
+  /** Terrarium piksel verisi üretir: verilen yükseklik → RGB. */
+  const encodeTile = (elevationAt: (px: number, py: number) => number): Uint8ClampedArray => {
+    const data = new Uint8ClampedArray(256 * 256 * 4);
+    for (let py = 0; py < 256; py += 1) {
+      for (let px = 0; px < 256; px += 1) {
+        const value = elevationAt(px, py) + 32768;
+        const offset = (py * 256 + px) * 4;
+        data[offset] = Math.floor(value / 256);
+        data[offset + 1] = Math.floor(value % 256);
+        data[offset + 2] = 0;
+        data[offset + 3] = 255;
+      }
+    }
+    return data;
+  };
+  const fakeBlob = new Blob(["png"], { type: "image/png" });
+  // Kısa bacak: tek karo içinde kalır (İzmir civarı, z=12).
+  const shortLeg: RouteLeg = {
+    id: "karo-test",
+    coords: [[27.14, 38.42], [27.15, 38.421]],
+    mode: "walking",
+    distanceKm: 0,
+    durationMinutes: 0,
+  };
+
+  it("karo matematiği: bilinen koordinatlar doğru karo/piksele düşer", () => {
+    expect(lngLatToTilePixel(0, 0, 12)).toEqual({ tileX: 2048, tileY: 2048, pixelX: 0, pixelY: 0 });
+    expect(lngLatToTilePixel(27.14, 38.42, 12)).toEqual({ tileX: 2356, tileY: 1573, pixelX: 202, pixelY: 220 });
+    expect(elevationTileUrl(12, 2356, 1573)).toContain("terrarium/12/2356/1573.png");
+  });
+
+  it("sabit yükseklikli karodan güvenilir, tırmanışsız profil çıkar", async () => {
+    const fetchTile = vi.fn(async (_url: string) => fakeBlob);
+    const decodeTile = vi.fn(async () => encodeTile(() => 100));
+    const profile = await buildElevationProfileFromTiles([shortLeg], { fetchTile, decodeTile });
+    expect(fetchTile).toHaveBeenCalledTimes(1); // tek karo, tek istek
+    expect(fetchTile.mock.calls[0][0]).toContain("terrarium/12/2356/1573.png");
+    expect(profile.reliable).toBe(true);
+    expect(profile.source).toBe("terrain");
+    expect(profile.samples.every((sample) => sample.elevationM === 100)).toBe(true);
+    expect(profile.totalAscentM).toBe(0);
+  });
+
+  it("yükselen karoda tırmanış pozitiftir (uydurma değil, pikselden)", async () => {
+    // Doğuya gittikçe yükselir: px başına +2 m.
+    const profile = await buildElevationProfileFromTiles([shortLeg], {
+      fetchTile: async () => fakeBlob,
+      decodeTile: async () => encodeTile((px) => px * 2),
+    });
+    expect(profile.reliable).toBe(true);
+    expect(profile.totalAscentM).toBeGreaterThan(0);
+    const elevations = profile.samples.map((sample) => sample.elevationM);
+    expect(elevations[elevations.length - 1]).toBeGreaterThan(elevations[0]);
+  });
+
+  it("karo çekilemezse profil uydurulmaz: 'bilinmiyor' + örnek yok, mesafe gerçek", async () => {
+    const profile = await buildElevationProfileFromTiles([shortLeg], {
+      fetchTile: async () => { throw new Error("HTTP 404"); },
+      decodeTile: async () => encodeTile(() => 100),
+    });
+    expect(profile.reliable).toBe(false);
+    expect(profile.source).toBe("unknown");
+    expect(profile.samples).toEqual([]);
+    expect(profile.totalAscentM).toBe(0);
+    expect(profile.totalDistanceKm).toBeGreaterThan(0); // geometri mesafesi korunur
+    expect(profile.unsampledPoints).toBeGreaterThan(0);
+  });
+
+  it("çözülemeyen karo ve saçma piksel (−32768) bilinmiyor yapar", async () => {
+    const nodata = await buildElevationProfileFromTiles([shortLeg], {
+      fetchTile: async () => fakeBlob,
+      decodeTile: async () => encodeTile(() => -32768),
+    });
+    expect(nodata.reliable).toBe(false);
+    expect(nodata.samples).toEqual([]);
+
+    const broken = await buildElevationProfileFromTiles([shortLeg], {
+      fetchTile: async () => fakeBlob,
+      decodeTile: async () => { throw new Error("PNG çözülemedi"); },
+    });
+    expect(broken.reliable).toBe(false);
+  });
+
+  it("iptal (AbortError) yutulmaz, çağırana fırlar", async () => {
+    const failure = new Error("iptal");
+    failure.name = "AbortError";
+    await expect(buildElevationProfileFromTiles([shortLeg], {
+      fetchTile: async () => { throw failure; },
+    })).rejects.toThrow("iptal");
   });
 });

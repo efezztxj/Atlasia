@@ -171,6 +171,40 @@ describe("useGeolocation", () => {
     expect(clearWatch).toHaveBeenCalledWith(77);
   });
 
+  // P16 #5 regresyonu: ilk ölçüm geçersizse ve watch hiç geçerli ölçüm
+  // getirmezse, 18 sn'lik pencere dolunca durum fix'siz "ready" olamaz;
+  // tüketiciler ready ⇒ fix var sözleşmesine güvenir.
+  it("geçersiz ilk ölçüm + sessiz watch: pencere dolunca fix olmadan ready olmaz (P16 #5)", async () => {
+    vi.useFakeTimers();
+    const { result } = await renderGeo();
+    act(() => result.current.request());
+    act(() => currentSuccess?.(position(Number.NaN, 27.14, 10)));
+    expect(result.current.status).toBe("refining");
+    expect(result.current.fix).toBeNull();
+
+    act(() => vi.advanceTimersByTime(18_000));
+
+    expect(result.current.fix).toBeNull();
+    expect(result.current.status).toBe("unavailable");
+    expect(clearWatch).toHaveBeenCalledWith(77);
+  });
+
+  // P16 #5 regresyonu: aralık dışı koordinat, iz kaydedicinin kabul
+  // sözleşmesiyle aynı şekilde geçersizdir; iyi doğruluk bunu kurtarmaz.
+  it("aralık dışı koordinat (lat > 90) geçerli fix sayılmaz (P16 #5)", async () => {
+    const { result } = await renderGeo();
+    act(() => result.current.request());
+    act(() => currentSuccess?.(position(120, 27.14, 12, 555)));
+
+    expect(result.current.fix).toBeNull();
+    expect(result.current.status).toBe("refining");
+    expect(watchPosition).toHaveBeenCalledTimes(1);
+
+    act(() => watchSuccess?.(position(38.42, 27.14, 12, 999)));
+    expect(result.current.status).toBe("ready");
+    expect(result.current.fix).toEqual({ lat: 38.42, lng: 27.14, accuracy: 12, timestamp: 999 });
+  });
+
   it("kaba ölçümde refining açar; daha kötü ölçüm fix'i bozmaz, iyisi günceller", async () => {
     const { result } = await renderGeo();
     act(() => result.current.request());
