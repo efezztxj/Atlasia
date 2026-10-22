@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Crosshair, MapPinPlus, Route, X } from "lucide-react";
+import { usePanelAccess } from "../hooks/usePanelAccess";
 
 interface Props {
   onNearby: () => void;
@@ -15,15 +16,15 @@ const OPTIONS = [
 ] as const;
 
 export default function Onboarding({ onNearby, onRoute, onLeave, onClose }: Props) {
-  const ref = useRef<HTMLDivElement>(null);
   const firstRef = useRef<HTMLButtonElement>(null);
 
+  // Esc + odak tuzağı + kapanınca odak dönüşü (P18); ilk seçenek odak alır.
+  const panelRef = usePanelAccess(true, onClose, true);
   useEffect(() => {
-    firstRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+    // Kancanın ilk-odak zamanlayıcısından sonra çalışır: ilk seçenek odakta kalır.
+    const timer = setTimeout(() => firstRef.current?.focus(), 0);
+    return () => clearTimeout(timer);
+  }, []);
 
   const run = (id: (typeof OPTIONS)[number]["id"]) => {
     if (id === "nearby") onNearby();
@@ -34,7 +35,7 @@ export default function Onboarding({ onNearby, onRoute, onLeave, onClose }: Prop
   return (
     <div className="animate-fade fixed inset-0 z-[90] grid place-items-center bg-black/75 p-4">
       <div
-        ref={ref}
+        ref={panelRef as React.RefObject<HTMLDivElement>}
         role="dialog"
         aria-modal="true"
         aria-labelledby="onb-title"

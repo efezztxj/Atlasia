@@ -1,7 +1,9 @@
-const CACHE = "atlasia-shell-v4";
+const CACHE = "atlasia-shell-v5";
 const TILE_CACHE = "atlasia-tiles-v1";
 const CACHE_PREFIX = "atlasia-shell-";
 const TILE_CACHE_MAX = 500;
+// P15: kullanıcının indirdiği saha paketleri. LRU kırpmasına girmez; yalnız kullanıcı silince silinir.
+const PACK_CACHE = "atlasia-packs-v1";
 const SHELL = [
   "/manifest.webmanifest",
   "/icons/icon-192.png",
@@ -131,6 +133,8 @@ async function trimTileCache() {
 
 async function tileResponse(request) {
   const cache = await caches.open(TILE_CACHE);
+  const packed = await caches.open(PACK_CACHE).then((packCache) => packCache.match(request)).catch(() => undefined);
+  if (packed) return packed;
   const cached = await cache.match(request);
   // Stale-while-revalidate + LRU boyut sınırı
   const networkFetch = fetch(request).then(async (response) => {

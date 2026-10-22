@@ -1,6 +1,8 @@
 /**
  * Adım 12 — Çevrimdışı saha paketi
- * Esri tile toplu indirme/önbellekleme YASAK — yalnızca OpenFreeMap ve terrain önbelleklenir.
+ * Esri tile toplu indirme/önbellekleme YASAK. Bu dosya SW allowlist'inin kaynağıdır:
+ * gezinirken OpenFreeMap ve terrain karoları LRU önbelleğe düşer. Kullanıcının
+ * bilerek indirdiği saha paketi offlinePacks.ts'tedir ve DEM içermez (P15).
  * Harita uçak modunda kaydırılabilmeli, pinler görünmeli.
  */
 
@@ -96,89 +98,6 @@ export function tilesForBbox(bbox: BBox, minZoom: number, maxZoom: number) {
     }
   }
   return tiles;
-}
-
-export async function estimateOfflineUsage(): Promise<{ usage: number; quota: number; percent: number | null }> {
-  try {
-    if (typeof navigator !== "undefined" && navigator.storage && typeof navigator.storage.estimate === "function") {
-      const est = await navigator.storage.estimate();
-      const usage = est.usage ?? 0;
-      const quota = est.quota ?? 0;
-      const percent = quota ? Math.round((usage / quota) * 100) : null;
-      return { usage, quota, percent };
-    }
-  } catch (error) {
-    void error;
-  }
-  return { usage: 0, quota: 0, percent: null };
-}
-
-export async function cachedTileCount(): Promise<number> {
-  try {
-    if (typeof caches === "undefined") return 0;
-    const cache = await caches.open(TILE_CACHE_NAME);
-    const keys = await cache.keys();
-    return keys.length;
-  } catch (error) {
-    void error;
-    return 0;
-  }
-}
-
-export async function prefetchTilesForBbox(
-  bbox: BBox,
-  minZoom = 12,
-  maxZoom = 15,
-  onProgress?: (done: number, total: number) => void,
-): Promise<{ fetched: number; total: number }> {
-  const tiles = tilesForBbox(bbox, minZoom, maxZoom);
-  const total = tiles.length * 2; // vector + terrain
-  let fetched = 0;
-
-  // Nazik: aynı anda 4 paralel, araya 80ms bekleme
-  const queue: string[] = [];
-  for (const t of tiles) {
-    if (!isEsriTile(t.url)) queue.push(t.url);
-    if (!isEsriTile(t.terrainUrl)) queue.push(t.terrainUrl);
-  }
-
-  const BATCH = 4;
-  for (let i = 0; i < queue.length; i += BATCH) {
-    const batch = queue.slice(i, i + BATCH);
-    await Promise.allSettled(
-      batch.map(async (url) => {
-        try {
-          const cache = await caches.open(TILE_CACHE_NAME);
-          const existing = await cache.match(url);
-          if (existing) {
-            fetched++;
-            onProgress?.(fetched, total);
-            return;
-          }
-          const res = await fetch(url, { mode: "cors" });
-          if (res.ok) {
-            await cache.put(url, res.clone());
-            // LRU trim
-            const keys = await cache.keys();
-            if (keys.length > TILE_CACHE_MAX_ENTRIES) {
-              const toDelete = keys.slice(0, keys.length - TILE_CACHE_MAX_ENTRIES);
-              await Promise.all(toDelete.map((k) => cache.delete(k)));
-            }
-          }
-          fetched++;
-          onProgress?.(fetched, total);
-        } catch (error) {
-          void error;
-          fetched++;
-          onProgress?.(fetched, total);
-        }
-      }),
-    );
-    // nazik bekleme
-    await new Promise((r) => setTimeout(r, 80));
-  }
-
-  return { fetched, total };
 }
 
 export function bboxForView(center: { lat: number; lng: number }, spanDegrees = 0.06): BBox {

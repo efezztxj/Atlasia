@@ -34,15 +34,21 @@ export default function Drawer({ open, onClose, places, category, onCategory, on
 
   return (
     <>
-      <div
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-hidden={!open}
+        aria-label="Menüyü kapat"
         onClick={onClose}
         className={cn(
-          "fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px] transition-opacity duration-300",
+          "fixed inset-0 z-40 cursor-default bg-black/50 backdrop-blur-[2px] transition-opacity duration-300",
           open ? "opacity-100" : "pointer-events-none opacity-0",
         )}
       />
       <aside
         aria-hidden={!open}
+        // Kapalı çekmecenin düğmeleri Tab sırasından çıkar (ekran dışında görünmez odak olmasın).
+        inert={!open}
         className={cn(
           "fixed top-0 right-0 bottom-[calc(70px+env(safe-area-inset-bottom))] z-40 flex w-full max-w-[400px] flex-col border-l border-leaf/20 bg-ink-2/95 shadow-2xl shadow-black/70 backdrop-blur-2xl transition-transform duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] md:bottom-0",
           open ? "translate-x-0" : "translate-x-full",

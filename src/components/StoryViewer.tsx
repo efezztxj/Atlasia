@@ -6,6 +6,7 @@ import { mediaUrl } from "../utils/api";
 import { cn } from "../utils/cn";
 import { relativeTime, storyRemaining } from "../utils/time";
 import Avatar from "./Avatar";
+import { usePanelAccess } from "../hooks/usePanelAccess";
 
 const DURATION = 6000;
 
@@ -76,9 +77,10 @@ export default function StoryViewer({
     return () => cancelAnimationFrame(rafRef.current);
   }, [index, paused, next]);
 
+  // Esc + odak tuzağı + odak dönüşü usePanelAccess'te (P18); oklar burada.
+  const panelRef = usePanelAccess(true, onClose, true) as React.RefObject<HTMLDivElement>;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
       if (e.key === "ArrowRight") next();
       if (e.key === "ArrowLeft") prev();
     };
@@ -93,9 +95,13 @@ export default function StoryViewer({
 
   return (
     <div className="animate-fade fixed inset-0 z-[70] grid place-items-center bg-black/80 p-4 backdrop-blur-sm">
-      <div className="absolute inset-0" onClick={onClose} />
+      <button type="button" tabIndex={-1} aria-label="Hikâyeyi kapat" className="absolute inset-0 cursor-default" onClick={onClose} />
 
       <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Hikâye"
         className="animate-rise relative flex aspect-[9/16] max-h-[86vh] w-full max-w-[380px] flex-col overflow-hidden rounded-[28px] ring-1 ring-white/15"
         onMouseDown={() => setPaused(true)}
         onMouseUp={() => setPaused(false)}
