@@ -26,6 +26,7 @@ import { getAtlasAuth } from "./auth";
 import { createNotification } from "./notifications";
 import { friendshipIdFor } from "./friendships";
 import { deleteGroup } from "./groups";
+import { ACCOUNT_DATA_PAGE_SIZE } from "../config/firestoreLimits";
 
 export const REPORT_REASONS = ["spam", "harassment", "hate", "misinfo", "privacy", "other"] as const;
 export type ReportReason = (typeof REPORT_REASONS)[number];
@@ -234,7 +235,8 @@ export async function listBlockedUids(blockerUid: string): Promise<string[]> {
 // KARAR: Her adım sırayla çalışır; bir adımın hatası YUTULMAZ, adım raporuna yazılır
 // ve hesap silme durur. Auth hesabı, tüm adımlar başarılı değilse SİLİNMEZ.
 // Tüm adımlar idempotenttir (olmayan belge atlanır), yeniden denenebilir.
-const DELETE_PAGE_SIZE = 50;
+// Rules boundedList sınırlarının en küçüğü (users/{uid}/groups = 20); bkz. firestoreLimits.
+const DELETE_PAGE_SIZE = ACCOUNT_DATA_PAGE_SIZE;
 const DELETE_MAX_PAGES = 200;
 const JOIN_WINDOW_MS = 15 * 60 * 1000;
 // İstemci saati sunucudan geride olabilir: pencerenin dolduğu kesin değilse silinmez.

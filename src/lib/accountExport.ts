@@ -26,12 +26,13 @@ import {
   type QueryDocumentSnapshot,
 } from "firebase/firestore";
 import { db } from "./firebase";
+import { ACCOUNT_DATA_PAGE_SIZE } from "../config/firestoreLimits";
 import { storageGet } from "../utils/storage";
 import type { AccountBackend } from "./moderation";
 
 export const ACCOUNT_EXPORT_SCHEMA_VERSION = 1;
 
-const EXPORT_PAGE_SIZE = 20;
+const EXPORT_PAGE_SIZE = ACCOUNT_DATA_PAGE_SIZE;
 const EXPORT_MAX_PAGES = 500;
 
 /** Cihaz yerel deposunda kullanıcının gönderilerini tutan anahtarlar (useAtlasData ile aynı). */

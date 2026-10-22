@@ -44,3 +44,11 @@ export const JOIN_ATTEMPTS_LOCK_MS = 15 * 60 * 1000;
 export const FRIEND_REQUESTS_LIMIT = 50;
 export const FRIENDS_LIMIT = 100;
 export const USER_PROFILES_LIMIT = 20;
+
+/**
+ * Hesap silme / veri indirme sayfa boyutu. Silinen her koleksiyonun rules
+ * `boundedList` sınırının EN KÜÇÜĞÜNDEN büyük olamaz: routes 40,
+ * users/{uid}/groups 20. Büyük olursa sorgu permission-denied alır ve hesap
+ * silme hiç tamamlanmaz (emülatör testi: "hesap silme sorguları kural sınırı içinde").
+ */
+export const ACCOUNT_DATA_PAGE_SIZE = 20;

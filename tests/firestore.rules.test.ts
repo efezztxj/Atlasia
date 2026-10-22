@@ -33,6 +33,7 @@ import {
   removePostInFirestore,
   togglePostLikeInFirestore,
 } from "../src/lib/firestoreData";
+import { ACCOUNT_DATA_PAGE_SIZE } from "../src/config/firestoreLimits";
 
 const PROJECT_ID = "demo-atlasia-rules";
 let testEnv: RulesTestEnvironment;
@@ -1477,5 +1478,29 @@ describe("Firestore güvenlik kuralları", () => {
     // Liste 20 ile sınırlı → SUCCEED, 21 → FAIL
     await assertSucceeds(getDocs(query(collection(aliceDb, "userProfiles"), limit(20))));
     await assertFails(getDocs(query(collection(aliceDb, "userProfiles"), limit(21))));
+  });
+  // Hesap silme ve "Verilerimi indir", tek tek belge silmeden ÖNCE bu liste
+  // sorgularını çalıştırır. Sayfa boyutu herhangi bir boundedList sınırını
+  // aşarsa sorgu reddedilir ve hesap silme hiç tamamlanmaz.
+  it("hesap silme ve veri indirme sorguları kural sınırları içinde (ACCOUNT_DATA_PAGE_SIZE)", async () => {
+    const n = ACCOUNT_DATA_PAGE_SIZE;
+    await seed("groups/g-q", { name: "Ekip", ownerUid: "alice", memberUids: ["alice"], joinCode: "123456", createdAt: Timestamp.now(), updatedAt: Timestamp.now() });
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    const owned: Array<[string, string]> = [
+      ["places", "authorUid"], ["posts", "authorUid"], ["stories", "authorUid"],
+      ["routes", "authorUid"], ["tracks", "authorUid"], ["reports", "reporterUid"],
+      ["blocks", "blockerUid"], ["verifications", "uid"], ["feedback", "uid"],
+    ];
+    for (const [name, field] of owned) {
+      await assertSucceeds(getDocs(query(collection(aliceDb, name), where(field, "==", "alice"), limit(n))));
+      await assertSucceeds(getDocs(query(collection(aliceDb, name), where(field, "==", "alice"), orderBy(documentId()), limit(n))));
+    }
+    for (const sub of ["notifications", "savedPlaces", "savedRoutes", "friendRequests", "blocks", "friends", "groupInvites", "groups"]) {
+      await assertSucceeds(getDocs(query(collection(aliceDb, `users/alice/${sub}`), limit(n))));
+      await assertSucceeds(getDocs(query(collection(aliceDb, `users/alice/${sub}`), orderBy(documentId()), limit(n))));
+    }
+    await assertSucceeds(getDocs(query(collectionGroup(aliceDb, "replies"), where("authorUid", "==", "alice"), limit(n))));
+    await assertSucceeds(getDocs(query(collection(aliceDb, "groups/g-q/messages"), where("senderUid", "==", "alice"), limit(n))));
+    await assertSucceeds(getDocs(query(collection(aliceDb, "groups/g-q/messages"), limit(n))));
   });
 });
