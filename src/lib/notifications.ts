@@ -7,10 +7,19 @@ import { collection, deleteDoc, doc, limit, onSnapshot, orderBy, query, serverTi
 import { db } from "./firebase";
 
 /**
- * friend_declined artık kanıtlı ve istemciye açık: declineFriendRequest aynı
- * batch'te friendDeclines/{friendshipId} belgesini yazar, kural da bildirimi
- * yalnız bu belge varken (declinerUid == actorUid) kabul eder.
- * Diğer tipler bu değişiklikten etkilenmez.
+ * Kurallar (firestore.rules → notificationProof) her tipi bir İLİŞKİ kanıtına
+ * bağlar; kanıt belgesi bildirimden ÖNCE commit edilmiş olmalıdır.
+ * İstemcinin yazabildiği tipler ve kanıtları:
+ * - friend_request  → users/{alıcı}/friendRequests/{aktör}
+ * - friend_accepted → kabul edilmiş friendships belgesi
+ * - friend_declined → friendDeclines/{targetId} (declinerUid == aktör)
+ * - group_invite    → groups/{targetId}/invites/{alıcı} (inviterUid == aktör)
+ * - group_message   → iki taraf da groups/{targetId} üyesi
+ * - report_received → reports/{targetId} (reporterUid == aktör); targetId
+ *   içeriğin değil RAPOR belgesinin kimliğidir.
+ * blocked / report_actioned / system istemciye kapalıdır (yönetici/sunucu
+ * yazımı; bu projede sunucu yok) — tipler yalnız eski kayıtları okumak için
+ * union'da durur.
  */
 export type NotificationType = "report_received" | "report_actioned" | "blocked" | "group_invite" | "group_message" | "friend_request" | "friend_accepted" | "friend_declined" | "system";
 
