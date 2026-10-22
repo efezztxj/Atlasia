@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Link2, Loader2, Search, UserMinus, UserPlus, X } from "lucide-react";
 import {
   acceptFriendRequest,
@@ -79,6 +79,11 @@ export default function FriendsTab({ currentUid, currentName, friends, requests,
 
   const search = () => runSearch(queryText.trim());
 
+  // En son `runSearch` kimliği: gecikmiş girdi değiştiğinde çağrılır, ancak
+  // prop kimlikleri her render'da değişse bile efekt yeniden tetiklenmez.
+  const runSearchRef = useRef(runSearch);
+  useEffect(() => { runSearchRef.current = runSearch; });
+
   // Yazarken arama (350 ms): her tuş vuruşunda sorgu açılmaz.
   const debouncedQuery = useDebouncedValue(queryText);
   useEffect(() => {
@@ -88,9 +93,8 @@ export default function FriendsTab({ currentUid, currentName, friends, requests,
       if (term.length === 0) setResults(null);
       return;
     }
-    void runSearch(term);
-    // runSearch her render'da yenidir; tetikleyici yalnız geciktirilmiş girdi.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    void runSearchRef.current(term);
+    // Tetikleyici yalnız geciktirilmiş girdi; işlev en güncel hâliyle ref'ten gelir.
   }, [debouncedQuery]);
 
   const add = async (uid: string, name: string) => {
