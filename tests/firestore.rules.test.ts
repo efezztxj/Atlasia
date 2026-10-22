@@ -35,6 +35,43 @@ import {
 } from "../src/lib/firestoreData";
 import { ACCOUNT_DATA_PAGE_SIZE } from "../src/config/firestoreLimits";
 
+/**
+ * KURAL → TEST HARİTASI (D6.4)
+ *
+ * Bir `allow` satırı değiştiğinde aşağıdaki satırdan hangi testin yeşile boyadığı
+ * görülür. Yeni satır eklerken buraya da bir satır yaz ve PR şablonunda
+ * (`.github/pull_request_template.md`) "hangi test" sorusunu doldur.
+ *
+ * | firestore.rules yolu                          | Test (describe/it adı)                                              |
+ * |-----------------------------------------------|---------------------------------------------------------------------|
+ * | /places, /posts (get/list, public okuma)      | public tekil okumayı açar ama limitsiz koleksiyon sorgusunu reddeder |
+ * | /places viewport, /posts authorUid             | viewport ve authorUid sorgularını küçük sayfalarda kabul eder       |
+ * | /posts/{id}/replies                            | yanıtları yazar sahipliği doğrulanan alt koleksiyonda tutar          |
+ * | /posts beğeni sayaçları                        | beğeni tavanını ve yanıt sorgusu sayfa sınırını uygular             |
+ * | /stories                                       | story'yi immutable tutar, sorguyu sınırlar ve yalnız sahibine sildirir |
+ * | /routes, /tracks                               | rotaları görünürlük seçimine, izleri ise yalnız sahibine açar        |
+ * | /users/{uid}/savedPlaces, savedRoutes          | savedPlaces ve savedRoutes bulut kayıtlarını UID altında özel tutar |
+ * | /groups                                        | grubu yalnız kurucu oluşturur, yalnız üyeler tek belge olarak okur  |
+ * | /groups/{id}/messages                          | sohbet mesajını yalnız grup üyesi kendi adına yazar                 |
+ * | /groups/{id}/invites                           | grup oluşturma başkasını hazır üye yazamaz (davet kanıtı)            |
+ * | /groups kod/attempts (joinCode, joinAttempts)  | C2 kod en az 6 hane / okumasız kod katılması / pencere testleri      |
+ * | /users/{uid}/groups (indeks)                   | grup indeksini yalnız sahibi ve GERÇEKTEN üye olduğu grup için yazar |
+ * | /verifications                                 | tazelik doğrulamasını yalnız kendi adına yazar, herkes sınırlı okur  |
+ * | /reports                                       | içerik bildirimini yalnız oturum sahibi adına kabul eder             |
+ * | /blocks, /users/{uid}/blocked                  | engellemeyi yalnız kendi adına, kendini engellemeden yazar          |
+ * | /notifications (notificationProof)             | bildirim tipleri ilişki kanıtına bağlı: arkadaşlık, davet, mesaj    |
+ * | /users/{uid}/friendRequests                    | arkadaşlık isteği: gönderen alıcının kuyruğunu okuyamaz              |
+ * | /friendships                                   | C1 arkadaslik istek olmadan kabul edilmiş arkadaşlık → FAIL          |
+ * | /users/{uid}/friends                           | C1 / grup indeksi testleri (yalnız kendi listene, kanıtla)           |
+ * | /userProfiles                                  | C4 userProfiles displayName ve photoURL dışında alan                 |
+ * | /feedback                                      | geri bildirim: giriş yapmış kullanıcı dar şemayla yazar              |
+ * | varsayılan (tanımsız koleksiyon)                | grup üyesi yalnız kendisini çıkarır; tanımsız koleksiyonlar kapalı   |
+ * | görünürlük matrisi (tüm yollar)                | görünürlük matrisi: profil, iz, rota, hikâye, yer, kayıt, grup …     |
+ *
+ * Not: bu dosya `tsc` denetimine dahil değildir (tsconfig sınırı); tip hataları
+ * ayrı bir iştir (PROMPT-TEK Aşama 5).
+ */
+
 const PROJECT_ID = "demo-atlasia-rules";
 let testEnv: RulesTestEnvironment;
 

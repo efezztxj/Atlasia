@@ -236,7 +236,13 @@ export async function sendFriendRequest(input: { fromUid: string; fromName: stri
       // Ret sonrası en olası iki neden: zaten arkadaş olmak ya da dağıtılmış
       // kuralların istemciden eski olması. İkisi ayrı kodla raporlanır.
       if (await isAlreadyFriend(friendRef)) throw dataError("friend-request/already-friends", "Bu kisi zaten arkadasin.");
-      console.error("[Atlasia] Arkadaslik istegi kurallar tarafindan reddedildi:", retryFailure);
+      // Teşhis izi: "istek gönderilemedi" şikayetinde ilk bakılacak iki şey
+      // (yol ve kural ipucu) konsolda tek satırda görünür. Bkz. runbook §3.1.
+      console.error("[Atlasia] Arkadaslik istegi sunucu kurallari tarafindan reddedildi.", {
+        code: firestoreErrorCode(retryFailure),
+        path: `users/${toUid}/friendRequests/${fromUid}`,
+        hint: "firestore.rules icinde users/{uid}/friendRequests tanimli mi? Kurallar istemciden once dagitilmali (docs/deploy-runbook.md 3.1).",
+      }, retryFailure);
       throw friendRequestFailure(retryFailure, { retried: true });
     }
   }

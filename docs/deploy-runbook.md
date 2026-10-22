@@ -90,6 +90,30 @@ zaten tek yetkilendirme katmanıdır.
 Ters sıra kullanıldıysa teslimat/PR notuna **hangi istisna** ve **gerekçesi**
 yazılır.
 
+### 3.1 Bu depodaki arkadaşlık/profile teslimi (p4–p9, p15–p17) için sıra
+
+Bu patch'ler **yeni koleksiyonlar** kullanır; eski kural bu yolları hiç tanımaz:
+
+| Yol | Kullanan | Eski kuralda |
+|---|---|---|
+| `users/{uid}/friendRequests/{requesterUid}` | p4/p5/p16 | **yok** |
+| `friendships/{fid}` | p4/p6 | **yok** |
+| `users/{uid}/friends/{friendUid}` | p4/p6 | **yok** |
+| `userProfiles/{uid}` | p9 | **yok** |
+| `friendDeclines/{fid}` | Aşama 1 (planlı) | **yok** |
+
+**Sonuç:** yeni istemci + eski kural = arama boş, "İstek gönderilemedi" (`permission-denied`).
+Bu yüzden §3 istisnası uygulanır: **önce rules, sonra (veya aynı anda) istemci.**
+Ek kural yalnız yeni yolları açar; eski istemciyi etkilemez.
+
+Doğrulama (dağıtımdan sonra, Console → Rules):
+
+```
+friendRequests · friendships · userProfiles   satırlarının üçü de görünmeli
+```
+
+Görünmüyorsa istemciyi yayınlama; sıra hatası "İstek gönderilemedi" olarak kullanıcıya döner.
+
 ## 4. Rules ve indexes dağıtımı
 
 Komutlar her zaman açık proje bayrağıyla:
@@ -181,3 +205,4 @@ cd - && git worktree remove /tmp/atlasia-rules-rollback
 | İndeks beklemeden yeni sorguyu yayınlama | `failed-precondition` | İndeks deploy'u PR ile paralel planlanır; istemci hatayı kullanıcı diliyle gösterir |
 | Preview/production `VITE_FIREBASE_PROJECT_ID` karışıklığı | Yanlış projede doğrulama | §1; yalnız production değeri hedef alınır |
 | Rollback sonrası düzeltme deploy'unu unutma | Aynı hata geri gelir | §6.1 adımı 5 |
+| Yeni koleksiyon kuralı istemciden sonra dağıtıldı | Yeni istemci `permission-denied` alır: arkadaş araması boş, "İstek gönderilemedi" | §3.1; önce rules, sonra istemci |
