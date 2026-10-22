@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#02120f" />
+    <title>Atlasia UI · Kayıt</title>
+    <link rel="stylesheet" href="css/base.css" />
+    <link rel="stylesheet" href="css/screens.css" />
+    <link rel="stylesheet" href="css/auth.css" />
+  </head>
+  <body class="showcase" data-screen="kayit">
+    <main class="showcase__stage">
+      <div class="showcase__inner">
+        <div class="caption">
+          <div>
+            <p class="caption__kicker">Mobil · 03 Kayıt</p>
+            <h1>Kayıt, bir form değil bir karşılama.</h1>
+            <p>
+              Apple ve Google önce, e-posta alternatif. Onay kutusu tek satır, şifre gücü yazarken ölçülür;
+              alt alta yığılmış dört alan yerine üç alan ve tek birincil eylem var.
+            </p>
+          </div>
+          <div class="caption__meta">
+            <span><svg class="i" data-icon="smartphone"></svg>390 × 844</span>
+            <span><svg class="i" data-icon="key-round"></svg>Şifre gücü · canlı</span>
+            <span><svg class="i" data-icon="moon"></svg>Koyu tema</span>
+          </div>
+        </div>
+
+        <div class="device">
+          <div class="device__screen">
+            <section class="screen mauth" aria-label="Mobil kayıt ekranı">
+              <header class="statusbar" data-statusbar></header>
+
+              <div class="mauth__head">
+                <button class="icon-btn icon-btn--outline" type="button" aria-label="Geri dön">
+                  <svg class="i" data-icon="arrow-left"></svg>
+                </button>
+                <div class="mauth__progress" aria-hidden="true">
+                  <span class="is-on"></span>
+                  <span></span>
+                </div>
+                <span class="mauth__step">1 / 2</span>
+              </div>
+
+              <div class="mauth__body scroll">
+                <h1 class="mauth__title">Hesabını oluştur</h1>
+                <p class="mauth__lead">Rotanı kaydet, izlerini paylaş. Otuz saniye sürer.</p>
+
+                <div class="auth-social">
+                  <button class="auth-social__btn" type="button">
+                    <svg class="brand-i" data-icon="apple"></svg>
+                    Apple
+                  </button>
+                  <button class="auth-social__btn" type="button">
+                    <svg class="brand-i brand-i--google" data-icon="google"></svg>
+                    Google
+                  </button>
+                </div>
+
+                <div class="auth-divider">veya e-posta ile</div>
+
+                <div class="mauth__form">
+                  <div class="fld">
+                    <label class="fld__label" for="reg-name">Ad Soyad</label>
+                    <div class="fld__box">
+                      <svg class="i" data-icon="user-round"></svg>
+                      <input
+                        id="reg-name"
+                        name="name"
+                        type="text"
+                        autocomplete="name"
+                        value="Deniz Aksoy"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="fld">
+                    <label class="fld__label" for="reg-email">E-posta</label>
+                    <div class="fld__box">
+                      <svg class="i" data-icon="mail"></svg>
+                      <input
+                        id="reg-email"
+                        name="email"
+                        type="email"
+                        inputmode="email"
+                        autocomplete="email"
+                        value="deniz@atlasia.app"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="fld">
+                    <label class="fld__label" for="reg-pass">
+                      Şifre
+                      <a href="#">Gereksinimler</a>
+                    </label>
+                    <div class="fld__box">
+                      <svg class="i" data-icon="lock"></svg>
+                      <input
+                        id="reg-pass"
+                        name="password"
+                        type="password"
+                        autocomplete="new-password"
+                        value="gezgin2026"
+                      />
+                      <button class="fld__eye" type="button" aria-label="Şifreyi göster">
+                        <svg class="i" data-icon="eye"></svg>
+                      </button>
+                    </div>
+                    <span class="meter is-strong">
+                      <span class="meter__bars" aria-hidden="true"><i></i><i></i><i></i></span>
+                      <span class="meter__label">
+                        <svg class="i" data-icon="circle-check"></svg>
+                        Güçlü
+                      </span>
+                    </span>
+                  </div>
+                </div>
+
+                <label class="check mauth__terms">
+                  <input class="sr-only" type="checkbox" checked />
+                  <span class="check__box is-on" aria-hidden="true">
+                    <svg class="i" data-icon="check"></svg>
+                  </span>
+                  <span>
+                    <a href="#">Kullanım Koşulları</a> ve <a href="#">Gizlilik Politikası</a>'nı okudum,
+                    kabul ediyorum.
+                  </span>
+                </label>
+
+                <button class="auth-submit mauth__submit" type="button">
+                  Hesabımı oluştur
+                  <svg class="i" data-icon="arrow-right"></svg>
+                </button>
+
+                <p class="auth-switch mauth__switch">Zaten hesabın var mı? <a href="giris.html">Giriş yap</a></p>
+
+                <p class="mauth__foot">
+                  <svg class="i" data-icon="shield-check"></svg>
+                  Verilerin şifreli saklanır · KVKK uyumlu
+                </p>
+              </div>
+
+              <span class="home-indicator" aria-hidden="true"></span>
+            </section>
+          </div>
+        </div>
+      </div>
+    </main>
+    <script src="js/ui.js"></script>
+  </body>
+</html>

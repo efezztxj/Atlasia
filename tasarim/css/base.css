@@ -1288,6 +1288,7 @@ html[data-theme="light"] .tab__add {
 .showcase {
   height: 100dvh;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr) auto;
   background:
     radial-gradient(120% 80% at 50% -10%, rgba(242, 198, 102, 0.08), transparent 60%),
@@ -1532,6 +1533,8 @@ html[data-theme="light"] .tab__add {
 .toolbar {
   position: relative;
   z-index: 40;
+  min-width: 0;
+  max-width: 100%;
   margin: 0 20px 18px;
   padding: 10px 12px;
   display: flex;
@@ -1583,6 +1586,7 @@ html[data-theme="light"] .tab__add {
   align-items: center;
   gap: 6px;
   margin: 0 auto;
+  flex: none;
 }
 .toolbar__count {
   font-size: 11px;
@@ -1593,18 +1597,28 @@ html[data-theme="light"] .tab__add {
 }
 .toolbar__screens {
   display: flex;
-  gap: 4px;
+  flex: 1 1 auto;
+  gap: 3px;
+  min-width: 0;
   padding: 4px;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(228, 245, 234, 0.08);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  scroll-behavior: smooth;
+  mask-image: linear-gradient(90deg, transparent 0, #000 10px, #000 calc(100% - 10px), transparent 100%);
+}
+.toolbar__screens::-webkit-scrollbar {
+  display: none;
 }
 .toolbar__screens a {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   height: 28px;
-  padding: 0 9px;
+  padding: 0 8px;
   border-radius: 8px;
   font-size: 11px;
   font-weight: 600;
@@ -1612,8 +1626,8 @@ html[data-theme="light"] .tab__add {
   white-space: nowrap;
 }
 .toolbar__screens a .i {
-  width: 13px;
-  height: 13px;
+  width: 12px;
+  height: 12px;
 }
 .toolbar__screens a.is-active {
   color: var(--gold);
@@ -1627,6 +1641,7 @@ html[data-theme="light"] .tab__add {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex: none;
   padding-left: 12px;
   border-left: 1px solid rgba(228, 245, 234, 0.1);
 }
@@ -1657,6 +1672,11 @@ html[data-theme="light"] .tab__add {
   font-size: 10px;
   color: #7f9489;
   white-space: nowrap;
+}
+@media (max-width: 1520px) {
+  .toolbar__hint {
+    display: none;
+  }
 }
 .toolbar__hint kbd {
   display: inline-grid;
@@ -1729,7 +1749,8 @@ html[data-theme="light"] .tab__add {
     font-size: 10.5px;
   }
   .toolbar {
-    max-width: 1420px;
+    width: min(1420px, calc(100% - 40px));
+    max-width: none;
     margin-left: auto;
     margin-right: auto;
   }

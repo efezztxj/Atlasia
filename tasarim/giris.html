@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#02120f" />
+    <title>Atlasia UI · Giriş</title>
+    <link rel="stylesheet" href="css/base.css" />
+    <link rel="stylesheet" href="css/screens.css" />
+    <link rel="stylesheet" href="css/auth.css" />
+  </head>
+  <body class="showcase" data-screen="giris">
+    <main class="showcase__stage">
+      <div class="showcase__inner">
+        <div class="caption">
+          <div>
+            <p class="caption__kicker">Mobil · 02 Giriş</p>
+            <h1>Dönen kullanıcı için kısa yol.</h1>
+            <p>
+              Aynı form dili, daha kısa akış: iki alan, passkey ve "beni hatırla". Şifre sıfırlama
+              etiketin yanında; kayıt ve misafir yolu tek satırda ikincil kalıyor.
+            </p>
+          </div>
+          <div class="caption__meta">
+            <span><svg class="i" data-icon="smartphone"></svg>390 × 844</span>
+            <span><svg class="i" data-icon="fingerprint"></svg>Passkey</span>
+            <span><svg class="i" data-icon="moon"></svg>Koyu tema</span>
+          </div>
+        </div>
+
+        <div class="device">
+          <div class="device__screen">
+            <section class="screen mauth" aria-label="Mobil giriş ekranı">
+              <header class="statusbar" data-statusbar></header>
+
+              <div class="mauth__head">
+                <button class="icon-btn icon-btn--outline" type="button" aria-label="Geri dön">
+                  <svg class="i" data-icon="arrow-left"></svg>
+                </button>
+                <a class="mauth__step" style="margin-left: auto; color: var(--gold)" href="#">Yardım</a>
+              </div>
+
+              <div class="mauth__body scroll">
+                <h1 class="mauth__title">Tekrar hoş geldin.</h1>
+                <p class="mauth__lead">Rotan kaldığın yerden devam ediyor.</p>
+
+                <div class="auth-social">
+                  <button class="auth-social__btn" type="button">
+                    <svg class="brand-i" data-icon="apple"></svg>
+                    Apple
+                  </button>
+                  <button class="auth-social__btn" type="button">
+                    <svg class="brand-i brand-i--google" data-icon="google"></svg>
+                    Google
+                  </button>
+                </div>
+
+                <div class="auth-divider">veya e-posta ile</div>
+
+                <div class="mauth__form">
+                  <div class="fld">
+                    <label class="fld__label" for="login-email-m">E-posta</label>
+                    <div class="fld__box">
+                      <svg class="i" data-icon="mail"></svg>
+                      <input
+                        id="login-email-m"
+                        name="email"
+                        type="email"
+                        inputmode="email"
+                        autocomplete="email"
+                        value="elif@atlasia.app"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="fld">
+                    <label class="fld__label" for="login-pass-m">
+                      Şifre
+                      <a href="#">Şifremi unuttum</a>
+                    </label>
+                    <div class="fld__box">
+                      <svg class="i" data-icon="lock"></svg>
+                      <input
+                        id="login-pass-m"
+                        name="password"
+                        type="password"
+                        autocomplete="current-password"
+                        value="likya2026"
+                      />
+                      <button class="fld__eye" type="button" aria-label="Şifreyi göster">
+                        <svg class="i" data-icon="eye"></svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="dauth__row">
+                  <label class="check">
+                    <input class="sr-only" type="checkbox" />
+                    <span class="check__box" aria-hidden="true">
+                      <svg class="i" data-icon="check"></svg>
+                    </span>
+                    <span>Beni hatırla</span>
+                  </label>
+                  <button class="dauth__passkey" type="button">
+                    <svg class="i" data-icon="scan-face"></svg>
+                    Face ID
+                  </button>
+                </div>
+
+                <button class="auth-submit mauth__submit" type="button">
+                  Giriş yap
+                  <svg class="i" data-icon="arrow-right"></svg>
+                </button>
+
+                <p class="auth-switch mauth__switch">
+                  Hesabın yok mu? <a href="kayit.html">Kayıt ol</a>
+                </p>
+
+                <p class="dauth__guest">
+                  <svg class="i" data-icon="compass"></svg>
+                  ya da <a href="kesif.html">hesap açmadan keşfet</a>
+                </p>
+
+                <p class="mauth__foot">
+                  <svg class="i" data-icon="shield-check"></svg>
+                  Bağlantı şifreli · KVKK uyumlu
+                </p>
+              </div>
+
+              <span class="home-indicator" aria-hidden="true"></span>
+            </section>
+          </div>
+        </div>
+      </div>
+    </main>
+    <script src="js/ui.js"></script>
+  </body>
+</html>

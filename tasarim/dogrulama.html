@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#02120f" />
+    <title>Atlasia UI · Doğrulama</title>
+    <link rel="stylesheet" href="css/base.css" />
+    <link rel="stylesheet" href="css/screens.css" />
+    <link rel="stylesheet" href="css/auth.css" />
+  </head>
+  <body class="showcase" data-screen="dogrulama">
+    <main class="showcase__stage">
+      <div class="showcase__inner">
+        <div class="caption">
+          <div>
+            <p class="caption__kicker">Mobil · 04 Doğrulama</p>
+            <h1>Altı hane, tek bir güven.</h1>
+            <p>
+              E-posta doğrulaması ayrı bir ekran: kod hücreleri büyük, imleç görünür, geri sayım ve
+              "tekrar gönder" aynı satırda. Kodun ömrü ve hata durumu metinle anlatılır.
+            </p>
+          </div>
+          <div class="caption__meta">
+            <span><svg class="i" data-icon="smartphone"></svg>390 × 844</span>
+            <span><svg class="i" data-icon="mail-check"></svg>6 hane · 10 dk</span>
+            <span><svg class="i" data-icon="moon"></svg>Koyu tema</span>
+          </div>
+        </div>
+
+        <div class="device">
+          <div class="device__screen">
+            <section class="screen mauth mauth--otp" aria-label="Mobil e-posta doğrulama ekranı">
+              <header class="statusbar" data-statusbar></header>
+
+              <div class="mauth__head">
+                <button class="icon-btn icon-btn--outline" type="button" aria-label="Geri dön">
+                  <svg class="i" data-icon="arrow-left"></svg>
+                </button>
+                <a class="mauth__step" style="margin-left: auto; color: var(--gold)" href="#">Yardım</a>
+              </div>
+
+              <div class="mauth__body">
+                <span class="otp__badge" aria-hidden="true">
+                  <svg class="i" data-icon="mail-check"></svg>
+                </span>
+
+                <h1 class="mauth__title otp__title">E-postanı doğrula</h1>
+                <p class="otp__lead">
+                  <strong>deniz@atlasia.app</strong> adresine gönderdiğimiz altı haneli kodu gir.
+                </p>
+
+                <div class="otp" role="group" aria-label="Doğrulama kodu, 6 hane">
+                  <span class="otp__cell is-filled">2</span>
+                  <span class="otp__cell is-filled">8</span>
+                  <span class="otp__cell is-filled">4</span>
+                  <span class="otp__cell is-filled">1</span>
+                  <span class="otp__cell is-active" aria-label="5. hane, boş"></span>
+                  <span class="otp__cell" aria-label="6. hane, boş"></span>
+                </div>
+
+                <div class="otp__meta">
+                  <svg class="i" data-icon="clock-3"></svg>
+                  <span>Kod 09:12 geçerli</span>
+                  <button class="otp__resend" type="button" disabled>Tekrar gönder · 00:47</button>
+                </div>
+
+                <div class="otp__note">
+                  <svg class="i" data-icon="info"></svg>
+                  <span>
+                    Kod birkaç dakika içinde gelmezse spam klasörünü kontrol et. Yeni kod istemek
+                    öncekini geçersiz kılar.
+                  </span>
+                </div>
+
+                <div class="otp__actions">
+                  <button class="auth-submit" type="button">
+                    Doğrula ve devam et
+                    <svg class="i" data-icon="arrow-right"></svg>
+                  </button>
+                  <button class="otp__alt" type="button">Farklı bir e-posta kullan</button>
+                </div>
+
+                <p class="otp__foot">
+                  <svg class="i" data-icon="shield-check"></svg>
+                  Kod yalnızca bu oturum için geçerli · atlasia.app
+                </p>
+              </div>
+
+              <span class="home-indicator" aria-hidden="true"></span>
+            </section>
+          </div>
+        </div>
+      </div>
+    </main>
+    <script src="js/ui.js"></script>
+  </body>
+</html>
