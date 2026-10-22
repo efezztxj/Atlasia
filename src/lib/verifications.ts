@@ -4,13 +4,17 @@
  * Okuma tavanı: tek canlı sorgu, en yeni 50 doğrulama (`limit(50)`). Ücretsiz
  * Firestore kotasında kalmak için toplam görünürlük taranmaz; eski doğrulamalar
  * pencereden düşer ve tazelik "eski" bandına geçer.
+ *
+ * Belge kimliği deterministiktir: `{placeId}_{uid}` (kurallar zorunlu tutar).
+ * Aynı kişinin aynı yere ikinci doğrulaması aynı belgeyi günceller; tazelik
+ * özeti her kişi için en güncel durumu sayar. Eski rastgele kimlikli belgeler
+ * okuma tarafında aynen görünür, sahipleri yeniden doğruladıkça deterministik
+ * belgeye geçilir.
  */
 import {
   collection,
-  deleteDoc,
   doc,
   getCountFromServer,
-  getDoc,
   limit,
   onSnapshot,
   orderBy,
@@ -37,30 +41,9 @@ function toMillis(v: unknown): number {
   return 0;
 }
 
-/**
- * Doğrulama belge kimliği — TEK biçim: `{placeId}_{uid}`.
- *
- * Neden: kimlik sunucu tarafında sınırlanmadığında aynı kişi aynı yere sınırsız
- * doğrulama yazabiliyordu (İŞ 1d). Kimlik yer + kişiye bağlanınca bu doğal
- * olarak tekilliğe düşer ve kural da `verificationId == placeId + "_" + uid`
- * eşitliğini isteyebilir.
- *
- * Geriye dönük uyum: eski `vr-…` belgeleri okunmaya ve silinmeye devam eder;
- * kimlik yalnız yeni yazımda değişir (`normalizeVerification` kimliğe bakmaz).
- */
-export function verificationDocId(placeId: string, uid: string): string {
-  const place = placeId.trim();
-  const owner = uid.trim();
-  if (!place) throw Object.assign(new Error("Yer kimliği boş."), { code: "verification/place-invalid" });
-  if (!owner) throw Object.assign(new Error("Doğrulama için giriş gerekli."), { code: "auth/required" });
-  return `${place}_${owner}`;
-}
-
-/** Eski (`vr-…`) biçimde yazılmış belge mi? Yalnız göç/teşhis için. */
-export function isLegacyVerificationId(id: string, placeId?: string, uid?: string): boolean {
-  if (!id.startsWith("vr-")) return false;
-  if (placeId && uid) return id !== `${placeId}_${uid}`;
-  return true;
+/** Doğrulama belge kimliği: rozet/takip sorgularının tek okumayla çalışması için. */
+export function verificationIdFor(placeId: string, uid: string): string {
+  return `${placeId.trim()}_${uid.trim()}`;
 }
 
 export function normalizeVerification(id: string, raw: Record<string, unknown>): PlaceVerification {
@@ -76,6 +59,19 @@ export function normalizeVerification(id: string, raw: Record<string, unknown>):
     note: typeof raw.note === "string" ? raw.note : undefined,
     createdAt: toMillis(raw.createdAt),
   };
+}
+
+/**
+ * Tazelik okuması yalnız Firebase üyesiyle yapılır: kural `signedIn()` ister
+ * (D5.1-A). Cihaz hesabında bulut oturumu yoktur; istek atmak `permission-denied`
+ * üretir, bu yüzden hiç abone olunmaz.
+ */
+export function freshnessReaderUid(
+  account: { uid?: string | null; backend?: string | null } | null | undefined,
+): string | undefined {
+  const uid = account?.uid?.trim();
+  if (!uid || account?.backend !== "firebase") return undefined;
+  return uid;
 }
 
 export function subscribeRecentVerifications(
@@ -109,7 +105,12 @@ export async function addPlaceVerification(input: NewVerificationInput): Promise
   const invalid = validateVerificationInput(input);
   if (invalid) throw Object.assign(new Error("Doğrulama bilgileri geçersiz."), { code: invalid });
   const placeId = input.placeId.trim();
-  const id = verificationDocId(placeId, uid);
+  // Belge kimliği placeId içerdiği için "/" kimliği bölerdi; yer kimlikleri
+  // Firestore belge kimliği olduğundan zaten "/" içeremez, yine de erken ret.
+  if (placeId.includes("/") || uid.includes("/")) {
+    throw Object.assign(new Error("Doğrulama bilgileri geçersiz."), { code: "verification/place-invalid" });
+  }
+  const id = verificationIdFor(placeId, uid);
   const payload: Record<string, unknown> = {
     placeId,
     uid,
@@ -118,16 +119,7 @@ export async function addPlaceVerification(input: NewVerificationInput): Promise
   };
   const note = input.note?.trim();
   if (note) payload.note = note.slice(0, 280);
-
-  const ref = doc(db, "verifications", id);
-  // Kural güncellemeye izin vermez (createdAt == request.time). Tekrar
-  // doğrulamada önceki kendi belgesi silinir; başkasının belgesine dokunulmaz
-  // (kimlik uid içerdiği için pratikte çakışmaz, yine de sahiplik kontrol edilir).
-  const existing = await getDoc(ref);
-  if (existing.exists() && existing.data().uid === uid) {
-    await deleteDoc(ref);
-  }
-  await setDoc(ref, payload);
+  await setDoc(doc(db, "verifications", id), payload);
   return {
     id,
     placeId,
@@ -139,21 +131,19 @@ export async function addPlaceVerification(input: NewVerificationInput): Promise
 }
 
 /**
- * Yer başına doğrulama sayısı — rozet sayacı (İŞ 1d).
+ * Bir yerin doğrulama sayısı (rozet önkoşulu).
  *
- * `getCountFromServer` Spark planında çalışır ve belge okumaz. Sorgu
- * **limit(50)** taşır: kural (`allow list: if signedIn() && boundedList(50)`)
- * limitsiz listeye izin vermez; toplama bu pencereyle sınırlıdır, sayaç da
- * uygulamanın gördüğü pencereyle aynı tavanı paylaşır.
+ * `count()` toplama sorgusudur: belge okumaz, ücretsiz planda da çalışır. Kural
+ * `list` için `signedIn()` + `boundedList(50)` istediği için sorguya aynı tavanı
+ * (`limit`) koyuyoruz; kural gevşetilmedi, istemci kurala uyuyor.
  */
 export async function countPlaceVerifications(placeId: string): Promise<number> {
-  if (!db) return 0;
   const clean = placeId.trim();
-  if (!clean) return 0;
-  const snapshot = await getCountFromServer(query(
+  if (!db || !clean) return 0;
+  const snap = await getCountFromServer(query(
     collection(db, "verifications"),
     where("placeId", "==", clean),
     limit(VERIFICATIONS_LIMIT),
   ));
-  return snapshot.data().count;
+  return snap.data().count;
 }

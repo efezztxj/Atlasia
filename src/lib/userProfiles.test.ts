@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("./firebase", () => ({ db: {} }));
 
-import { DISPLAY_NAME_MAX, USER_PROFILES_LIMIT, normalizeUserProfile, profilePrefixes, searchProfilesLocal, validateDisplayName, type UserProfile } from "./userProfiles";
+import { DISPLAY_NAME_MAX, USER_PROFILES_LIMIT, normalizeUserProfile, profileNameIndexable, profilePrefixes, searchProfilesLocal, validateDisplayName, type UserProfile } from "./userProfiles";
 
 /** Denetim 2026-10-22: P16 sonrası eklenen modülün saf kısmı için karakterizasyon. */
 describe("validateDisplayName", () => {
@@ -34,6 +34,16 @@ describe("displayNameLower (arama anahtarı)", () => {
   });
 });
 
+describe("profileNameIndexable (kural karakter kümesi aynası)", () => {
+  it("Türkçe harfler, boşluk, tire ve rakam geçer; küme dışı karakter geçmez", () => {
+    expect(profileNameIndexable("İrem Işık-2000")).toBe(true);
+    expect(profileNameIndexable("Dr. Efe")).toBe(false);
+    expect(profileNameIndexable("efe_2000")).toBe(false);
+    expect(profileNameIndexable("O'Brien")).toBe(false);
+    expect(profileNameIndexable("Émile")).toBe(false);
+  });
+});
+
 describe("searchProfilesLocal", () => {
   const profile = (displayName: string, i = 0): UserProfile => ({ uid: `u${i}`, displayName, displayNameLower: displayName.toLocaleLowerCase("tr"), createdAt: 0, updatedAt: 0 });
 
@@ -61,5 +71,12 @@ describe("searchProfilesLocal", () => {
     expect(searchProfilesLocal(list, "gezgin c").map((p) => p.displayName)).toEqual(["Gezgin Can"]);
     expect(searchProfilesLocal([profile("Gezgin", 0)], "gez")).toEqual([]);
     expect(searchProfilesLocal([profile("", 1)], "gez")).toEqual([]);
+  });
+
+  it("yalnız önek arar: kelime içi eşleşme ve yer tutucu ad sonuç vermez", () => {
+    const list = [profile("Kaan Ada"), profile("Gezgin", 1)];
+    expect(searchProfilesLocal(list, "ada")).toEqual([]);
+    expect(searchProfilesLocal(list, "gezgin")).toEqual([]);
+    expect(searchProfilesLocal(list, "Kaan").map((p) => p.displayName)).toEqual(["Kaan Ada"]);
   });
 });

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, Link2, Loader2, Search, UserMinus, UserPlus, X } from "lucide-react";
 import {
   acceptFriendRequest,
@@ -9,6 +9,7 @@ import {
   type FriendRequest,
 } from "../lib/friendships";
 import { fetchUserProfile, searchUserProfiles, type UserProfile } from "../lib/userProfiles";
+import { PROFILE_SEARCH_MIN_CHARS, isSearchableQuery } from "../lib/profileSearch";
 import { clearRecentSearches, pushRecentSearch, readRecentSearches } from "../lib/searchHistory";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { friendlyDataError } from "../lib/firestoreValue";
@@ -37,22 +38,18 @@ export default function FriendsTab({ currentUid, currentName, friends, requests,
   const [queryText, setQueryText] = useState("");
   const [results, setResults] = useState<UserProfile[] | null>(null);
   const [searching, setSearching] = useState(false);
+  const [recent, setRecent] = useState<string[]>(() => readRecentSearches(currentUid));
   const [sent, setSent] = useState<Record<string, true>>({});
   const [busyUid, setBusyUid] = useState<string | null>(null);
   const [inviter, setInviter] = useState<UserProfile | null>(null);
 
-  // Instagram tarzı arama: yazarken 350 ms debounce ile ara; son aramalar
-  // cihazda (uid başına) tutulur, hesap değişiminde karışmaz.
-  const [recent, setRecent] = useState<string[]>(() => readRecentSearches(currentUid));
-  const debouncedQuery = useDebouncedValue(queryText, 350);
+  const friendSet = new Set(friends.map((friend) => friend.friendUid));
+  const incoming = requests.filter((request) => !isBlocked(request.fromUid));
+  const incomingSet = new Set(incoming.map((request) => request.fromUid));
 
   useEffect(() => {
     setRecent(readRecentSearches(currentUid));
   }, [currentUid]);
-
-  const friendSet = new Set(friends.map((friend) => friend.friendUid));
-  const incoming = requests.filter((request) => !isBlocked(request.fromUid));
-  const incomingSet = new Set(incoming.map((request) => request.fromUid));
 
   useEffect(() => {
     if (!invitedByUid || invitedByUid === currentUid) {
@@ -66,46 +63,35 @@ export default function FriendsTab({ currentUid, currentName, friends, requests,
     return () => { active = false; };
   }, [invitedByUid, currentUid, onInviteHandled]);
 
-  const runSearch = useCallback(async (term: string) => {
-    if (term.trim().length < 2) {
-      setResults(null);
-      return;
-    }
+  const runSearch = async (term: string) => {
+    if (!isSearchableQuery(term)) return;
     setSearching(true);
     try {
-      const found = await searchUserProfiles(term, currentUid);
-      setResults(found.filter((profile) => !isBlocked(profile.uid)));
+      setResults((await searchUserProfiles(term, currentUid)).filter((profile) => !isBlocked(profile.uid)));
+      // Son aramalar cihazda, kişi başına tutulur (gizlilik + kota).
       setRecent(pushRecentSearch(currentUid, term));
     } catch (failure) {
       onError(friendlyDataError(failure, "Arama yapılamadı."));
     } finally {
       setSearching(false);
     }
-  }, [currentUid, isBlocked, onError]);
+  };
 
-  // Yazarken arama: aynı sorgu iki kez çalışmasın diye son çalışan tutulur.
-  const lastQueried = useRef<string>("");
+  const search = () => runSearch(queryText.trim());
+
+  // Yazarken arama (350 ms): her tuş vuruşunda sorgu açılmaz.
+  const debouncedQuery = useDebouncedValue(queryText);
   useEffect(() => {
     const term = debouncedQuery.trim();
-    if (term.length < 2 || term === lastQueried.current) return;
-    lastQueried.current = term;
-    void runSearch(term);
-  }, [debouncedQuery, runSearch]);
-
-  // Boşaltılınca sonuçlar temizlenir (eski sonuç ekranda kalmaz).
-  useEffect(() => {
-    if (queryText.trim().length < 2) {
-      lastQueried.current = "";
-      setResults(null);
+    if (term.length < PROFILE_SEARCH_MIN_CHARS) {
+      // Girdi kısaldıysa eski sonuç ekranda kalmaz.
+      if (term.length === 0) setResults(null);
+      return;
     }
-  }, [queryText]);
-
-  const search = async () => {
-    const term = queryText.trim();
-    if (term.length < 2) return;
-    lastQueried.current = term;
-    await runSearch(term);
-  };
+    void runSearch(term);
+    // runSearch her render'da yenidir; tetikleyici yalnız geciktirilmiş girdi.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedQuery]);
 
   const add = async (uid: string, name: string) => {
     setBusyUid(uid);
@@ -194,8 +180,8 @@ export default function FriendsTab({ currentUid, currentName, friends, requests,
       <button type="button" onClick={() => void shareMyLink()} className="flex min-h-11 items-center justify-center gap-2 rounded-full bg-sun px-4 text-[13px] font-semibold text-ink"><Link2 size={15} />Arkadaş davet bağlantımı paylaş</button>
 
       <form onSubmit={(event) => { event.preventDefault(); void search(); }} className="flex items-center gap-2">
-        <input value={queryText} onChange={(event) => setQueryText(event.target.value)} maxLength={40} aria-label="İsimle kişi ara" placeholder="İsimle ara (en az 2 harf)" className="h-10 min-w-0 flex-1 rounded-full border border-white/10 bg-ink px-3 text-[13px] text-mint outline-none focus:border-sun/50" />
-        <button type="submit" disabled={searching || queryText.trim().length < 2} aria-label="Ara" className="grid size-10 shrink-0 place-items-center rounded-full border border-leaf/30 text-leaf disabled:opacity-50">{searching ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />}</button>
+        <input value={queryText} onChange={(event) => setQueryText(event.target.value)} maxLength={40} aria-label="İsimle kişi ara" placeholder={`İsimle ara (en az ${PROFILE_SEARCH_MIN_CHARS} harf)`} className="h-10 min-w-0 flex-1 rounded-full border border-white/10 bg-ink px-3 text-[13px] text-mint outline-none focus:border-sun/50" />
+        <button type="submit" disabled={searching || !isSearchableQuery(queryText)} aria-label="Ara" className="grid size-10 shrink-0 place-items-center rounded-full border border-leaf/30 text-leaf disabled:opacity-50">{searching ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />}</button>
       </form>
       {recent.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
@@ -204,7 +190,7 @@ export default function FriendsTab({ currentUid, currentName, friends, requests,
             <button
               key={term}
               type="button"
-              onClick={() => { setQueryText(term); lastQueried.current = ""; void runSearch(term); }}
+              onClick={() => { setQueryText(term); void runSearch(term); }}
               className="min-h-8 rounded-full border border-white/12 px-2.5 text-[11.5px] text-mint/80 transition hover:border-sun/50 hover:text-white"
             >
               {term}

@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BookOpen, MapPin, Pause, Play, RotateCcw, Volume2, X } from "lucide-react";
-import type { Place, AtlasRoute } from "../types";
+import type { Place } from "../types";
 import { STORIES } from "../data/galleries";
 import { storageGet, storageSet } from "../utils/storage";
 import { initialGuideState, resolveGuidePlace, type TourGuideState } from "../utils/tourGuide";
+import { siteTourForPoint } from "../data/siteTours";
 
 interface Props {
   location: { lat: number; lng: number; accuracy: number } | null;
   places: Place[];
-  tourRoute?: AtlasRoute | null;
   onOpenPlace: (place: Place) => void;
 }
 
@@ -27,7 +27,13 @@ function guideText(place: Place) {
   return `${place.title}. ${story}`.replace(/\s+/g, " ").trim();
 }
 
-export default function NearbyAudioGuide({ location, places, tourRoute, onOpenPlace }: Props) {
+export default function NearbyAudioGuide({ location, places, onOpenPlace }: Props) {
+  // İŞ 4: tur seçimi bileşenin içinde — site turu verisi giriş paketinde değil,
+  // bu bileşenin lazy parçasında kalır. Yarıçap App'ten bağımsızdır.
+  const tourRoute = useMemo(
+    () => (location ? siteTourForPoint(location.lat, location.lng, 5) : null),
+    [location],
+  );
   const [dismissed, setDismissed] = useState<string[]>(readDismissed);
   const [speaking, setSpeaking] = useState(false);
   const [paused, setPaused] = useState(false);

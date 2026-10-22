@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { firebaseConfigured } from "../lib/firebase";
 import {
@@ -49,7 +49,8 @@ export function isCloudAccount(backend: "firebase" | "device" | undefined): bool
 
 export function CollectionsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  const prefix = `atlasia.member.${user!.uid}`;
+  const uid = user!.uid;
+  const prefix = `atlasia.member.${uid}`;
   // Karar (c) ayrımı: bulut hesabı `users/{uid}` altında eşitlenir,
   // cihaz hesabı bilinçli olarak cihazda kalır. (Madde 12)
   const cloudCollections = isCloudAccount(user!.backend);
@@ -58,65 +59,72 @@ export function CollectionsProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(cloudCollections);
   const [error, setError] = useState<string | null>(null);
   /**
-   * İŞ 1c · #61 p8 — koleksiyon izolasyonu.
-   *
-   * `useState` başlangıç değeri yalnız ilk render'da çalışır; aynı oturumda
-   * hesap değişirse (çıkış → başka hesapla giriş) önceki kullanıcının listesi
-   * ekranda kalıyor ve aşağıdaki kalıcılaştırma efekti onu **yeni** kullanıcının
-   * anahtarına yazabiliyordu (veri karışması). Çözüm: uid değişiminde state
-   * o kullanıcının anahtarından yeniden kurulur; kalıcılaştırma yalnız state'in
-   * ait olduğu anahtar güncel anahtarla aynıyken çalışır.
+   * Elimizdeki verinin hangi kullanıcıya ait olduğu. Hesap değişince state
+   * effect çalışana kadar eski kullanıcının verisini taşımaya devam eder; bu
+   * damga olmadan o veri **yeni kullanıcıya gösterilir** ve yerel modda yeni
+   * kullanıcının anahtarına yazılırdı. Damga render sırasında okunur, bu yüzden
+   * sızıntı için effect'in çalışması beklenmez.
    */
-  const hydratedPrefix = useRef(prefix);
+  const [dataUid, setDataUid] = useState(uid);
+  const sameUser = dataUid === uid;
+  const visiblePlaces = sameUser ? savedPlaces : [];
+  const visibleRoutes = sameUser ? savedRoutes : [];
+  const commitPlaces = (next: Place[]) => { setSavedPlaces(next); setDataUid(uid); };
+  const commitRoutes = (next: AtlasRoute[]) => { setSavedRoutes(next); setDataUid(uid); };
 
   useEffect(() => {
-    hydratedPrefix.current = prefix;
-    setSavedPlaces(cloudCollections ? [] : read(`${prefix}.places`, []));
-    setSavedRoutes(cloudCollections ? [] : read(`${prefix}.routes`, []));
-    setLoading(cloudCollections);
+    if (cloudCollections || sameUser) return;
+    // Yerel modda hesap değişti: yeni kullanıcının kendi kayıtlarını oku.
+    setSavedPlaces(read(`${prefix}.places`, []));
+    setSavedRoutes(read(`${prefix}.routes`, []));
     setError(null);
-    // Yalnız hesap/anahtar değişiminde çalışır.
-  }, [prefix, cloudCollections]);
+    setLoading(false);
+    setDataUid(uid);
+  }, [cloudCollections, sameUser, prefix, uid]);
 
   useEffect(() => {
-    // State başka bir hesaba aitse yazma: yeni kullanıcının anahtarını kirletme.
-    if (hydratedPrefix.current !== prefix) return;
-    if (!cloudCollections) {
-      storageSet(`${prefix}.places`, JSON.stringify(savedPlaces));
-      storageSet(`${prefix}.routes`, JSON.stringify(savedRoutes));
-    }
-  }, [cloudCollections, prefix, savedPlaces, savedRoutes]);
+    // Yalnız güncel kullanıcının verisi kalıcılaşır; geçiş anında eski
+    // kullanıcının listesi yeni kullanıcının anahtarına yazılmaz.
+    if (cloudCollections || !sameUser) return;
+    storageSet(`${prefix}.places`, JSON.stringify(savedPlaces));
+    storageSet(`${prefix}.routes`, JSON.stringify(savedRoutes));
+  }, [cloudCollections, sameUser, prefix, savedPlaces, savedRoutes]);
 
   useEffect(() => {
     if (!cloudCollections) return;
     setLoading(true);
     setError(null);
-    return subscribeSavedCollections(user!.uid, (snapshot) => {
+    const subscribeUid = uid;
+    return subscribeSavedCollections(subscribeUid, (snapshot) => {
       setSavedPlaces(snapshot.places);
       setSavedRoutes(snapshot.routes);
       setLoading(false);
+      // Snapshot kendi kullanıcısını damgalar: kapanmış aboneliğin geç gelen
+      // yanıtı yeni kullanıcının verisi gibi görünmez.
+      setDataUid(subscribeUid);
     }, (failure) => {
       setError(failure.message);
       setLoading(false);
+      setDataUid(subscribeUid);
     });
-  }, [cloudCollections, user]);
+  }, [cloudCollections, uid]);
 
   const savePlace = (place: Place) => {
     if (!cloudCollections) {
-      setSavedPlaces((current) => current.some((item) => item.id === place.id) ? current.filter((item) => item.id !== place.id) : [place, ...current]);
+      commitPlaces(visiblePlaces.some((item) => item.id === place.id) ? visiblePlaces.filter((item) => item.id !== place.id) : [place, ...visiblePlaces]);
       return;
     }
-    void toggleSavedPlace(user!.uid, place).catch((failure: unknown) => {
+    void toggleSavedPlace(uid, place).catch((failure: unknown) => {
       setError(failure instanceof Error ? failure.message : "Yer kaydedilemedi.");
     });
   };
 
   const saveRoute = (route: AtlasRoute) => {
     if (!cloudCollections) {
-      setSavedRoutes((current) => [route, ...current.filter((item) => item.id !== route.id)].slice(0, 40));
+      commitRoutes([route, ...visibleRoutes.filter((item) => item.id !== route.id)].slice(0, 40));
       return;
     }
-    void saveRouteReference(user!.uid, route).catch((failure: unknown) => {
+    void saveRouteReference(uid, route).catch((failure: unknown) => {
       setError(failure instanceof Error ? failure.message : "Rota kaydedilemedi.");
     });
   };
@@ -135,26 +143,42 @@ export function CollectionsProvider({ children }: { children: ReactNode }) {
     const decision = resolveTrackShare(route, { userInitiated: true, visibility, shareConsent });
     if (!decision.ok) throw new Error(decision.reason);
     if (!cloudCollections) {
-      setSavedRoutes((current) => [decision.route, ...current.filter((item) => item.id !== decision.route.id)].slice(0, 40));
+      commitRoutes([decision.route, ...visibleRoutes.filter((item) => item.id !== decision.route.id)].slice(0, 40));
       throw new Error(
         "Bulut hesabı bağlı değil: rota bu cihazda kaydedildi, yayımlanamadı. Yayımlamak için bulut (e-posta) hesabıyla giriş yap.",
       );
     }
-    await publishRoute(user!.uid, decision.route, decision.visibility);
-    await saveRouteReference(user!.uid, decision.route);
+    await publishRoute(uid, decision.route, decision.visibility);
+    await saveRouteReference(uid, decision.route);
   };
 
   const removeRoute = (id: string) => {
     if (!cloudCollections) {
-      setSavedRoutes((current) => current.filter((route) => route.id !== id));
+      commitRoutes(visibleRoutes.filter((route) => route.id !== id));
       return;
     }
-    void removeRouteFromLibrary(user!.uid, id).catch((failure: unknown) => {
+    void removeRouteFromLibrary(uid, id).catch((failure: unknown) => {
       setError(failure instanceof Error ? failure.message : "Rota kaydı kaldırılamadı.");
     });
   };
 
-  return <Context.Provider value={{ savedPlaces, savedRoutes, loading, error, savePlace, saveRoute, publishRoute: publish, removeRoute, isSaved: (id) => savedPlaces.some((place) => place.id === id) }}>{children}</Context.Provider>;
+  return (
+    <Context.Provider
+      value={{
+        savedPlaces: visiblePlaces,
+        savedRoutes: visibleRoutes,
+        loading: cloudCollections && (loading || !sameUser),
+        error: sameUser ? error : null,
+        savePlace,
+        saveRoute,
+        publishRoute: publish,
+        removeRoute,
+        isSaved: (id) => visiblePlaces.some((place) => place.id === id),
+      }}
+    >
+      {children}
+    </Context.Provider>
+  );
 }
 
 export function useCollections() {

@@ -1,11 +1,12 @@
 /**
- * Profil dizini: kural `createdAt == request.time` istediği için var olan
- * belge güncellenemez. syncUserProfile değişmemişse yazmaz, değişmişse
- * sil + yeniden oluştur yapar.
+ * Profil dizini: kurallar oluşturma/güncelleme ayrımı yapar (güncellemede
+ * `createdAt` değişmez). syncUserProfile değişmemişse yazmaz, değişmişse
+ * `updateDoc` ile günceller — sil+yeniden yaz yolu emekli oldu.
  *
- * Aşama 2: arama artık `displayNameLower` (Türkçe küçük harf) üzerinden tek
- * aralık sorgusu; patch 7'deki "baş harfi büyüt" ikinci sorgusu kaldırıldı.
- * Eski belgelerde alan yoksa ilk senkronda bir kez yeniden yazılır (geçiş).
+ * Arama: birincil yol `displayNameLower` (Türkçe küçük harf) önek aralığı;
+ * alanı olmayan eski belgeler için sınırlı `displayName` geri dönüşü var.
+ * Her aday önek doğrulamasından geçer (kelime içi arama yok) ve adsız
+ * profiller sonuçta görünmez.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -19,9 +20,18 @@ vi.mock("./firebase", () => ({ db: {} }));
 vi.mock("firebase/firestore", () => ({
   collection: (_db: unknown, path: string) => ({ path }),
   doc: (_db: unknown, ...segments: string[]) => ({ path: segments.join("/") }),
-  getDoc: async (ref: { path: string }) => ({ exists: () => h.store.has(ref.path), id: ref.path.split("/")[1], data: () => h.store.get(ref.path) }),
+  getDoc: async (ref: { path: string }) => ({ exists: () => h.store.has(ref.path), data: () => h.store.get(ref.path) }),
   setDoc: async (ref: { path: string }, data: Record<string, unknown>) => { h.ops.push(`set:${ref.path}`); h.store.set(ref.path, data); },
-  deleteDoc: async (ref: { path: string }) => { h.ops.push(`delete:${ref.path}`); h.store.delete(ref.path); },
+  updateDoc: async (ref: { path: string }, data: Record<string, unknown>) => {
+    h.ops.push(`update:${ref.path}`);
+    const next = { ...(h.store.get(ref.path) ?? {}) };
+    for (const [key, value] of Object.entries(data)) {
+      if (value === "__DELETE_FIELD__") delete next[key];
+      else next[key] = value;
+    }
+    h.store.set(ref.path, next);
+  },
+  deleteField: () => "__DELETE_FIELD__",
   serverTimestamp: () => "TS",
   orderBy: (field: string) => ({ field }),
   limit: () => ({}),
@@ -37,19 +47,19 @@ vi.mock("firebase/firestore", () => ({
     h.queries.push(q);
     const docs = [...h.store.entries()]
       .filter(([key]) => key.startsWith(`${q.path}/`))
-      .filter(([, data]) => String(data[q.field]) >= q.from && String(data[q.field]) < q.to)
+      // Firestore aralık sorgusu alanı olmayan belgeyi döndürmez; sahte katman da döndürmez.
+      .filter(([, data]) => typeof data[q.field] === "string" && (data[q.field] as string) >= q.from && (data[q.field] as string) < q.to)
       .map(([key, data]) => ({ id: key.split("/")[1], data: () => data }));
     return { docs };
   },
 }));
 
-import { fetchUserProfile, profilePrefixes, resetKnownProfiles, searchUserProfiles, syncUserProfile } from "./userProfiles";
+import { profilePrefixes, searchUserProfiles, syncUserProfile } from "./userProfiles";
 
 beforeEach(() => {
   h.store.clear();
   h.ops.length = 0;
   h.queries.length = 0;
-  resetKnownProfiles();
 });
 
 describe("syncUserProfile", () => {
@@ -72,18 +82,33 @@ describe("syncUserProfile", () => {
     expect(h.ops).toEqual([]);
   });
 
-  it("geçiş: alanı olmayan eski belgeyi bir kez yeniden yazar", async () => {
+  it("geçiş: alanı olmayan eski belge update ile tamamlanır, createdAt korunur", async () => {
     h.store.set("userProfiles/u1", { uid: "u1", displayName: "Efe", createdAt: 1, updatedAt: 1 });
-    expect(await syncUserProfile({ uid: "u1", displayName: "Efe" })).toBe("replaced");
-    expect(h.ops).toEqual(["delete:userProfiles/u1", "set:userProfiles/u1"]);
-    expect(h.store.get("userProfiles/u1")).toMatchObject({ displayNameLower: "efe" });
+    expect(await syncUserProfile({ uid: "u1", displayName: "Efe" })).toBe("updated");
+    expect(h.ops).toEqual(["update:userProfiles/u1"]);
+    expect(h.store.get("userProfiles/u1")).toMatchObject({ displayNameLower: "efe", createdAt: 1 });
   });
 
-  it("ad değiştiyse siler ve yeniden oluşturur (kural güncellemeye izin vermez)", async () => {
-    h.store.set("userProfiles/u1", { uid: "u1", displayName: "Eski", displayNameLower: "eski", createdAt: 1, updatedAt: 1 });
-    expect(await syncUserProfile({ uid: "u1", displayName: "Yeni", photoURL: "https://x.dev/a.png" })).toBe("replaced");
-    expect(h.ops).toEqual(["delete:userProfiles/u1", "set:userProfiles/u1"]);
-    expect(h.store.get("userProfiles/u1")).toMatchObject({ displayName: "Yeni", displayNameLower: "yeni", photoURL: "https://x.dev/a.png", createdAt: "TS" });
+  it("ad değiştiyse silmeden günceller; foto kaldırıldıysa alan silinir", async () => {
+    h.store.set("userProfiles/u1", { uid: "u1", displayName: "Eski", displayNameLower: "eski", photoURL: "https://x.dev/eski.png", createdAt: 1, updatedAt: 1 });
+    expect(await syncUserProfile({ uid: "u1", displayName: "Yeni", photoURL: "https://x.dev/a.png" })).toBe("updated");
+    expect(h.store.get("userProfiles/u1")).toMatchObject({ displayName: "Yeni", displayNameLower: "yeni", photoURL: "https://x.dev/a.png", createdAt: 1 });
+
+    expect(await syncUserProfile({ uid: "u1", displayName: "Yeni" })).toBe("updated");
+    expect(h.store.get("userProfiles/u1")).not.toHaveProperty("photoURL");
+    expect(h.ops).toEqual(["update:userProfiles/u1", "update:userProfiles/u1"]);
+  });
+
+  it("kural kümesi dışında karakter taşıyan ad yazılmadan kodlu reddedilir, eski belge yerinde kalır", async () => {
+    await expect(syncUserProfile({ uid: "u9", displayName: "Dr. Efe" }))
+      .rejects.toMatchObject({ code: "profile/name-not-indexable" });
+    expect(h.store.has("userProfiles/u9")).toBe(false);
+
+    h.store.set("userProfiles/u1", { uid: "u1", displayName: "Efe", displayNameLower: "efe", createdAt: 1, updatedAt: 1 });
+    await expect(syncUserProfile({ uid: "u1", displayName: "Efe_2000" }))
+      .rejects.toMatchObject({ code: "profile/name-not-indexable" });
+    expect(h.ops).toEqual([]);
+    expect(h.store.get("userProfiles/u1")).toMatchObject({ displayName: "Efe" });
   });
 
   it("http(s) olmayan foto adresi yazılmaz", async () => {
@@ -93,13 +118,12 @@ describe("syncUserProfile", () => {
 });
 
 describe("searchUserProfiles", () => {
-  it("tek aralık sorgusu displayNameLower üzerinde; büyük harf ikinci sorgu yok", async () => {
+  it("birincil sorgu displayNameLower önek aralığı; kendisi hariç", async () => {
     h.store.set("userProfiles/me", { uid: "me", displayName: "Efe Ben", displayNameLower: "efe ben" });
     h.store.set("userProfiles/u2", { uid: "u2", displayName: "Efe Yılmaz", displayNameLower: "efe yılmaz" });
     h.store.set("userProfiles/u3", { uid: "u3", displayName: "Can", displayNameLower: "can" });
     const found = await searchUserProfiles("efe", "me");
     expect(found.map((profile) => profile.uid)).toEqual(["u2"]);
-    expect(h.queries).toHaveLength(1);
     expect(h.queries[0]).toMatchObject({ field: "displayNameLower", from: "efe", to: "efe\uf8ff" });
   });
 
@@ -110,42 +134,30 @@ describe("searchUserProfiles", () => {
     expect(h.queries[0].from).toBe("irem");
   });
 
+  it("geri dönüş: displayNameLower alanı olmayan eski belge displayName ile bulunur", async () => {
+    h.store.set("userProfiles/eski", { uid: "eski", displayName: "İrem" });
+    const found = await searchUserProfiles("irem", "me");
+    expect(found.map((profile) => profile.uid)).toEqual(["eski"]);
+    expect(found[0].displayNameLower).toBe("irem");
+    expect(h.queries.some((q) => q.field === "displayName")).toBe(true);
+  });
+
+  it("adsız/yer tutucu profil sonuçta görünmez; kelime içi arama yoktur", async () => {
+    h.store.set("userProfiles/u6", { uid: "u6", displayName: "Gezgin", displayNameLower: "gezgin" });
+    h.store.set("userProfiles/u7", { uid: "u7", displayName: "Kaan Ada", displayNameLower: "Kaan ada" });
+    expect(await searchUserProfiles("gezgin", "me")).toEqual([]);
+    expect(await searchUserProfiles("ada", "me")).toEqual([]);
+  });
+
+  it("2 harften kısa sorgu hiç sorgu atmaz", async () => {
+    expect(await searchUserProfiles(" e ", "me")).toEqual([]);
+    expect(h.queries).toEqual([]);
+  });
+
   it("Türkçe baş harf öneki: 'ilkay' → ['ilkay'] (tek önek)", () => {
     expect(profilePrefixes("ilkay")).toEqual(["ilkay"]);
     expect(profilePrefixes("İlkay")).toEqual(["ilkay"]);
     expect(profilePrefixes("IŞIK")).toEqual(["ışık"]);
     expect(profilePrefixes("  ")).toEqual([]);
-  });
-});
-
-describe("arama sözleşmesi (İŞ 1b/1c)", () => {
-  it("adsız/\"Gezgin\" profiller sonuçta görünmez", async () => {
-    h.store.set("userProfiles/u1", { uid: "u1", displayName: "Gezgin", displayNameLower: "gezgin" });
-    h.store.set("userProfiles/u2", { uid: "u2", displayName: "Gezgin Deniz", displayNameLower: "gezgin deniz" });
-    h.store.set("userProfiles/u3", { uid: "u3", displayName: "", displayNameLower: "" });
-    const found = await searchUserProfiles("gez", "me");
-    expect(found.map((profile) => profile.uid)).toEqual(["u2"]);
-  });
-
-  it("kelime içi arama yok: önek dışındaki eşleşme dönmez", async () => {
-    h.store.set("userProfiles/u1", { uid: "u1", displayName: "Mustafa Efe", displayNameLower: "mustafa efe" });
-    h.store.set("userProfiles/u2", { uid: "u2", displayName: "Efe Yılmaz", displayNameLower: "efe yılmaz" });
-    const found = await searchUserProfiles("efe", "me");
-    expect(found.map((profile) => profile.uid)).toEqual(["u2"]);
-  });
-
-  it("eski (displayNameLower'sız) profil, okunduysa önek aramasında geri döner", async () => {
-    // 1) Eski belge aralık sorgusunda görünmez (alan yok).
-    h.store.set("userProfiles/legacy", { uid: "legacy", displayName: "İrem Eski", createdAt: 1, updatedAt: 1 });
-    expect((await searchUserProfiles("irem", "me")).map((profile) => profile.uid)).toEqual([]);
-
-    // 2) Profil bir kez okununca (arkadaş listesi/davet) oturum belleğine girer.
-    await fetchUserProfile("legacy");
-    const found = await searchUserProfiles("irem", "me");
-    expect(found.map((profile) => profile.uid)).toEqual(["legacy"]);
-    // Türetilmiş anahtar Türkçe küçük harf: İ → i
-    expect(found[0].displayNameLower).toBe("irem eski");
-    // 3) Belgeye yazma yapılmadı (yalnız okuma).
-    expect(h.ops).toEqual([]);
   });
 });

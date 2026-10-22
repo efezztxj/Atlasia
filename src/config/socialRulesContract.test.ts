@@ -31,7 +31,7 @@ const allowTrue = [...rules.matchAll(/allow\s+[a-z,\s]+:\s*if\s+true/g)];
 
 describe("gevşeme yok", () => {
   it("`allow … if true` sayısı 2'yi geçmez (yalnız places get ve posts get)", () => {
-    // #55 öncesi 4 idi; #55 ile stories get ve verifications get sıkılaştırıldı.
+    // #55 öncesi 4 idi; stories get ve verifications get sıkılaştırıldı.
     expect(allowTrue).toHaveLength(2);
     const lines = rules
       .split("\n")
@@ -57,28 +57,50 @@ describe("doğrulama kimliği {placeId}_{uid}", () => {
   it("create kuralı kimliği yer + kişiye bağlar", () => {
     const body = block("match /verifications/{verificationId}");
     expect(body).toContain(
-      'verificationId == request.resource.data.placeId + "_" + request.auth.uid',
+      'verificationId == request.resource.data.placeId + "_" + request.resource.data.uid',
     );
     expect(body).toContain("validVerification(request.resource.data)");
-    // Güncelleme kapalı kalmalı: tekrar doğrulama sil + yeniden yaz.
-    expect(body).toContain("allow update: if false;");
+    expect(body).toContain("allow list: if signedIn() && boundedList(50);");
+  });
+
+  it("güncelleme yalnız sahibine ve yeri/sahibi değiştirmeden açılır", () => {
+    const body = block("match /verifications/{verificationId}");
+    // Sahip kilidi: başkasının belgesi güncellenemez.
+    expect(body).toContain("resource.data.uid == request.auth.uid");
+    // Yer ve sahip güncellemede sabit: aynı kişi aynı yerin kimliğini başka yere taşıyamaz.
+    expect(body).toContain("request.resource.data.placeId == resource.data.placeId");
+    expect(body).toContain("request.resource.data.uid == resource.data.uid");
+    expect(body.indexOf("allow update:")).toBeGreaterThan(0);
+    expect(body).not.toContain("allow update: if true");
+  });
+
+  it("silme yalnız belgenin sahibine açık", () => {
+    const body = block("match /verifications/{verificationId}");
+    expect(body).toContain("allow delete: if signedIn() && resource.data.uid == request.auth.uid;");
   });
 });
 
 describe("takip kuralı", () => {
   it("yalnız sahibi yazar, kendini takip edemez, şema dar", () => {
     const body = block("match /users/{uid}/following/{targetUid}");
-    expect(body).toContain("allow create: if signedIn()");
-    expect(body).toContain("request.auth.uid == uid");
-    expect(body).toContain("targetUid != uid");
-    expect(body).toContain("data.keys().hasOnly(['targetUid', 'targetName', 'since'])");
-    expect(body).toContain("data.since == request.time");
+    expect(body).toContain("allow get: if signedIn() && uid == request.auth.uid;");
+    expect(body).toContain("allow list: if signedIn() && uid == request.auth.uid && boundedList(100);");
+    expect(body).toContain("uid != targetUid");
+    expect(body).toContain("validFollow(request.resource.data, uid, targetUid)");
     expect(body).toContain("allow update: if false;");
+    expect(body).toContain("allow delete: if signedIn() && uid == request.auth.uid;");
   });
 
-  it("takipçi sayımı collection-group kuralıyla ve targetUid kanıtıyla açılır", () => {
-    const body = block("match /{path=**}/following/{targetUid}");
-    expect(body).toContain("resource.data.targetUid == request.auth.uid");
-    expect(body).not.toContain(": if true");
+  it("takip şeması dar: yalnız followerUid, targetUid, createdAt", () => {
+    const shape = rules.slice(rules.indexOf("function validFollow"), rules.indexOf("function friendshipId"));
+    expect(shape).toContain("hasOnly(['followerUid', 'targetUid', 'createdAt'])");
+    expect(shape).toContain("data.followerUid == request.auth.uid");
+    expect(shape).toContain("data.followerUid != data.targetUid");
+    expect(shape).toContain("data.createdAt == request.time");
+  });
+
+  it("takipçi listesi diye bir okuma yolu yok (collection-group bloğu yok)", () => {
+    // Bilinçli karar: birinin kimi takip ettiği yalnız sahibine açık kalır.
+    expect(rules).not.toContain("/{path=**}/following");
   });
 });

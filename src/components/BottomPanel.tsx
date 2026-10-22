@@ -1,3 +1,4 @@
+import { useCallback, useLayoutEffect, useRef } from "react";
 import {
   ArrowRight,
   Bookmark,
@@ -39,6 +40,8 @@ interface Props {
   /** Konum izni verildiyse metre cinsinden doğruluk */
   accuracy: number | null;
   locating: boolean;
+  /** Mobilde panelin ekran altından kapladığı toplam alanı bildirir. */
+  onOccupiedSpaceChange?: (space: number) => void;
 }
 
 export function PlaceThumb({ place, className }: { place: Place; className?: string }) {
@@ -64,8 +67,42 @@ export default function BottomPanel({
   onOpenFeed,
   accuracy,
   locating,
+  onOccupiedSpaceChange,
 }: Props) {
   const { savePlace, isSaved } = useCollections();
+  const panelRef = useRef<HTMLElement | null>(null);
+  const occupiedSpaceRef = useRef(-1);
+
+  const reportOccupiedSpace = useCallback(() => {
+    if (!onOccupiedSpaceChange) return;
+    const panel = panelRef.current;
+    const mobile = window.matchMedia("(max-width: 767px)").matches;
+    const occupied = panel && mobile
+      ? Math.max(0, Math.round(window.innerHeight - panel.getBoundingClientRect().top))
+      : 0;
+    if (occupied === occupiedSpaceRef.current) return;
+    occupiedSpaceRef.current = occupied;
+    onOccupiedSpaceChange(occupied);
+  }, [onOccupiedSpaceChange]);
+
+  useLayoutEffect(() => {
+    reportOccupiedSpace();
+    const panel = panelRef.current;
+    if (!panel || !onOccupiedSpaceChange) return undefined;
+
+    const resizeObserver = typeof ResizeObserver === "undefined"
+      ? null
+      : new ResizeObserver(reportOccupiedSpace);
+    resizeObserver?.observe(panel);
+    window.addEventListener("resize", reportOccupiedSpace);
+    window.visualViewport?.addEventListener("resize", reportOccupiedSpace);
+
+    return () => {
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", reportOccupiedSpace);
+      window.visualViewport?.removeEventListener("resize", reportOccupiedSpace);
+    };
+  }, [onOccupiedSpaceChange, open, current?.id, reportOccupiedSpace]);
 
   // Kapatılan keşif alanı kaybolmaz: açık panelin yer kartını tek, ince bir
   // satır olarak korur. Kartın metin tarafına dokunmak paneli yeniden açar.
@@ -79,8 +116,9 @@ export default function BottomPanel({
       >
         <div className="w-full max-w-[920px]">
           <section
+            ref={(node) => { panelRef.current = node; }}
             aria-label="Daraltılmış keşif önerisi"
-            className="mobile-discovery-panel desktop-discovery-panel gold-frame pointer-events-auto rounded-[22px] bg-[#021915] p-2.5 max-md:fixed max-md:inset-x-3 max-md:bottom-[calc(112px+env(safe-area-inset-bottom))] max-md:z-20 md:rounded-[28px] md:p-4"
+            className="mobile-discovery-panel desktop-discovery-panel gold-frame pointer-events-auto rounded-[22px] bg-[#021915] p-2.5 max-md:fixed max-md:inset-x-3 max-md:bottom-[calc(118px+env(safe-area-inset-bottom))] max-md:z-20 md:rounded-[28px] md:p-4"
           >
             {current ? (
               <div className="flex min-w-0 items-center gap-1.5 md:gap-3">
@@ -145,7 +183,7 @@ export default function BottomPanel({
       )}
     >
       <div className="w-full max-w-[920px]">
-        <section aria-label="Keşif önerileri" className="mobile-discovery-panel gold-frame pointer-events-auto rounded-[26px] bg-[#021b16] px-3.5 pb-3.5 pt-2.5 max-md:fixed max-md:inset-x-3 max-md:bottom-[calc(64px+env(safe-area-inset-bottom))] max-md:z-20 max-md:max-h-[42dvh] max-md:overflow-y-auto md:hidden">
+        <section ref={(node) => { panelRef.current = node; }} aria-label="Keşif önerileri" className="mobile-discovery-panel gold-frame pointer-events-auto rounded-[26px] bg-[#021b16] px-3.5 pb-3.5 pt-2.5 max-md:fixed max-md:inset-x-3 max-md:bottom-[calc(118px+env(safe-area-inset-bottom))] max-md:z-20 max-md:max-h-[calc(42dvh-54px)] max-md:overflow-y-auto md:hidden">
           <span aria-hidden className="sheet-handle mb-2.5" />
           <div className="flex items-center justify-between gap-3">
             <p className="truncate text-[12px] text-mint/75">Yol üstündekilerden küçük ipuçları</p>

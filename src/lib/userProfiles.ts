@@ -7,7 +7,7 @@
  */
 import {
   collection,
-  deleteDoc,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -17,17 +17,31 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  updateDoc,
   where,
   type DocumentData,
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { withoutUndefined } from "./firestoreValue";
+import {
+  isSearchableQuery,
+  legacyDisplayNamePrefixes,
+  rankProfiles,
+  turkishLower,
+} from "./profileSearch";
 
 export const USER_PROFILES_LIMIT = 20;
-/** Adsız profillerin arama dizinindeki adı; aramada gizlenir (İŞ 1c · #61 p17). */
-export const PLACEHOLDER_DISPLAY_NAME = "Gezgin";
 export const DISPLAY_NAME_MIN = 2;
 export const DISPLAY_NAME_MAX = 40;
+
+/**
+ * Kuraldaki `displayNameLower` biçim denetiminin istemci aynası
+ * (firestore.rules → validUserProfileShape). Küme dışındaki karakter
+ * (nokta, kesme işareti, alt çizgi, é gibi) taşıyan adların arama anahtarı
+ * kuralla yazılamaz; istemci bunu yazmadan ÖNCE kodlu hatayla söyler —
+ * yarıda kalmış sil+yaz ile profil kaybetme yolu kapalıdır.
+ */
+export const DISPLAY_NAME_LOWER_PATTERN = /^[a-z0-9 ığüşöçâîû-]+$/;
 
 export interface UserProfile {
   uid: string;
@@ -58,44 +72,26 @@ export function validateDisplayName(name: string): string | null {
   return null;
 }
 
+/** Ad arama dizinine yazılabilir mi? (Türkçe küçük harfi kural kümesinde mi) */
+export function profileNameIndexable(displayName: string): boolean {
+  const lower = turkishLower(displayName.trim().slice(0, DISPLAY_NAME_MAX));
+  return lower.length >= DISPLAY_NAME_MIN && DISPLAY_NAME_LOWER_PATTERN.test(lower);
+}
+
 export function normalizeUserProfile(uid: string, raw: DocumentData): UserProfile {
-  const displayName = typeof raw.displayName === "string" ? raw.displayName : PLACEHOLDER_DISPLAY_NAME;
-  const profile: UserProfile = {
+  const displayName = typeof raw.displayName === "string" ? raw.displayName : "Gezgin";
+  return {
     uid,
     displayName,
     // Geçiş: eski belgelerde alan yok; okuma tarafında türetilir, yazma tarafı
     // syncUserProfile'ın ilk oturumunda alanı kalıcılaştırır.
     displayNameLower: typeof raw.displayNameLower === "string"
       ? raw.displayNameLower
-      : displayName.toLocaleLowerCase("tr"),
+      : turkishLower(displayName),
     photoURL: typeof raw.photoURL === "string" ? raw.photoURL : undefined,
     createdAt: toMillis(raw.createdAt),
     updatedAt: toMillis(raw.updatedAt),
   };
-  knownProfiles.set(profile.uid, profile);
-  return profile;
-}
-
-/**
- * Oturum içi bilinen profiller (İŞ 1b · eski belge geri dönüşü).
- *
- * `displayNameLower` alanı #55'te zorunlu oldu; alanı olmayan eski belgeler
- * aralık sorgusunda **görünmez** (sorgu alan üzerinden). Kural gevşetmeden
- * yapılabilecek güvenli geri dönüş: bu oturumda okunmuş (arkadaş listesi, davet,
- * önceki arama sonucu) profilleri bellekte tutup önek eşleşmesiyle sonuca
- * katmak. Belgeye yazma yok; alan bir sonraki `syncUserProfile` ile kalıcılaşır.
- * Kelime içi arama YAPILMAZ (startsWith).
- */
-const knownProfiles = new Map<string, UserProfile>();
-
-/** Test ve hesap değişimi için belleği temizler. */
-export function resetKnownProfiles(): void {
-  knownProfiles.clear();
-}
-
-export function isPlaceholderProfile(profile: UserProfile): boolean {
-  const name = profile.displayName.trim().toLocaleLowerCase("tr");
-  return name === "" || name === PLACEHOLDER_DISPLAY_NAME.toLocaleLowerCase("tr");
 }
 
 export async function fetchUserProfile(uid: string): Promise<UserProfile | null> {
@@ -108,31 +104,41 @@ export async function fetchUserProfile(uid: string): Promise<UserProfile | null>
 }
 
 /**
- * Profili arama dizinine yazar. Kural `createdAt == request.time` istediği için
- * var olan belge güncellenemez; ad/foto değiştiyse belge silinip yeniden
- * yazılır, değişmediyse hiç yazılmaz (gereksiz kota yok).
+ * Profili arama dizinine yazar. Kurallar oluşturma/güncelleme ayrımını
+ * yapar: oluşturmada iki damga da sunucu zamanı, güncellemede `createdAt`
+ * değişmez. Bu yüzden var olan belge `updateDoc` ile (silmeden) güncellenir;
+ * ad/foto/anahtar değişmediyse hiç yazılmaz (gereksiz kota yok).
  */
-export async function syncUserProfile(input: { uid: string; displayName: string; photoURL?: string }): Promise<"created" | "replaced" | "unchanged"> {
+export async function syncUserProfile(input: { uid: string; displayName: string; photoURL?: string }): Promise<"created" | "updated" | "unchanged"> {
   if (!db) return "unchanged";
   const uid = input.uid.trim();
   if (!uid) throw dataError("profile/uid-invalid", "Kullanici kimligi gecersiz.");
   const invalid = validateDisplayName(input.displayName);
   if (invalid) throw dataError(invalid, "Profil adi 2-40 karakter olmali.");
   const displayName = input.displayName.trim().slice(0, DISPLAY_NAME_MAX);
-  const displayNameLower = displayName.toLocaleLowerCase("tr");
+  const displayNameLower = turkishLower(displayName);
+  if (!DISPLAY_NAME_LOWER_PATTERN.test(displayNameLower)) {
+    throw dataError("profile/name-not-indexable", "Bu ad arama dizinine yazilamaz (desteklenmeyen karakter).");
+  }
   const photo = input.photoURL?.trim();
   const photoURL = photo && /^https?:\/\//.test(photo) && photo.length <= 500 ? photo : undefined;
   const ref = doc(db, "userProfiles", uid);
   const existing = await getDoc(ref);
-  const existed = existing.exists();
-  if (existed) {
+  if (existing.exists()) {
     const current = existing.data();
-    const samePhoto = (typeof current.photoURL === "string" ? current.photoURL : undefined) === photoURL;
-    // Geçiş: alan yoksa belge bir kez yeniden yazılır; aksi hâlde eski belge
+    const currentPhoto = typeof current.photoURL === "string" ? current.photoURL : undefined;
+    // Geçiş: alan yoksa belge bir kez güncellenir; aksi hâlde eski belge
     // sonsuza dek kural dışı (displayNameLower'sız) kalırdı.
-    const sameLower = current.displayNameLower === displayNameLower;
-    if (current.displayName === displayName && samePhoto && sameLower) return "unchanged";
-    await deleteDoc(ref);
+    if (current.displayName === displayName && current.displayNameLower === displayNameLower && currentPhoto === photoURL) return "unchanged";
+    const updates: Record<string, unknown> = {
+      displayName,
+      displayNameLower,
+      updatedAt: serverTimestamp(),
+    };
+    if (photoURL !== undefined) updates.photoURL = photoURL;
+    else if (currentPhoto !== undefined) updates.photoURL = deleteField();
+    await updateDoc(ref, updates);
+    return "updated";
   }
   await setDoc(ref, withoutUndefined({
     uid,
@@ -142,7 +148,7 @@ export async function syncUserProfile(input: { uid: string; displayName: string;
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   }));
-  return existed ? "replaced" : "created";
+  return "created";
 }
 
 /**
@@ -152,40 +158,46 @@ export async function syncUserProfile(input: { uid: string; displayName: string;
 export function profilePrefixes(text: string): string[] {
   const clean = text.trim().slice(0, DISPLAY_NAME_MAX);
   if (!clean) return [];
-  return [clean.toLocaleLowerCase("tr")];
+  return [turkishLower(clean)];
+}
+
+function rangeQuery(firestore: NonNullable<typeof db>, field: "displayNameLower" | "displayName", prefix: string) {
+  return query(
+    collection(firestore, "userProfiles"),
+    orderBy(field),
+    where(field, ">=", prefix),
+    where(field, "<", `${prefix}\uf8ff`),
+    limit(USER_PROFILES_LIMIT),
+  );
 }
 
 /**
- * İsimle tek seferlik arama (en çok 20 sonuç, kendisi hariç).
- *
- * - Önek araması: yalnız `displayNameLower` üzerinden tek aralık sorgusu.
- *   Kelime içi arama yok (arama "efe" iken "mustafa efe" bulunmaz).
- * - Adsız/"Gezgin" profiller gizlenir (#61 p17): aramada işe yaramaz kimlik.
- * - Eski (alanı olmayan) belgeler için oturum içi geri dönüş: bilinen profiller
- *   önek eşleşmesiyle sonuca eklenir.
+ * İsimle tek seferlik arama (en çok 20 sonuç, kendisi ve adsızlar hariç).
+ * Birincil yol `displayNameLower` önek aralığıdır. Sonuç 20'den azsa,
+ * alanı olmayan eski belgeler için `displayName` üzerinden sınırlı bir geri
+ * dönüş taraması yapılır; her aday yine önek doğrulamasından geçer
+ * (bkz. rankProfiles — kelime içi arama yoktur).
  */
 export async function searchUserProfiles(text: string, excludeUid: string): Promise<UserProfile[]> {
-  const prefixes = profilePrefixes(text);
-  if (prefixes.length === 0) return [];
-  const prefix = prefixes[0];
-  const remote: UserProfile[] = [];
-  if (db) {
-    const firestore = db;
-    const snap = await getDocs(query(
-      collection(firestore, "userProfiles"),
-      orderBy("displayNameLower"),
-      where("displayNameLower", ">=", prefix),
-      where("displayNameLower", "<", `${prefix}\uf8ff`),
-      limit(USER_PROFILES_LIMIT),
-    ));
-    remote.push(...snap.docs.map((item) => normalizeUserProfile(item.id, item.data())));
+  if (!db) return [];
+  if (!isSearchableQuery(text)) return [];
+  const firestore = db;
+  const prefix = profilePrefixes(text)[0];
+  const snap = await getDocs(rangeQuery(firestore, "displayNameLower", prefix));
+  const candidates = snap.docs.map((item) => normalizeUserProfile(item.id, item.data()));
+  if (candidates.length < USER_PROFILES_LIMIT) {
+    const seen = new Set(candidates.map((profile) => profile.uid));
+    for (const legacyPrefix of legacyDisplayNamePrefixes(text)) {
+      if (candidates.length >= USER_PROFILES_LIMIT) break;
+      const legacySnap = await getDocs(rangeQuery(firestore, "displayName", legacyPrefix));
+      for (const item of legacySnap.docs) {
+        if (seen.has(item.id)) continue;
+        seen.add(item.id);
+        candidates.push(normalizeUserProfile(item.id, item.data()));
+      }
+    }
   }
-  const seen = new Set(remote.map((profile) => profile.uid));
-  const local = [...knownProfiles.values()].filter((profile) =>
-    !seen.has(profile.uid) && profile.displayNameLower.startsWith(prefix));
-  return [...remote, ...local]
-    .filter((profile) => profile.uid !== excludeUid && !isPlaceholderProfile(profile))
-    .slice(0, USER_PROFILES_LIMIT);
+  return rankProfiles(candidates, text, { excludeUid, limit: USER_PROFILES_LIMIT });
 }
 
 export function subscribeUserProfiles(
@@ -198,7 +210,7 @@ export function subscribeUserProfiles(
     onChange([]);
     return () => {};
   }
-  const start = clean.toLocaleLowerCase("tr");
+  const start = turkishLower(clean);
   const end = `${start}\uf8ff`;
   const q = query(
     collection(db, "userProfiles"),
@@ -215,14 +227,9 @@ export function subscribeUserProfiles(
 }
 
 /**
- * Elde olan listeyi süzer. Kural: **önek** eşleşmesi (`startsWith`), kelime içi
- * arama yok — uzak sorgunun (`>=` / `<  prefix\uf8ff`) davranışıyla aynı olsun.
- * Adsız/"Gezgin" profiller burada da gizlenir.
+ * Eldeki listede önek araması. Eskiden kelime içi (`includes`) eşleşme
+ * yapıyordu; arama sözleşmesi artık her yerde önek-only (rankProfiles).
  */
 export function searchProfilesLocal(profiles: UserProfile[], queryText: string): UserProfile[] {
-  const needle = queryText.trim().toLocaleLowerCase("tr");
-  if (!needle) return [];
-  return profiles
-    .filter((profile) => profile.displayNameLower.startsWith(needle) && !isPlaceholderProfile(profile))
-    .slice(0, USER_PROFILES_LIMIT);
+  return rankProfiles(profiles, queryText, { limit: USER_PROFILES_LIMIT });
 }

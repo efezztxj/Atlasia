@@ -1,121 +1,116 @@
 /**
- * Atlasia — Takip (İŞ 1d önkoşulu)
+ * Atlasia — Takip listesi (rozet/takip özelliğinin kural + istemci önkoşulu)
  *
- * Model (ücretsiz kota, Spark):
- * - `users/{uid}/following/{targetUid}` → { targetUid, targetName, since }
- *   Yazan: yalnız sahibi. Kendini takip edemez. Alanlar dar (kural hasOnly).
- * - Takipçi sayısı: `collectionGroup("following").where("targetUid","==",uid)`
- *   üzerinden `getCountFromServer()` — Spark planında toplama sorgusu vardır,
- *   belge okumaz.
+ * Veri modeli: users/{uid}/following/{targetUid}
+ * - Yazan/silen/okuyan yalnız listenin sahibi (kurallar `uid == request.auth.uid`).
+ * - Kendini takip yok; kayıt güncellenemez, takipten çıkma belgeyi siler.
+ * - "Takipçiler" yolu bilinçli olarak yok: birinin kimi takip ettiğinin
+ *   listesi yalnız sahibine açık kalır.
  *
- * Arayüz YOK: bu modül yalnız veri katmanı ve sözleşmedir (İŞ 1d).
- * Kural tarafı `firestore.rules` içindeki `users/{uid}/following` bloğu;
- * liste kuralı `targetUid == request.auth.uid` kanıtı istediği için toplama
- * sorgusu **her zaman** where taşımak zorundadır (kural filtre değildir).
+ * Arayüz bu modüle henüz bağlı değil; önce kural ve sözleşme kilitlenir.
  */
 import {
   collection,
-  collectionGroup,
   deleteDoc,
   doc,
-  getCountFromServer,
+  getDocs,
   limit,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
   setDoc,
-  where,
   type DocumentData,
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { withoutUndefined } from "./firestoreValue";
 
+/** Kuraldaki `boundedList(100)` ile birebir aynı tavan. */
 export const FOLLOWING_LIMIT = 100;
+const UID_MAX = 128;
 
-export interface FollowRef {
+export interface FollowRecord {
+  followerUid: string;
   targetUid: string;
-  targetName: string;
-  since: number;
+  createdAt: number;
 }
 
-function toMillis(value: unknown): number {
-  if (typeof value === "number") return value;
-  if (value && typeof value === "object" && "toMillis" in value && typeof (value as { toMillis: () => number }).toMillis === "function") {
-    return (value as { toMillis: () => number }).toMillis();
+function toMillis(v: unknown): number {
+  if (typeof v === "number") return v;
+  if (v && typeof v === "object" && "toMillis" in v && typeof (v as { toMillis: () => number }).toMillis === "function") {
+    return (v as { toMillis: () => number }).toMillis();
   }
   return 0;
-}
-
-export function normalizeFollow(id: string, raw: DocumentData): FollowRef {
-  return {
-    targetUid: typeof raw.targetUid === "string" ? raw.targetUid : id,
-    targetName: typeof raw.targetName === "string" ? raw.targetName : "",
-    since: toMillis(raw.since),
-  };
-}
-
-export function validateFollowInput(input: { uid: string; targetUid: string; targetName: string }): string | null {
-  const uid = input.uid.trim();
-  const targetUid = input.targetUid.trim();
-  const targetName = input.targetName.trim();
-  if (!uid) return "follow/uid-invalid";
-  if (!targetUid) return "follow/target-invalid";
-  // Kural da reddeder; istemci boşuna yazmasın diye burada da durur.
-  if (uid === targetUid) return "follow/self";
-  if (targetUid.length > 128) return "follow/target-invalid";
-  if (targetName.length < 1 || targetName.length > 100) return "follow/name-invalid";
-  return null;
-}
-
-function requireDb() {
-  if (!db) throw Object.assign(new Error("Firestore hazır değil."), { code: "data/unavailable" });
-  return db;
 }
 
 function dataError(code: string, message: string): Error & { code: string } {
   return Object.assign(new Error(message), { code });
 }
 
-/** Takip et. Kendini takip etmek ve boş ad kural/istemci tarafında reddedilir. */
-export async function followUser(input: { uid: string; targetUid: string; targetName: string }): Promise<void> {
-  const firestore = requireDb();
-  const invalid = validateFollowInput(input);
-  if (invalid) throw dataError(invalid, "Takip bilgileri geçersiz.");
-  const uid = input.uid.trim();
-  const targetUid = input.targetUid.trim();
+/** Takip çiftini kural sınırlarıyla doğrular; geçersizse kodlu hata fırlatır. */
+export function validateFollowPair(uid: string, targetUid: string): { followerUid: string; targetUid: string } {
+  const followerUid = uid.trim();
+  const cleanTarget = targetUid.trim();
+  if (!followerUid || followerUid.length > UID_MAX || !cleanTarget || cleanTarget.length > UID_MAX) {
+    throw dataError("follow/uid-invalid", "Kullanıcı kimliği geçersiz.");
+  }
+  if (followerUid === cleanTarget) throw dataError("follow/self", "Kendini takip edemezsin.");
+  return { followerUid, targetUid: cleanTarget };
+}
+
+export function normalizeFollow(targetUid: string, raw: DocumentData): FollowRecord {
+  return {
+    followerUid: typeof raw.followerUid === "string" ? raw.followerUid : "",
+    targetUid: typeof raw.targetUid === "string" ? raw.targetUid : targetUid,
+    createdAt: toMillis(raw.createdAt),
+  };
+}
+
+export async function followUser(uid: string, targetUid: string): Promise<void> {
+  if (!db) throw dataError("data/unavailable", "Firestore hazir degil.");
+  const pair = validateFollowPair(uid, targetUid);
   await setDoc(
-    doc(firestore, "users", uid, "following", targetUid),
+    doc(db, `users/${pair.followerUid}/following/${pair.targetUid}`),
     withoutUndefined({
-      targetUid,
-      targetName: input.targetName.trim(),
-      since: serverTimestamp(),
+      followerUid: pair.followerUid,
+      targetUid: pair.targetUid,
+      createdAt: serverTimestamp(),
     }),
   );
 }
 
-/** Takipten çık. Yalnız kendi listesinde çalışır. */
 export async function unfollowUser(uid: string, targetUid: string): Promise<void> {
-  const firestore = requireDb();
-  const cleanUid = uid.trim();
-  const cleanTarget = targetUid.trim();
-  if (!cleanUid || !cleanTarget) throw dataError("follow/target-invalid", "Takip bilgileri geçersiz.");
-  await deleteDoc(doc(firestore, "users", cleanUid, "following", cleanTarget));
+  if (!db) throw dataError("data/unavailable", "Firestore hazir degil.");
+  const pair = validateFollowPair(uid, targetUid);
+  await deleteDoc(doc(db, `users/${pair.followerUid}/following/${pair.targetUid}`));
 }
 
-/** Kendi takip listesi (en yeni önce, 100 kayıt tavanı — kural ile aynı). */
+/** Kendi takip listen (en yeni 100). Kurallar başkasının listesini okutmaz. */
+export async function fetchFollowing(uid: string): Promise<FollowRecord[]> {
+  if (!db) throw dataError("data/unavailable", "Firestore hazir degil.");
+  const clean = uid.trim();
+  if (!clean) throw dataError("follow/uid-invalid", "Kullanıcı kimliği geçersiz.");
+  const snap = await getDocs(query(
+    collection(db, `users/${clean}/following`),
+    orderBy("createdAt", "desc"),
+    limit(FOLLOWING_LIMIT),
+  ));
+  return snap.docs.map((item) => normalizeFollow(item.id, item.data()));
+}
+
 export function subscribeFollowing(
   uid: string,
-  onChange: (items: FollowRef[]) => void,
+  onChange: (items: FollowRecord[]) => void,
   onError?: (error: Error) => void,
 ): () => void {
-  if (!db || !uid.trim()) {
+  const clean = uid.trim();
+  if (!db || !clean) {
     onChange([]);
     return () => {};
   }
   const q = query(
-    collection(db, "users", uid.trim(), "following"),
-    orderBy("since", "desc"),
+    collection(db, `users/${clean}/following`),
+    orderBy("createdAt", "desc"),
     limit(FOLLOWING_LIMIT),
   );
   return onSnapshot(
@@ -123,30 +118,4 @@ export function subscribeFollowing(
     (snap) => onChange(snap.docs.map((item) => normalizeFollow(item.id, item.data()))),
     onError,
   );
-}
-
-/**
- * Takipçi sayısı — collection-group `count()`.
- *
- * `where("targetUid","==",uid)` ZORUNLU: kural listeyi yalnız bu kanıtla açar.
- * Toplama sorgusu limit göndermez; bu yüzden kuralda boundedList yok (bkz.
- * firestore.rules → `match /{path=**}/following`).
- */
-export async function countFollowers(uid: string): Promise<number> {
-  const firestore = requireDb();
-  const clean = uid.trim();
-  if (!clean) return 0;
-  const snapshot = await getCountFromServer(
-    query(collectionGroup(firestore, "following"), where("targetUid", "==", clean)),
-  );
-  return snapshot.data().count;
-}
-
-/** Takip edilen kişi sayısı — kendi listesi üzerinden count(). */
-export async function countFollowing(uid: string): Promise<number> {
-  const firestore = requireDb();
-  const clean = uid.trim();
-  if (!clean) return 0;
-  const snapshot = await getCountFromServer(collection(firestore, "users", clean, "following"));
-  return snapshot.data().count;
 }
