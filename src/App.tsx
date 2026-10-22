@@ -9,7 +9,7 @@ import BottomPanel from "./components/BottomPanel";
 import AddDiscoveryModal from "./components/AddDiscoveryModal";
 import Drawer from "./components/Drawer";
 import SocialPanel from "./components/SocialPanel";
-import SettingsPanel, { type SettingsContentProps } from "./components/SettingsPanel";
+import type { SettingsContentProps } from "./components/SettingsPanel";
 import AtlasAssistant from "./components/AtlasAssistant";
 import Onboarding from "./components/Onboarding";
 import PlaceDetails from "./components/PlaceDetails";
@@ -53,6 +53,8 @@ import { ensureFriendIndex } from "./lib/friendships";
 const MapView = lazy(() => import("./components/MapView"));
 // Profil paneli yalnız açılınca yüklenir (ilk paket bütçesi).
 const ProfilePanel = lazy(() => import("./components/ProfilePanel"));
+// Ayarlar paneli de yalnız açılınca yüklenir (entry paket bütçesi).
+const SettingsPanel = lazy(() => import("./components/SettingsPanel"));
 const MAP_STYLE_KEY = "atlasia.mapStyle.v1";
 
 function initialMapStyle(): BaseMapStyle {
@@ -718,6 +720,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
           <div className="mobile-search-sheet absolute inset-x-3 top-[calc(64px+env(safe-area-inset-top))] rounded-[24px] border border-leaf/30 bg-[#031d17] p-3 shadow-2xl">
             <SearchBox
               places={allPlaces}
+              autoFocus
               onPick={(result) => { setSearchOpen(false); handleSearchPick(result); }}
               onOpenFilters={() => { setSearchOpen(false); setDrawerOpen(true); }}
             />
@@ -987,7 +990,9 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
       )}
 
       {settingsOpen && (
-        <SettingsPanel onClose={closeSettings} {...settingsContentProps} />
+        <Suspense fallback={null}>
+          <SettingsPanel onClose={closeSettings} {...settingsContentProps} />
+        </Suspense>
       )}
 
       {onboarding && (

@@ -2,19 +2,51 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, MapPin, Search, SlidersHorizontal, Sparkles, Star, X } from "lucide-react";
 import type { Place } from "../types";
 import { normalize, searchWorld, type SearchResult } from "../utils/geo";
+import { storageGet, storageSet } from "../utils/storage";
+
+const RECENTS_KEY = "atlasia.recentSearches.v1";
+const RECENTS_LIMIT = 5;
+
+interface RecentSearch {
+  label: string;
+  sub: string;
+  lng: number;
+  lat: number;
+}
+
+function readRecents(): RecentSearch[] {
+  const raw = storageGet(RECENTS_KEY);
+  if (!raw) return [];
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((item): item is RecentSearch =>
+        !!item && typeof item === "object"
+        && typeof (item as RecentSearch).label === "string"
+        && typeof (item as RecentSearch).lng === "number"
+        && typeof (item as RecentSearch).lat === "number")
+      .slice(0, RECENTS_LIMIT);
+  } catch {
+    return [];
+  }
+}
 
 interface Props {
   places: Place[];
   onPick: (r: SearchResult) => void;
   onOpenFilters?: () => void;
+  /** Mobil arama sayfası açılırken klavyeyi hazırlar. */
+  autoFocus?: boolean;
 }
 
-export default function SearchBox({ places, onPick, onOpenFilters }: Props) {
+export default function SearchBox({ places, onPick, onOpenFilters, autoFocus = false }: Props) {
   const [q, setQ] = useState("");
   const [remote, setRemote] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
   const [open, setOpen] = useState(false);
+  const [recents, setRecents] = useState<RecentSearch[]>(readRecents);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   const local = useMemo<SearchResult[]>(() => {
@@ -77,11 +109,28 @@ export default function SearchBox({ places, onPick, onOpenFilters }: Props) {
     ...remote.filter((r) => !local.some((l) => normalize(l.label) === normalize(r.label))),
   ];
   const showList = open && q.trim().length >= 2;
+  const showRecents = open && q.trim().length === 0 && recents.length > 0;
+
+  const rememberPick = (r: SearchResult) => {
+    // Son aramalar yalnız bu cihazda tutulur; yakınlık/konum verisi yazılmaz.
+    const next = [
+      { label: r.label, sub: r.sub, lng: r.lng, lat: r.lat },
+      ...recents.filter((item) => normalize(item.label) !== normalize(r.label)),
+    ].slice(0, RECENTS_LIMIT);
+    setRecents(next);
+    storageSet(RECENTS_KEY, JSON.stringify(next));
+  };
 
   const pick = (r: SearchResult) => {
     setOpen(false);
     setQ(r.label);
+    rememberPick(r);
     onPick(r);
+  };
+
+  const clearRecents = () => {
+    setRecents([]);
+    storageSet(RECENTS_KEY, "[]");
   };
 
   return (
@@ -106,6 +155,7 @@ export default function SearchBox({ places, onPick, onOpenFilters }: Props) {
             }}
             placeholder="Ülke, şehir ya da yer ara..."
             autoComplete="off"
+            autoFocus={autoFocus}
             className="min-w-0 flex-1 bg-transparent text-[13px] text-mint outline-none placeholder:text-mint/70"
           />
           {loading ? (
@@ -130,6 +180,31 @@ export default function SearchBox({ places, onPick, onOpenFilters }: Props) {
             </>
           )}
         </div>
+
+        {showRecents && (
+          <div className="animate-fade panel-solid absolute top-14 right-0 left-0 z-20 overflow-hidden rounded-2xl border border-leaf/20 p-1.5 shadow-2xl shadow-black/50">
+            <div className="flex items-center justify-between px-2 pt-1 pb-1.5">
+              <p className="text-[11px] font-bold tracking-[0.14em] text-sun uppercase">Son aramalar</p>
+              <button type="button" onClick={clearRecents} className="min-h-8 rounded-full px-2 text-[11px] text-mint/65 transition hover:text-mint">
+                Temizle
+              </button>
+            </div>
+            {recents.map((item) => (
+              <button
+                key={`${item.label}-${item.lat}`}
+                type="button"
+                onClick={() => pick({ id: `recent-${item.label}`, label: item.label, sub: item.sub, lng: item.lng, lat: item.lat })}
+                className="flex w-full items-center gap-3 rounded-xl px-2.5 py-2.5 text-left transition hover:bg-white/[0.06]"
+              >
+                <MapPin className="size-4 shrink-0 text-leaf" />
+                <span className="min-w-0">
+                  <span className="block truncate text-[13px] font-semibold text-mint">{item.label}</span>
+                  <span className="block truncate text-[11px] text-mint/60">{item.sub}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
 
         {showList && (
           <div className="animate-fade thin-scroll absolute top-14 right-0 left-0 z-20 max-h-[min(50dvh,420px)] overflow-y-auto rounded-2xl border border-leaf/20 bg-ink-2/95 p-1.5 shadow-2xl shadow-black/50 backdrop-blur-xl">

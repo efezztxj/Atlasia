@@ -5,7 +5,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronUp,
-  Map,
   MapPin,
   MessagesSquare,
   Sparkles,
@@ -16,6 +15,7 @@ import { formatAccuracy } from "../hooks/useGeolocation";
 import type { CategoryId, Place } from "../types";
 import { cn } from "../utils/cn";
 import PlaceImage from "./PlaceImage";
+import MobileDiscoverySheet from "./MobileDiscoverySheet";
 import { useCollections } from "../hooks/useCollections";
 
 interface Props {
@@ -67,20 +67,41 @@ export default function BottomPanel({
 }: Props) {
   const { savePlace, isSaved } = useCollections();
 
-  // Kapatılan keşif alanı kaybolmaz: açık panelin yer kartını tek, ince bir
-  // satır olarak korur. Kartın metin tarafına dokunmak paneli yeniden açar.
+  const mobileSheet = (
+    <MobileDiscoverySheet
+      open={open}
+      onToggle={onToggle}
+      category={category}
+      onCategory={onCategory}
+      current={current}
+      isActive={isActive}
+      total={total}
+      onShow={onShow}
+      onCycle={onCycle}
+      canDelete={canDelete}
+      onDelete={onDelete}
+      onAdd={onAdd}
+      locationLabel={locationLabel}
+      nearby={nearby}
+    />
+  );
+
+  // Kapatılan keşif alanı kaybolmaz: masaüstünde açık panelin yer kartını tek,
+  // ince bir satır olarak korur; mobilde peek kademesindeki alt sayfa görünür.
   if (!open) {
     return (
+      <>
+      {mobileSheet}
       <div
         className={cn(
-          "pointer-events-none absolute inset-x-0 bottom-[calc(70px+env(safe-area-inset-bottom))] z-20 flex justify-center px-3 pb-3 transition-[padding] duration-500 md:bottom-0 md:pb-7",
+          "pointer-events-none absolute inset-x-0 bottom-[calc(70px+env(safe-area-inset-bottom))] z-20 hidden justify-center px-3 pb-3 transition-[padding] duration-500 md:bottom-0 md:flex md:pb-7",
           shifted && "lg:pl-[420px]",
         )}
       >
         <div className="w-full max-w-[920px]">
           <section
             aria-label="Daraltılmış keşif önerisi"
-            className="mobile-discovery-panel desktop-discovery-panel gold-frame pointer-events-auto rounded-[22px] bg-[#021915]/95 p-2.5 backdrop-blur-xl max-md:fixed max-md:inset-x-3 max-md:bottom-[calc(120px+env(safe-area-inset-bottom))] max-md:z-20 md:rounded-[28px] md:p-4"
+            className="desktop-discovery-panel gold-frame pointer-events-auto hidden rounded-[28px] bg-[#021915]/95 p-2.5 backdrop-blur-xl md:block md:p-4"
           >
             {current ? (
               <div className="flex min-w-0 items-center gap-1.5 md:gap-3">
@@ -134,82 +155,20 @@ export default function BottomPanel({
           </section>
         </div>
       </div>
+      </>
     );
   }
 
   return (
+    <>
+    {mobileSheet}
     <div
       className={cn(
-        "pointer-events-none absolute inset-x-0 bottom-[calc(70px+env(safe-area-inset-bottom))] z-20 flex justify-center px-3 pb-3 transition-[padding] duration-500 md:bottom-0 md:pb-7",
+        "pointer-events-none absolute inset-x-0 bottom-[calc(70px+env(safe-area-inset-bottom))] z-20 hidden justify-center px-3 pb-3 transition-[padding] duration-500 md:bottom-0 md:flex md:pb-7",
         shifted && "lg:pl-[420px]",
       )}
     >
       <div className="w-full max-w-[920px]">
-        <section aria-label="Keşif önerileri" className="mobile-discovery-panel gold-frame pointer-events-auto rounded-[26px] bg-[#021b16] px-3.5 pb-3.5 pt-2.5 max-md:fixed max-md:inset-x-3 max-md:bottom-[calc(120px+env(safe-area-inset-bottom))] max-md:z-20 max-md:max-h-[42dvh] max-md:overflow-y-auto md:hidden">
-          <span aria-hidden className="sheet-handle mb-2.5" />
-          <div className="flex items-center justify-between gap-3">
-            <p className="truncate text-[12px] text-mint/75">Yol üstündekilerden küçük ipuçları</p>
-            <button type="button" onClick={onToggle} aria-expanded={open} aria-label={open ? "Öneri panelini küçült" : "Öneri panelini genişlet"} className="flex min-h-9 shrink-0 items-center gap-1 text-[12px] font-medium text-sun">
-              <MapPin className="size-3.5" />{total} iz
-              <ChevronDown className={cn("size-3.5 transition-transform", !open && "rotate-180")} />
-            </button>
-          </div>
-
-          <h2 className="font-display mt-1.5 text-[18px] leading-tight font-semibold tracking-tight text-mint">Bir sonraki güzel tesadüfün</h2>
-          {open && (
-            <>
-              <p className="mt-0.5 text-[12px] leading-[1.35] text-mint/75">Küreyi çevir ya da bir nokta seç. Merakının götürdüğü yere.</p>
-              <div className="mobile-category-grid mt-3 grid grid-cols-5 gap-1.5">
-                {CATEGORIES.map((item) => {
-                  const Icon = item.icon;
-                  const selected = category === item.id;
-                  return (
-                    <button
-                      type="button"
-                      key={item.id}
-                      onClick={() => onCategory(selected ? null : item.id)}
-                      aria-pressed={selected}
-                      className={cn(
-                        "mobile-category-item pressable flex min-h-[46px] flex-col items-center justify-center gap-0.5 rounded-[18px] border px-0.5 py-1 text-center text-[10px] leading-[1.05] transition",
-                        selected ? "btn-gold border-transparent font-bold" : "border-leaf/35 bg-white/[0.015] text-mint/90",
-                      )}
-                    >
-                      <Icon className="size-[15px] shrink-0" strokeWidth={1.65} />
-                      <span>{item.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              {current ? (
-                <>
-                  <div className="mt-3 flex items-center gap-2.5 border-t border-white/10 pt-2.5">
-                    <PlaceThumb place={current} className="size-[52px] shrink-0 rounded-xl" />
-                    <button type="button" onClick={() => onShow(current)} className="min-w-0 flex-1 text-left">
-                      <span className="block truncate text-[13px] font-semibold text-mint">{current.title} <span className="font-normal text-sun">· {current.kind === "user" ? current.author : "Atlasia rehberi"}</span></span>
-                      <span className="mt-0.5 block line-clamp-2 text-[11px] leading-[1.25] text-mint/75">{current.note}</span>
-                    </button>
-                    {canDelete(current) && (
-                      <button type="button" onClick={() => void onDelete(current)} aria-label="Bu izimi sil" className="grid size-10 shrink-0 place-items-center rounded-full border border-red-300/25 text-red-200/80 transition hover:bg-red-400/10 hover:text-red-200">
-                        <Trash2 className="size-4" />
-                      </button>
-                    )}
-                    <button type="button" onClick={() => onCycle(1)} aria-label="Sonraki keşif yerini göster" className="grid size-10 shrink-0 place-items-center rounded-full border border-leaf/35 text-mint transition hover:bg-white/5">
-                      <ChevronRight className="size-4" />
-                    </button>
-                  </div>
-                  <button type="button" onClick={() => onShow(current)} className="mt-2 flex min-h-[44px] w-full items-center justify-center gap-2 btn-gold rounded-full px-4 text-[13px] font-bold text-[#10241A] transition">
-                    <Map className="size-[17px]" strokeWidth={1.8} />Haritada gör <ArrowRight className="size-4" />
-                  </button>
-                </>
-              ) : (
-                <div className="mt-3 flex items-center justify-between gap-2 border-t border-white/10 pt-3">
-                  <p className="text-[12px] text-mint/75">Bu kategoride henüz iz yok.</p>
-                  <button type="button" onClick={onAdd} className="btn-gold min-h-10 rounded-full px-3 text-[12px] font-semibold text-ink">İz bırak</button>
-                </div>
-              )}
-            </>
-          )}
-        </section>
 
         {/* Panel üstü şerit */}
         <div className="mb-3 hidden grid-cols-[1fr_auto_1fr] items-end gap-2 px-1 text-[12px] md:grid">
@@ -364,5 +323,6 @@ export default function BottomPanel({
         </section>
       </div>
     </div>
+    </>
   );
 }

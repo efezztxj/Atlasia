@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Atlasia — Mobil v2 ön taslakları</title>
+<style>
+  :root {
+    --ink: #021512;
+    --ink-2: #04241d;
+    --ink-3: #06291f;
+    --mint: #e9f2e9;
+    --mint-70: #cfe0d6;
+    --mint-55: #a9c1b4;
+    --sun: #eab54f;
+    --sun-2: #f3c870;
+    --leaf: #5be0a6;
+    --line: rgba(234, 181, 79, .28);
+    --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 40px 28px 80px;
+    background: radial-gradient(1200px 600px at 20% -10%, #063a2e 0%, #021512 55%, #010b09 100%);
+    color: var(--mint); font-family: var(--font);
+  }
+  header.page { max-width: 1180px; margin: 0 auto 38px; }
+  .eyebrow { display: flex; align-items: center; gap: 10px; font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: var(--sun); font-weight: 700; }
+  .eyebrow::before { content: ""; width: 26px; height: 1px; background: var(--sun); }
+  h1 { font-size: clamp(28px, 3.4vw, 44px); line-height: 1.05; letter-spacing: -.03em; margin: 14px 0 10px; font-weight: 600; }
+  h1 span { color: var(--sun); }
+  header.page p { max-width: 760px; color: var(--mint-70); font-size: 14.5px; line-height: 1.7; margin: 0; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+  .chip { border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; font-size: 12px; color: var(--mint-70); }
+  .chip b { color: var(--leaf); font-weight: 700; }
+
+  .grid { max-width: 1180px; margin: 0 auto; display: grid; gap: 30px 26px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+  .card { display: grid; gap: 12px; }
+  .card h2 { font-size: 15px; margin: 0; font-weight: 700; letter-spacing: .01em; }
+  .card .note { font-size: 12.5px; line-height: 1.65; color: var(--mint-55); margin: 0; }
+  .card .note b { color: var(--mint-70); font-weight: 600; }
+
+  /* --- telefon çerçevesi --- */
+  .phone {
+    position: relative; width: 100%; max-width: 340px; aspect-ratio: 340 / 690;
+    border-radius: 38px; padding: 9px;
+    background: linear-gradient(160deg, #123a2f, #031a15 55%);
+    box-shadow: 0 30px 60px rgba(0,0,0,.55), 0 0 0 1px rgba(243,200,112,.22);
+    margin: 0 auto;
+  }
+  .screen { position: relative; width: 100%; height: 100%; border-radius: 30px; overflow: hidden; background: #031d17; }
+  .statusbar { position: absolute; inset: 0 0 auto; height: 26px; display: flex; align-items: center; justify-content: space-between; padding: 0 18px; font-size: 9.5px; color: rgba(233,242,233,.75); z-index: 6; }
+
+  /* harita zemini */
+  .map { position: absolute; inset: 0; background:
+      radial-gradient(70% 45% at 52% 46%, #2a5f4a 0%, #14402f 38%, #08251c 62%, #041a14 100%);
+  }
+  .globe {
+    position: absolute; left: 50%; top: 41%; width: 78%; aspect-ratio: 1; transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 35% 30%, #7fd0ae 0%, #3f9d7b 22%, #1f6a52 48%, #0d3a2c 72%, #06231b 100%);
+    box-shadow: inset -18px -22px 46px rgba(0,0,0,.55), 0 0 60px rgba(91,224,166,.18);
+    opacity: .85;
+  }
+  .pin { position: absolute; width: 11px; height: 11px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: var(--sun); box-shadow: 0 0 0 3px rgba(234,181,79,.18), 0 4px 10px rgba(0,0,0,.5); }
+  .pin.g { background: var(--leaf); }
+
+  /* üst bar */
+  .topbar { position: absolute; inset: 26px 0 auto; height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; z-index: 5; background: rgba(2,21,18,.82); backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); }
+  .brand { font-weight: 700; font-size: 18px; letter-spacing: -.5px; }
+  .brand i { font-style: normal; color: var(--sun); }
+  .topbar .acts { display: flex; gap: 4px; }
+  .icon-btn { width: 32px; height: 32px; border-radius: 999px; display: grid; place-items: center; color: var(--mint); background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); font-size: 13px; position: relative; }
+  .dot { position: absolute; top: 2px; right: 2px; width: 14px; height: 14px; border-radius: 999px; background: var(--sun); color: #10241a; font-size: 8.5px; font-weight: 800; display: grid; place-items: center; box-shadow: 0 0 0 2px var(--ink); }
+  .hero { position: absolute; top: 78px; left: 12px; right: 12px; z-index: 4; }
+  .hero h3 { margin: 0; font-size: 23px; line-height: 1.02; letter-spacing: -.03em; font-weight: 700; text-shadow: 0 2px 14px rgba(0,0,0,.65); }
+  .hero h3 em { font-style: normal; color: var(--sun); }
+  .hero p { margin: 5px 0 0; font-size: 10.5px; line-height: 1.4; color: var(--mint-70); max-width: 230px; text-shadow: 0 1px 8px rgba(0,0,0,.6); }
+
+  /* harita kontrolleri */
+  .map-ctrl { position: absolute; right: 10px; display: flex; flex-direction: column; gap: 6px; z-index: 4; }
+  .ctrl { width: 38px; height: 38px; border-radius: 999px; display: grid; place-items: center; background: rgba(2,21,18,.86); border: 1px solid rgba(91,224,166,.32); color: var(--mint); font-size: 13px; backdrop-filter: blur(10px); }
+  .ctrl.on { background: linear-gradient(135deg, var(--sun-2), #d99a33); color: #10241a; border-color: transparent; font-weight: 700; }
+
+  /* alt sayfa */
+  .sheet {
+    position: absolute; left: 12px; right: 12px; z-index: 7;
+    background: #021b16; border: 1px solid var(--line); border-radius: 26px;
+    box-shadow: 0 -18px 46px rgba(0,0,0,.5);
+    padding: 8px 13px 12px; display: flex; flex-direction: column; gap: 7px;
+  }
+  .handle { width: 44px; height: 4px; border-radius: 999px; background: rgba(233,242,233,.35); margin: 0 auto 3px; }
+  .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 10.5px; color: var(--mint-70); }
+  .sheet-head .where { display: flex; align-items: center; gap: 5px; min-width: 0; }
+  .sheet-head .where b { color: var(--sun); font-weight: 700; }
+  .sheet-title { font-size: 15px; font-weight: 700; letter-spacing: -.02em; margin: 0; }
+  .sheet-sub { font-size: 10px; color: var(--mint-55); margin: 0; line-height: 1.4; }
+  .cats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+  .cat { display: grid; place-items: center; gap: 2px; padding: 5px 1px; border-radius: 14px; border: 1px solid rgba(91,224,166,.3); font-size: 8.5px; color: var(--mint-70); }
+  .cat.sel { background: linear-gradient(135deg, var(--sun-2), #d99a33); color: #10241a; border-color: transparent; font-weight: 800; }
+  .cat i { font-style: normal; font-size: 12px; }
+  .place { display: flex; gap: 9px; align-items: flex-start; border-top: 1px solid rgba(255,255,255,.09); padding-top: 8px; }
+  .thumb { width: 62px; height: 50px; border-radius: 11px; flex: none; background: linear-gradient(135deg, #8a6a3a, #2b1f10); position: relative; overflow: hidden; }
+  .thumb::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,.18), transparent 45%); }
+  .place .txt { min-width: 0; flex: 1; }
+  .place .txt b { font-size: 11px; display: block; }
+  .place .txt b em { font-style: normal; font-weight: 400; color: var(--sun); }
+  .place .txt span { display: block; font-size: 9.5px; color: var(--mint-55); line-height: 1.35; margin-top: 2px; }
+  .actions { display: grid; grid-template-columns: 40px 40px 1fr; gap: 7px; align-items: center; }
+  .round { width: 40px; height: 40px; border-radius: 999px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.16); color: var(--sun); font-size: 13px; }
+  .round.g { color: var(--mint); }
+  .primary { height: 40px; border-radius: 999px; display: flex; align-items: center; justify-content: center; gap: 6px; background: linear-gradient(135deg, var(--sun-2), #eab54f 55%, #d99a33); color: #10241a; font-weight: 800; font-size: 11.5px; }
+  .hint { font-size: 9px; color: var(--mint-55); display: flex; align-items: center; gap: 5px; }
+
+  /* alt eylem satırı + sekme çubuğu */
+  .fabrow { position: absolute; left: 0; right: 0; bottom: 58px; height: 48px; z-index: 6; }
+  .fab { position: absolute; top: 2px; width: 44px; height: 44px; border-radius: 999px; display: grid; place-items: center; font-size: 15px; }
+  .fab.plus { left: 50%; transform: translateX(-50%); background: linear-gradient(135deg, var(--sun-2), #d99a33); color: #10241a; font-weight: 800; box-shadow: 0 10px 24px rgba(234,181,79,.35); }
+  .fab.ai { right: 10px; background: linear-gradient(135deg, var(--sun-2), #d99a33); color: #10241a; }
+  .fab.walk { right: 62px; background: rgba(2,21,18,.9); border: 1px solid var(--line); color: var(--mint); }
+  .tabbar { position: absolute; left: 0; right: 0; bottom: 0; height: 58px; z-index: 6; display: flex; align-items: flex-start; justify-content: space-around; background: rgba(2,24,19,.95); border-top: 1px solid rgba(234,181,79,.38); backdrop-filter: blur(16px); }
+  .tab { display: grid; place-items: center; gap: 2px; font-size: 9px; color: var(--mint-70); padding-top: 8px; min-width: 56px; }
+  .tab i { font-style: normal; font-size: 15px; }
+  .tab.on { color: var(--sun); font-weight: 700; }
+  .tab.on i { filter: drop-shadow(0 0 6px rgba(234,181,79,.6)); }
+
+  /* katman menüsü */
+  .layers { position: absolute; right: 56px; z-index: 8; width: 200px; border-radius: 16px; border: 1px solid var(--line); background: #04201b; padding: 5px; box-shadow: 0 20px 44px rgba(0,0,0,.6); }
+  .layers .ltitle { font-size: 8.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--sun); font-weight: 800; padding: 5px 7px 3px; }
+  .lrow { display: flex; align-items: center; gap: 8px; padding: 6px; border-radius: 10px; }
+  .lrow .lic { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; font-size: 11px; background: rgba(91,224,166,.12); color: var(--leaf); }
+  .lrow.on .lic { background: rgba(234,181,79,.18); color: var(--sun); }
+  .lrow .ltext { flex: 1; min-width: 0; }
+  .lrow b { display: block; font-size: 10.5px; }
+  .lrow span { display: block; font-size: 8.5px; color: var(--mint-55); }
+  .switch { width: 30px; height: 18px; border-radius: 999px; border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.1); position: relative; flex: none; }
+  .switch::after { content: ""; position: absolute; top: 50%; left: 2px; width: 12px; height: 12px; border-radius: 999px; background: rgba(233,242,233,.8); transform: translateY(-50%); }
+  .switch.on { background: rgba(234,181,79,.85); border-color: rgba(234,181,79,.6); }
+  .switch.on::after { left: 14px; background: #10241a; }
+
+  /* arama */
+  .searchbar { position: absolute; top: 78px; left: 12px; right: 12px; z-index: 5; height: 44px; display: flex; align-items: center; gap: 9px; padding: 0 14px; border-radius: 999px; border: 1px solid rgba(91,224,166,.3); background: rgba(2,21,18,.88); backdrop-filter: blur(14px); font-size: 11px; color: var(--mint-70); }
+  .results { position: absolute; top: 128px; left: 12px; right: 12px; z-index: 6; border-radius: 18px; border: 1px solid rgba(91,224,166,.22); background: rgba(4,27,22,.98); padding: 6px; box-shadow: 0 20px 44px rgba(0,0,0,.55); }
+  .rtitle { display: flex; align-items: center; justify-content: space-between; padding: 5px 8px 6px; font-size: 8.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--sun); font-weight: 800; }
+  .rtitle span { color: var(--mint-55); letter-spacing: 0; text-transform: none; font-weight: 500; font-size: 9px; }
+  .rrow { display: flex; align-items: center; gap: 9px; padding: 8px; border-radius: 11px; }
+  .rrow + .rrow { border-top: 1px solid rgba(255,255,255,.05); }
+  .rrow i { font-style: normal; color: var(--leaf); font-size: 12px; }
+  .rrow b { display: block; font-size: 10.5px; }
+  .rrow span { display: block; font-size: 8.5px; color: var(--mint-55); }
+  .qr { display: flex; gap: 5px; padding: 6px 8px 8px; flex-wrap: wrap; }
+  .qr span { border: 1px solid rgba(91,224,166,.28); border-radius: 999px; padding: 4px 8px; font-size: 8.5px; color: var(--mint-70); }
+
+  .legend { max-width: 1180px; margin: 46px auto 0; border-top: 1px solid rgba(255,255,255,.1); padding-top: 22px; display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  .legend div { font-size: 12.5px; line-height: 1.7; color: var(--mint-55); }
+  .legend b { color: var(--mint); display: block; margin-bottom: 3px; font-size: 13px; }
+  .legend code { color: var(--sun); font-size: 11.5px; }
+</style>
+</head>
+<body>
+<header class="page">
+  <div class="eyebrow">Atlasia · mobil ön taslak</div>
+  <h1>Telefonda <span>tek elle</span> keşif</h1>
+  <p>Bu sayfa kod değil, karar taslağı: aynı renk ve tipografiyle üç kademeli keşif sayfası, katman menüsü ve son aramalar.
+     Referans kalıplar: Google Maps (katman FAB’ı, üç kademeli sayfa), Apple Maps (tutamaç + sürükleme), Airbnb/AllTrails
+     (arama önerileri ve kategori kısayolları), Instagram (alt sekme + orta eylem).</p>
+  <div class="meta">
+    <span class="chip"><b>Peek</b> 132px · kapalı panel kaybolmaz</span>
+    <span class="chip"><b>Yarım</b> 52dvh · kategoriler + yer kartı</span>
+    <span class="chip"><b>Tam</b> ekran − 196px · uzun içerik</span>
+    <span class="chip">Dokunma hedefi ≥ 40px</span>
+  </div>
+</header>
+
+<div class="grid">
+
+  <!-- 1. PEEK -->
+  <section class="card">
+    <div class="phone"><div class="screen">
+      <div class="statusbar"><span>09:41</span><span>◗◗ ⌁ ▮</span></div>
+      <div class="map"><div class="globe"></div>
+        <span class="pin" style="left:38%;top:34%"></span>
+        <span class="pin g" style="left:47%;top:29%"></span>
+        <span class="pin" style="left:52%;top:41%"></span>
+        <span class="pin" style="left:44%;top:47%"></span>
+        <span class="pin g" style="left:58%;top:36%"></span>
+      </div>
+      <div class="topbar">
+        <span class="brand">Atlasia<i>.</i></span>
+        <span class="acts"><span class="icon-btn">⌕</span><span class="icon-btn">🔔<span class="dot">2</span></span><span class="icon-btn" style="color:var(--sun)">☰</span></span>
+      </div>
+      <div class="hero"><h3>Dünyayı<br><em>merakınla</em><br>keşfet.</h3><p>Yolunu harita çizsin, gittiğin yerin hikâyesini gezginler anlatsın.</p></div>
+      <div class="map-ctrl" style="bottom: 268px">
+        <span class="ctrl">＋</span><span class="ctrl">－</span><span class="ctrl">◎</span><span class="ctrl on">▤</span>
+      </div>
+      <div class="sheet" style="bottom: 120px; padding-bottom: 10px;">
+        <div class="handle"></div>
+        <div class="sheet-head">
+          <span class="where">📍 <span>İzmir</span> · <b>28 iz</b></span>
+          <span style="color:var(--sun);font-weight:700">Aç ⌃</span>
+        </div>
+        <h4 class="sheet-title">Bir sonraki güzel tesadüfün</h4>
+        <p class="sheet-sub">Efes Antik Kenti · Atlasia rehberi</p>
+      </div>
+      <div class="fabrow">
+        <span class="fab plus">＋</span><span class="fab walk">⌁</span><span class="fab ai">✦</span>
+      </div>
+      <nav class="tabbar">
+        <span class="tab on"><i>◉</i>Keşfet</span><span class="tab"><i>▮</i>Kaydet</span>
+        <span class="tab"><i>◍</i>Topluluk</span><span class="tab"><i>◔</i>Profil</span><span class="tab"><i>◈</i>İzlerim</span>
+      </nav>
+    </div></div>
+    <h2>1 · Peek — kapalı ama kaybolmayan panel</h2>
+    <p class="note">Harita ekranın ~%70’ini korur. <b>Başlık + seçili yer</b> tek satırda; dokununca ya da yukarı sürükleyince yarım kademeye geçer.
+       Bu, mevcut “küçült” davranışının sürüklenebilir hâli — yeni ekran yok.</p>
+  </section>
+
+  <!-- 2. YARIM -->
+  <section class="card">
+    <div class="phone"><div class="screen">
+      <div class="statusbar"><span>09:41</span><span>◗◗ ⌁ ▮</span></div>
+      <div class="map"><div class="globe" style="top:28%"></div>
+        <span class="pin" style="left:44%;top:23%"></span><span class="pin g" style="left:52%;top:19%"></span>
+        <span class="pin" style="left:38%;top:26%"></span>
+      </div>
+      <div class="topbar">
+        <span class="brand">Atlasia<i>.</i></span>
+        <span class="acts"><span class="icon-btn">⌕</span><span class="icon-btn">🔔<span class="dot">2</span></span><span class="icon-btn" style="color:var(--sun)">☰</span></span>
+      </div>
+      <div class="hero" style="top:78px"><h3 style="font-size:17px">İzmir’de <em>bugün</em></h3><p style="font-size:9.5px">Seçili kategoriye göre 12 iz</p></div>
+      <div class="sheet" style="bottom: 120px; height: 330px">
+        <div class="handle"></div>
+        <div class="sheet-head">
+          <span class="where">📍 <span>İzmir</span> · <b>28 iz</b></span>
+          <span style="color:var(--sun);font-weight:700">Genişlet ⌃</span>
+        </div>
+        <h4 class="sheet-title">Sıradaki durak</h4>
+        <div class="cats">
+          <span class="cat"><i>🏛</i>Şehirler</span><span class="cat"><i>〰</i>Plajlar</span>
+          <span class="cat sel"><i>◭</i>Tarih</span><span class="cat"><i>❦</i>Doğa</span><span class="cat"><i>⛺</i>Kamp</span>
+          <span class="cat"><i>🍴</i>Yeme</span><span class="cat"><i>📷</i>Fotoğraf</span><span class="cat"><i>✦</i>Rotalar</span>
+          <span class="cat"><i>◇</i>Topluluk</span><span class="cat"><i>⚠</i>Sorunlar</span>
+        </div>
+        <div class="place">
+          <span class="thumb"></span>
+          <span class="txt"><b>Efes Antik Kenti <em>· Atlasia rehberi</em></b>
+          <span>Celsus kütüphanesi ve Mermer Cadde; sabah 08.00’de kalabalık az.</span></span>
+        </div>
+        <div class="actions">
+          <span class="round">🔖</span><span class="round g">›</span>
+          <span class="primary">Haritada gör →</span>
+        </div>
+        <p class="hint">✦ Paneli yukarı sürükleyerek daha fazla yer gör.</p>
+      </div>
+      <div class="fabrow"><span class="fab plus">＋</span><span class="fab walk">⌁</span><span class="fab ai">✦</span></div>
+      <nav class="tabbar">
+        <span class="tab on"><i>◉</i>Keşfet</span><span class="tab"><i>▮</i>Kaydet</span>
+        <span class="tab"><i>◍</i>Topluluk</span><span class="tab"><i>◔</i>Profil</span><span class="tab"><i>◈</i>İzlerim</span>
+      </nav>
+    </div></div>
+    <h2>2 · Yarım — kategoriler + seçili yer</h2>
+    <p class="note">Kategoriler 5’li ızgarada (yeni: kaydırma yok), yer kartında <b>kaydet / sonraki / haritada gör</b> eşit hedefler.
+       Tek elle başparmak bölgesinde: ana eylem sağ altta 40px yüksekliğinde.</p>
+  </section>
+
+  <!-- 3. TAM -->
+  <section class="card">
+    <div class="phone"><div class="screen">
+      <div class="statusbar"><span>09:41</span><span>◗◗ ⌁ ▮</span></div>
+      <div class="map"><div class="globe" style="top:14%;width:60%"></div></div>
+      <div class="topbar">
+        <span class="brand">Atlasia<i>.</i></span>
+        <span class="acts"><span class="icon-btn">⌕</span><span class="icon-btn">🔔<span class="dot">2</span></span></span>
+      </div>
+      <div class="sheet" style="bottom: 120px; top: 88px; border-radius:26px">
+        <div class="handle"></div>
+        <div class="sheet-head">
+          <span class="where">📍 <span>Efes · Selçuk</span> · <b>1,8 km</b></span>
+          <span style="color:var(--sun);font-weight:700">Küçült ⌄</span>
+        </div>
+        <h4 class="sheet-title" style="font-size:17px">Efes Antik Kenti</h4>
+        <p class="sheet-sub">Antik kentin mermer caddesi, Celsus Kütüphanesi ve Büyük Tiyatro aynı yürüyüşte.
+           Sabah erken saatlerde gölge az, kalabalık daha az.</p>
+        <div class="thumb" style="width:100%;height:96px;border-radius:16px"></div>
+        <div class="qr" style="padding:0">
+          <span>🏛 Tarih</span><span>⏱ 2–3 saat</span><span>♿ Kısmen uygun</span><span>🎧 Sesli rehber</span>
+        </div>
+        <p class="sheet-sub" style="color:var(--mint-70)">Yol üstündeki ipuçları: “Giriş kuyruğu 10.00’dan sonra uzuyor.” · “Üst kapıdan gir, aşağı yürü.”</p>
+        <div class="place" style="border-top:1px solid rgba(255,255,255,.09);padding-top:8px">
+          <span class="thumb" style="width:52px;height:44px;background:linear-gradient(135deg,#1f8fa6,#0a3446)"></span>
+          <span class="txt"><b>Yakındaki durak <em>· 320 m</em></b><span>Meryem Ana Evi — 12 dk yürüyüş</span></span>
+        </div>
+        <div class="actions" style="margin-top:auto">
+          <span class="round">🔖</span><span class="round" style="color:var(--leaf)">🧭</span>
+          <span class="primary">Rota oluştur ✦</span>
+        </div>
+      </div>
+      <div class="fabrow"><span class="fab plus">＋</span><span class="fab walk">⌁</span><span class="fab ai">✦</span></div>
+      <nav class="tabbar">
+        <span class="tab on"><i>◉</i>Keşfet</span><span class="tab"><i>▮</i>Kaydet</span>
+        <span class="tab"><i>◍</i>Topluluk</span><span class="tab"><i>◔</i>Profil</span><span class="tab"><i>◈</i>İzlerim</span>
+      </nav>
+    </div></div>
+    <h2>3 · Tam — hikâye ve rota aynı yerde</h2>
+    <p class="note">Tam kademe, ayrı bir “detay sayfası” açmadan uzun metni ve fotoğrafı gösterir.
+       Mevcut <code>PlaceDetails</code> içeriği buraya taşınabilir; geri tuşu kademeyi düşürür (tarayıcı geri tuşu değil).</p>
+  </section>
+
+  <!-- 4. KATMANLAR -->
+  <section class="card">
+    <div class="phone"><div class="screen">
+      <div class="statusbar"><span>09:41</span><span>◗◗ ⌁ ▮</span></div>
+      <div class="map"><div class="globe" style="top:36%"></div>
+        <span class="pin" style="left:42%;top:32%"></span><span class="pin" style="left:55%;top:38%"></span>
+      </div>
+      <div class="topbar">
+        <span class="brand">Atlasia<i>.</i></span>
+        <span class="acts"><span class="icon-btn">⌕</span><span class="icon-btn">🔔<span class="dot">2</span></span><span class="icon-btn" style="color:var(--sun)">☰</span></span>
+      </div>
+      <div class="map-ctrl" style="bottom: 268px">
+        <span class="ctrl">＋</span><span class="ctrl">－</span><span class="ctrl">◎</span><span class="ctrl on">▤</span>
+      </div>
+      <div class="layers" style="bottom: 268px">
+        <div class="ltitle">Katmanlar</div>
+        <div class="lrow on"><span class="lic">🏷</span><span class="ltext"><b>Yer adları</b><span>Şehir ve ülke etiketleri</span></span><span class="switch on"></span></div>
+        <div class="lrow on"><span class="lic">⛰</span><span class="ltext"><b>3B arazi</b><span>Yükseklik ve kabartma</span></span><span class="switch on"></span></div>
+        <div class="lrow"><span class="lic">☁</span><span class="ltext"><b>Hava katmanı</b><span>Bulut ve yağış</span></span><span class="switch"></span></div>
+        <div style="height:1px;background:rgba(255,255,255,.1);margin:4px 6px"></div>
+        <div class="lrow"><span class="lic">↺</span><span class="ltext"><b>Görünümü sıfırla</b><span>Küreye dön</span></span></div>
+      </div>
+      <div class="sheet" style="bottom: 120px; padding-bottom: 10px;">
+        <div class="handle"></div>
+        <div class="sheet-head"><span class="where">📍 <span>Dünya</span> · <b>28 iz</b></span><span style="color:var(--sun);font-weight:700">Aç ⌃</span></div>
+        <h4 class="sheet-title">Bir sonraki güzel tesadüfün</h4>
+      </div>
+      <div class="fabrow"><span class="fab plus">＋</span><span class="fab walk">⌁</span><span class="fab ai">✦</span></div>
+      <nav class="tabbar">
+        <span class="tab on"><i>◉</i>Keşfet</span><span class="tab"><i>▮</i>Kaydet</span>
+        <span class="tab"><i>◍</i>Topluluk</span><span class="tab"><i>◔</i>Profil</span><span class="tab"><i>◈</i>İzlerim</span>
+      </nav>
+    </div></div>
+    <h2>4 · Katmanlar — telefonda erişilemeyen üç ayar</h2>
+    <p class="note">Bugün CSS, yer adları / 3B arazi / hava düğmelerini telefonda <b>tamamen gizliyor</b>; ayarlara gömülü kalıyor.
+       Google Maps kalıbı: tek katman düğmesi + satır hâlinde anahtarlar (renk değil, yazı + anahtar).</p>
+  </section>
+
+  <!-- 5. ARAMA -->
+  <section class="card">
+    <div class="phone"><div class="screen">
+      <div class="statusbar"><span>09:41</span><span>◗◗ ⌁ ▮</span></div>
+      <div class="map"><div class="globe" style="top:48%"></div></div>
+      <div class="topbar">
+        <span class="brand">Atlasia<i>.</i></span>
+        <span class="acts"><span class="icon-btn" style="color:var(--sun)">⌕</span></span>
+      </div>
+      <div class="searchbar">⌕ <span style="flex:1">Ülke, şehir ya da yer ara…</span> <span style="color:var(--sun)">⚙</span></div>
+      <div class="results">
+        <div class="rtitle">Son aramalar <span>Temizle</span></div>
+        <div class="rrow"><i>◈</i><span><b>Kapadokya</b><span>Nevşehir, Türkiye</span></span></div>
+        <div class="rrow"><i>◈</i><span><b>Likya Yolu</b><span>Antalya, Türkiye</span></span></div>
+        <div class="rrow"><i>◈</i><span><b>Santorini</b><span>Kiklad Adaları, Yunanistan</span></span></div>
+        <div class="qr"><span>Yakınımdaki izler</span><span>Plajlar</span><span>Tarih</span><span>Kamp</span></div>
+      </div>
+      <div class="sheet" style="bottom: 120px; padding-bottom: 10px;">
+        <div class="handle"></div>
+        <div class="sheet-head"><span class="where">📍 <span>İzmir</span> · <b>28 iz</b></span><span style="color:var(--sun);font-weight:700">Aç ⌃</span></div>
+      </div>
+      <div class="fabrow"><span class="fab plus">＋</span><span class="fab walk">⌁</span><span class="fab ai">✦</span></div>
+      <nav class="tabbar">
+        <span class="tab on"><i>◉</i>Keşfet</span><span class="tab"><i>▮</i>Kaydet</span>
+        <span class="tab"><i>◍</i>Topluluk</span><span class="tab"><i>◔</i>Profil</span><span class="tab"><i>◈</i>İzlerim</span>
+      </nav>
+    </div></div>
+    <h2>5 · Arama — son aramalar ve kısayollar</h2>
+    <p class="note">Arama kutusu açılınca klavye hazır olur; boşken <b>son 5 arama</b> (yalnız bu cihazda) ve kategori kısayolları görünür.
+       Instagram/Airbnb kalıbı: “boş durum” boş ekran değil, hızlı başlangıç.</p>
+  </section>
+
+  <!-- 6. YAKINDA -->
+  <section class="card">
+    <div class="phone"><div class="screen">
+      <div class="statusbar"><span>09:41</span><span>◗◗ ⌁ ▮</span></div>
+      <div class="map"><div class="globe" style="top:30%;width:90%"></div>
+        <span class="pin g" style="left:50%;top:44%"></span>
+        <span class="pin" style="left:56%;top:38%"></span><span class="pin" style="left:44%;top:37%"></span>
+      </div>
+      <div class="topbar">
+        <span class="brand">Atlasia<i>.</i></span>
+        <span class="acts"><span class="icon-btn">⌕</span><span class="icon-btn">🔔<span class="dot">2</span></span><span class="icon-btn" style="color:var(--sun)">☰</span></span>
+      </div>
+      <div class="sheet" style="bottom: 120px; height: 340px">
+        <div class="handle"></div>
+        <div class="sheet-head">
+          <span class="where">◎ <span>Konumun hazır</span> · <b>±12 m</b></span>
+          <span style="color:var(--sun);font-weight:700">Genişlet ⌃</span>
+        </div>
+        <div style="display:flex;gap:6px;margin:2px 0 2px">
+          <span class="cat sel" style="padding:6px 10px;font-size:9.5px">Yakınımda</span>
+          <span class="cat" style="padding:6px 10px;font-size:9.5px">Yürüyüş rotası</span>
+          <span class="cat" style="padding:6px 10px;font-size:9.5px">Sesli rehber</span>
+        </div>
+        <div class="place" style="border-top:1px solid rgba(255,255,255,.09);padding-top:8px">
+          <span class="thumb" style="background:linear-gradient(135deg,#6a7f3a,#1c2a10)"></span>
+          <span class="txt"><b>Kamp yeri <em>· 1,2 km</em></b><span>Yol üstünde 3 iz · son doğrulama 4 gün önce</span></span>
+        </div>
+        <div class="place"><span class="thumb" style="background:linear-gradient(135deg,#b5622f,#2e140a)"></span>
+          <span class="txt"><b>Kahve durağı <em>· 380 m</em></b><span>Topluluk izi · 2 fotoğraf</span></span></div>
+        <div class="actions" style="margin-top:auto">
+          <span class="round">🔖</span><span class="round g">›</span><span class="primary">Rota oluştur ✦</span>
+        </div>
+      </div>
+      <div class="fabrow"><span class="fab plus">＋</span><span class="fab walk">⌁</span><span class="fab ai">✦</span></div>
+      <nav class="tabbar">
+        <span class="tab on"><i>◉</i>Keşfet</span><span class="tab"><i>▮</i>Kaydet</span>
+        <span class="tab"><i>◍</i>Topluluk</span><span class="tab"><i>◔</i>Profil</span><span class="tab"><i>◈</i>İzlerim</span>
+      </nav>
+    </div></div>
+    <h2>6 · (Sonraki tur) Yakınımdaki izler listesi</h2>
+    <p class="note">Konum hazırsa panel “öneri” yerine <b>mesafeye göre sıralı liste</b> gösterir (Google Maps yakınımdaki kalıbı).
+       Bu turda uygulanmadı: önce 1–5’in sahada tutması gerekiyor.</p>
+  </section>
+</div>
+
+<section class="legend">
+  <div><b>Bu turda uygulananlar</b>1 · 2 · 3’ün temeli (üç kademeli sürüklenebilir sayfa), 4 (katman menüsü), 5 (son aramalar + klavye).</div>
+  <div><b>Uygulanmayan / sonraki tur</b>Tam kademeye detay içeriği taşıma, yakınımdaki liste, geri tuşuyla kademe düşürme, tablet (768–1023px) yerleşimi.</div>
+  <div><b>Neden bu sıra</b>Önce <code>erişilebilirlik</code> ve <code>dokunma hedefi</code> kırılmasın; sonra bilgi yoğunluğu; en son yeni işlev (yakınımdaki, rota).</div>
+</section>
+</body>
+</html>
