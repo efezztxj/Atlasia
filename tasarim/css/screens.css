@@ -3273,3 +3273,15 @@ html[data-theme="light"] .izler__filters {
   background: linear-gradient(155deg, #ffe6ab, #f2c666 55%, #dc9d36);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
 }
+
+/* açık temada gönderi fotoğrafı üstündeki kapsüller de krem olur */
+html[data-theme="light"] .post__place,
+html[data-theme="light"] .post__count {
+  color: #0e2a22;
+  background: rgba(255, 253, 247, 0.92);
+  border-color: rgba(18, 36, 28, 0.14);
+  box-shadow: 0 4px 12px -8px rgba(20, 40, 30, 0.5);
+}
+html[data-theme="light"] .post__place .i {
+  color: #a9711f;
+}

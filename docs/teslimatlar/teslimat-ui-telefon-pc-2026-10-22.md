@@ -56,14 +56,15 @@ Yerel sunucu istenirse: `python3 -m http.server -d tasarim 4173`.
 | `npm run lint` | ✅ (0 uyarı) |
 | `npm run test:run` | ✅ 117 dosya / 883 test |
 | `npm run build` | ✅ (postbuild: bundle bütçesi + SW kabuğu) |
-| `npm run audit:check` | ✅ |
+| `npm run audit:check` | ✅ (bilinen açık yok) |
 
 Ek olarak tasarım kiti için headless Chromium ile yapılan kontroller:
 
 - 8 sayfa × 2 tema (koyu/açık): 0 JS hatası, 0 başarısız istek, 0 eksik ikon,
   0 kırık görsel, yatay taşma yok.
 - Ekran görüntüleri: mobil 390×844, masaüstü 1440×900, vitrin 1440/1500 px ve 430×932
-  mobil vitrin doğrulandı.
+  mobil vitrin doğrulandı. Galeri kartlarındaki telefon çerçeveleri 390:844 oranına
+  hizalandı; önizleme kırpılmıyor (alt çubuk ve home indicator tam görünür).
 
 ## Bilinen riskler / notlar
 

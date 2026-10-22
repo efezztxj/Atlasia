@@ -407,7 +407,7 @@ html[data-theme="light"] .filters .chip .badge {
 .scard__frame--phone {
   display: grid;
   place-items: center;
-  height: 486px;
+  height: 508px;
   padding: 22px 0;
   background:
     radial-gradient(70% 60% at 50% 0%, rgba(242, 198, 102, 0.08), transparent 62%),
@@ -421,7 +421,7 @@ html[data-theme="light"] .scard__frame--phone {
 .mini-device {
   position: relative;
   width: 220px;
-  height: 440px;
+  height: 464px;
   padding: 5px;
   border-radius: 32px;
   background: linear-gradient(155deg, #3b4441 0%, #0f1614 30%, #1b2422 60%, #060b09 85%, #2c3432 100%);
@@ -434,7 +434,7 @@ html[data-theme="light"] .scard__frame--phone {
 .mini-device__screen {
   position: relative;
   width: 210px;
-  height: 430px;
+  height: 454px;
   border-radius: 27px;
   overflow: hidden;
   background: #04120f;
@@ -1092,15 +1092,16 @@ html[data-theme="light"] .comp .scalebar {
     grid-column: span 1;
   }
   .scard__frame--phone {
-    height: 452px;
+    height: 445px;
+    padding: 16px 0;
   }
   .mini-device {
     width: 196px;
-    height: 392px;
+    height: 413px;
   }
   .mini-device__screen {
     width: 186px;
-    height: 382px;
+    height: 403px;
   }
   .scard__frame--desktop {
     height: 220px;
@@ -1204,7 +1205,7 @@ html[data-theme="light"] .comp .scalebar {
     font-size: 20px;
   }
   .scard__frame--phone {
-    height: 420px;
+    height: 445px;
     padding: 16px 0;
   }
 }
