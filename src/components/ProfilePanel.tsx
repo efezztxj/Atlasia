@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   AlertCircle,
   Bookmark,
+  Download,
   CheckCircle2,
   Loader2,
   LogOut,
@@ -22,6 +23,7 @@ import { useCollections } from "../hooks/useCollections";
 import { authErrorMessage } from "../lib/auth";
 import { usePanelAccess } from "../hooks/usePanelAccess";
 import { deleteAccount } from "../lib/moderation";
+import { downloadAccountExport, exportAccountData } from "../lib/accountExport";
 import FeedbackDialog from "./FeedbackDialog";
 
 interface Props {
@@ -45,6 +47,7 @@ export default function ProfilePanel({ onClose, onRecords }: Props) {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deletePassword, setDeletePassword] = useState("");
+  const [exporting, setExporting] = useState(false);
   const needsEmailVerification = user?.backend === "firebase" && !!user.email && !user.emailVerified;
 
   const sendVerification = async () => {
@@ -97,6 +100,22 @@ export default function ProfilePanel({ onClose, onRecords }: Props) {
       setStatus(authErrorMessage(error));
       setConfirmLogout(false);
       setLoggingOut(false);
+    }
+  };
+
+  // KVKK md. 11: kendi verisini tek JSON olarak indirir. Hata gösterilir; kısmi dosya indirilmez.
+  const exportData = async () => {
+    if (!user) return;
+    setExporting(true);
+    setStatus(null);
+    try {
+      const file = await exportAccountData({ uid: user.uid, backend: user.backend, account: { displayName: user.displayName, email: user.email } });
+      downloadAccountExport(file);
+      setStatus("Verilerin JSON dosyası hazırlandı.");
+    } catch (error) {
+      setStatus(`Veriler indirilemedi: ${(error as Error).message}`);
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -232,6 +251,9 @@ export default function ProfilePanel({ onClose, onRecords }: Props) {
         </p>
         <button type="button" onClick={() => setFeedbackOpen(true)} className="mt-6 flex min-h-10 items-center gap-2 rounded-full border border-sun/30 px-4 text-[12px] font-semibold text-sun">
           Geri bildirim gönder
+        </button>
+        <button type="button" disabled={exporting} onClick={() => void exportData()} className="mt-2 flex min-h-10 items-center gap-2 rounded-full border border-white/15 px-4 text-[12px] font-semibold text-mint disabled:opacity-60">
+          {exporting ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}Verilerimi indir
         </button>
       </div>
       {feedbackOpen && <FeedbackDialog uid={user?.uid ?? null} onClose={() => setFeedbackOpen(false)} />}
