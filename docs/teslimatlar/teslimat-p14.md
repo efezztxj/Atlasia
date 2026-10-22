@@ -19,3 +19,30 @@
 ## Açık (kullanıcı kararı)
 - `historicSites.ts` henüz hiçbir bileşene bağlı değil (yalnız testte).
 - `public/_headers` CSP `connect-src` overpass-api.de / wikipedia.org / wikidata.org içermiyor; canlıda bağlanınca istekler engellenir. CSP genişletme güvenlik kararı olduğu için yapılmadı.
+
+## Akış (metin diyagramı) — denetim 2026-10-22'de eklendi
+```
+fetchHistoricSitesDetailed(center, radius)
+ ├─ Efes fixture alanı mı? → fixture (status: fixture)
+ ├─ bellek (30 dk) / localStorage (7 g) isabeti → cache
+ └─ ıskalama → buildOverpassQuery (200–2000 m, timeout 25) → Overpass
+      ├─ ok → ≤60 yer → enrichPlaces:
+      │     wikipedia=tr:/en: etiketi → doğrudan madde
+      │     yoksa wikidata=Q… → sitelink trwiki > enwiki
+      │     yoksa → hiçbir wiki isteği yok (tahmin yok)
+      │     özet: disambiguation reddi → clampSummary(600)
+      │   → önbelleğe yaz → fresh
+      └─ hata → süresi geçmiş kayıt varsa stale + mesaj, yoksa error + mesaj
+```
+
+## Lisans uyum listesi
+| Veri | Lisans | Nerede görünür |
+|---|---|---|
+| OSM yer/konum (Overpass) | ODbL | `dataSources` "© OpenStreetMap contributors (ODbL)" + PlaceDetails OSM bağlantısı |
+| Wikipedia özeti | CC BY-SA 4.0 | `historySource` → PlaceDetails "Metin: Wikipedia · <madde>" bağlantısı + lisans + "özetlendi" |
+| Efes fixture | ODbL + CC BY-SA | fixture `dataSources` → PlaceDetails "Kaynak: …" satırı |
+
+## Canlı doğrulanamayanlar
+Canlı Overpass/Wikipedia'ya hiç istek atılmadı (yasak). Gerçek yanıt biçimi fixture'lardan varsayıldı; modül UI'a bağlanınca CSP ile birlikte canlıda denenmeli.
+
+`git diff --check`: temiz (CI #48).

@@ -166,7 +166,7 @@ export default function StoryComposer({
             onChange={(e) => void pick(e.target.files?.[0])}
           />
 
-          {error && <p className="mt-2 text-[11.5px] text-red-300/90">{error}</p>}
+          {error && <p role="alert" className="mt-2 text-[11.5px] text-red-300/90">{error}</p>}
 
           {/* Renk */}
           <div className="mt-3 flex items-center gap-2">
