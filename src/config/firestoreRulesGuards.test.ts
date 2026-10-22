@@ -32,10 +32,10 @@ describe("firestore.rules — gevşeme kilidi", () => {
       "allow get: if true;",
       "allow get: if true;",
       "allow get: if true;",
-      "allow get: if true;",
     ]);
     // Yeni bir `true` eklenirse burada durur; gerekçesi ve testi olmadan geçemez.
-    expect(permissive).toHaveLength(4);
+    // 2026-10-22 (D5.1-A): verifications `get` artık `signedIn()` — 4 → 3.
+    expect(permissive).toHaveLength(3);
   });
 
   it("`allow write` kısaltması yok: her izin ayrı ayrı denetlenebilir olmalı", () => {
@@ -66,6 +66,13 @@ describe("firestore.rules — teslim edilen sözleşme yolları (p4–p9, p15–
 
   it.each(required)("%s bloğu mevcut", (marker) => {
     expect(rules).toContain(marker);
+  });
+
+  it("verifications (serbest metin notu) anonim okumaya kapalı", () => {
+    const verifications = block("match /verifications/{verificationId}");
+    expect(verifications).toContain("allow get: if signedIn();");
+    expect(verifications).toContain("allow list: if signedIn() && boundedList(50);");
+    expect(verifications).not.toContain("if true");
   });
 
   it("arkadaşlık isteği yalnız kendi kuyruğunu okutur, alıcının kuyruğunu okutmaz", () => {

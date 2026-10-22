@@ -52,6 +52,19 @@ export function normalizeVerification(id: string, raw: Record<string, unknown>):
   };
 }
 
+/**
+ * Tazelik okuması yalnız Firebase üyesiyle yapılır: kural `signedIn()` ister
+ * (D5.1-A). Cihaz hesabında bulut oturumu yoktur; istek atmak `permission-denied`
+ * üretir, bu yüzden hiç abone olunmaz.
+ */
+export function freshnessReaderUid(
+  account: { uid?: string | null; backend?: string | null } | null | undefined,
+): string | undefined {
+  const uid = account?.uid?.trim();
+  if (!uid || account?.backend !== "firebase") return undefined;
+  return uid;
+}
+
 export function subscribeRecentVerifications(
   onChange: (items: PlaceVerification[]) => void,
   onError?: (error: Error) => void,

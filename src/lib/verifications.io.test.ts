@@ -74,6 +74,7 @@ vi.mock("firebase/firestore", () => ({
 import type { VerificationStatus } from "../utils/freshness";
 import {
   addPlaceVerification,
+  freshnessReaderUid,
   normalizeVerification,
   subscribeRecentVerifications,
   VERIFICATIONS_LIMIT,
@@ -206,5 +207,20 @@ describe("ziyaret doğrulaması IO sözleşmesi", () => {
     expect(snapshots[0].at(-1)).toBe("v6");
     unsubscribe();
     expect(h.stats.unsubscribes).toBe(1);
+  });
+});
+
+describe("freshnessReaderUid — tazelik okuması yalnız bulut üyesinde (D5.1-A)", () => {
+  it("firebase üyesinde uid döner", () => {
+    expect(freshnessReaderUid({ uid: "u1", backend: "firebase" })).toBe("u1");
+    expect(freshnessReaderUid({ uid: "  u1  ", backend: "firebase" })).toBe("u1");
+  });
+
+  it("cihaz hesabında, boş uid'de ve hesap yokken abone olunmaz", () => {
+    expect(freshnessReaderUid({ uid: "u1", backend: "device" })).toBeUndefined();
+    expect(freshnessReaderUid({ uid: "   ", backend: "firebase" })).toBeUndefined();
+    expect(freshnessReaderUid({ backend: "firebase" })).toBeUndefined();
+    expect(freshnessReaderUid(null)).toBeUndefined();
+    expect(freshnessReaderUid(undefined)).toBeUndefined();
   });
 });

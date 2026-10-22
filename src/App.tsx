@@ -42,6 +42,7 @@ import { storageGet, storageSet } from "./utils/storage";
 import { decodePolyline } from "./utils/polyline";
 import { useBlocks } from "./hooks/useBlocks";
 import { useFreshness } from "./hooks/useFreshness";
+import { freshnessReaderUid } from "./lib/verifications";
 import { subscribeNotifications, markNotificationRead, markAllRead, type AppNotification } from "./lib/notifications";
 import { syncUserProfile } from "./lib/userProfiles";
 import { syncFriendIndexes } from "./lib/friendSync";
@@ -124,7 +125,8 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
     }
   }, [cloudAccount, remote.ready, remote.error]);
   const { blockedSet, isBlocked } = useBlocks(user?.uid);
-  const freshness = useFreshness(user?.uid);
+  // Tazelik okuması giriş şartlı (kural: signedIn); cihaz hesabında abone olunmaz.
+  const freshness = useFreshness(freshnessReaderUid(user));
   const rawDiscoveries = cloud.places;
   const rawPosts = cloud.posts;
   const rawStories = cloud.stories;
@@ -1011,6 +1013,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
             focusPlace(next, 16);
             setStoryPlace(next);
           }}
+          freshnessLocked={!freshnessReaderUid(user)}
           onVerify={(status, note) => {
             const target = liveStoryPlace;
             if (!target) return Promise.resolve();

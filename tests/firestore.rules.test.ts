@@ -56,7 +56,7 @@ import { ACCOUNT_DATA_PAGE_SIZE } from "../src/config/firestoreLimits";
  * | /groups/{id}/invites                           | grup oluşturma başkasını hazır üye yazamaz (davet kanıtı)            |
  * | /groups kod/attempts (joinCode, joinAttempts)  | C2 kod en az 6 hane / okumasız kod katılması / pencere testleri      |
  * | /users/{uid}/groups (indeks)                   | grup indeksini yalnız sahibi ve GERÇEKTEN üye olduğu grup için yazar |
- * | /verifications                                 | tazelik doğrulamasını yalnız kendi adına yazar, herkes sınırlı okur  |
+ * | /verifications                                 | tazelik doğrulamasını yalnız kendi adına yazar; okuma giriş şartlı  |
  * | /reports                                       | içerik bildirimini yalnız oturum sahibi adına kabul eder             |
  * | /blocks, /users/{uid}/blocked                  | engellemeyi yalnız kendi adına, kendini engellemeden yazar          |
  * | /notifications (notificationProof)             | bildirim tipleri ilişki kanıtına bağlı: arkadaşlık, davet, mesaj    |
@@ -844,7 +844,7 @@ describe("Firestore güvenlik kuralları", () => {
     await assertSucceeds(deleteDoc(doc(memberDb, "users/member/groups/group-1")));
   });
 
-  it("tazelik doğrulamasını yalnız kendi adına yazar, herkes sınırlı sayfada okur", async () => {
+  it("tazelik doğrulamasını yalnız kendi adına yazar; okuma giriş şartlıdır (D5.1-A)", async () => {
     const memberDb = testEnv.authenticatedContext("member").firestore();
     const otherDb = testEnv.authenticatedContext("other").firestore();
     const guestDb = testEnv.unauthenticatedContext().firestore();
@@ -862,11 +862,17 @@ describe("Firestore güvenlik kuralları", () => {
     await assertFails(setDoc(doc(memberDb, "verifications/extra"), { ...valid, xp: 50 }));
     await assertSucceeds(setDoc(doc(memberDb, "verifications/vr-1"), valid));
 
-    await assertSucceeds(getDoc(doc(guestDb, "verifications/vr-1")));
-    await assertFails(getDocs(collection(guestDb, "verifications")));
-    await assertSucceeds(getDocs(query(collection(guestDb, "verifications"), limit(50))));
-    await assertFails(getDocs(query(collection(guestDb, "verifications"), limit(51))));
+    // D5.1-A: serbest metin notu (note) taşıyan koleksiyon anonim okunamaz.
+    await assertFails(getDoc(doc(guestDb, "verifications/vr-1")));
+    await assertFails(getDocs(query(collection(guestDb, "verifications"), limit(50))));
+    // Giriş yapmış üye sınırlı sayfada okuyabilir; tavan 50.
+    await assertSucceeds(getDoc(doc(memberDb, "verifications/vr-1")));
+    await assertSucceeds(getDocs(query(collection(memberDb, "verifications"), limit(50))));
+    await assertFails(getDocs(query(collection(memberDb, "verifications"), limit(51))));
+    await assertFails(getDocs(collection(memberDb, "verifications")));
     await assertFails(updateDoc(doc(memberDb, "verifications/vr-1"), { status: "closed" }));
+    // Başka bir üye de okuyabilir (üyeler arası açık), ama yazamaz/silemez.
+    await assertSucceeds(getDoc(doc(otherDb, "verifications/vr-1")));
     await assertFails(deleteDoc(doc(otherDb, "verifications/vr-1")));
     await assertSucceeds(deleteDoc(doc(memberDb, "verifications/vr-1")));
   });
