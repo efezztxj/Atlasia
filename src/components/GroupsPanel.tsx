@@ -358,7 +358,7 @@ export default function GroupsPanel({ currentUid, currentName, blockedSet, isBlo
               })}
             </div>
             <form onSubmit={(event) => { event.preventDefault(); void send(); }} className="flex shrink-0 items-center gap-2 border-t border-white/10 p-3">
-              <input value={draft} onChange={(event) => setDraft(event.target.value)} maxLength={1000} placeholder={`${openGroup.name} grubuna yaz…`} className="h-11 min-w-0 flex-1 rounded-full border border-white/10 bg-ink px-3 text-[13px] text-mint outline-none focus:border-sun/50" />
+              <input value={draft} onChange={(event) => setDraft(event.target.value)} maxLength={1000} aria-label="Gruba mesaj yaz" placeholder={`${openGroup.name} grubuna yaz…`} className="h-11 min-w-0 flex-1 rounded-full border border-white/10 bg-ink px-3 text-[13px] text-mint outline-none focus:border-sun/50" />
               <button type="submit" disabled={sending || draft.trim().length === 0} aria-label="Mesajı gönder" className="grid size-11 shrink-0 place-items-center rounded-full bg-sun text-ink disabled:opacity-40">{sending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}</button>
             </form>
           </>
