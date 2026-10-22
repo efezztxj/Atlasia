@@ -31,6 +31,7 @@ import { useAtlasData } from "./hooks/useAtlasData";
 import { useFirestoreAtlasData } from "./hooks/useFirestoreAtlasData";
 import { useTheme } from "./hooks/useTheme";
 import { useInstallApp, type InstallAppController } from "./hooks/useInstallApp";
+import { useAccessibilityPrefs } from "./hooks/useAccessibilityPrefs";
 import { isCloudReady, firebaseConfigSummary } from "./lib/firebase";
 import type { PlaceViewport } from "./lib/firestoreData";
 import { ROUTE_OPEN_MESSAGES, openPublishedRoute } from "./lib/publishedRouteOpen";
@@ -168,7 +169,11 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   const [resumeRoute, setResumeRoute] = useState<AtlasRoute | null>(null);
   const [routeEditorRoute, setRouteEditorRoute] = useState<AtlasRoute | null>(null);
   const [smallScreen, setSmallScreen] = useState(() => window.innerWidth < 768);
-  const [reducedMotion, setReducedMotion] = useState(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  // İşletim sistemi tercihi ile Ayarlar → Erişilebilirlik anahtarı birlikte
+  // değerlendirilir; kullanıcı "Hareketi azalt" derse küre dönüşü de durur.
+  const [systemReducedMotion, setSystemReducedMotion] = useState(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  const accessibility = useAccessibilityPrefs();
+  const reducedMotion = systemReducedMotion || accessibility.reducedMotion;
   const [storyPlace, setStoryPlace] = useState<Place | null>(null);
   const [streetPlace, setStreetPlace] = useState<Place | null>(null);
   const [locationLabel, setLocationLabel] = useState("Dünya");
@@ -184,7 +189,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
     const screen = window.matchMedia("(max-width: 767px)");
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
     const syncScreen = () => setSmallScreen(screen.matches);
-    const syncMotion = () => setReducedMotion(motion.matches);
+    const syncMotion = () => setSystemReducedMotion(motion.matches);
     screen.addEventListener("change", syncScreen);
     motion.addEventListener("change", syncMotion);
     return () => { screen.removeEventListener("change", syncScreen); motion.removeEventListener("change", syncMotion); };

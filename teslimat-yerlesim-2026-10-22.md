@@ -64,3 +64,52 @@ Firebase/Rules/veri katmanına, metinlere ve akışlara dokunulmadı.
 - Görsel doğrulama bu turda tarayıcıyla yapılamadı (sandbox'ta headless tarayıcı
   yok); hizalar CSS ölçüleri üzerinden hesaplandı, önizlemede gözle kontrol
   edilmeli.
+
+---
+
+# Ek Tur — Erişilebilirlik bölümü (kullanıcı isteği)
+
+Kullanıcı isteği: "erişilebilirlik kısmını da ekle". Ayarlar paneline (ve aynı
+içeriği paylaşan Profil → Ayarlar sekmesine) **Erişilebilirlik** bölümü eklendi.
+
+## Yapılanlar
+
+- **`src/hooks/useAccessibilityPrefs.ts` (yeni):** üç tercih — *Hareketi azalt*,
+  *Yazı boyutu (Normal/Büyük)*, *Yüksek kontrast*. Tercih `localStorage`
+  (`atlasia.accessibility.v1`) içinde saklanır, `<html>` üzerine
+  `data-motion` / `data-text-scale` / `data-contrast` öznitelikleri yazılır.
+  Store `useSyncExternalStore` ile paylaşılır; bozuk kayıt varsayılana döner.
+- **`src/main.tsx`:** `initAccessibilityPrefs()` ilk boyamadan önce çalışır,
+  böylece sayfa eski görünümle çakmaz.
+- **`src/components/SettingsPanel.tsx`:** yeni bölüm — iki `role="switch"`
+  anahtarı (Hareketi azalt, Yüksek kontrast) + `aria-pressed` bölümlü
+  Normal/Büyük yazı boyutu. Bölüm başlığı `accessibility-title`, tercihlerin
+  cihazda saklandığı ve klavye/odak/dokunma hedefinin her zaman açık olduğu notu.
+- **`src/index.css`:** `html[data-motion="reduced"]` animasyon/geçişleri durdurur;
+  `html[data-text-scale="large"]` mikro tipografi tabanını bir kademe büyütür;
+  `html[data-contrast="high"]` soluk metinleri beyaza çeker, çerçeve ve odak
+  halkasını kalınlaştırır. Mevcut WCAG AA kontrast kilidi korunur.
+- **`src/App.tsx`:** küre dönüşü artık işletim sistemi tercihi **veya** kullanıcı
+  anahtarı kapalıysa durur.
+- **Testler:** `useAccessibilityPrefs.test.ts` (5 test: varsayılan, kayıttan
+  okuma, bozuk kayıt, güncelleme + kalıcılık, hook aboneliği) ve
+  `SettingsPanel.test.ts` (bölüm varlığı + anahtar/yazı boyutu davranışı).
+
+## Doğrulama (ek tur)
+
+| Komut | Sonuç |
+| --- | --- |
+| `npm run typecheck` | ✅ |
+| `npm run lint` | ✅ 0 uyarı |
+| `npm run test:run` | ✅ 108 dosya / 754 test |
+| `npm run test:scripts` | ✅ 22 test, 0 fail |
+| `npm run build` (+ bundle bütçesi) | ✅ "Bundle bütçesi içinde" |
+| `npm run verify:social-metadata` | ✅ |
+| `npm run audit:check` | ✅ |
+| `npm run test:rules:emulator` | ⛔ sandbox'ta Java yok (Rules değişmedi) |
+
+## Notlar
+
+- Tercih cihaz bazlıdır (hesap senkronu yok); tema davranışıyla aynı çizgide.
+- "Büyük" yazı boyutu yoğun panellerde satırları uzatabilir; gerçek cihazda
+  gözle kontrol edilmeli.

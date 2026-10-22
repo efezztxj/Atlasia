@@ -1,7 +1,9 @@
 import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import {
+  Accessibility,
   ArrowRight,
   CheckCircle2,
+  Contrast,
   Crosshair,
   Download,
   Eye,
@@ -16,6 +18,7 @@ import {
   Smartphone,
   Sun,
   Tags,
+  Type,
   TriangleAlert,
   X,
   type LucideIcon,
@@ -27,6 +30,7 @@ import type { InstallAppController } from "../hooks/useInstallApp";
 import { cn } from "../utils/cn";
 import { formatCoords } from "../utils/geo";
 import type { BBox } from "../utils/offlineCache";
+import { useAccessibilityPrefs, type TextScale } from "../hooks/useAccessibilityPrefs";
 
 // P15: indirme kodu yalnız kullanıcı bölümü açınca yüklenir (entry bütçesi).
 const OfflinePackage = lazy(() => import("./OfflinePackage"));
@@ -76,6 +80,47 @@ function InfoRow({ icon: Icon, title, children }: { icon: LucideIcon; title: str
   );
 }
 
+/** Erişilebilirlik anahtarı: iOS/Material diline yakın, role="switch" ile. */
+function A11ySwitch({ label, checked, onChange }: { label: string; checked: boolean; onChange: (value: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={() => onChange(!checked)}
+      className={cn(
+        "relative grid h-8 w-[52px] shrink-0 place-items-center rounded-full border transition",
+        checked ? "border-sun/60 bg-sun/85" : "border-white/20 bg-white/10",
+      )}
+    >
+      <span
+        aria-hidden
+        className={cn(
+          "absolute top-1/2 size-6 -translate-y-1/2 rounded-full transition-all",
+          checked ? "left-[24px] bg-[#10241a]" : "left-[3px] bg-mint/80",
+        )}
+      />
+      <span className="sr-only">{checked ? "Açık" : "Kapalı"}</span>
+    </button>
+  );
+}
+
+function A11yRow({ icon: Icon, title, description, children }: { icon: LucideIcon; title: string; description: string; children: ReactNode }) {
+  return (
+    <div className="flex items-start gap-3 px-4 py-3.5">
+      <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-xl bg-leaf/10 text-leaf">
+        <Icon className="size-4" strokeWidth={1.8} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-[15px] font-semibold text-mint">{title}</p>
+        <p className="mt-1 text-[13px] leading-relaxed text-mint/65">{description}</p>
+      </div>
+      <div className="mt-0.5 flex shrink-0 items-center">{children}</div>
+    </div>
+  );
+}
+
 function Notice({ children }: { children: ReactNode }) {
   return (
     <p className="mt-4 flex items-start gap-2.5 rounded-xl border border-sun/30 bg-sun/[0.08] px-3.5 py-3 text-[14px] leading-relaxed text-sun">
@@ -103,6 +148,9 @@ export function SettingsContent({
 }: SettingsContentProps) {
   const [installNotice, setInstallNotice] = useState<string | null>(null);
   const [offlineOpen, setOfflineOpen] = useState(false);
+  // P18: erişilebilirlik tercihleri cihazda saklanır (Ayarlar ve Profil aynı
+  // içeriği paylaşır; iki görünümde de aynı anahtarlar görünür).
+  const a11y = useAccessibilityPrefs();
 
   const requestInstall = async () => {
     try {
@@ -201,6 +249,57 @@ export function SettingsContent({
             <span className="text-[11px] font-medium opacity-80">{terrainEnabled ? "Açık" : "Kapalı"}</span>
           </button>
         </div>
+      </section>
+
+      <div className="my-6 h-px bg-leaf/15" />
+      <section aria-labelledby="accessibility-title" className="scroll-mt-24">
+        <p id="accessibility-title" className="text-[12px] font-bold tracking-[0.16em] text-mint/55 uppercase">Erişilebilirlik</p>
+        <div className="mt-3 divide-y divide-white/10 overflow-hidden rounded-2xl border border-leaf/20 bg-white/[0.04]">
+          <A11yRow
+            icon={Accessibility}
+            title="Hareketi azalt"
+            description="Harita dönüşü, panel ve geçiş animasyonları durur; içerik aynı yerde açılır."
+          >
+            <A11ySwitch label="Hareketi azalt" checked={a11y.reducedMotion} onChange={a11y.setReducedMotion} />
+          </A11yRow>
+
+          <div className="px-4 py-3.5">
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-xl bg-leaf/10 text-leaf">
+                <Type className="size-4" strokeWidth={1.8} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p id="a11y-text-scale-title" className="text-[15px] font-semibold text-mint">Yazı boyutu</p>
+                <p className="mt-1 text-[13px] leading-relaxed text-mint/65">Küçük etiketler ve açıklamalar bir kademe büyür.</p>
+              </div>
+            </div>
+            <div role="group" aria-labelledby="a11y-text-scale-title" className="mt-3 flex gap-2">
+              {([["normal", "Normal"], ["large", "Büyük"]] as const).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={a11y.textScale === value}
+                  onClick={() => a11y.setTextScale(value as TextScale)}
+                  className={cn(
+                    "min-h-11 flex-1 rounded-xl border text-[13px] font-semibold transition",
+                    a11y.textScale === value ? "btn-gold border-transparent text-ink" : "border-leaf/25 text-mint hover:border-leaf/50",
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <A11yRow
+            icon={Contrast}
+            title="Yüksek kontrast"
+            description="Soluk metinler beyaza yaklaşır, kenarlıklar ve odak halkası kalınlaşır."
+          >
+            <A11ySwitch label="Yüksek kontrast" checked={a11y.highContrast} onChange={a11y.setHighContrast} />
+          </A11yRow>
+        </div>
+        <p className="mt-2 text-[12px] leading-relaxed text-mint/60">Bu seçimler yalnız bu cihazda saklanır. Klavye ile gezinme, “İçeriğe geç” bağlantısı, görünür odak halkası ve en az 44px dokunma hedefi her zaman açıktır.</p>
       </section>
 
       <div className="my-6 h-px bg-leaf/15" />
