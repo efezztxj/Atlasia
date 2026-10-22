@@ -831,22 +831,87 @@ describe("Firestore güvenlik kuralları", () => {
     };
 
     await assertFails(setDoc(doc(guestDb, "verifications/guest"), valid));
-    await assertFails(setDoc(doc(memberDb, "verifications/spoofed"), { ...valid, uid: "other" }));
-    await assertFails(setDoc(doc(memberDb, "verifications/bad-status"), { ...valid, status: "harika" }));
-    await assertFails(setDoc(doc(memberDb, "verifications/extra"), { ...valid, xp: 50 }));
-    await assertSucceeds(setDoc(doc(memberDb, "verifications/vr-1"), valid));
+    await assertFails(setDoc(doc(memberDb, "verifications/place-1_other"), { ...valid, uid: "other" }));
+    await assertFails(setDoc(doc(memberDb, "verifications/place-1_member"), { ...valid, status: "harika" }));
+    await assertFails(setDoc(doc(memberDb, "verifications/place-1_member"), { ...valid, xp: 50 }));
+    // İŞ 1d: kimlik {placeId}_{uid} olmak zorunda; rastgele kimlik reddedilir.
+    await assertFails(setDoc(doc(memberDb, "verifications/vr-1"), valid));
+    await assertFails(setDoc(doc(memberDb, "verifications/place-2_member"), valid));
+    await assertSucceeds(setDoc(doc(memberDb, "verifications/place-1_member"), valid));
 
     // Aşama 3-A: anonim okuma kapalı (serbest metin `note` gizliliği).
-    await assertFails(getDoc(doc(guestDb, "verifications/vr-1")));
+    await assertFails(getDoc(doc(guestDb, "verifications/place-1_member")));
     await assertFails(getDocs(collection(guestDb, "verifications")));
     await assertFails(getDocs(query(collection(guestDb, "verifications"), limit(50))));
     // Oturumlu okuma sınırlı sayfada açık.
-    await assertSucceeds(getDoc(doc(otherDb, "verifications/vr-1")));
+    await assertSucceeds(getDoc(doc(otherDb, "verifications/place-1_member")));
     await assertSucceeds(getDocs(query(collection(otherDb, "verifications"), limit(50))));
     await assertFails(getDocs(query(collection(otherDb, "verifications"), limit(51))));
-    await assertFails(updateDoc(doc(memberDb, "verifications/vr-1"), { status: "closed" }));
-    await assertFails(deleteDoc(doc(otherDb, "verifications/vr-1")));
-    await assertSucceeds(deleteDoc(doc(memberDb, "verifications/vr-1")));
+    await assertFails(updateDoc(doc(memberDb, "verifications/place-1_member"), { status: "closed" }));
+    await assertFails(deleteDoc(doc(otherDb, "verifications/place-1_member")));
+    await assertSucceeds(deleteDoc(doc(memberDb, "verifications/place-1_member")));
+  });
+
+  // === İŞ 1d — aynı kişi aynı yere ikinci kez doğrulama yazamaz (tekillik) ===
+  it("aynı yere ikinci doğrulama yalnız sahibi tarafından silinip yeniden yazılabilir", async () => {
+    const memberDb = testEnv.authenticatedContext("member").firestore();
+    const verify = {
+      placeId: "efes",
+      uid: "member",
+      status: "still_open",
+      createdAt: serverTimestamp(),
+    };
+    await assertSucceeds(setDoc(doc(memberDb, "verifications/efes_member"), verify));
+    // Güncelleme kapalı: "tekrar doğrula" akışı sil + yeniden yaz.
+    await assertFails(setDoc(doc(memberDb, "verifications/efes_member"), { ...verify, status: "closed" }));
+    await assertSucceeds(deleteDoc(doc(memberDb, "verifications/efes_member")));
+    await assertSucceeds(setDoc(doc(memberDb, "verifications/efes_member"), { ...verify, status: "closed" }));
+  });
+
+  // === İŞ 1d — takip: yalnız sahibi yazar, kendini takip edemez, dar şema ===
+  it("takip belgesini yalnız sahibi yazar; kendini takip ve fazla alan reddedilir", async () => {
+    const memberDb = testEnv.authenticatedContext("member").firestore();
+    const otherDb = testEnv.authenticatedContext("other").firestore();
+    const guestDb = testEnv.unauthenticatedContext().firestore();
+    const follow = { targetUid: "other", targetName: "Efe", since: serverTimestamp() };
+
+    await assertFails(setDoc(doc(guestDb, "users/member/following/other"), follow));
+    // Başkasının listesine yazma yok.
+    await assertFails(setDoc(doc(otherDb, "users/member/following/other"), follow));
+    // Kimlik uyuşmazlığı ve kendini takip yok.
+    await assertFails(setDoc(doc(memberDb, "users/member/following/yandan"), follow));
+    await assertFails(setDoc(doc(memberDb, "users/member/following/member"), { ...follow, targetUid: "member" }));
+    // Şema dar: fazladan alan reddedilir.
+    await assertFails(setDoc(doc(memberDb, "users/member/following/other"), { ...follow, note: "spam" }));
+    await assertSucceeds(setDoc(doc(memberDb, "users/member/following/other"), follow));
+
+    // Okuma yalnız sahibine açık.
+    await assertFails(getDoc(doc(otherDb, "users/member/following/other")));
+    await assertSucceeds(getDoc(doc(memberDb, "users/member/following/other")));
+    await assertSucceeds(getDocs(query(collection(memberDb, "users/member/following"), limit(100))));
+    await assertFails(getDocs(query(collection(memberDb, "users/member/following"), limit(101))));
+    // Güncelleme kapalı; silme yalnız sahibi.
+    await assertFails(setDoc(doc(memberDb, "users/member/following/other"), { ...follow, targetName: "Yeni" }));
+    await assertFails(deleteDoc(doc(otherDb, "users/member/following/other")));
+    await assertSucceeds(deleteDoc(doc(memberDb, "users/member/following/other")));
+  });
+
+  // === İŞ 1d — takipçi sayısı: collection-group count() kanıtı ===
+  it("collection-group takipçi sorgusu yalnız kendi targetUid kanıtıyla açılır", async () => {
+    await seed("users/a/following/member", { targetUid: "member", targetName: "A", since: Timestamp.now() });
+    await seed("users/b/following/member", { targetUid: "member", targetName: "B", since: Timestamp.now() });
+    await seed("users/c/following/other", { targetUid: "other", targetName: "C", since: Timestamp.now() });
+
+    const memberDb = testEnv.authenticatedContext("member").firestore();
+    const otherDb = testEnv.authenticatedContext("other").firestore();
+    const guestDb = testEnv.unauthenticatedContext().firestore();
+
+    // Toplama sorgusu limit göndermez: kural boundedList istemiyor, where kanıtı istiyor.
+    await assertSucceeds(getDocs(query(collectionGroup(memberDb, "following"), where("targetUid", "==", "member"))));
+    // Başkasının takipçileri okunamaz; filtresiz liste reddedilir.
+    await assertFails(getDocs(query(collectionGroup(otherDb, "following"), where("targetUid", "==", "member"))));
+    await assertFails(getDocs(collectionGroup(memberDb, "following")));
+    await assertFails(getDocs(query(collectionGroup(guestDb, "following"), where("targetUid", "==", "member"))));
   });
 
   // === Aşama 3-A — verifications.note yalnız oturumlu kullanıcıya açık ===

@@ -24,6 +24,8 @@ import { db } from "./firebase";
 import { withoutUndefined } from "./firestoreValue";
 
 export const USER_PROFILES_LIMIT = 20;
+/** Adsız profillerin arama dizinindeki adı; aramada gizlenir (İŞ 1c · #61 p17). */
+export const PLACEHOLDER_DISPLAY_NAME = "Gezgin";
 export const DISPLAY_NAME_MIN = 2;
 export const DISPLAY_NAME_MAX = 40;
 
@@ -57,8 +59,8 @@ export function validateDisplayName(name: string): string | null {
 }
 
 export function normalizeUserProfile(uid: string, raw: DocumentData): UserProfile {
-  const displayName = typeof raw.displayName === "string" ? raw.displayName : "Gezgin";
-  return {
+  const displayName = typeof raw.displayName === "string" ? raw.displayName : PLACEHOLDER_DISPLAY_NAME;
+  const profile: UserProfile = {
     uid,
     displayName,
     // Geçiş: eski belgelerde alan yok; okuma tarafında türetilir, yazma tarafı
@@ -70,6 +72,30 @@ export function normalizeUserProfile(uid: string, raw: DocumentData): UserProfil
     createdAt: toMillis(raw.createdAt),
     updatedAt: toMillis(raw.updatedAt),
   };
+  knownProfiles.set(profile.uid, profile);
+  return profile;
+}
+
+/**
+ * Oturum içi bilinen profiller (İŞ 1b · eski belge geri dönüşü).
+ *
+ * `displayNameLower` alanı #55'te zorunlu oldu; alanı olmayan eski belgeler
+ * aralık sorgusunda **görünmez** (sorgu alan üzerinden). Kural gevşetmeden
+ * yapılabilecek güvenli geri dönüş: bu oturumda okunmuş (arkadaş listesi, davet,
+ * önceki arama sonucu) profilleri bellekte tutup önek eşleşmesiyle sonuca
+ * katmak. Belgeye yazma yok; alan bir sonraki `syncUserProfile` ile kalıcılaşır.
+ * Kelime içi arama YAPILMAZ (startsWith).
+ */
+const knownProfiles = new Map<string, UserProfile>();
+
+/** Test ve hesap değişimi için belleği temizler. */
+export function resetKnownProfiles(): void {
+  knownProfiles.clear();
+}
+
+export function isPlaceholderProfile(profile: UserProfile): boolean {
+  const name = profile.displayName.trim().toLocaleLowerCase("tr");
+  return name === "" || name === PLACEHOLDER_DISPLAY_NAME.toLocaleLowerCase("tr");
 }
 
 export async function fetchUserProfile(uid: string): Promise<UserProfile | null> {
@@ -129,23 +155,36 @@ export function profilePrefixes(text: string): string[] {
   return [clean.toLocaleLowerCase("tr")];
 }
 
-/** İsimle tek seferlik arama (en çok 20 sonuç, kendisi hariç). */
+/**
+ * İsimle tek seferlik arama (en çok 20 sonuç, kendisi hariç).
+ *
+ * - Önek araması: yalnız `displayNameLower` üzerinden tek aralık sorgusu.
+ *   Kelime içi arama yok (arama "efe" iken "mustafa efe" bulunmaz).
+ * - Adsız/"Gezgin" profiller gizlenir (#61 p17): aramada işe yaramaz kimlik.
+ * - Eski (alanı olmayan) belgeler için oturum içi geri dönüş: bilinen profiller
+ *   önek eşleşmesiyle sonuca eklenir.
+ */
 export async function searchUserProfiles(text: string, excludeUid: string): Promise<UserProfile[]> {
-  if (!db) return [];
   const prefixes = profilePrefixes(text);
   if (prefixes.length === 0) return [];
   const prefix = prefixes[0];
-  const firestore = db;
-  const snap = await getDocs(query(
-    collection(firestore, "userProfiles"),
-    orderBy("displayNameLower"),
-    where("displayNameLower", ">=", prefix),
-    where("displayNameLower", "<", `${prefix}\uf8ff`),
-    limit(USER_PROFILES_LIMIT),
-  ));
-  return snap.docs
-    .filter((item) => item.id !== excludeUid)
-    .map((item) => normalizeUserProfile(item.id, item.data()))
+  const remote: UserProfile[] = [];
+  if (db) {
+    const firestore = db;
+    const snap = await getDocs(query(
+      collection(firestore, "userProfiles"),
+      orderBy("displayNameLower"),
+      where("displayNameLower", ">=", prefix),
+      where("displayNameLower", "<", `${prefix}\uf8ff`),
+      limit(USER_PROFILES_LIMIT),
+    ));
+    remote.push(...snap.docs.map((item) => normalizeUserProfile(item.id, item.data())));
+  }
+  const seen = new Set(remote.map((profile) => profile.uid));
+  const local = [...knownProfiles.values()].filter((profile) =>
+    !seen.has(profile.uid) && profile.displayNameLower.startsWith(prefix));
+  return [...remote, ...local]
+    .filter((profile) => profile.uid !== excludeUid && !isPlaceholderProfile(profile))
     .slice(0, USER_PROFILES_LIMIT);
 }
 
@@ -175,8 +214,15 @@ export function subscribeUserProfiles(
   );
 }
 
+/**
+ * Elde olan listeyi süzer. Kural: **önek** eşleşmesi (`startsWith`), kelime içi
+ * arama yok — uzak sorgunun (`>=` / `<  prefix\uf8ff`) davranışıyla aynı olsun.
+ * Adsız/"Gezgin" profiller burada da gizlenir.
+ */
 export function searchProfilesLocal(profiles: UserProfile[], queryText: string): UserProfile[] {
   const needle = queryText.trim().toLocaleLowerCase("tr");
   if (!needle) return [];
-  return profiles.filter((profile) => profile.displayName.toLocaleLowerCase("tr").includes(needle)).slice(0, USER_PROFILES_LIMIT);
+  return profiles
+    .filter((profile) => profile.displayNameLower.startsWith(needle) && !isPlaceholderProfile(profile))
+    .slice(0, USER_PROFILES_LIMIT);
 }

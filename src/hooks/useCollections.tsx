@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { firebaseConfigured } from "../lib/firebase";
 import {
@@ -57,8 +57,30 @@ export function CollectionsProvider({ children }: { children: ReactNode }) {
   const [savedRoutes, setSavedRoutes] = useState<AtlasRoute[]>(() => cloudCollections ? [] : read(`${prefix}.routes`, []));
   const [loading, setLoading] = useState(cloudCollections);
   const [error, setError] = useState<string | null>(null);
+  /**
+   * İŞ 1c · #61 p8 — koleksiyon izolasyonu.
+   *
+   * `useState` başlangıç değeri yalnız ilk render'da çalışır; aynı oturumda
+   * hesap değişirse (çıkış → başka hesapla giriş) önceki kullanıcının listesi
+   * ekranda kalıyor ve aşağıdaki kalıcılaştırma efekti onu **yeni** kullanıcının
+   * anahtarına yazabiliyordu (veri karışması). Çözüm: uid değişiminde state
+   * o kullanıcının anahtarından yeniden kurulur; kalıcılaştırma yalnız state'in
+   * ait olduğu anahtar güncel anahtarla aynıyken çalışır.
+   */
+  const hydratedPrefix = useRef(prefix);
 
   useEffect(() => {
+    hydratedPrefix.current = prefix;
+    setSavedPlaces(cloudCollections ? [] : read(`${prefix}.places`, []));
+    setSavedRoutes(cloudCollections ? [] : read(`${prefix}.routes`, []));
+    setLoading(cloudCollections);
+    setError(null);
+    // Yalnız hesap/anahtar değişiminde çalışır.
+  }, [prefix, cloudCollections]);
+
+  useEffect(() => {
+    // State başka bir hesaba aitse yazma: yeni kullanıcının anahtarını kirletme.
+    if (hydratedPrefix.current !== prefix) return;
     if (!cloudCollections) {
       storageSet(`${prefix}.places`, JSON.stringify(savedPlaces));
       storageSet(`${prefix}.routes`, JSON.stringify(savedRoutes));

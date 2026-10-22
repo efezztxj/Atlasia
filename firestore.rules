@@ -625,6 +625,37 @@ service cloud.firestore {
                     && savedRouteCounterDecreased(routeId);
     }
 
+    // ───────────────────── Takip (İŞ 1d) ─────────────────────
+    // Şema dar: yalnız hedef kimliği, adı ve zaman. Sahibi dışında kimse
+    // yazamaz, kendini takip edemez. Okuma yalnız sahibine açıktır.
+    match /users/{uid}/following/{targetUid} {
+      function validFollow(data) {
+        return data.keys().hasAll(['targetUid', 'targetName', 'since'])
+               && data.keys().hasOnly(['targetUid', 'targetName', 'since'])
+               && data.targetUid == targetUid
+               && stringBetween(data.targetUid, 1, 128)
+               && stringBetween(data.targetName, 1, 100)
+               && data.since == request.time;
+      }
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow list: if signedIn() && request.auth.uid == uid && boundedList(100);
+      allow create: if signedIn()
+                    && request.auth.uid == uid
+                    && targetUid != uid
+                    && validFollow(request.resource.data);
+      allow update: if false;
+      allow delete: if signedIn() && request.auth.uid == uid;
+    }
+
+    // Takipçi sayısı collection-group count() ile hesaplanır (Spark planında
+    // çalışır). Toplama sorgusu limit göndermediği için burada boundedList
+    // KULLANILMAZ; sınır yerine kanıt var: liste yalnız `targetUid == kendi uid`
+    // koşulunu taşıyan sorguya açılır (kural filtre değil, kanıt ister; istemci
+    // where taşımak zorunda). Kimse başkasının takipçi listesini çekemez.
+    match /{path=**}/following/{targetUid} {
+      allow list: if signedIn() && resource.data.targetUid == request.auth.uid;
+    }
+
     // Yanıtların collection-group listesi: yalnız yazarın kendi yanıtları (hesap silme).
     // Doğrudan posts/{id}/replies kuralları değişmez; bu yalnız collection-group sorgusuna uygulanır.
     match /{path=**}/replies/{replyId} {
@@ -661,7 +692,13 @@ service cloud.firestore {
     match /verifications/{verificationId} {
       allow get: if signedIn();
       allow list: if signedIn() && boundedList(50);
-      allow create: if signedIn() && validVerification(request.resource.data);
+      // İŞ 1d: kimlik {placeId}_{uid} olmak ZORUNDA. Kimlik sınırlanmadığında
+      // aynı kişi aynı yere sınırsız doğrulama yazabiliyordu (badge sayaçlarını
+      // şişirme). Eski `vr-…` belgeleri okunmaya/silinmeye devam eder; kural
+      // yalnız yeni yazımı bağlar (update zaten kapalı).
+      allow create: if signedIn()
+                    && validVerification(request.resource.data)
+                    && verificationId == request.resource.data.placeId + "_" + request.auth.uid;
       allow update: if false;
       allow delete: if signedIn() && resource.data.uid == request.auth.uid;
     }

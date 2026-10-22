@@ -24,8 +24,8 @@ import RouteEditor from "./components/RouteEditor";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { CollectionsProvider, isCloudAccount } from "./hooks/useCollections";
 import { GUIDE_PLACES } from "./data/places";
-import { EPHESUS_CENTER } from "./data/ephesusCenter";
-import { EPHESUS_TOUR } from "./data/siteTours";
+import { siteTourForPoint } from "./data/siteTours";
+import { parseShortcutTab, stripShortcutParam } from "./utils/appShortcut";
 import { formatAccuracy, useGeolocation } from "./hooks/useGeolocation";
 import { useAtlasData } from "./hooks/useAtlasData";
 import { useFirestoreAtlasData } from "./hooks/useFirestoreAtlasData";
@@ -338,11 +338,12 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
     [geo.fix, preciseLabel],
   );
 
-  const activeTour = useMemo(() => {
-    if (!precise) return null;
-    const d = haversineKm(precise.lat, precise.lng, EPHESUS_CENTER.lat, EPHESUS_CENTER.lng);
-    return d <= 5 ? EPHESUS_TOUR : null;
-  }, [precise]);
+  // Site turu seçimi artık tek siteye sabit değil: konuma en yakın tur
+  // (yarıçap içinde) döner. Yeni tur eklemek bu satırı değiştirmeyi gerektirmez.
+  const activeTour = useMemo(
+    () => (precise ? siteTourForPoint(precise.lat, precise.lng, 5) : null),
+    [precise],
+  );
 
   // Location and storage share one panel; receiving a fix does not close it.
   useEffect(() => {
@@ -617,6 +618,30 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   const dockVisible = !recordsOpen && !profileOpen && !myPlacesOpen && !storyPlace && !atlasOpen && !settingsOpen && !drawerOpen && !feedOpen;
   const mobileExplore = () => { closePanels(); setPanelOpen(true); };
   const openMyPlaces = () => { closePanels(); setMyPlacesOpen(true); };
+  // İŞ 5: manifest kısayolları (?tab=…). Yalnız var olan panelleri açar; panel
+  // kapatma mantığı closePanels ile aynı. Parametre okunduktan sonra adresten
+  // silinir, yenilemede eylem ikinci kez tetiklenmez.
+  const shortcutHandled = useRef(false);
+  useEffect(() => {
+    if (shortcutHandled.current) return;
+    const action = parseShortcutTab(window.location.search);
+    if (!action) return;
+    shortcutHandled.current = true;
+    window.history.replaceState(null, "", stripShortcutParam(window.location.href));
+    setDrawerOpen(false);
+    setFeedOpen(false);
+    setAtlasOpen(false);
+    setRecordsOpen(false);
+    setProfileOpen(false);
+    setMyPlacesOpen(false);
+    setSettingsOpen(false);
+    setStoryPlace(null);
+    setStreetPlace(null);
+    setNotificationsOpen(false);
+    if (action === "explore") setPanelOpen(true);
+    else if (action === "add") { setSpin(false); setAddMode(true); }
+    else setProfileOpen(true);
+  }, []);
   const mobileTab = myPlacesOpen ? "İzlerim" : recordsOpen ? "Kaydet" : feedOpen ? "Topluluk" : profileOpen ? "Profil" : "Keşfet";
   const settingsContentProps: SettingsContentProps = {
     theme,
@@ -732,13 +757,14 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         onToggleTerrain={() => setTerrain((v) => !v)}
         labels={labels}
         terrain={terrain}
+        hiddenOnMobile={panelOpen}
       />
 
       {!trackRecorderOpen && <button
         type="button"
         onClick={() => setTrackRecorderOpen(true)}
         aria-label="Yürüyüş kaydını aç"
-        className="glass-panel gold-frame pressable fixed bottom-[136px] left-3 z-30 flex min-h-12 items-center gap-2.5 rounded-full py-1.5 pr-4 pl-1.5 text-[13px] font-semibold text-mint md:bottom-24 md:left-8"
+        className={`glass-panel gold-frame pressable fixed bottom-[136px] left-3 z-30 flex min-h-12 items-center gap-2.5 rounded-full py-1.5 pr-4 pl-1.5 text-[13px] font-semibold text-mint md:bottom-24 md:left-8${panelOpen ? " max-md:hidden" : ""}`}
       ><span className="btn-gold grid size-9 place-items-center rounded-full"><Activity size={16} strokeWidth={2.2} /></span>Yürüyüş kaydı</button>}
       {trackRecorderOpen && <TrackRecorderPanel
         uid={user!.uid}
@@ -778,7 +804,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         {precise && (
           <button
             onClick={handleClearLocation}
-            className="pointer-events-auto flex items-center gap-2 rounded-full border border-leaf/25 bg-ink/80 px-3 py-1.5 text-[11px] text-mint/85 backdrop-blur-xl transition hover:border-leaf/60 hover:text-white"
+            className="pointer-events-auto flex items-center gap-2 rounded-full border border-leaf/25 bg-ink/80 px-3 py-1.5 text-[11px] text-mint/85 transition hover:border-leaf/60 hover:text-white"
             title="Konum işaretini kaldır"
           >
             <Crosshair className="size-3.5 text-leaf" />
@@ -794,7 +820,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
 
       {/* Ekleme modu bandı */}
       {addMode && (
-        <div className="animate-rise absolute top-[88px] left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 rounded-full border border-leaf/40 bg-ink/90 py-2 pr-2 pl-4 text-[12.5px] text-mint shadow-xl shadow-black/50 backdrop-blur-xl">
+        <div className="animate-rise absolute top-[88px] left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 rounded-full border border-leaf/40 bg-ink/90 py-2 pr-2 pl-4 text-[12.5px] text-mint shadow-xl shadow-black/50">
           <MousePointerClick className="size-4 shrink-0 text-leaf" />
           <span>Keşfini bırakmak istediğin noktaya dokun</span>
           <button
@@ -1063,7 +1089,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         type="button"
         onClick={startAdd}
         aria-label="Haritaya iz bırak"
-        className="mobile-add-fab btn-gold-round fixed bottom-[calc(64px+env(safe-area-inset-bottom))] left-1/2 z-30 grid size-[44px] -translate-x-1/2 place-items-center rounded-full text-[#10241A] transition active:scale-95 md:hidden"
+        className={`mobile-add-fab btn-gold-round fixed bottom-[calc(64px+env(safe-area-inset-bottom))] left-1/2 z-30 grid size-[44px] -translate-x-1/2 place-items-center rounded-full text-[#10241A] transition active:scale-95 md:hidden${panelOpen ? " hidden" : ""}`}
       >
         <Plus className="size-[22px]" strokeWidth={2.4} />
       </button>
@@ -1071,7 +1097,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
       {toast && (
         <div
           role="status"
-          className="mobile-toast gold-frame animate-rise absolute top-[88px] left-1/2 z-50 -translate-x-1/2 rounded-full bg-ink-2/95 px-5 py-2.5 text-[13px] whitespace-nowrap text-mint backdrop-blur-xl"
+          className="mobile-toast gold-frame animate-rise absolute top-[88px] left-1/2 z-50 -translate-x-1/2 rounded-full bg-ink-2/95 px-5 py-2.5 text-[13px] whitespace-nowrap text-mint"
         >
           {toast}
         </div>

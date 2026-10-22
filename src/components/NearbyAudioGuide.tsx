@@ -147,7 +147,7 @@ export default function NearbyAudioGuide({ location, places, tourRoute, onOpenPl
   const replay = () => speakFromStart();
 
   return (
-    <section aria-labelledby="nearby-guide-title" className="nearby-audio-guide animate-rise fixed inset-x-3 top-[78px] z-[38] mx-auto max-w-[440px] rounded-[22px] border border-sun/30 bg-[#06241d]/95 p-4 shadow-2xl shadow-black/60 backdrop-blur-xl md:top-[92px]">
+    <section aria-labelledby="nearby-guide-title" className="nearby-audio-guide animate-rise fixed inset-x-3 top-[78px] z-[38] mx-auto max-w-[440px] rounded-[22px] border border-sun/30 bg-[#06241d] p-4 shadow-2xl shadow-black/60 md:top-[92px]">
       <div className="flex items-start gap-3">
         <span className="grid size-11 shrink-0 place-items-center rounded-full bg-sun/15 text-sun"><Volume2 size={19} /></span>
         <div className="min-w-0 flex-1">

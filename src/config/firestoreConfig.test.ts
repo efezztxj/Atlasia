@@ -51,7 +51,7 @@ describe("Firestore sorgu yapılandırması", () => {
     // Hesap silme/veri indirme: collectionGroup("replies") where authorUid ==.
     // Koleksiyon grubu kapsamlı otomatik indeks varsayılan olarak yoktur; override
     // varsayılan koleksiyon kapsamlı indeksleri de korumalıdır (yoksa düşer).
-    expect(config.fieldOverrides).toEqual([
+    expect(config.fieldOverrides).toEqual(expect.arrayContaining([
       {
         collectionGroup: "replies",
         fieldPath: "authorUid",
@@ -62,6 +62,17 @@ describe("Firestore sorgu yapılandırması", () => {
           { order: "ASCENDING", queryScope: "COLLECTION_GROUP" },
         ],
       },
-    ]);
+    ]));
+
+    // İŞ 1d: takipçi sayımı collection-group count() için targetUid indeksi.
+    expect(config.fieldOverrides).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        collectionGroup: "following",
+        fieldPath: "targetUid",
+        indexes: expect.arrayContaining([
+          expect.objectContaining({ queryScope: "COLLECTION_GROUP" }),
+        ]),
+      }),
+    ]));
   });
 });

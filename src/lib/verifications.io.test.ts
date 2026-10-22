@@ -57,8 +57,22 @@ vi.mock("firebase/firestore", () => ({
   orderBy: (field: string, direction: string) => ({ field, direction }),
   limit: (value: number) => ({ limit: value }),
   serverTimestamp: () => "SERVER_TS",
+  where: (field: string, op: string, value: unknown) => ({ field, op, value }),
+  getCountFromServer: async (q: { path: string; constraints: Array<{ field?: string; op?: string; value?: unknown; limit?: number }> }) => {
+    const filter = q.constraints.find((item) => item.op === "==");
+    const count = [...h.store.entries()].filter(([key, data]) => key.startsWith(`${q.path}/`)
+      && (!filter || data[filter.field as string] === filter.value)).length;
+    return { data: () => ({ count }) };
+  },
   setDoc: async (docRef: { path: string }, data: Record<string, unknown>) => {
     h.store.set(docRef.path, data);
+  },
+  deleteDoc: async (docRef: { path: string }) => {
+    h.store.delete(docRef.path);
+  },
+  getDoc: async (docRef: { path: string }) => {
+    const snap = { exists: () => h.store.has(docRef.path), data: () => h.store.get(docRef.path) };
+    return snap;
   },
   onSnapshot: (
     q: { path: string; constraints?: Array<{ field?: string; direction?: string; limit?: number }> },
@@ -74,7 +88,10 @@ vi.mock("firebase/firestore", () => ({
 import type { VerificationStatus } from "../utils/freshness";
 import {
   addPlaceVerification,
+  countPlaceVerifications,
+  isLegacyVerificationId,
   normalizeVerification,
+  verificationDocId,
   subscribeRecentVerifications,
   VERIFICATIONS_LIMIT,
 } from "./verifications";
@@ -129,7 +146,8 @@ describe("ziyaret doğrulaması IO sözleşmesi", () => {
       note: "  Giriş ücreti değişmiş.  ",
     });
 
-    expect(created.id).toMatch(/^vr-/);
+    // İŞ 1d: kimlik artık {placeId}_{uid}; rastgele değil.
+    expect(created.id).toBe("manavgat-şelalesi_user-42");
     expect(created).toMatchObject({
       placeId: "manavgat-şelalesi",
       uid: "user-42",
@@ -144,6 +162,31 @@ describe("ziyaret doğrulaması IO sözleşmesi", () => {
       note: "Giriş ücreti değişmiş.",
       createdAt: "SERVER_TS",
     });
+  });
+
+  it("aynı yer + aynı kişi için kimlik tekildir; ikinci doğrulama eskisini siler", async () => {
+    const first = await addPlaceVerification({ placeId: "efes", uid: "user-1", status: "still_open" });
+    expect(first.id).toBe("efes_user-1");
+    expect([...h.store.keys()]).toEqual(["verifications/efes_user-1"]);
+
+    // Farklı durumla tekrar: belge sayısı artmaz, son doğrulama kazanır.
+    const second = await addPlaceVerification({ placeId: "efes", uid: "user-1", status: "closed" });
+    expect(second.id).toBe(first.id);
+    expect(h.store.size).toBe(1);
+    expect(h.store.get("verifications/efes_user-1")).toMatchObject({ status: "closed" });
+
+    // Aynı yer, başka kişi: ayrı belge.
+    await addPlaceVerification({ placeId: "efes", uid: "user-2", status: "still_open" });
+    expect(h.store.size).toBe(2);
+  });
+
+  it("kimlik yardımcısı ve eski biçim ayrımı", () => {
+    expect(verificationDocId("  buyuk-han  ", " u9 ")).toBe("buyuk-han_u9");
+    expect(() => verificationDocId("  ", "u9")).toThrowError();
+    expect(isLegacyVerificationId("vr-abc", "efes", "u1")).toBe(true);
+    expect(isLegacyVerificationId("efes_u1", "efes", "u1")).toBe(false);
+    expect(isLegacyVerificationId("vr-abc")).toBe(true);
+    expect(isLegacyVerificationId("efes_u1")).toBe(false);
   });
 
   it("yalnız boşluklardan oluşan not belgeye de dönüş değerine de yazılmaz", async () => {
@@ -206,5 +249,15 @@ describe("ziyaret doğrulaması IO sözleşmesi", () => {
     expect(snapshots[0].at(-1)).toBe("v6");
     unsubscribe();
     expect(h.stats.unsubscribes).toBe(1);
+  });
+});
+
+describe("rozet sayacı — yer başına doğrulama count()", () => {
+  it("aynı yerin doğrulamalarını sayar, başka yeri karıştırmaz", async () => {
+    h.store.set("verifications/efes_u1", { placeId: "efes", uid: "u1", status: "still_open", createdAt: 1 });
+    h.store.set("verifications/efes_u2", { placeId: "efes", uid: "u2", status: "closed", createdAt: 2 });
+    h.store.set("verifications/petra_u1", { placeId: "petra", uid: "u1", status: "still_open", createdAt: 3 });
+    await expect(countPlaceVerifications("efes")).resolves.toBe(2);
+    await expect(countPlaceVerifications("  ")).resolves.toBe(0);
   });
 });

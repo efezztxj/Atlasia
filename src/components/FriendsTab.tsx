@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, Link2, Loader2, Search, UserMinus, UserPlus, X } from "lucide-react";
 import {
   acceptFriendRequest,
@@ -9,6 +9,8 @@ import {
   type FriendRequest,
 } from "../lib/friendships";
 import { fetchUserProfile, searchUserProfiles, type UserProfile } from "../lib/userProfiles";
+import { clearRecentSearches, pushRecentSearch, readRecentSearches } from "../lib/searchHistory";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { friendlyDataError } from "../lib/firestoreValue";
 import { buildFriendInviteLink, shareOrCopy } from "../utils/inviteLink";
 
@@ -39,6 +41,15 @@ export default function FriendsTab({ currentUid, currentName, friends, requests,
   const [busyUid, setBusyUid] = useState<string | null>(null);
   const [inviter, setInviter] = useState<UserProfile | null>(null);
 
+  // Instagram tarzı arama: yazarken 350 ms debounce ile ara; son aramalar
+  // cihazda (uid başına) tutulur, hesap değişiminde karışmaz.
+  const [recent, setRecent] = useState<string[]>(() => readRecentSearches(currentUid));
+  const debouncedQuery = useDebouncedValue(queryText, 350);
+
+  useEffect(() => {
+    setRecent(readRecentSearches(currentUid));
+  }, [currentUid]);
+
   const friendSet = new Set(friends.map((friend) => friend.friendUid));
   const incoming = requests.filter((request) => !isBlocked(request.fromUid));
   const incomingSet = new Set(incoming.map((request) => request.fromUid));
@@ -55,16 +66,45 @@ export default function FriendsTab({ currentUid, currentName, friends, requests,
     return () => { active = false; };
   }, [invitedByUid, currentUid, onInviteHandled]);
 
-  const search = async () => {
-    if (queryText.trim().length < 2) return;
+  const runSearch = useCallback(async (term: string) => {
+    if (term.trim().length < 2) {
+      setResults(null);
+      return;
+    }
     setSearching(true);
     try {
-      setResults((await searchUserProfiles(queryText, currentUid)).filter((profile) => !isBlocked(profile.uid)));
+      const found = await searchUserProfiles(term, currentUid);
+      setResults(found.filter((profile) => !isBlocked(profile.uid)));
+      setRecent(pushRecentSearch(currentUid, term));
     } catch (failure) {
       onError(friendlyDataError(failure, "Arama yapılamadı."));
     } finally {
       setSearching(false);
     }
+  }, [currentUid, isBlocked, onError]);
+
+  // Yazarken arama: aynı sorgu iki kez çalışmasın diye son çalışan tutulur.
+  const lastQueried = useRef<string>("");
+  useEffect(() => {
+    const term = debouncedQuery.trim();
+    if (term.length < 2 || term === lastQueried.current) return;
+    lastQueried.current = term;
+    void runSearch(term);
+  }, [debouncedQuery, runSearch]);
+
+  // Boşaltılınca sonuçlar temizlenir (eski sonuç ekranda kalmaz).
+  useEffect(() => {
+    if (queryText.trim().length < 2) {
+      lastQueried.current = "";
+      setResults(null);
+    }
+  }, [queryText]);
+
+  const search = async () => {
+    const term = queryText.trim();
+    if (term.length < 2) return;
+    lastQueried.current = term;
+    await runSearch(term);
   };
 
   const add = async (uid: string, name: string) => {
@@ -157,6 +197,28 @@ export default function FriendsTab({ currentUid, currentName, friends, requests,
         <input value={queryText} onChange={(event) => setQueryText(event.target.value)} maxLength={40} aria-label="İsimle kişi ara" placeholder="İsimle ara (en az 2 harf)" className="h-10 min-w-0 flex-1 rounded-full border border-white/10 bg-ink px-3 text-[13px] text-mint outline-none focus:border-sun/50" />
         <button type="submit" disabled={searching || queryText.trim().length < 2} aria-label="Ara" className="grid size-10 shrink-0 place-items-center rounded-full border border-leaf/30 text-leaf disabled:opacity-50">{searching ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />}</button>
       </form>
+      {recent.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] text-mint/50">Son aramalar</span>
+          {recent.map((term) => (
+            <button
+              key={term}
+              type="button"
+              onClick={() => { setQueryText(term); lastQueried.current = ""; void runSearch(term); }}
+              className="min-h-8 rounded-full border border-white/12 px-2.5 text-[11.5px] text-mint/80 transition hover:border-sun/50 hover:text-white"
+            >
+              {term}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => setRecent(clearRecentSearches(currentUid))}
+            className="ml-auto min-h-8 px-1 text-[11px] text-mint/45 underline-offset-2 hover:underline"
+          >
+            Temizle
+          </button>
+        </div>
+      )}
       {results && (
         <ul className="space-y-1.5">
           {results.length === 0 && <li className="px-1 text-[12px] text-mint/60">Bu isimle kimse bulunamadı. Davet bağlantını göndermeyi dene.</li>}
