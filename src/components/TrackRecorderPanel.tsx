@@ -18,6 +18,14 @@ interface Props {
   onFinished: (track: AtlasTrack, route: AtlasRoute) => void;
 }
 
+function paceLabel(seconds: number, distanceKm: number) {
+  if (distanceKm < 0.01 || seconds <= 0) return "—";
+  const totalSeconds = Math.round(seconds / distanceKm);
+  const minutes = Math.floor(totalSeconds / 60);
+  const remainder = totalSeconds % 60;
+  return `${minutes}:${String(remainder).padStart(2, "0")} dk/km`;
+}
+
 function durationLabel(seconds: number) {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
@@ -87,11 +95,19 @@ export default function TrackRecorderPanel({ uid, cloudAccount, onClose, onPrevi
 
   const summary = draft ? summarizeDraft(draft) : null;
 
-  return <section aria-labelledby="track-recorder-title" className="fixed bottom-[calc(26vh+env(safe-area-inset-bottom))] left-3 z-40 w-[min(360px,calc(100vw-24px))] rounded-[22px] border border-leaf/30 bg-[#031c16]/95 p-4 text-mint shadow-2xl backdrop-blur-xl md:bottom-8 md:left-8">
+  return <section aria-labelledby="track-recorder-title" className="gold-frame glass-panel fixed bottom-[calc(26vh+env(safe-area-inset-bottom))] left-3 z-40 w-[min(370px,calc(100vw-24px))] rounded-[26px] p-5 text-mint md:bottom-8 md:left-8">
+    <span aria-hidden className="sheet-handle mb-3 md:hidden" />
     <header className="flex items-start justify-between gap-3">
       <div>
-        <h2 id="track-recorder-title" className="flex items-center gap-2 font-display text-lg font-semibold"><Activity className="size-5 text-sun" />Yürüyüş kaydı</h2>
-        <p className="mt-1 text-[12px] text-mint/70">İzin verdiğinde kaydı başlat. Kendiliğinden yayınlanmaz.</p>
+        <h2 id="track-recorder-title" className="flex items-center gap-2.5 font-display text-lg font-semibold"><span className="btn-gold grid size-9 place-items-center rounded-full"><Activity className="size-[18px]" strokeWidth={2.2} /></span>Yürüyüş kaydı</h2>
+        <p className="mt-1.5 text-[12px] text-mint/70">İzin verdiğinde kaydı başlat. Kendiliğinden yayınlanmaz.</p>
+        <p className="mt-2.5">
+          {recording
+            ? <span className="rec-pill inline-flex items-center gap-2 rounded-full bg-[#ff6b5e]/12 px-2.5 py-1 text-[11px] font-bold tracking-[0.08em] text-[#ffb3ab] ring-1 ring-[#ff6b5e]/35"><span aria-hidden className="rec-dot" />KAYDEDİLİYOR</span>
+            : draft
+              ? <span className="inline-flex items-center gap-1.5 rounded-full bg-leaf/12 px-2.5 py-1 text-[11px] font-bold tracking-[0.08em] text-leaf ring-1 ring-leaf/35">TASLAK HAZIR</span>
+              : <span className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] px-2.5 py-1 text-[11px] font-bold tracking-[0.08em] text-mint/75 ring-1 ring-white/12">HAZIR</span>}
+        </p>
       </div>
       <button type="button" onClick={onClose} disabled={recording || finishing} aria-label="Kayıt panelini kapat" className="grid size-10 shrink-0 place-items-center rounded-full hover:bg-white/5 disabled:opacity-40"><X size={17} /></button>
     </header>
@@ -101,10 +117,16 @@ export default function TrackRecorderPanel({ uid, cloudAccount, onClose, onPrevi
       <p>Kaydı bitirmek hiçbir yere yazmaz: önce taslağı görürsün, "Hesabıma kaydet" dersen iz yalnız senin hesabına işlenir. Yayınlamak ayrı ve açık bir eylemdir. Telefon ekranını açık tut; arka planda web kaydı durabilir.</p>
     </div>
 
-    {recording && <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-      <div className="rounded-xl bg-white/[0.04] p-2"><span className="block text-[11px] text-mint/60">Süre</span><strong className="mt-1 block font-mono text-sm">{durationLabel(recorder.elapsedSeconds)}</strong></div>
-      <div className="rounded-xl bg-white/[0.04] p-2"><span className="block text-[11px] text-mint/60">Mesafe</span><strong className="mt-1 block text-sm">{recorder.distanceKm.toFixed(2)} km</strong></div>
-      <div className="rounded-xl bg-white/[0.04] p-2"><span className="block text-[11px] text-mint/60">Ölçüm</span><strong className="mt-1 block text-sm">{recorder.pointCount}</strong></div>
+    {recording && <div className="mt-4">
+      <div className="rounded-2xl border border-sun/25 bg-gradient-to-b from-sun/[0.09] to-transparent px-4 py-3 text-center">
+        <span className="block text-[11px] font-semibold tracking-[0.14em] text-mint/70 uppercase">Süre</span>
+        <strong className="font-display mt-0.5 block text-[38px] leading-none font-bold tracking-tight text-white tabular-nums">{durationLabel(recorder.elapsedSeconds)}</strong>
+      </div>
+      <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+        <div className="rounded-2xl border border-white/[0.08] bg-white/[0.04] p-2.5"><span className="block text-[11px] text-mint/70">Mesafe</span><strong className="mt-1 block text-[15px] text-white tabular-nums">{recorder.distanceKm.toFixed(2)} km</strong></div>
+        <div className="rounded-2xl border border-white/[0.08] bg-white/[0.04] p-2.5"><span className="block text-[11px] text-mint/70">Tempo</span><strong className="mt-1 block text-[15px] text-white tabular-nums">{paceLabel(recorder.elapsedSeconds, recorder.distanceKm)}</strong></div>
+        <div className="rounded-2xl border border-white/[0.08] bg-white/[0.04] p-2.5"><span className="block text-[11px] text-mint/70">Ölçüm</span><strong className="mt-1 block text-[15px] text-white tabular-nums">{recorder.pointCount}</strong></div>
+      </div>
     </div>}
 
     {draft && summary && (
@@ -129,9 +151,9 @@ export default function TrackRecorderPanel({ uid, cloudAccount, onClose, onPrevi
     {saving && <p role="status" className="mt-3 text-[12px] text-mint/75">İz hesabına kaydediliyor…</p>}
 
     <div className="mt-4 flex flex-wrap gap-2">
-      {!recording && !draft && <button type="button" disabled={!canRecord || finishing} onClick={() => { setActionError(null); setSavedMsg(null); recorder.start(); }} className={cn("flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold", canRecord ? "bg-sun text-ink hover:bg-sun/90" : "bg-white/10 text-mint/50")}><Play size={15} fill="currentColor" />{recorder.status === "error" ? "Tekrar dene" : "Kaydı başlat"}</button>}
-      {recording && <button type="button" onClick={() => void finish()} className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full bg-sun px-4 text-sm font-semibold text-ink hover:bg-sun/90"><CircleStop size={16} />Bitir</button>}
-      {draft && canSave && <button type="button" disabled={saving} onClick={() => void persist(draft)} className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full bg-sun px-4 text-sm font-semibold text-ink disabled:opacity-50"><Save size={15} />{saving ? "Kaydediliyor…" : "Hesabıma kaydet"}</button>}
+      {!recording && !draft && <button type="button" disabled={!canRecord || finishing} onClick={() => { setActionError(null); setSavedMsg(null); recorder.start(); }} className={cn("flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold", canRecord ? "btn-gold text-ink" : "bg-white/10 text-mint/70")}><Play size={15} fill="currentColor" />{recorder.status === "error" ? "Tekrar dene" : "Kaydı başlat"}</button>}
+      {recording && <button type="button" onClick={() => void finish()} className="btn-gold flex min-h-12 flex-1 items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold text-ink"><CircleStop size={16} />Bitir</button>}
+      {draft && canSave && <button type="button" disabled={saving} onClick={() => void persist(draft)} className="btn-gold flex min-h-12 flex-1 items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold text-ink disabled:opacity-50"><Save size={15} />{saving ? "Kaydediliyor…" : "Hesabıma kaydet"}</button>}
       {draft && <button type="button" disabled={saving} onClick={discardDraft} className="flex min-h-11 items-center justify-center gap-2 rounded-full border border-white/15 px-3 text-sm text-mint/80 disabled:opacity-40" aria-label="Taslağı at"><X size={15} />Vazgeç</button>}
       {recording && <button type="button" disabled={finishing} onClick={() => { recorder.discard(); setActionError(null); }} className="flex min-h-11 items-center justify-center gap-2 rounded-full border border-white/15 px-3 text-sm text-mint/80 disabled:opacity-40" aria-label="Kaydedilmemiş izi sil"><Trash2 size={15} />Sil</button>}
     </div>

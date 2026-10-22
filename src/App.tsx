@@ -9,7 +9,7 @@ import BottomPanel from "./components/BottomPanel";
 import AddDiscoveryModal from "./components/AddDiscoveryModal";
 import Drawer from "./components/Drawer";
 import SocialPanel from "./components/SocialPanel";
-import SettingsPanel from "./components/SettingsPanel";
+import SettingsPanel, { type SettingsContentProps } from "./components/SettingsPanel";
 import AtlasAssistant from "./components/AtlasAssistant";
 import Onboarding from "./components/Onboarding";
 import PlaceDetails from "./components/PlaceDetails";
@@ -522,6 +522,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
     setLocationLabel(preciseLabel ?? "Konumun");
     mapRef.current?.showMe(geo.fix.lng, geo.fix.lat, geo.fix.accuracy, true);
     closeSettings();
+    setProfileOpen(false);
   };
 
   const handleClearLocation = useCallback(() => {
@@ -617,6 +618,29 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   const mobileExplore = () => { closePanels(); setPanelOpen(true); };
   const openMyPlaces = () => { closePanels(); setMyPlacesOpen(true); };
   const mobileTab = myPlacesOpen ? "İzlerim" : recordsOpen ? "Kaydet" : feedOpen ? "Topluluk" : profileOpen ? "Profil" : "Keşfet";
+  const settingsContentProps: SettingsContentProps = {
+    theme,
+    onTheme: setTheme,
+    baseMap,
+    onBaseMap: setBaseMap,
+    installApp,
+    mapBounds: mapViewport?.bounds ?? null,
+    location: {
+      supported: geo.supported,
+      secure: geo.secure,
+      permission: geo.permission,
+      status: geo.status,
+      fix: geo.fix,
+      label: preciseLabel,
+    },
+    onAllowLocation: handleAllowLocation,
+    onClearLocation: handleClearLocation,
+    onShowLocation: handleShowLocation,
+    showLabels: labels,
+    onToggleLabels: () => setLabels((value) => !value),
+    terrainEnabled: terrain,
+    onToggleTerrain: () => setTerrain((value) => !value),
+  };
 
   return (
     <div className="space-bg relative h-screen w-full overflow-hidden">
@@ -714,8 +738,8 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         type="button"
         onClick={() => setTrackRecorderOpen(true)}
         aria-label="Yürüyüş kaydını aç"
-        className="fixed bottom-[136px] left-3 z-30 flex min-h-11 items-center gap-2 rounded-full border border-leaf/30 bg-ink/90 px-4 text-[13px] font-semibold text-mint shadow-xl backdrop-blur-xl md:bottom-24 md:left-8"
-      ><Activity size={16} className="text-sun" />Yürüyüş kaydı</button>}
+        className="glass-panel gold-frame pressable fixed bottom-[136px] left-3 z-30 flex min-h-12 items-center gap-2.5 rounded-full py-1.5 pr-4 pl-1.5 text-[13px] font-semibold text-mint md:bottom-24 md:left-8"
+      ><span className="btn-gold grid size-9 place-items-center rounded-full"><Activity size={16} strokeWidth={2.2} /></span>Yürüyüş kaydı</button>}
       {trackRecorderOpen && <TrackRecorderPanel
         uid={user!.uid}
         cloudAccount={user!.backend === "firebase"}
@@ -896,7 +920,20 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
           setToast(visibility === "private" ? "Rota hesabında özel olarak kaydedildi." : "Rota yayımlandı. Kalıcı bağlantı hazır.");
         }}
       />}
-      {profileOpen && <Suspense fallback={null}><ProfilePanel onClose={() => setProfileOpen(false)} onRecords={openRecords} /></Suspense>}
+      {profileOpen && (
+        <Suspense fallback={null}>
+          <ProfilePanel
+            onClose={() => setProfileOpen(false)}
+            onRecords={openRecords}
+            settings={settingsContentProps}
+            myPlacesCount={myPlaces.length}
+            onMyPlaces={openMyPlaces}
+            unreadCount={unreadCount}
+            onNotifications={() => { closePanels(); setNotificationsOpen(true); }}
+            onAtlasAI={openAtlas}
+          />
+        </Suspense>
+      )}
       {myPlacesOpen && (
         <MyPlacesPanel
           places={myPlaces}
@@ -942,26 +979,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
       )}
 
       {settingsOpen && (
-        <SettingsPanel
-          onClose={closeSettings}
-          theme={theme}
-          onTheme={setTheme}
-          baseMap={baseMap}
-          onBaseMap={setBaseMap}
-          installApp={installApp}
-          mapBounds={mapViewport?.bounds ?? null}
-          location={{
-            supported: geo.supported,
-            secure: geo.secure,
-            permission: geo.permission,
-            status: geo.status,
-            fix: geo.fix,
-            label: preciseLabel,
-          }}
-          onAllowLocation={handleAllowLocation}
-          onClearLocation={handleClearLocation}
-          onShowLocation={handleShowLocation}
-        />
+        <SettingsPanel onClose={closeSettings} {...settingsContentProps} />
       )}
 
       {onboarding && (
@@ -1020,18 +1038,24 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         />
       )}
 
-      <nav aria-label="Mobil ana menü" className="mobile-tab-bar fixed inset-x-0 bottom-0 z-40 flex h-[calc(56px+env(safe-area-inset-bottom))] items-start justify-around border-t border-leaf/20 bg-[#041d17] pb-[env(safe-area-inset-bottom)] md:hidden">
+      <nav aria-label="Mobil ana menü" className="mobile-tab-bar fixed inset-x-0 bottom-0 z-40 flex h-[calc(58px+env(safe-area-inset-bottom))] items-start justify-around border-t border-leaf/20 bg-[#041d17] pb-[env(safe-area-inset-bottom)] md:hidden">
         {[
           { label: "Keşfet", icon: Compass, action: mobileExplore },
           { label: "Kaydet", icon: Bookmark, action: openRecords },
           { label: "Topluluk", icon: UsersRound, action: () => { closePanels(); setFeedOpen(true); } },
           { label: "Profil", icon: UserRound, action: openProfile },
           { label: "İzlerim", icon: MapPin, action: openMyPlaces },
-        ].map(({ label, icon: Icon, action }) => (
-          <button key={label} type="button" onClick={action} aria-current={mobileTab === label ? "page" : undefined} className="mobile-tab-item flex min-h-[52px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 text-[10px] text-mint">
-            <Icon size={16} strokeWidth={1.8} />{label}
-          </button>
-        ))}
+        ].map(({ label, icon: Icon, action }) => {
+          const isActive = mobileTab === label;
+          return (
+            <button key={label} type="button" onClick={action} aria-current={isActive ? "page" : undefined} className="mobile-tab-item flex min-h-[54px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 text-[10px] text-mint">
+              <span className="mobile-tab-icon">
+                <Icon size={19} strokeWidth={isActive ? 2.3 : 1.8} fill={isActive && (label === "Kaydet" || label === "İzlerim") ? "currentColor" : "none"} />
+              </span>
+              {label}
+            </button>
+          );
+        })}
       </nav>
 
       {/* Ortadaki artı: pin bırak */}
@@ -1039,7 +1063,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         type="button"
         onClick={startAdd}
         aria-label="Haritaya iz bırak"
-        className="mobile-add-fab fixed bottom-[calc(66px+env(safe-area-inset-bottom))] left-1/2 z-30 grid size-[46px] -translate-x-1/2 place-items-center rounded-full bg-sun text-[#10241A] shadow-xl shadow-black/40 transition active:scale-95 md:hidden"
+        className="mobile-add-fab btn-gold-round fixed bottom-[calc(64px+env(safe-area-inset-bottom))] left-1/2 z-30 grid size-[44px] -translate-x-1/2 place-items-center rounded-full text-[#10241A] transition active:scale-95 md:hidden"
       >
         <Plus className="size-[22px]" strokeWidth={2.4} />
       </button>
@@ -1047,7 +1071,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
       {toast && (
         <div
           role="status"
-          className="mobile-toast animate-rise absolute top-[88px] left-1/2 z-50 -translate-x-1/2 rounded-full border border-leaf/30 bg-ink-2/95 px-5 py-2.5 text-[13px] whitespace-nowrap text-mint shadow-xl shadow-black/60 backdrop-blur-xl"
+          className="mobile-toast gold-frame animate-rise absolute top-[88px] left-1/2 z-50 -translate-x-1/2 rounded-full bg-ink-2/95 px-5 py-2.5 text-[13px] whitespace-nowrap text-mint backdrop-blur-xl"
         >
           {toast}
         </div>

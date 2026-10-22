@@ -50,7 +50,7 @@ export default function Drawer({ open, onClose, places, category, onCategory, on
         // Kapalı çekmecenin düğmeleri Tab sırasından çıkar (ekran dışında görünmez odak olmasın).
         inert={!open}
         className={cn(
-          "fixed top-0 right-0 bottom-[calc(70px+env(safe-area-inset-bottom))] z-40 flex w-full max-w-[400px] flex-col border-l border-leaf/20 bg-ink-2/95 shadow-2xl shadow-black/70 backdrop-blur-2xl transition-transform duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] md:bottom-0",
+          "fixed top-0 right-0 bottom-[calc(70px+env(safe-area-inset-bottom))] z-40 flex w-full max-w-[400px] flex-col border-l border-sun/30 bg-ink-2/95 shadow-2xl shadow-black/70 backdrop-blur-2xl transition-transform duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] md:bottom-0",
           open ? "translate-x-0" : "translate-x-full",
         )}
       >
@@ -65,13 +65,13 @@ export default function Drawer({ open, onClose, places, category, onCategory, on
           <button
             onClick={onClose}
             aria-label="Kapat"
-            className="grid size-9 place-items-center rounded-full text-mint/60 transition hover:bg-white/10 hover:text-white"
+            className="grid size-11 place-items-center rounded-full text-mint/70 transition hover:bg-white/10 hover:text-white"
           >
             <X className="size-5" />
           </button>
         </div>
 
-        <button type="button" onClick={onAdd} className="mx-6 mb-4 flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-sun text-[13px] font-bold text-ink md:hidden">
+        <button type="button" onClick={onAdd} className="btn-gold mx-6 mb-4 flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full text-[13px] font-bold text-ink md:hidden">
           <Plus className="size-4" />İz bırak
         </button>
 
@@ -95,7 +95,7 @@ export default function Drawer({ open, onClose, places, category, onCategory, on
           </button>
         </div>
 
-        <div className="no-scrollbar flex gap-1.5 overflow-x-auto px-6 pb-3">
+        <div className="no-scrollbar fade-x flex gap-1.5 overflow-x-auto px-6 pb-3">
           <button
             onClick={() => onCategory(null)}
             className={cn(
