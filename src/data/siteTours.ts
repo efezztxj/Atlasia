@@ -1,16 +1,17 @@
 import type { AtlasRoute, RouteStop } from "../types";
 import { encodePolyline } from "../utils/polyline";
+import { ADDITIONAL_SITE_TOURS } from "./tours/additionalTours";
 import { haversineKm } from "../utils/geo";
 
 /**
  * Adım 8 — Site içi tur modeli
  * Tur YAZILIR, HESAPLANMAZ (antipattern A). planRoute KULLANILMAZ.
  * Sıralı duraklar, patika geometrisi (elle çizilmiş), giriş kapısı, çıkış noktası.
- * KANIT: Efes 3 saatlik tur, durak saatleri tanımlı, haritada gerçek patika.
+ * Efes çizgisi elle yazılmış temsildir; doğrulanmış OSM yolu değildir.
  */
 
 const EPHESUS_PATH_COORDS: [number, number][] = [
-  // Giriş → Devlet Agorası arası patika (yaya footway)
+  // Eski editör çizimi; kaynaklı footway geometrisi değildir.
   [27.3435, 37.9365], // Magnesia Kapısı (Giriş)
   [27.3437, 37.9367],
   [27.3439, 37.9369],
@@ -67,7 +68,7 @@ function stop(
     endTime,
     durationMinutes,
     description,
-    aiReason: `Editör tarafından yazılan site turu durağı ${order}: önceki durağa yaya patikasıyla bağlı, sıra bölge motoruyla değil elle belirlendi.`,
+    aiReason: `Editör tarafından yazılan site turu durağı ${order}: sıra bölge motoruyla değil elle belirlendi; duraklar arası yol bağlantısı doğrulanmadı.`,
     tips: ["Bilet ve açılış saatini resmî kaynaktan doğrula.", "Yazın şapka ve su al; alan içinde gölge sınırlı."],
     isCommunityPin: false,
     pinId,
@@ -81,7 +82,7 @@ export const EPHESUS_TOUR: AtlasRoute = {
   id: "site-efes-3h",
   routeTitle: "Efes Antik Kenti — 3 Saatlik Klasik Tur",
   routeSummary:
-    "Magnesia Kapısı'ndan giren, Kuretler Caddesi'ni izleyen ve Büyük Tiyatro'da biten 2,1 km'lik yaya turu. Sıra editör tarafından yazıldı; kesik çizgi patika geometrisi footway'i takip eder, planRoute kullanılmadı.",
+    "Magnesia Kapısı'ndan giren, Kuretler Caddesi'ni izleyen ve Büyük Tiyatro'da biten 2,1 km'lik yaya turu. Sıra editör tarafından yazıldı; eski elle çizilmiş geometri doğrulanmış yol değildir, planRoute kullanılmadı.",
   totalDurationHours: 3,
   totalDistanceKm: 2.1,
   transport: "walking",
@@ -302,7 +303,7 @@ export const PRIENE_TOUR: AtlasRoute = {
 };
 
 /** Site turları listesi (ölçeklenebilir) */
-export const SITE_TOURS: AtlasRoute[] = [EPHESUS_TOUR, PRIENE_TOUR];
+export const SITE_TOURS: AtlasRoute[] = [EPHESUS_TOUR, PRIENE_TOUR, ...ADDITIONAL_SITE_TOURS];
 
 export function getSiteTours(): AtlasRoute[] {
   return SITE_TOURS;
@@ -339,33 +340,11 @@ export function getExitPoint(tour: AtlasRoute) {
   return stops[stops.length - 1] ?? null;
 }
 
-/** Patika gerçek mi yoksa düz çizgi mi? (antipattern A kontrolü) */
-export function isRealPath(tour: AtlasRoute): boolean {
-  const poly = tour.days[0]?.polyline ?? "";
-  if (!poly) return false;
-  // Gerçek patika: decode edilmiş nokta sayısı durak sayısından belirgin fazla.
-  // Düz çizgi olsaydı nokta sayısı = durak +1 olurdu
-  const decodedLength = (() => {
-    // basit polyline decode sayımı: encodePolyline ile aynı algoritma
-    let i = 0;
-    let count = 0;
-    while (i < poly.length) {
-      // her nokta 2 değer kodlar
-      let _s = 0;
-      let b: number;
-      do {
-        b = poly.charCodeAt(i++) - 63;
-        _s += 5;
-      } while (b >= 0x20 && i < poly.length);
-      do {
-        b = poly.charCodeAt(i++) - 63;
-        _s += 5;
-      } while (b >= 0x20 && i < poly.length);
-      void _s;
-      count++;
-    }
-    return count;
-  })();
-  const stops = tour.days[0]?.stops.length ?? 0;
-  return decodedLength > stops + 4; // en az 4 ara nokta fazla
+/**
+ * Nokta sayısı, isim veya OSM atfı gerçek yol kanıtı değildir.
+ * Katalogda kaynak way/node zinciriyle doğrulanmış geometri yoktur.
+ * Gerçek yol eklenirken saklanan kaynak geometriyle eşleşme kontrolü eklenmeli.
+ */
+export function isRealPath(_tour: AtlasRoute): boolean {
+  return false;
 }
