@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ACCESS_EXAMPLE_ROUTE } from "../data/accessExample";
-import { LEG_COEFFICIENT, LEG_SPEED_KMH, distanceForLeg, durationForLeg } from "./routeLegs";
+import { LEG_COEFFICIENT, LEG_SPEED_KMH, distanceForLeg, durationForLeg, routeDrawLegs } from "./routeLegs";
+import { reorderRoute } from "./routePlanner";
 import { decodePolyline } from "./polyline";
 
 describe("routeLegs – erişim tipi ve bacak modu (Adım 10)", () => {
@@ -61,5 +62,34 @@ describe("routeLegs – erişim tipi ve bacak modu (Adım 10)", () => {
     expect(durDescent).toBeGreaterThan(durWalking);
     expect(durTrail).toBeGreaterThan(durWalking);
     expect(durDescent).toBeGreaterThan(durTrail);
+  });
+});
+
+describe("routeDrawLegs – haritada bacak bazlı çizim (Adım 11)", () => {
+  it("her günün geçerli bacağı varsa tüm bacakları sırayla verir", () => {
+    const legs = routeDrawLegs(ACCESS_EXAMPLE_ROUTE);
+    const expected = ACCESS_EXAMPLE_ROUTE.days.flatMap((day) => day.legs ?? []);
+    expect(expected.length).toBeGreaterThan(0);
+    expect(legs?.map((leg) => leg.id)).toEqual(expected.map((leg) => leg.id));
+  });
+
+  it("bacaksız gün varsa ya da bacak geometrisi yoksa null (düz çizgiye düşer)", () => {
+    const withoutLegs = { ...ACCESS_EXAMPLE_ROUTE, days: ACCESS_EXAMPLE_ROUTE.days.map((day) => ({ ...day, legs: undefined })) };
+    expect(routeDrawLegs(withoutLegs)).toBeNull();
+    const emptyGeometry = {
+      ...ACCESS_EXAMPLE_ROUTE,
+      days: ACCESS_EXAMPLE_ROUTE.days.map((day) => ({ ...day, legs: (day.legs ?? []).map((leg) => ({ ...leg, coords: [] as [number, number][] })) })),
+    };
+    expect(routeDrawLegs(emptyGeometry)).toBeNull();
+    expect(routeDrawLegs({ ...ACCESS_EXAMPLE_ROUTE, days: [] })).toBeNull();
+  });
+
+  it("sıra değişince eski bacaklar düşer; harita yanlış yolu çizmez", () => {
+    const day = ACCESS_EXAMPLE_ROUTE.days[0];
+    expect(day.stops.length).toBeGreaterThan(1);
+    const reordered = reorderRoute(ACCESS_EXAMPLE_ROUTE, 0, 0, 1);
+    expect(reordered.days[0].legs).toBeUndefined();
+    expect(routeDrawLegs(reordered)).toBeNull();
+    expect(ACCESS_EXAMPLE_ROUTE.days[0].legs?.length).toBeGreaterThan(0); // girdi değişmez
   });
 });

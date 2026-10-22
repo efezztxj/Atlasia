@@ -1,0 +1,377 @@
+diff --git a/firestore.rules b/firestore.rules
+index ff43e4a9173b3fcb3f874984d51ad33c2331a102..b84fc438c1782f82312e8be4b38c441915bb88f5 100644
+--- a/firestore.rules
++++ b/firestore.rules
+@@ -464,6 +464,16 @@ service cloud.firestore {
+              && (!('targetId' in data) || stringBetween(data.targetId, 1, 200));
+     }
+ 
++    // Ret kanıtı: friend_declined ancak decliner'ın kendi ret belgesiyle yazılır.
++    // Diğer tipler bu değişiklikten etkilenmez (dal yalnız friend_declined'a uygulanır).
++    function friendDeclineProof(data) {
++      return data.type != 'friend_declined'
++             || ('targetId' in data
++                 && exists(/databases/$(database)/documents/friendDeclines/$(data.targetId))
++                 && get(/databases/$(database)/documents/friendDeclines/$(data.targetId)).data.declinerUid == data.actorUid
++                 && get(/databases/$(database)/documents/friendDeclines/$(data.targetId)).data.requesterUid == data.recipientUid);
++    }
++
+     match /places/{placeId} {
+       allow get: if true;
+       // Toplam içerik tavanı değil: her overview/viewport/sahip cursor sayfası
+@@ -874,7 +884,7 @@ service cloud.firestore {
+     match /users/{uid}/notifications/{notificationId} {
+       allow get: if signedIn() && uid == request.auth.uid;
+       allow list: if signedIn() && uid == request.auth.uid && boundedList(50);
+-      allow create: if signedIn() && validNotification(request.resource.data) && request.resource.data.recipientUid == uid;
++      allow create: if signedIn() && validNotification(request.resource.data) && request.resource.data.recipientUid == uid && friendDeclineProof(request.resource.data);
+       allow update: if signedIn() && uid == request.auth.uid
+                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read'])
+                     && request.resource.data.read is bool;
+@@ -940,6 +950,28 @@ service cloud.firestore {
+       allow delete: if signedIn() && request.auth.uid in resource.data.users;
+     }
+ 
++    // Ret kanıtı: reddeden kullanıcı, isteği sildiği batch'te yazar.
++    // Kanıt yoksa friend_declined bildirimi de yazılamaz (friendDeclineProof).
++    match /friendDeclines/{fid} {
++      allow get: if signedIn() && request.auth.uid in resource.data.users;
++      allow list: if false;
++      allow create: if signedIn()
++                    && request.resource.data.keys().hasAll(['declinerUid', 'requesterUid', 'users', 'createdAt'])
++                    && request.resource.data.keys().hasOnly(['declinerUid', 'requesterUid', 'users', 'createdAt'])
++                    && stringBetween(request.resource.data.declinerUid, 1, 128)
++                    && stringBetween(request.resource.data.requesterUid, 1, 128)
++                    && request.auth.uid == request.resource.data.declinerUid
++                    && request.resource.data.declinerUid != request.resource.data.requesterUid
++                    && request.resource.data.users is list
++                    && request.resource.data.users.size() == 2
++                    && request.resource.data.users.hasAll([request.resource.data.declinerUid, request.resource.data.requesterUid])
++                    && fid == friendshipId(request.resource.data.declinerUid, request.resource.data.requesterUid)
++                    && exists(/databases/$(database)/documents/users/$(request.resource.data.declinerUid)/friendRequests/$(request.resource.data.requesterUid))
++                    && !existsAfter(/databases/$(database)/documents/users/$(request.resource.data.declinerUid)/friendRequests/$(request.resource.data.requesterUid))
++                    && request.resource.data.createdAt == request.time;
++      allow update: if false;
++      allow delete: if signedIn() && request.auth.uid == resource.data.declinerUid;
++    }
+ 
+     match /{document=**} {
+       allow read, write: if false;
+diff --git a/src/lib/friendships.flow.test.ts b/src/lib/friendships.flow.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..7ebb50eac971149fc957824b5d667e2cf2050b24
+--- /dev/null
++++ b/src/lib/friendships.flow.test.ts
+@@ -0,0 +1,126 @@
++/**
++ * Aşama 1 — ret akışı: decline + istek silme TEK batch'te, ardından kanıtlı
++ * friend_declined bildirimi. Bildirim hatası ana akışı bozmaz.
++ */
++import { beforeEach, describe, expect, it, vi } from "vitest";
++
++const h = vi.hoisted(() => ({
++  store: new Map<string, Record<string, unknown>>(),
++  batches: [] as Array<Array<{ op: "set" | "delete"; path: string; data?: Record<string, unknown> }>>,
++  directWrites: [] as string[],
++  commits: 0,
++  failCommit: false,
++}));
++
++vi.mock("./firebase", () => ({ db: {} }));
++const notify = vi.hoisted(() => vi.fn(async () => "n1"));
++vi.mock("./notifications", () => ({ createNotification: notify }));
++
++vi.mock("firebase/firestore", () => ({
++  collection: (_db: unknown, path: string) => ({ path }),
++  doc: (_db: unknown, ...segments: string[]) => ({ path: segments.join("/") }),
++  getDoc: async (ref: { path: string }) => ({
++    exists: () => h.store.has(ref.path),
++    data: () => h.store.get(ref.path),
++    id: ref.path.split("/").at(-1),
++  }),
++  setDoc: async (ref: { path: string }, data: Record<string, unknown>) => {
++    h.directWrites.push(ref.path);
++    h.store.set(ref.path, data);
++  },
++  deleteDoc: async (ref: { path: string }) => {
++    h.directWrites.push(ref.path);
++    h.store.delete(ref.path);
++  },
++  serverTimestamp: () => "TS",
++  writeBatch: () => {
++    const ops: Array<{ op: "set" | "delete"; path: string; data?: Record<string, unknown> }> = [];
++    h.batches.push(ops);
++    return {
++      set: (ref: { path: string }, data: Record<string, unknown>) => ops.push({ op: "set", path: ref.path, data }),
++      delete: (ref: { path: string }) => ops.push({ op: "delete", path: ref.path }),
++      commit: async () => {
++        if (h.failCommit) throw Object.assign(new Error("batch failed"), { code: "unavailable" });
++        h.commits += 1;
++        for (const op of ops) {
++          if (op.op === "set") h.store.set(op.path, op.data ?? {});
++          else h.store.delete(op.path);
++        }
++      },
++    };
++  },
++  query: () => ({}),
++  orderBy: () => ({}),
++  limit: () => ({}),
++  onSnapshot: () => () => {},
++}));
++
++import { declineFriendRequest } from "./friendships";
++
++beforeEach(() => {
++  h.store.clear();
++  h.batches.length = 0;
++  h.directWrites.length = 0;
++  h.commits = 0;
++  h.failCommit = false;
++  notify.mockClear();
++  notify.mockResolvedValue("n1");
++  h.store.set("users/bob/friendRequests/alice", { fromUid: "alice", toUid: "bob" });
++});
++
++describe("declineFriendRequest — tek batch + kanıtlı bildirim", () => {
++  it("ret belgesini ve istek silmesini aynı batch'te yazar, sonra kanıtlı bildirim gönderir", async () => {
++    await declineFriendRequest("bob", "alice");
++
++    expect(h.batches).toHaveLength(1);
++    expect(h.batches[0]).toEqual([
++      {
++        op: "set",
++        path: "friendDeclines/alice_bob",
++        data: { declinerUid: "bob", requesterUid: "alice", users: ["alice", "bob"], createdAt: "TS" },
++      },
++      { op: "delete", path: "users/bob/friendRequests/alice" },
++    ]);
++    // Batch dışına taşan yazma yok.
++    expect(h.directWrites).toEqual([]);
++    expect(h.commits).toBe(1);
++    expect(h.store.has("users/bob/friendRequests/alice")).toBe(false);
++    expect(notify).toHaveBeenCalledTimes(1);
++    expect(notify).toHaveBeenCalledWith({
++      recipientUid: "alice",
++      actorUid: "bob",
++      type: "friend_declined",
++      title: "Istek reddedildi",
++      body: "Arkadaslik istegin reddedildi.",
++      targetId: "alice_bob",
++    });
++  });
++
++  it("bildirim yazılamazsa ret yine tamamlanır ve uyarı loglanır", async () => {
++    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
++    notify.mockRejectedValueOnce(new Error("permission-denied"));
++
++    await expect(declineFriendRequest("bob", "alice")).resolves.toBeUndefined();
++
++    expect(h.store.get("friendDeclines/alice_bob")).toMatchObject({ declinerUid: "bob", requesterUid: "alice" });
++    expect(h.store.has("users/bob/friendRequests/alice")).toBe(false);
++    expect(warn).toHaveBeenCalledWith("[Atlasia] Red bildirimi yazilamadi:", expect.any(Error));
++    warn.mockRestore();
++  });
++
++  it("batch düşerse bildirim gönderilmez; hata çağırana döner", async () => {
++    h.failCommit = true;
++
++    await expect(declineFriendRequest("bob", "alice")).rejects.toMatchObject({ code: "unavailable" });
++
++    expect(notify).not.toHaveBeenCalled();
++    expect(h.store.has("users/bob/friendRequests/alice")).toBe(true);
++    expect(h.store.has("friendDeclines/alice_bob")).toBe(false);
++  });
++
++  it("kendine ret yazılamaz; hiçbir yazma denenmez", async () => {
++    await expect(declineFriendRequest("bob", "bob")).rejects.toMatchObject({ code: "friendship/self" });
++    expect(h.batches).toHaveLength(0);
++    expect(notify).not.toHaveBeenCalled();
++  });
++});
+diff --git a/src/lib/friendships.ts b/src/lib/friendships.ts
+index 07e4ebb62c2d8c6b330123f936b9735daa07f726..9b8cb4bb2403f51748ab358452304c0cd0d313b6 100644
+--- a/src/lib/friendships.ts
++++ b/src/lib/friendships.ts
+@@ -198,12 +198,30 @@ export async function cancelFriendRequest(fromUid: string, toUid: string): Promi
+   await deleteDoc(doc(db, `users/${cleanTo}/friendRequests/${cleanFrom}`));
+ }
+ 
++/**
++ * Ret, isteği silerken aynı batch'te kendi kanıtını üretir:
++ * friendDeclines/{friendshipId}. Kural, friend_declined bildirimini yalnız bu
++ * belge varken ve declinerUid == actorUid iken kabul eder; böylece ret sonrası
++ * kanıt kaybolmaz ve Cloud Functions gerekmez.
++ */
+ export async function declineFriendRequest(recipientUid: string, requesterUid: string): Promise<void> {
+   if (!db) throw dataError("data/unavailable", "Firestore hazir degil.");
+   const cleanRecipient = recipientUid.trim();
+   const cleanRequester = requesterUid.trim();
+   if (!cleanRecipient || !cleanRequester) throw dataError("friend-request/uid-invalid", "Kullanici kimligi gecersiz.");
+-  await deleteDoc(doc(db, `users/${cleanRecipient}/friendRequests/${cleanRequester}`));
++  const declineId = friendshipIdFor(cleanRecipient, cleanRequester);
++  const batch = writeBatch(db);
++  batch.set(
++    doc(db, `friendDeclines/${declineId}`),
++    withoutUndefined({
++      declinerUid: cleanRecipient,
++      requesterUid: cleanRequester,
++      users: [cleanRecipient, cleanRequester].sort(),
++      createdAt: serverTimestamp(),
++    }),
++  );
++  batch.delete(doc(db, `users/${cleanRecipient}/friendRequests/${cleanRequester}`));
++  await batch.commit();
+   try {
+     await createNotification({
+       recipientUid: cleanRequester,
+@@ -211,7 +229,7 @@ export async function declineFriendRequest(recipientUid: string, requesterUid: s
+       type: "friend_declined",
+       title: "Istek reddedildi",
+       body: "Arkadaslik istegin reddedildi.",
+-      targetId: cleanRecipient,
++      targetId: declineId,
+     });
+   } catch (error) {
+     console.warn("[Atlasia] Red bildirimi yazilamadi:", error);
+diff --git a/src/lib/notifications.ts b/src/lib/notifications.ts
+index d395e07118d396d558c1f8683787e88ca4b6f1d8..5a3f683bebe4a6581d715b8d4ee17b2051f6c304 100644
+--- a/src/lib/notifications.ts
++++ b/src/lib/notifications.ts
+@@ -6,6 +6,12 @@
+ import { collection, deleteDoc, doc, limit, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
+ import { db } from "./firebase";
+ 
++/**
++ * friend_declined artık kanıtlı ve istemciye açık: declineFriendRequest aynı
++ * batch'te friendDeclines/{friendshipId} belgesini yazar, kural da bildirimi
++ * yalnız bu belge varken (declinerUid == actorUid) kabul eder.
++ * Diğer tipler bu değişiklikten etkilenmez.
++ */
+ export type NotificationType = "report_received" | "report_actioned" | "blocked" | "group_invite" | "group_message" | "friend_request" | "friend_accepted" | "friend_declined" | "system";
+ 
+ export interface AppNotification {
+diff --git a/tests/firestore.rules.test.ts b/tests/firestore.rules.test.ts
+index 6aa52ca231914b2d785fee4120f6b73ddde5e6c3..5992296e41da41e59fb3a2772a55a6499633ff26 100644
+--- a/tests/firestore.rules.test.ts
++++ b/tests/firestore.rules.test.ts
+@@ -906,6 +906,119 @@ describe("Firestore güvenlik kuralları", () => {
+     await assertSucceeds(deleteDoc(doc(recipientDb, "users/recipient/notifications/note-1")));
+   });
+ 
++  // === Aşama 1 — friend_declined kendi kanıtını üretir (friendDeclines) ===
++  it("friend_declined kanıtsız reddedilir; ret batch'i kanıt yazınca bildirim geçer", async () => {
++    await seed("users/bob/friendRequests/alice", {
++      fromUid: "alice",
++      fromName: "Alice",
++      toUid: "bob",
++      createdAt: Timestamp.now(),
++    });
++    const bobDb = testEnv.authenticatedContext("bob").firestore();
++    const notice = (targetId: string) => ({
++      recipientUid: "alice",
++      actorUid: "bob",
++      type: "friend_declined",
++      title: "Istek reddedildi",
++      body: "Arkadaslik istegin reddedildi.",
++      read: false,
++      createdAt: serverTimestamp(),
++      targetId,
++    });
++
++    // Kanıt belgesi yokken bildirim reddedilir.
++    await assertFails(setDoc(doc(bobDb, "users/alice/notifications/nt-declined-0"), notice("alice_bob")));
++
++    // Ret: kanıt + istek silme aynı batch'te (exists + !existsAfter).
++    const decline = writeBatch(bobDb);
++    decline.set(doc(bobDb, "friendDeclines/alice_bob"), {
++      declinerUid: "bob",
++      requesterUid: "alice",
++      users: ["alice", "bob"],
++      createdAt: serverTimestamp(),
++    });
++    decline.delete(doc(bobDb, "users/bob/friendRequests/alice"));
++    await assertSucceeds(decline.commit());
++
++    // Kanıt varken bildirim geçer.
++    await assertSucceeds(setDoc(doc(bobDb, "users/alice/notifications/nt-declined-1"), notice("alice_bob")));
++  });
++
++  it("üçüncü kişi başkasının ret kanıtıyla friend_declined yazamaz; friendDeclines yalnız taraflara açıktır", async () => {
++    await seed("friendDeclines/alice_bob", {
++      declinerUid: "bob",
++      requesterUid: "alice",
++      users: ["alice", "bob"],
++      createdAt: Timestamp.now(),
++    });
++    const aliceDb = testEnv.authenticatedContext("alice").firestore();
++    const bobDb = testEnv.authenticatedContext("bob").firestore();
++    const carolDb = testEnv.authenticatedContext("carol").firestore();
++    const forged = {
++      recipientUid: "alice",
++      actorUid: "carol",
++      type: "friend_declined",
++      title: "Istek reddedildi",
++      body: "Arkadaslik istegin reddedildi.",
++      read: false,
++      createdAt: serverTimestamp(),
++      targetId: "alice_bob",
++    };
++
++    await assertFails(setDoc(doc(carolDb, "users/alice/notifications/nt-forged"), forged));
++
++    await assertSucceeds(getDoc(doc(aliceDb, "friendDeclines/alice_bob")));
++    await assertSucceeds(getDoc(doc(bobDb, "friendDeclines/alice_bob")));
++    await assertFails(getDoc(doc(carolDb, "friendDeclines/alice_bob")));
++    await assertFails(getDocs(query(collection(aliceDb, "friendDeclines"), limit(10))));
++  });
++
++  it("friendDeclines güncellenemez; yalnız reddeden siler", async () => {
++    await seed("friendDeclines/alice_bob", {
++      declinerUid: "bob",
++      requesterUid: "alice",
++      users: ["alice", "bob"],
++      createdAt: Timestamp.now(),
++    });
++    const aliceDb = testEnv.authenticatedContext("alice").firestore();
++    const bobDb = testEnv.authenticatedContext("bob").firestore();
++    const carolDb = testEnv.authenticatedContext("carol").firestore();
++
++    await assertFails(updateDoc(doc(bobDb, "friendDeclines/alice_bob"), { requesterUid: "carol" }));
++    await assertFails(deleteDoc(doc(aliceDb, "friendDeclines/alice_bob")));
++    await assertFails(deleteDoc(doc(carolDb, "friendDeclines/alice_bob")));
++    await assertSucceeds(deleteDoc(doc(bobDb, "friendDeclines/alice_bob")));
++  });
++
++  it("friendDeclines create yalnız reddeden adına ve istek silinen batch'te yazılır", async () => {
++    await seed("users/bob/friendRequests/alice", {
++      fromUid: "alice",
++      fromName: "Alice",
++      toUid: "bob",
++      createdAt: Timestamp.now(),
++    });
++    const bobDb = testEnv.authenticatedContext("bob").firestore();
++    const valid = {
++      declinerUid: "bob",
++      requesterUid: "alice",
++      users: ["alice", "bob"],
++      createdAt: serverTimestamp(),
++    };
++
++    // Batch dışı yazım isteği silmediği için existsAfter kapısına takılır.
++    await assertFails(setDoc(doc(bobDb, "friendDeclines/alice_bob"), valid));
++    // Belge kimliği friendshipId ile eşleşmeli.
++    const wrongId = writeBatch(bobDb);
++    wrongId.set(doc(bobDb, "friendDeclines/alice_carol"), valid);
++    wrongId.delete(doc(bobDb, "users/bob/friendRequests/alice"));
++    await assertFails(wrongId.commit());
++    // Başkası adına ret yazılamaz.
++    const carolDb = testEnv.authenticatedContext("carol").firestore();
++    const spoof = writeBatch(carolDb);
++    spoof.set(doc(carolDb, "friendDeclines/alice_bob"), valid);
++    await assertFails(spoof.commit());
++  });
++
+   it("beğeni güncellemesi yalnız kendi UID'sidir; sayaç ve metin müdahaleleri reddedilir", async () => {
+     await seed("posts/post-1", {
+       ...validPost("owner"),

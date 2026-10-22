@@ -3,8 +3,8 @@
 > Bu dosya, Atlasia'ya eklenecek işlerin **bağımlılık sırasıdır**; özellik listesi değil.
 > Ajanlar için yazıldı: her adımın amacı, girdisi, dosya yolları, "bitti kanıtı" komutu ve riski var.
 >
-> - **Son güncelleme:** 2026-10-22 (P1 Tur 4: durum satırı `b6922d1`'e çekildi; §8(c)/§9 düzeltildi; Adım 11/15 kısmi notları)
-> - **Durum:** main `b6922d1`. Bitti: P1 kapanış, T1-AUTH (#33), P17 çekirdeği (#32; onaylı kaydet akışı **açık**), üretim izin düzeltmesi (#31). Açık: P14 (Overpass + Wikidata içerik hattı), P15 (çevrimdışı saha paketi), P18 (erişilebilirlik — P1 Tur 4 denetimi `docs/denetim/p18-erisilebilirlik.md`), P20 (paylaşım linki, karar bekliyor), T1-SOSYAL (P4, düzeltme bekliyor). Karar (a) alt koleksiyon; (c) uygulandı ama kullanıcı onayı bekliyor; (b, d–g) açık.
+> - **Son güncelleme:** 2026-10-22 (açık PR triyajı; Adım 11/14/15 durumları koda göre düzeltildi; karar (d) işlendi)
+> - **Durum:** main `84d2425` (#54) + Dependabot #10. Bitti: P1–P5, P10–P20 kod işleri (P18 giriş ekranı kullanıcıda), sosyal akış (#52 gruplar/arkadaşlar/davet linkleri, #54 arkadaşlık isteği izin düzeltmesi), T1-AUTH (#33), P17 çekirdeği (#32). Kararlar: (a) alt koleksiyon, (d) XP yok / rozet+takip kalır, (e) önce web/PWA sonra Capacitor, (f) verildi; (c) uygulandı, kullanıcının iki cihaz onayı bekleniyor; (b) foto depolama ve (g) sohbet maliyeti resmî olarak açık. Açık PR'lar: #51 (kural sertleştirme, main'e taşınmayı bekliyor), #55 (başka oturumda sürüyor).
 > - **Kural:** ⛔ işaretli adımlarda insan onayı olmadan kod yazılmaz.
 > - **v1'e göre değişiklik:** ürün tezi netleşti (topluluk uygulaması) → sosyal katman silinmiyor, fonlanıyor; `routes`/`tracks` nesneleri eklendi; içerik boru hattı ayrı faz oldu.
 
@@ -30,7 +30,7 @@ Atlasia bir **topluluk seyahat uygulamasıdır**: bir yere gidildiğinde o yerin
 
 Bölge ölçeğinde motor zaten var ve iyi. Site ölçeğinde motor **çalışmaz** (§7 Antipattern A) ve çalışmasına gerek yoktur; sıra bilinen bir turdur.
 
-**Lansman kaması:** KKTC. Topluluk uygulamaları yoğunlukla yaşar; 500 kişi tek bölgede işe yarar, dünyada işe yaramaz. `KKTC_GEOMETRY`, ayrı `kktc-outline`/`kktc-label` katmanları ve kayıt formundaki ülke seçeneği zaten mevcut.
+**Lansman kaması:** tek pilot bölgesi (yer kararı açık). Topluluk uygulamaları yoğunlukla yaşar; 500 kişi tek bölgede işe yarar, dünyada işe yaramaz. Kodda hiçbir bölgeye özel harita katmanı ya da arama kaydı yoktur (KKTC'ye özel sınır/isim katmanı, `regions.ts` ve ters-geokod üzerine yazma 2026-10-22 kullanıcı kararıyla kaldırıldı).
 
 ## 2. Kanıtlanmış mevcut durum
 
@@ -97,10 +97,10 @@ Hiçbir moderasyon yapısı yok: `report`, `şikayet`, `block`, `ban` araması g
 | 3 | Reply array read-modify-write yarışı | `posts/{id}/replies/{replyId}` | tamamlandı: yanıt başına belge; bounded batches ile parent silme öncesi child cleanup |
 | 4 | Yanıtlarda yazar doğrulaması | `firestore.rules` | tamamlandı: `authorUid == request.auth.uid`, reply update kapalı, owner/author delete |
 | 5 | Feed okumalarında sınır | `firestoreData.ts` | feed sayfaları 50; yanıt sayfaları 100; cursor tabanlı yükleme |
-| 6 | Eski sosyal katman yardımcıları | gerçek `src/` taraması | eski `awardXp`/`followUser` ailesi bu checkout'ta mevcut değil; yeniden tanıtılırsa deprecated işaretle ve finansman kararı bekle |
+| 6 | Eski sosyal katman yardımcıları | gerçek `src/` taraması | eski `awardXp`/`followUser` ailesi bu checkout'ta mevcut değil. Karar (d): XP yeniden eklenmez; rozet/takip yalnız sunucu tarafı (Cloud Functions) ile gelir |
 | 7 | Story `seen` alanı global dokümanda | `types.ts`, `firestoreData.ts`, rules | tamamlandı: Firestore şemasından çıkarıldı; UI yalnız cihaz bazlı `atlasia.feed.seen.v1` kullanır |
 | 8 | Reply veri yolu sözleşmesi | `firestoreData.ts`, README, rules | tamamlandı: başlık, yazma/okuma, rules ve doküman aynı alt koleksiyon modelini kullanır |
-| 9 | Sokak/topoğrafik altlıklarda `kktc-label` ile Esri'nin gömülü etiketleri üst üste gelebiliyordu | `MapView.tsx` efektler | tamamlandı (2026-10-21, B seçeneği): `kktc-outline` korunur, `kktc-label` yalnız dark/satellite altlıklarında görünür; sözleşme `mapLabelVisibility.test.ts` ile kilitli |
+| 9 | Sokak/topoğrafik altlıklarda `kktc-label` ile Esri'nin gömülü etiketleri üst üste gelebiliyordu | `MapView.tsx` efektler | kapandı: KKTC'ye özel `kktc-outline`/`kktc-label` katmanları 2026-10-22 kullanıcı kararıyla tamamen kaldırıldı; yokluğu `mapLabelVisibility.test.ts` ile kilitli |
 
 ### 2.5 Adım durumu (2026-10-22, main `0ad774f` üzerinde commit ataları doğrulanarak)
 
@@ -119,11 +119,11 @@ Hiçbir moderasyon yapısı yok: `report`, `şikayet`, `block`, `ban` araması g
 | 8 | Site içi tur modeli (Efes) | ✅ ilk sürüm | `0cdd24e` | — |
 | 9 | Sıra-duyarlı yakınlık anlatımı | ✅ ilk sürüm | `a7e43d4` | — |
 | 10 | Erişim tipi duraklar + bacak modu | ✅ | `91f5ff3` | — |
-| 11 | Yükseklik profili + bacak çizimi | ✅ | `0c60c6a`, #32 (DEM yoksa "bilinmiyor") | ElevationProfile'ın ekrana bağlanması |
+| 11 | Yükseklik profili + bacak çizimi | ✅ | `0c60c6a`, #32, `5218fae` (profil), bacak çizimi bağlandı (2026-10-22) | canlıda görsel kontrol |
 | 12 | Çevrimdışı saha paketi | ✅ ilk sürüm | `e57b61f`, P11 allowlist `f3c28e5` | P15 tile paketi |
 | 13 | Moderasyon temeli | ✅ | `0e36583` (bildir, engelle, hesap silme) | — |
-| 14 | Tazelik döngüsü | ✅ ilk sürüm | `b8ed369` | PR #38; XP kararı (d) açık |
-| 15 | Hava durumu (durağa varış saati) | ✅ ilk sürüm | `2d75a79` | — |
+| 14 | Tazelik döngüsü | ✅ ilk sürüm | `b8ed369` | PR #38; karar (d): XP yok, rozet/takip Cloud Functions bekliyor |
+| 15 | Hava durumu (durağa varış saati) | ✅ | `2d75a79` + gün rozeti + durak varış havası (RouteEditor) + harita katmanı | — |
 | 16 | Grup + sohbet | ✅ temel | `75d7fd1`, #31 (tam kimlikle katılma) | T1-SOSYAL (PR #37); karar (g) açık |
 
 **Ek tamamlananlar:** #31 üretim izin/undefined düzeltmesi · #32 P17 çekirdeği + bacaklı rota serileştirmesi · #33 T1-AUTH (telefon bayrağı, üretim env kapısı) · #36 P1 hijyen dokümanları · P11 tile allowlist (tam host/path) · P12 · P13 · P16 · P19.
@@ -135,7 +135,7 @@ Hiçbir moderasyon yapısı yok: `report`, `şikayet`, `block`, `ban` araması g
 | Gidilen yerin rehberliği | Var; Overpass + Wikidata ilk sürümü ✅ (`67dfd61`) | 19 yerin 5'inde gerçek içerik; OSM yerleri jenerik not | 7 |
 | Yaklaşınca tarihçe açılsın | ✅ Mekanizma + sıra-duyarlı anlatım (`a7e43d4`) | içerik + canlı OSM envanteri + sıra duyarlılığı | 7, 9 |
 | Rota oluştur / gezi planla | Var ve güçlü | — | — |
-| Hava durumu anlık takip | ✅ Durağa varış saatine göre (`2d75a79`); kalan kısmen | saatlik, durağa varış saatine göre, harita katmanı, uyarı | 15 |
+| Hava durumu anlık takip | ✅ Durağa varış saatine göre (asistan + kayıtlı rota), harita katmanı, gün rozeti | — | 15 |
 | Başkalarının gittiği yerler | Var; tazelik ilk sürümü ✅ (`b8ed369`) | kim/ne zaman gitti, tazelik | 13, 14 |
 | **Başkalarının rotalarını kaydet + paylaş** | ✅ Var (`72001ac`, `5a6b666`, `e244c39`, #31) | `routes` koleksiyonu, paylaşım linki, kaydetme | 3, 5, 6 |
 | **Yürüdüğüm yeri kaydet → otomatik rota** | ✅ Çekirdek var (`471f9f7`, #32) | kayıt kancası, durak tespiti, sadeleştirme, `tracks` | 3, 4 |
@@ -350,7 +350,7 @@ Wikidata / Wikipedia geosearch  →  tarihçe metni
 **Neden ucuz:** `terrain` raster-dem kaynağı **zaten var**, rota motoruna bağlanmamış.
 **Yapılacak:** Rota boyunca örnekleme → toplam tırmanış, en dik eğim, Naismith süresi. `drawRoute` şu an tek çizgi (`#F2D77C`, 3.2); `coords[]` yerine **bacak listesi** alır, her bacağa `mode` özelliği koyar, MapLibre data-driven styling ile patika kesikli / yol düz.
 **Bitti kanıtı:** Profil grafiği + haritada mod ayrımı görünüyor.
-**Durum (2026-10-22, P1 Tur 4): İlk sürüm kısmi; kalan:** `ElevationProfile`'ın ekrana bağlanması (bileşen var, hiçbir yüzeyde render edilmiyor), `drawRoute`'un bacak listesiyle mod-ayrımlı çizimi (patika kesikli / yol düz), Naismith süresi hesabı. Kanıt: `src/utils/elevation.ts` + testleri main'de; `grep ElevationProfile src/App.tsx` boş.
+**Durum (2026-10-22, koda göre):** Profil bağlı — `RouteEditor` içindeki `RouteElevationPanel` (`5218fae`) karo tabanlı DEM örnekler; tırmanış, en dik eğim ve Naismith süresi gösterilir, DEM yoksa "bilinmiyor". Haritada mod ayrımı bağlandı (kullanıcı onayı 2026-10-22): her günün bacağı varsa `drawAtlasRoute` → `drawRouteLegs`, yoksa düz çizgi (`utils/routeLegs.routeDrawLegs`). Artan bacak katmanları temizlenir; sıra değişince eski bacaklar düşer. **Kalan:** canlıda görsel kontrol (sandbox'ta tarayıcı yok).
 
 ## Adım 12 · Çevrimdışı saha paketi
 **2 gün · bağımlılık: Adım 2**
@@ -385,7 +385,7 @@ Wikidata / Wikipedia geosearch  →  tarihçe metni
 **Mevcut:** `AtlasAssistant` tek nokta için `current=precipitation` çekiyor, 4,5 sn timeout.
 **Yapılacak:** Saatlik + günlük (open-meteo, keyless), **her durağın varış saatindeki** hava, harita katmanı, uyarı. `RouteBrief.rain: "auto"` ve `ROUTE_ALTERNATIVES`'teki "Yağmur planı" zaten tanımlı ama kullanılmıyor.
 **Bitti kanıtı:** Rota duraklarında varış saatine göre hava görünüyor; yağmur planı çalışıyor.
-**Durum (2026-10-22, P1 Tur 4): İlk sürüm kısmi; kalan:** harita hava katmanı, durak varış saati hava rozeti/uyarısı (`attachStopWeather`/`weatherAtClock` çıktılarının UI'a bağlanması; bugün yalnız `AtlasAssistant` içinde `optimizeForRain`/`dailyRainNote` kullanılıyor), `RouteBrief.rain: "auto"` akışının açılması.
+**Durum (2026-10-22, koda göre):** Asistan rotasında `rain: "auto"` açık; `optimizeForRain` → `attachStopWeather` ile her durakta "Varışta: sıcaklık · durum · yağış olasılığı" görünür. Harita hava katmanı (`utils/mapWeather`) ve `RouteEditor` gün bazlı kötü hava rozeti var. Kayıtlı rotada durak bazlı varış havası da bağlandı (`routeStopArrivalWeather`, en çok 40 durak, 10'luk istekler). **Kalan:** yok.
 
 ## Adım 16 · Grup + sohbet *(en son)*
 **⛔ karar (g) gerekli · 4+ gün · bağımlılık: Adım 13**

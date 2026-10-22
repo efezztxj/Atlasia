@@ -1,14 +1,18 @@
 /**
  * Profil dizini: kural `createdAt == request.time` istediği için var olan
  * belge güncellenemez. syncUserProfile değişmemişse yazmaz, değişmişse
- * sil + yeniden oluştur yapar. Arama iki önekle (yazıldığı gibi + baş harf büyük).
+ * sil + yeniden oluştur yapar.
+ *
+ * Aşama 2: arama artık `displayNameLower` (Türkçe küçük harf) üzerinden tek
+ * aralık sorgusu; patch 7'deki "baş harfi büyüt" ikinci sorgusu kaldırıldı.
+ * Eski belgelerde alan yoksa ilk senkronda bir kez yeniden yazılır (geçiş).
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const h = vi.hoisted(() => ({
   store: new Map<string, Record<string, unknown>>(),
   ops: [] as string[],
-  queries: [] as Array<{ path: string; from: string; to: string }>,
+  queries: [] as Array<{ path: string; field: string; from: string; to: string }>,
 }));
 
 vi.mock("./firebase", () => ({ db: {} }));
@@ -19,20 +23,21 @@ vi.mock("firebase/firestore", () => ({
   setDoc: async (ref: { path: string }, data: Record<string, unknown>) => { h.ops.push(`set:${ref.path}`); h.store.set(ref.path, data); },
   deleteDoc: async (ref: { path: string }) => { h.ops.push(`delete:${ref.path}`); h.store.delete(ref.path); },
   serverTimestamp: () => "TS",
-  orderBy: () => ({}),
+  orderBy: (field: string) => ({ field }),
   limit: () => ({}),
   onSnapshot: () => () => {},
   where: (field: string, op: string, value: string) => ({ field, op, value }),
-  query: (target: { path: string }, ...parts: Array<{ op?: string; value?: string }>) => {
+  query: (target: { path: string }, ...parts: Array<{ field?: string; op?: string; value?: string }>) => {
     const from = parts.find((part) => part.op === ">=")?.value ?? "";
     const to = parts.find((part) => part.op === "<")?.value ?? "";
-    return { path: target.path, from, to };
+    const field = parts.find((part) => part.op === ">=")?.field ?? "";
+    return { path: target.path, field, from, to };
   },
-  getDocs: async (q: { path: string; from: string; to: string }) => {
+  getDocs: async (q: { path: string; field: string; from: string; to: string }) => {
     h.queries.push(q);
     const docs = [...h.store.entries()]
       .filter(([key]) => key.startsWith(`${q.path}/`))
-      .filter(([, data]) => String(data.displayName) >= q.from && String(data.displayName) < q.to)
+      .filter(([, data]) => String(data[q.field]) >= q.from && String(data[q.field]) < q.to)
       .map(([key, data]) => ({ id: key.split("/")[1], data: () => data }));
     return { docs };
   },
@@ -47,22 +52,37 @@ beforeEach(() => {
 });
 
 describe("syncUserProfile", () => {
-  it("ilk kez oluşturur", async () => {
+  it("ilk kez oluşturur ve displayNameLower'ı Türkçe küçük harfle yazar", async () => {
     expect(await syncUserProfile({ uid: "u1", displayName: " Efe " })).toBe("created");
-    expect(h.store.get("userProfiles/u1")).toEqual({ uid: "u1", displayName: "Efe", createdAt: "TS", updatedAt: "TS" });
+    expect(h.store.get("userProfiles/u1")).toEqual({
+      uid: "u1",
+      displayName: "Efe",
+      displayNameLower: "efe",
+      createdAt: "TS",
+      updatedAt: "TS",
+    });
+    expect(await syncUserProfile({ uid: "u2", displayName: "İrem" })).toBe("created");
+    expect(h.store.get("userProfiles/u2")).toMatchObject({ displayNameLower: "irem" });
   });
 
-  it("ad ve foto aynıysa hiç yazmaz", async () => {
-    h.store.set("userProfiles/u1", { uid: "u1", displayName: "Efe", createdAt: 1, updatedAt: 1 });
+  it("ad, foto ve displayNameLower aynıysa hiç yazmaz", async () => {
+    h.store.set("userProfiles/u1", { uid: "u1", displayName: "Efe", displayNameLower: "efe", createdAt: 1, updatedAt: 1 });
     expect(await syncUserProfile({ uid: "u1", displayName: "Efe" })).toBe("unchanged");
     expect(h.ops).toEqual([]);
   });
 
+  it("geçiş: alanı olmayan eski belgeyi bir kez yeniden yazar", async () => {
+    h.store.set("userProfiles/u1", { uid: "u1", displayName: "Efe", createdAt: 1, updatedAt: 1 });
+    expect(await syncUserProfile({ uid: "u1", displayName: "Efe" })).toBe("replaced");
+    expect(h.ops).toEqual(["delete:userProfiles/u1", "set:userProfiles/u1"]);
+    expect(h.store.get("userProfiles/u1")).toMatchObject({ displayNameLower: "efe" });
+  });
+
   it("ad değiştiyse siler ve yeniden oluşturur (kural güncellemeye izin vermez)", async () => {
-    h.store.set("userProfiles/u1", { uid: "u1", displayName: "Eski", createdAt: 1, updatedAt: 1 });
+    h.store.set("userProfiles/u1", { uid: "u1", displayName: "Eski", displayNameLower: "eski", createdAt: 1, updatedAt: 1 });
     expect(await syncUserProfile({ uid: "u1", displayName: "Yeni", photoURL: "https://x.dev/a.png" })).toBe("replaced");
     expect(h.ops).toEqual(["delete:userProfiles/u1", "set:userProfiles/u1"]);
-    expect(h.store.get("userProfiles/u1")).toMatchObject({ displayName: "Yeni", photoURL: "https://x.dev/a.png", createdAt: "TS" });
+    expect(h.store.get("userProfiles/u1")).toMatchObject({ displayName: "Yeni", displayNameLower: "yeni", photoURL: "https://x.dev/a.png", createdAt: "TS" });
   });
 
   it("http(s) olmayan foto adresi yazılmaz", async () => {
@@ -72,18 +92,27 @@ describe("syncUserProfile", () => {
 });
 
 describe("searchUserProfiles", () => {
-  it("küçük harfle yazılsa da baş harfi büyük adı bulur; kendisi sonuçta yok", async () => {
-    h.store.set("userProfiles/me", { uid: "me", displayName: "Efe Ben" });
-    h.store.set("userProfiles/u2", { uid: "u2", displayName: "Efe Yılmaz" });
-    h.store.set("userProfiles/u3", { uid: "u3", displayName: "Can" });
+  it("tek aralık sorgusu displayNameLower üzerinde; büyük harf ikinci sorgu yok", async () => {
+    h.store.set("userProfiles/me", { uid: "me", displayName: "Efe Ben", displayNameLower: "efe ben" });
+    h.store.set("userProfiles/u2", { uid: "u2", displayName: "Efe Yılmaz", displayNameLower: "efe yılmaz" });
+    h.store.set("userProfiles/u3", { uid: "u3", displayName: "Can", displayNameLower: "can" });
     const found = await searchUserProfiles("efe", "me");
     expect(found.map((profile) => profile.uid)).toEqual(["u2"]);
-    expect(h.queries.map((q) => q.from)).toEqual(["efe", "Efe"]);
+    expect(h.queries).toHaveLength(1);
+    expect(h.queries[0]).toMatchObject({ field: "displayNameLower", from: "efe", to: "efe\uf8ff" });
   });
 
-  it("Türkçe baş harf: 'ilkay' → 'İlkay'", () => {
-    expect(profilePrefixes("ilkay")).toEqual(["ilkay", "İlkay"]);
-    expect(profilePrefixes("Can")).toEqual(["Can"]);
+  it("Türkçe İ: 'İrem' yazımı da 'irem' önekiyle bulunur", async () => {
+    h.store.set("userProfiles/u4", { uid: "u4", displayName: "İrem", displayNameLower: "irem" });
+    const found = await searchUserProfiles("İrem", "me");
+    expect(found.map((profile) => profile.uid)).toEqual(["u4"]);
+    expect(h.queries[0].from).toBe("irem");
+  });
+
+  it("Türkçe baş harf öneki: 'ilkay' → ['ilkay'] (tek önek)", () => {
+    expect(profilePrefixes("ilkay")).toEqual(["ilkay"]);
+    expect(profilePrefixes("İlkay")).toEqual(["ilkay"]);
+    expect(profilePrefixes("IŞIK")).toEqual(["ışık"]);
     expect(profilePrefixes("  ")).toEqual([]);
   });
 });

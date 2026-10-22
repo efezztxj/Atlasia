@@ -34,7 +34,7 @@ interface Message { id: string; role: "user" | "assistant"; text: string; cards?
 interface Props {
   open: boolean; onOpen: () => void; onClose: () => void; places: Place[]; view: ViewState;
   origin: { lat: number; lng: number; label: string }; selectedPlace?: Place; hasLocation?: boolean;
-  resumeRoute?: AtlasRoute | null; onPreview: (coords: [number, number][]) => void; onDraw: (coords: [number, number][]) => void;
+  resumeRoute?: AtlasRoute | null; onPreview: (coords: [number, number][], route?: AtlasRoute) => void; onDraw: (coords: [number, number][], route?: AtlasRoute) => void;
   dockExpanded?: boolean;
   onOpenRouteEditor: (route: AtlasRoute) => void;
   onPulse: (lng: number, lat: number) => void; onFit: (coords: [number, number][]) => void;
@@ -78,7 +78,7 @@ export default function AtlasAssistant({ open, onOpen, onClose, places, view, or
     setRoute(resumeRoute);
     setApproved(false);
     const points = coordinates(resumeRoute);
-    if (points.length > 1) { onPreview(points); onFit(points); }
+    if (points.length > 1) { onPreview(points, resumeRoute); onFit(points); }
     add({ role: "assistant", text: `“${resumeRoute.routeTitle}” kaydını açtım. Önce gözden geçir; istersen sırayı değiştir veya haritada göster.` });
   }, [open, resumeRoute, onPreview, onFit]);
 
@@ -160,7 +160,7 @@ export default function AtlasAssistant({ open, onOpen, onClose, places, view, or
       setRoute(result);
       setApproved(false);
       const points = coordinates(result);
-      if (points.length > 1) { onPreview(points); onFit(points); }
+      if (points.length > 1) { onPreview(points, result); onFit(points); }
       const local = nearbyPlaces(places, center, 20);
       add({ role: "assistant", text: result.routeSummary, cards: result.days.length ? undefined : local.slice(0, 3) });
     } catch { setError("Rota hazırlanamadı. Daha az durak veya farklı bir başlangıç seçip tekrar dene."); }
@@ -254,7 +254,7 @@ export default function AtlasAssistant({ open, onOpen, onClose, places, view, or
         {wizard && <RouteWizard initial={brief} hasLocation={!!hasLocation} onCancel={() => setWizard(false)} onGenerate={(settings) => void build(settings, "Bu seçimlerle rota oluştur")} />}
         {loading && <div role="status" className="rounded-xl border border-sun/15 p-3"><p className="text-[13px] text-sun">{loading}</p><div className="mt-3 h-1 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-sun-2 via-sun to-gold-2 transition-all duration-700" style={{ width: `${(stage + 1) * 25}%` }} /></div></div>}
         {error && <div role="alert" className="border-l-2 border-sun pl-3 text-sm text-sun"><p>{error}</p><button type="button" onClick={() => { setError(null); setWizard(true); }} className="mt-2 flex min-h-10 items-center gap-2 underline underline-offset-4"><RotateCcw size={14} />Seçimleri düzenle</button></div>}
-        {route && route.days.length > 0 && <RouteResult route={route} approved={approved} saved={saved} onConfirm={() => { onDraw(coordinates(route)); setApproved(true); }} onStop={(stop) => onPulse(stop.lng, stop.lat)} onReorder={(day, from, to) => { const next = reorderRoute(route, day, from, to); setRoute(next); if (approved) onDraw(coordinates(next)); else onPreview(coordinates(next)); }} onSave={() => { saveRoute(route); setSaved(true); }} onEdit={() => setWizard(true)} onOpenRouteEditor={() => onOpenRouteEditor(route)} onAlternative={(prompt) => void respond(prompt)} />}
+        {route && route.days.length > 0 && <RouteResult route={route} approved={approved} saved={saved} onConfirm={() => { onDraw(coordinates(route), route); setApproved(true); }} onStop={(stop) => onPulse(stop.lng, stop.lat)} onReorder={(day, from, to) => { const next = reorderRoute(route, day, from, to); setRoute(next); if (approved) onDraw(coordinates(next), next); else onPreview(coordinates(next), next); }} onSave={() => { saveRoute(route); setSaved(true); }} onEdit={() => setWizard(true)} onOpenRouteEditor={() => onOpenRouteEditor(route)} onAlternative={(prompt) => void respond(prompt)} />}
         {route && <div className="flex items-center gap-3 border-t border-white/10 pt-3 text-[12px]"><span className="text-mint/75">Bu öneri nasıldı?</span><button type="button" aria-label="Öneri iyi" aria-pressed={feedback === "good"} onClick={() => setFeedback("good")} className={cn("grid size-10 place-items-center rounded-full", feedback === "good" && "bg-sun/15 text-sun")}><ThumbsUp size={15} /></button><button type="button" aria-label="Öneri yetersiz" aria-pressed={feedback === "bad"} onClick={() => { setFeedback("bad"); setWizard(true); }} className={cn("grid size-10 place-items-center rounded-full", feedback === "bad" && "bg-sun/15 text-sun")}><ThumbsDown size={15} /></button>{feedback === "good" && <span className="text-sun">Teşekkürler.</span>}</div>}
       </div>
       <form onSubmit={(event) => { event.preventDefault(); void respond(input); }} className="shrink-0 border-t border-white/10 px-4 py-3"><label htmlFor="atlas-query" className="mb-2 block px-1 text-[12px] font-medium text-mint/80">Haritaya sor</label><div className="flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.045] py-1 pr-1 pl-1.5 transition focus-within:border-sun/55"><button type="button" disabled={!!loading} onClick={() => fileRef.current?.click()} aria-label="Atmosfer eşleştirmesi için fotoğraf ekle" className="grid size-11 shrink-0 place-items-center rounded-full text-sun disabled:opacity-40"><ImagePlus size={19} /></button><input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(event) => void photoMatch(event.target.files?.[0])} /><input id="atlas-query" value={input} onChange={(event) => setInput(event.target.value)} maxLength={500} disabled={!!loading} placeholder="Yer, süre veya aklındaki atmosfer..." className="h-11 min-w-0 flex-1 bg-transparent text-[14px] text-mint placeholder:text-[#b6cabb]" /><button type="submit" disabled={!input.trim() || !!loading} aria-label="Soruyu gönder" className="btn-gold grid size-10 shrink-0 place-items-center rounded-full text-ink disabled:opacity-40"><Send size={16} /></button></div></form>

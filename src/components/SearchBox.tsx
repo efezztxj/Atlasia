@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, MapPin, Search, SlidersHorizontal, Sparkles, Star, X } from "lucide-react";
-import { searchRegions } from "../data/regions";
 import type { Place } from "../types";
 import { normalize, searchWorld, type SearchResult } from "../utils/geo";
 
@@ -32,7 +31,7 @@ export default function SearchBox({ places, onPick, onOpenFilters }: Props) {
         lat: p.lat,
         place: p,
       }));
-    return [...searchRegions(q), ...matches];
+    return matches;
   }, [q, places]);
 
   useEffect(() => {

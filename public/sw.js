@@ -83,7 +83,10 @@ self.addEventListener("activate", (event) => {
 async function navigationResponse(event) {
   const cache = await caches.open(CACHE);
   try {
-    const response = await event.preloadResponse || await fetch(event.request);
+    // Başarısız preload ağın düştüğü anlamına gelmez: önbellekteki (eski olabilecek)
+    // kabuğa düşmeden önce gezinmeyi ağdan bir kez daha dene. (PR #18'den taşındı.)
+    const preloaded = await Promise.resolve(event.preloadResponse).catch(() => undefined);
+    const response = preloaded || await fetch(event.request);
     if (response?.ok && response.headers.get("content-type")?.includes("text/html")) {
       await cache.put("/", response.clone());
     }

@@ -33,7 +33,7 @@ vi.mock("firebase/firestore", () => ({
     if (!/\/friendRequests\//.test(ref.path)) denyCrossWrite(ref.path);
     h.store.set(ref.path, data);
   },
-  deleteDoc: async (ref: { path: string }) => { h.store.delete(ref.path); },
+  deleteDoc: async (ref: { path: string }) => { denyCrossWrite(ref.path); h.store.delete(ref.path); },
   serverTimestamp: () => "TS",
   writeBatch: () => {
     const ops: Array<() => void> = [];
@@ -49,11 +49,12 @@ vi.mock("firebase/firestore", () => ({
   onSnapshot: () => () => {},
 }));
 
-import { acceptFriendRequest, ensureFriendIndex } from "./friendships";
+import { acceptFriendRequest, ensureFriendIndex, pruneStaleFriends, removeFriend, resetFriendIndexVerificationForTests } from "./friendships";
 
 beforeEach(() => {
   h.store.clear();
   h.me = "";
+  resetFriendIndexVerificationForTests();
 });
 
 describe("arkadaşlık kabulü ve liste tamamlama", () => {
@@ -95,10 +96,53 @@ describe("arkadaşlık isteği gönderme (canlı permission-denied düzeltmesi)"
     h.me = "alice";
     const { sendFriendRequest } = await import("./friendships");
     h.store.set("users/alice/friends/bob", { friendUid: "bob" });
+    h.store.set("friendships/alice_bob", { users: ["alice", "bob"], status: "accepted" });
     await expect(sendFriendRequest({ fromUid: "alice", fromName: "Alice", toUid: "bob" })).rejects.toMatchObject({ code: "friend-request/already-friends" });
     h.store.delete("users/alice/friends/bob");
     h.store.set("users/alice/friendRequests/bob", { fromUid: "bob" });
     await expect(sendFriendRequest({ fromUid: "alice", fromName: "Alice", toUid: "bob" })).rejects.toMatchObject({ code: "friend-request/opposite-exists" });
     expect(h.store.has("users/bob/friendRequests/alice")).toBe(false);
+  });
+});
+
+describe("bitmiş arkadaşlığın artık kaydı (karşı taraf sildi)", () => {
+  it("liste temizliği yalnız bitmiş arkadaşlığın KENDİ kaydını siler", async () => {
+    h.me = "alice";
+    h.store.set("users/alice/friends/bob", { friendUid: "bob" });
+    h.store.set("users/alice/friends/carol", { friendUid: "carol" });
+    h.store.set("friendships/alice_carol", { users: ["alice", "carol"], status: "accepted" });
+    expect(await pruneStaleFriends("alice", ["bob", "carol"])).toEqual(["bob"]);
+    expect(h.store.has("users/alice/friends/bob")).toBe(false);
+    expect(h.store.has("users/alice/friends/carol")).toBe(true);
+  });
+
+  it("karşı taraf silince removeFriend hata vermeden kendi kaydını kaldırır", async () => {
+    h.me = "alice";
+    h.store.set("users/alice/friends/bob", { friendUid: "bob" });
+    await expect(removeFriend("alice", "bob")).resolves.toBeUndefined();
+    expect(h.store.has("users/alice/friends/bob")).toBe(false);
+  });
+
+  it("artık kayıt yeniden istek göndermeyi engellemez", async () => {
+    h.me = "alice";
+    const { sendFriendRequest } = await import("./friendships");
+    h.store.set("users/alice/friends/bob", { friendUid: "bob" });
+    await sendFriendRequest({ fromUid: "alice", fromName: "Alice", toUid: "bob" });
+    expect(h.store.has("users/alice/friends/bob")).toBe(false);
+    expect(h.store.get("users/bob/friendRequests/alice")).toMatchObject({ fromUid: "alice" });
+  });
+
+  it("arkadaşlığı silen taraf karşı listeye dokunamaz ama kendi tarafı temizlenir", async () => {
+    h.me = "alice";
+    h.store.set("friendships/alice_bob", { users: ["alice", "bob"], status: "accepted" });
+    h.store.set("users/alice/friends/bob", { friendUid: "bob" });
+    h.store.set("users/bob/friends/alice", { friendUid: "alice" });
+    await removeFriend("alice", "bob");
+    expect(h.store.has("friendships/alice_bob")).toBe(false);
+    expect(h.store.has("users/alice/friends/bob")).toBe(false);
+    expect(h.store.has("users/bob/friends/alice")).toBe(true);
+    h.me = "bob";
+    expect(await pruneStaleFriends("bob", ["alice"])).toEqual(["alice"]);
+    expect(h.store.has("users/bob/friends/alice")).toBe(false);
   });
 });

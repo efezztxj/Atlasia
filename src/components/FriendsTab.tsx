@@ -50,8 +50,8 @@ export default function FriendsTab({ currentUid, currentName, friends, requests,
     }
     let active = true;
     void fetchUserProfile(invitedByUid)
-      .then((profile) => { if (active) setInviter(profile ?? { uid: invitedByUid, displayName: "Atlasia gezgini", createdAt: 0, updatedAt: 0 }); })
-      .catch(() => { if (active) setInviter({ uid: invitedByUid, displayName: "Atlasia gezgini", createdAt: 0, updatedAt: 0 }); });
+      .then((profile) => { if (active) setInviter(profile ?? { uid: invitedByUid, displayName: "Atlasia gezgini", displayNameLower: "atlasia gezgini", createdAt: 0, updatedAt: 0 }); })
+      .catch(() => { if (active) setInviter({ uid: invitedByUid, displayName: "Atlasia gezgini", displayNameLower: "atlasia gezgini", createdAt: 0, updatedAt: 0 }); });
     return () => { active = false; };
   }, [invitedByUid, currentUid, onInviteHandled]);
 
