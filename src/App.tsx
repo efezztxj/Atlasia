@@ -40,6 +40,7 @@ import type { AtlasRoute, CategoryId, Place, RouteVisibility, ViewState } from "
 import { haversineKm, reverseName, type SearchResult } from "./utils/geo";
 import { storageGet, storageSet } from "./utils/storage";
 import { decodePolyline } from "./utils/polyline";
+import { routeDrawLegs } from "./utils/routeLegs";
 import { useBlocks } from "./hooks/useBlocks";
 import { useFreshness } from "./hooks/useFreshness";
 import { subscribeNotifications, markNotificationRead, markAllRead, type AppNotification } from "./lib/notifications";
@@ -75,6 +76,17 @@ function MapLoadingSkeleton() {
 
 function Explorer({ installApp }: { installApp: InstallAppController }) {
   const mapRef = useRef<MapViewHandle>(null);
+  // Adım 11: her günün bacağı varsa rota mod ayrımlı çizilir (patika kesikli,
+  // yol düz); yoksa durak durak düz çizgiye düşer.
+  const drawAtlasRoute = (route: AtlasRoute, preview: boolean) => {
+    const legs = routeDrawLegs(route);
+    if (legs) {
+      mapRef.current?.drawRouteLegs(legs, preview);
+      return;
+    }
+    const coords = route.days.flatMap((day) => decodePolyline(day.polyline));
+    if (coords.length > 1) mapRef.current?.drawRoute(coords, preview);
+  };
   const { user } = useAuth();
   const { theme, setTheme } = useTheme();
 
@@ -710,8 +722,8 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         onClose={() => setTrackRecorderOpen(false)}
         onPreview={(coords) => mapRef.current?.drawRoute(coords, true)}
         onFinished={(track, route) => {
-          const coords = decodePolyline(track.polyline);
-          mapRef.current?.drawRoute(coords, false);
+          if (routeDrawLegs(route)) drawAtlasRoute(route, false);
+          else mapRef.current?.drawRoute(decodePolyline(track.polyline), false);
           setResumeRoute(route);
           setTrackRecorderOpen(false);
           setAtlasOpen(true);
@@ -831,8 +843,8 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
           lng: precise?.lng ?? view.lng,
           label: precise?.label ?? locationLabel,
         }}
-        onPreview={(coords) => mapRef.current?.drawRoute(coords, true)}
-        onDraw={(coords) => mapRef.current?.drawRoute(coords, false)}
+        onPreview={(coords, route) => (route ? drawAtlasRoute(route, true) : mapRef.current?.drawRoute(coords, true))}
+        onDraw={(coords, route) => (route ? drawAtlasRoute(route, false) : mapRef.current?.drawRoute(coords, false))}
         onPulse={(lng, lat) => {
           setSpin(false);
           mapRef.current?.pulseAt(lng, lat);
@@ -880,8 +892,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         onSaved={(route, visibility: RouteVisibility) => {
           setResumeRoute(route);
           setAtlasOpen(true);
-          const coords = route.days.flatMap((day) => decodePolyline(day.polyline));
-          if (coords.length > 1) mapRef.current?.drawRoute(coords, false);
+          drawAtlasRoute(route, false);
           setToast(visibility === "private" ? "Rota hesabında özel olarak kaydedildi." : "Rota yayımlandı. Kalıcı bağlantı hazır.");
         }}
       />}

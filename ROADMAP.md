@@ -119,11 +119,11 @@ Hiçbir moderasyon yapısı yok: `report`, `şikayet`, `block`, `ban` araması g
 | 8 | Site içi tur modeli (Efes) | ✅ ilk sürüm | `0cdd24e` | — |
 | 9 | Sıra-duyarlı yakınlık anlatımı | ✅ ilk sürüm | `a7e43d4` | — |
 | 10 | Erişim tipi duraklar + bacak modu | ✅ | `91f5ff3` | — |
-| 11 | Yükseklik profili + bacak çizimi | ✅ profil | `0c60c6a`, #32, `5218fae` (profil RouteEditor'da) | haritada bacak bazlı çizim: `drawRouteLegs` var, çağrılmıyor (MapView onayı) |
+| 11 | Yükseklik profili + bacak çizimi | ✅ | `0c60c6a`, #32, `5218fae` (profil), bacak çizimi bağlandı (2026-10-22) | canlıda görsel kontrol |
 | 12 | Çevrimdışı saha paketi | ✅ ilk sürüm | `e57b61f`, P11 allowlist `f3c28e5` | P15 tile paketi |
 | 13 | Moderasyon temeli | ✅ | `0e36583` (bildir, engelle, hesap silme) | — |
 | 14 | Tazelik döngüsü | ✅ ilk sürüm | `b8ed369` | PR #38; karar (d): XP yok, rozet/takip Cloud Functions bekliyor |
-| 15 | Hava durumu (durağa varış saati) | ✅ | `2d75a79` + gün rozeti (RouteEditor) + harita katmanı | kayıtlı rotada durak bazlı varış havası (yalnız asistan rotasında var) |
+| 15 | Hava durumu (durağa varış saati) | ✅ | `2d75a79` + gün rozeti + durak varış havası (RouteEditor) + harita katmanı | — |
 | 16 | Grup + sohbet | ✅ temel | `75d7fd1`, #31 (tam kimlikle katılma) | T1-SOSYAL (PR #37); karar (g) açık |
 
 **Ek tamamlananlar:** #31 üretim izin/undefined düzeltmesi · #32 P17 çekirdeği + bacaklı rota serileştirmesi · #33 T1-AUTH (telefon bayrağı, üretim env kapısı) · #36 P1 hijyen dokümanları · P11 tile allowlist (tam host/path) · P12 · P13 · P16 · P19.
@@ -135,7 +135,7 @@ Hiçbir moderasyon yapısı yok: `report`, `şikayet`, `block`, `ban` araması g
 | Gidilen yerin rehberliği | Var; Overpass + Wikidata ilk sürümü ✅ (`67dfd61`) | 19 yerin 5'inde gerçek içerik; OSM yerleri jenerik not | 7 |
 | Yaklaşınca tarihçe açılsın | ✅ Mekanizma + sıra-duyarlı anlatım (`a7e43d4`) | içerik + canlı OSM envanteri + sıra duyarlılığı | 7, 9 |
 | Rota oluştur / gezi planla | Var ve güçlü | — | — |
-| Hava durumu anlık takip | ✅ Durağa varış saatine göre (asistan), harita katmanı, gün rozeti | kayıtlı rotada durak bazlı varış havası | 15 |
+| Hava durumu anlık takip | ✅ Durağa varış saatine göre (asistan + kayıtlı rota), harita katmanı, gün rozeti | — | 15 |
 | Başkalarının gittiği yerler | Var; tazelik ilk sürümü ✅ (`b8ed369`) | kim/ne zaman gitti, tazelik | 13, 14 |
 | **Başkalarının rotalarını kaydet + paylaş** | ✅ Var (`72001ac`, `5a6b666`, `e244c39`, #31) | `routes` koleksiyonu, paylaşım linki, kaydetme | 3, 5, 6 |
 | **Yürüdüğüm yeri kaydet → otomatik rota** | ✅ Çekirdek var (`471f9f7`, #32) | kayıt kancası, durak tespiti, sadeleştirme, `tracks` | 3, 4 |
@@ -350,7 +350,7 @@ Wikidata / Wikipedia geosearch  →  tarihçe metni
 **Neden ucuz:** `terrain` raster-dem kaynağı **zaten var**, rota motoruna bağlanmamış.
 **Yapılacak:** Rota boyunca örnekleme → toplam tırmanış, en dik eğim, Naismith süresi. `drawRoute` şu an tek çizgi (`#F2D77C`, 3.2); `coords[]` yerine **bacak listesi** alır, her bacağa `mode` özelliği koyar, MapLibre data-driven styling ile patika kesikli / yol düz.
 **Bitti kanıtı:** Profil grafiği + haritada mod ayrımı görünüyor.
-**Durum (2026-10-22, koda göre):** Profil bağlı — `RouteEditor` içindeki `RouteElevationPanel` (`5218fae`) karo tabanlı DEM örnekler; tırmanış, en dik eğim ve Naismith süresi gösterilir, DEM yoksa "bilinmiyor". **Kalan:** haritada mod ayrımı. `MapView.drawRouteLegs` yazılı ama hiçbir yerden çağrılmıyor; App yalnız `drawRoute(coords)` kullanıyor. Bağlamak MapView katman mantığına dokunur (§4, ayrı onay) ve önceki rotadan artan bacak katmanlarının temizlenmesi de düzeltilmelidir.
+**Durum (2026-10-22, koda göre):** Profil bağlı — `RouteEditor` içindeki `RouteElevationPanel` (`5218fae`) karo tabanlı DEM örnekler; tırmanış, en dik eğim ve Naismith süresi gösterilir, DEM yoksa "bilinmiyor". Haritada mod ayrımı bağlandı (kullanıcı onayı 2026-10-22): her günün bacağı varsa `drawAtlasRoute` → `drawRouteLegs`, yoksa düz çizgi (`utils/routeLegs.routeDrawLegs`). Artan bacak katmanları temizlenir; sıra değişince eski bacaklar düşer. **Kalan:** canlıda görsel kontrol (sandbox'ta tarayıcı yok).
 
 ## Adım 12 · Çevrimdışı saha paketi
 **2 gün · bağımlılık: Adım 2**
@@ -385,7 +385,7 @@ Wikidata / Wikipedia geosearch  →  tarihçe metni
 **Mevcut:** `AtlasAssistant` tek nokta için `current=precipitation` çekiyor, 4,5 sn timeout.
 **Yapılacak:** Saatlik + günlük (open-meteo, keyless), **her durağın varış saatindeki** hava, harita katmanı, uyarı. `RouteBrief.rain: "auto"` ve `ROUTE_ALTERNATIVES`'teki "Yağmur planı" zaten tanımlı ama kullanılmıyor.
 **Bitti kanıtı:** Rota duraklarında varış saatine göre hava görünüyor; yağmur planı çalışıyor.
-**Durum (2026-10-22, koda göre):** Asistan rotasında `rain: "auto"` açık; `optimizeForRain` → `attachStopWeather` ile her durakta "Varışta: sıcaklık · durum · yağış olasılığı" görünür. Harita hava katmanı (`utils/mapWeather`) ve `RouteEditor` gün bazlı kötü hava rozeti var. **Kalan:** kaydedilmiş/düzenlenen rotada durak bazlı varış havası (bugün yalnız gün rozeti).
+**Durum (2026-10-22, koda göre):** Asistan rotasında `rain: "auto"` açık; `optimizeForRain` → `attachStopWeather` ile her durakta "Varışta: sıcaklık · durum · yağış olasılığı" görünür. Harita hava katmanı (`utils/mapWeather`) ve `RouteEditor` gün bazlı kötü hava rozeti var. Kayıtlı rotada durak bazlı varış havası da bağlandı (`routeStopArrivalWeather`, en çok 40 durak, 10'luk istekler). **Kalan:** yok.
 
 ## Adım 16 · Grup + sohbet *(en son)*
 **⛔ karar (g) gerekli · 4+ gün · bağımlılık: Adım 13**
