@@ -1,4 +1,4 @@
-const CACHE = "atlasia-shell-v6";
+const CACHE = "atlasia-shell-v7";
 const TILE_CACHE = "atlasia-tiles-v1";
 const TILE_META_CACHE = "atlasia-tile-meta-v1";
 const CACHE_PREFIX = "atlasia-shell-";
@@ -71,8 +71,12 @@ function isSensitiveUrl(url) {
     || hostIs(host, "web.app")
     || hostIs(host, "accounts.google.com")
     || hostIs(host, "appleid.apple.com")
+    || parsed.pathname === "/__/auth"
     || parsed.pathname.startsWith("/__/auth/")
-    || parsed.pathname.startsWith("/__/firebase/");
+    || parsed.pathname === "/__/firebase"
+    || parsed.pathname.startsWith("/__/firebase/")
+    || parsed.pathname === "/api"
+    || parsed.pathname.startsWith("/api/");
 }
 
 // Cache'e yazılan her kabuk cevabında istek kadar yönlendirme sonrası son URL'yi de doğrula.
@@ -80,6 +84,28 @@ function isSafeShellResponse(response) {
   if (!response.ok || !response.url || isSensitiveUrl(response.url)) return false;
   const parsed = parseTileUrl(response.url);
   return Boolean(parsed && parsed.origin === self.location.origin);
+}
+
+function isAllowedStaticPath(path) {
+  return path === "/manifest.webmanifest"
+    || path.startsWith("/assets/")
+    || path.startsWith("/icons/")
+    || path.startsWith("/images/");
+}
+
+function isSafeStaticResponse(path, response) {
+  if (!isSafeShellResponse(response)) return false;
+  const requested = parseTileUrl(new URL(path, self.location.origin).href);
+  const finalUrl = parseTileUrl(response.url);
+  if (!requested || !finalUrl || !isAllowedStaticPath(requested.pathname) || !isAllowedStaticPath(finalUrl.pathname)) return false;
+  const mime = (response.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
+  // Pages'in SPA fallback'i 200 HTML dönebilir; onu eksik chunk'ın yerine koyma.
+  if (mime === "text/html") return false;
+  if (requested.pathname.endsWith(".js")) {
+    return ["text/javascript", "application/javascript", "application/x-javascript", "text/ecmascript", "application/ecmascript"].includes(mime);
+  }
+  if (requested.pathname.endsWith(".css")) return mime === "text/css";
+  return true;
 }
 
 function assetPath(value) {
@@ -104,7 +130,8 @@ function assetPathsFromText(text) {
 
 async function fetchShellResource(path) {
   const response = await fetch(path, { cache: "reload" });
-  if (!isSafeShellResponse(response)) throw new Error(`Atlasia shell asset could not be fetched: ${path}`);
+  const safe = path === "/" ? isSafeShellResponse(response) : isSafeStaticResponse(path, response);
+  if (!safe) throw new Error(`Atlasia shell asset could not be fetched: ${path}`);
   return response;
 }
 
@@ -186,7 +213,7 @@ async function cachedAsset(request) {
   const cache = await caches.open(CACHE);
   const cached = await cache.match(request);
   const update = fetch(request).then(async (response) => {
-    if (isSafeShellResponse(response) && (response.type === "basic" || response.type === "cors")) {
+    if (isSafeStaticResponse(request.url, response) && (response.type === "basic" || response.type === "cors")) {
       await cache.put(request, response.clone());
     }
     return response;
@@ -335,17 +362,16 @@ self.addEventListener("fetch", (event) => {
   }
 
   const parsed = new URL(request.url);
-  if (parsed.origin !== self.location.origin || parsed.pathname === "/sw.js" || parsed.pathname.startsWith("/api/")) return;
+  if (parsed.origin !== self.location.origin || parsed.pathname === "/sw.js") return;
 
   if (request.mode === "navigate") {
     event.respondWith(navigationResponse(event));
     return;
   }
 
-  const cacheable = ["script", "style", "font", "image", "manifest"].includes(request.destination)
-    || parsed.pathname.startsWith("/assets/")
-    || parsed.pathname.startsWith("/icons/")
-    || parsed.pathname.startsWith("/images/");
+  // Sadece gerçekten statik dağıtım yolları: aynı origin'deki kişisel görsel
+  // veya API cevabı `request.destination` image/script diye önbelleğe girmesin.
+  const cacheable = isAllowedStaticPath(parsed.pathname);
 
   if (cacheable) event.respondWith(cachedAsset(request));
 });
