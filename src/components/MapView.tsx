@@ -10,6 +10,7 @@ import {
 } from "../config/mapLabelCalibration";
 import openFreeMapDarkStyle from "../data/openFreeMapDarkStyle.json";
 import { KKTC_GEOMETRY, KKTC_NAME } from "../data/regions";
+import { attachMapResume } from "../lib/mapResume";
 import type { PlaceViewport } from "../lib/firestoreData";
 import type { Place, RouteLeg, ViewState } from "../types";
 
@@ -261,7 +262,14 @@ function buildStyle(
         layout: {
           visibility: labels ? "visible" : "none",
           "text-field": ["get", "name"],
-          "text-font": ["Open Sans Semibold"],
+          // KÖK NEDEN: Stil snapshot'ının glyphs ucu
+          // tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf yalnız kendi
+          // kümesini sunar; snapshot'ın 13 symbol katmanının TAMAMI "Noto Sans
+          // Regular" kullanır. Buradaki "Open Sans Semibold" 404 dönüyor ve
+          // maplibre yerel glyph üretimine düşüyordu (konsolda iki 404 +
+          // "Unable to load glyph range"). Haritanın geri kalanıyla aynı ve
+          // endpoint'in gerçekten sunduğu fonta eşitlendi.
+          "text-font": ["Noto Sans Regular"],
           "text-size": ["interpolate", ["linear"], ["zoom"], 5, 10, 8, 14],
           "text-letter-spacing": 0.08,
           "text-line-height": 1.4,
@@ -656,9 +664,19 @@ export default function MapView({
     };
     raf = requestAnimationFrame(tick);
 
+    // Mobil/arka plandan dönüşte haritayı yeniden ölç ve çiz.
+    // Bu dalda daha önce hiçbir dönüş dinleyicisi yoktu (visibilitychange,
+    // pageshow, focus, orientationchange, webglcontextrestored); kanıt ve
+    // davranış ayrıntısı src/lib/mapResume.ts ve mapResume.test.ts içindedir.
+    // Harita stiline/görünümüne dokunulmaz: bu yalnız ölçüm + yeniden çizimdir.
+    const resume = attachMapResume({ map, canvas: map.getCanvas() });
+
     report();
 
     return () => {
+      // Dinleyiciler map.remove()'dan ÖNCE kaldırılmalı; aksi hâlde geç gelen
+      // bir pageshow/focus olayı kaldırılmış harita üzerinde resize dener.
+      resume.dispose();
       cancelAnimationFrame(raf);
       markers.forEach((value) => value.marker.remove());
       markers.clear();

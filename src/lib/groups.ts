@@ -9,6 +9,7 @@
  *   - geniş koleksiyon taraması (limitsiz list) kurallarla kapalı.
  */
 import {
+  arrayUnion,
   collection,
   deleteDoc,
   doc,
@@ -74,6 +75,33 @@ export function normalizeMemberUids(ownerUid: string, raw: string[]): string[] {
     .map((uid) => uid.trim())
     .filter((uid) => uid.length > 0 && uid.length <= 128);
   return [...new Set(clean)].slice(0, GROUP_MEMBERS_MAX);
+}
+
+/**
+ * Davet listesini KABUL EDİLMİŞ ARKADAŞLARLA kesiştirir.
+ *
+ * Rıza sınırı: kabul edilmiş arkadaşlık olmadan kimse gruba davet edilemez,
+ * hele doğrudan EKLENEMEZ. `acceptedFriendUids` boşsa hiçbir davet üretilmez.
+ * Kendi UID'i, boşluklar, tekrarlar ve arkadaş olmayan kimlikler ayıklanır.
+ */
+export function normalizeInviteUids(
+  ownerUid: string,
+  acceptedFriendUids: readonly string[],
+  raw: readonly string[],
+): { invited: string[]; rejected: string[] } {
+  const friends = new Set(acceptedFriendUids.map((uid) => uid.trim()).filter(Boolean));
+  const clean = raw.map((uid) => uid.trim()).filter((uid) => uid.length > 0 && uid.length <= 128);
+  const invited: string[] = [];
+  const rejected: string[] = [];
+  for (const uid of clean) {
+    if (uid === ownerUid.trim()) continue;
+    if (friends.has(uid)) {
+      if (!invited.includes(uid)) invited.push(uid);
+    } else if (!rejected.includes(uid)) {
+      rejected.push(uid);
+    }
+  }
+  return { invited: invited.slice(0, GROUP_MEMBERS_MAX - 1), rejected };
 }
 
 export function validateGroupName(name: string): string | null {
@@ -163,37 +191,64 @@ export interface CreateGroupInput {
   name: string;
   ownerUid: string;
   ownerName: string;
+  /**
+   * Davet edilecek hesap kimlikleri. ARTIK doğrudan üye yazılmaz: bunlar
+   * `acceptedFriendUids` ile kesiştirilir ve yalnız davet bildirimi üretir.
+   */
   memberUids: string[];
+  /** Kabul edilmiş arkadaş kimlikleri; verilmezse hiçbir davet gönderilmez. */
+  acceptedFriendUids?: readonly string[];
 }
 
-export async function createGroup(input: CreateGroupInput): Promise<{ group: Group; invited: number }> {
+/**
+ * Grup kurar ve KABUL EDİLMİŞ ARKADAŞLARA davet gönderir.
+ *
+ * RIZA DEĞİŞİKLİĞİ (kök neden: kullanıcı UID yazarak davet etmekte zorlanıyordu
+ * ve rızasız ekleme mümkündü): grup başlangıçta YALNIZ kurucuyu üye yazar.
+ * Seçilen arkadaşlar `memberUids`'e zorla eklenmez; kendilerine `group_invite`
+ * bildirimi gider ve daveti `acceptGroupInvite` ile KABUL ETTİKLERİNDE kendi
+ * kendilerini eklerler. Firestore kuralı bu kendini-eklemeyi ancak kurucuyla
+ * `friendships/{pairId}.status == 'accepted'` ise onaylar; aksi hâlde reddeder.
+ *
+ * `joinGroup` / katılma akışı bozulmadı: üye listesinde zaten görünen kullanıcı
+ * için davranış aynıdır.
+ */
+export async function createGroup(input: CreateGroupInput): Promise<{ group: Group; invited: number; rejected: string[] }> {
   if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
   const invalid = validateGroupName(input.name);
   if (invalid) throw dataError(invalid, "Grup adı 2–80 karakter olmalı.");
   const name = input.name.trim();
-  const memberUids = normalizeMemberUids(input.ownerUid, input.memberUids);
-  if (memberUids.length < 1) throw dataError("group/member-required", "Grup için en az bir üye gerekli.");
+  const ownerUid = input.ownerUid.trim();
+  if (!ownerUid) throw dataError("group/member-required", "Grup için kurucu gerekli.");
+
+  const { invited: inviteUids, rejected } = normalizeInviteUids(
+    ownerUid,
+    input.acceptedFriendUids ?? [],
+    input.memberUids ?? [],
+  );
+
+  // Kurucu tek başına da grup kurabilir; davetliler kabul ettikçe üye olur.
+  const memberUids = normalizeMemberUids(ownerUid, []);
 
   const ref = doc(collection(db, "groups"));
   await setDoc(ref, {
     name,
-    ownerUid: input.ownerUid,
+    ownerUid,
     memberUids,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
-  await writeGroupIndex(input.ownerUid, ref.id, name, "owner");
+  await writeGroupIndex(ownerUid, ref.id, name, "owner");
 
   let invited = 0;
-  for (const memberUid of memberUids) {
-    if (memberUid === input.ownerUid) continue;
+  for (const inviteUid of inviteUids) {
     try {
       await createNotification({
-        recipientUid: memberUid,
-        actorUid: input.ownerUid,
+        recipientUid: inviteUid,
+        actorUid: ownerUid,
         type: "group_invite",
         title: "Grup daveti",
-        body: `${input.ownerName} seni “${name}” grubuna ekledi. Gruplar bölümünden açabilirsin.`,
+        body: `${input.ownerName} seni “${name}” grubuna davet etti. Kabul edersen üye olursun.`,
         targetId: ref.id,
       });
       invited += 1;
@@ -206,13 +261,47 @@ export async function createGroup(input: CreateGroupInput): Promise<{ group: Gro
     group: {
       id: ref.id,
       name,
-      ownerUid: input.ownerUid,
+      ownerUid,
       memberUids,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     },
     invited,
+    rejected,
   };
+}
+
+/**
+ * Grup davetini KABUL eder: kullanıcı kendini ekler.
+ *
+ * Kural denetimi: üye olmayan biri `groups/{id}` belgesini OKUYAMAZ
+ * (`allow get: request.auth.uid in memberUids`), bu yüzden önce kendini ekler,
+ * sonra — artık üye olduğu için — grubu okuyup kendi indeksini yazar.
+ * Kurucuyla kabul edilmiş arkadaşlığı yoksa Firestore bu yazımı reddeder.
+ */
+export async function acceptGroupInvite(groupId: string, uid: string): Promise<Group> {
+  if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
+  const clean = uid.trim();
+  const cleanGroup = groupId.trim();
+  if (!clean || !cleanGroup) throw dataError("group/not-found", "Grup bulunamadı.");
+
+  try {
+    await updateDoc(doc(db, "groups", cleanGroup), {
+      memberUids: arrayUnion(clean),
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    const code = (error as { code?: string })?.code ?? "";
+    if (String(code).includes("permission-denied")) {
+      throw dataError("group/invite-denied", "Bu daveti kabul edemedin. Kurucuyla arkadaşlığın onaylı olmalı.");
+    }
+    throw error;
+  }
+
+  const group = await fetchGroup(cleanGroup);
+  if (!group) throw dataError("group/not-found", "Grup bulunamadı.");
+  await writeGroupIndex(clean, group.id, group.name, group.ownerUid === clean ? "owner" : "member");
+  return group;
 }
 
 export async function joinGroup(groupId: string, uid: string): Promise<Group> {

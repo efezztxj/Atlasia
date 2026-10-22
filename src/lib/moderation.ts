@@ -23,6 +23,9 @@ import { deleteUser } from "firebase/auth";
 import { db, firebaseApp } from "./firebase";
 import { getAtlasAuth } from "./auth";
 import { createNotification } from "./notifications";
+// GRUP İNDEKSİ LİMİTİ: `users/{uid}/groups` liste kuralı `boundedList(20)` koşar.
+// Bu sabit tek kaynak olsun diye groups.ts'ten alınır; elle 50 yazmak kuralı aşar.
+import { GROUPS_LIMIT } from "./groups";
 
 export const REPORT_REASONS = ["spam", "harassment", "hate", "misinfo", "privacy", "other"] as const;
 export type ReportReason = (typeof REPORT_REASONS)[number];
@@ -278,9 +281,21 @@ async function deleteOwnedBlocks(uid: string): Promise<number> {
   return deleted;
 }
 
-async function deleteOwnSubcollection(uid: string, subcollection: "notifications" | "groups"): Promise<number> {
+/**
+ * Kendi alt koleksiyonunu sayfalayarak boşaltır.
+ *
+ * `limit` PARAMETREDİR çünkü her alt koleksiyonun kural sınırı farklıdır:
+ * `users/{uid}/groups` → boundedList(20), `notifications` ve `friendships` →
+ * boundedList(50). Sabit 50 yazmak grup indeksinde HER ZAMAN permission-denied
+ * üretiyordu. Döngü sildiği için sayfa her turda küçülür ve terimler.
+ */
+async function deleteOwnSubcollection(
+  uid: string,
+  subcollection: "notifications" | "groups" | "friendships",
+  pageLimit: number,
+): Promise<number> {
   if (!db) return 0;
-  const q = query(collection(db, `users/${uid}/${subcollection}`), limit(50));
+  const q = query(collection(db, `users/${uid}/${subcollection}`), limit(pageLimit));
   let deleted = 0;
   let snap = await getDocs(q);
   while (snap.size > 0) {
@@ -295,42 +310,104 @@ async function deleteOwnSubcollection(uid: string, subcollection: "notifications
 
 async function leaveOrDeleteGroups(uid: string): Promise<number> {
   if (!db) return 0;
-  const indexSnap = await getDocs(query(collection(db, `users/${uid}/groups`), limit(50)));
   let cleaned = 0;
-  for (const indexDoc of indexSnap.docs) {
-    const groupId = indexDoc.id;
-    try {
-      const groupRef = doc(db, "groups", groupId);
-      const snap = await getDoc(groupRef);
-      if (!snap.exists()) continue;
-      const data = snap.data();
-      // Kişinin kendi mesajlarını sil (kural: yalnız gönderen).
-      const messages = await getDocs(query(
-        collection(db, "groups", groupId, "messages"),
-        where("senderUid", "==", uid),
-        limit(50),
-      ));
-      if (messages.size > 0) {
-        const batch = writeBatch(db);
-        messages.docs.forEach((message) => batch.delete(message.ref));
-        await batch.commit();
-        cleaned += messages.size;
+  // KANITLANAN HATA: burada limit(50) vardı ama `users/{uid}/groups` liste
+  // kuralı boundedList(20) koşar → sorgu HER ZAMAN permission-denied döner.
+  // Bu tek hata deleteUserData'daki catch'e düştüğü için grup indeksi ve
+  // BİLDİRİMLER de hiç silinmiyordu (kişisel veri hesap silme sonrası kalıyordu).
+  //
+  // Sayfalama `seen` kümesiyle korunur: işlenemeyen bir grup sonsuz döngü
+  // yaratmaz, yeni grup kalmadığında döngü biter. Her işlenen grubun indeks
+  // belgesi de silinir, böylece sayfa gerçekten ilerler.
+  const seen = new Set<string>();
+  for (;;) {
+    const indexSnap = await getDocs(
+      query(collection(db, `users/${uid}/groups`), limit(GROUPS_LIMIT)),
+    );
+    const pending = indexSnap.docs.filter((indexDoc) => !seen.has(indexDoc.id));
+    if (pending.length === 0) break;
+    for (const indexDoc of pending) {
+      const groupId = indexDoc.id;
+      seen.add(groupId);
+      try {
+        const groupRef = doc(db, "groups", groupId);
+        const snap = await getDoc(groupRef);
+        if (!snap.exists()) {
+          await deleteDoc(indexDoc.ref);
+          continue;
+        }
+        const data = snap.data();
+        // Kişinin kendi mesajlarını sil (kural: yalnız gönderen).
+        const messages = await getDocs(query(
+          collection(db, "groups", groupId, "messages"),
+          where("senderUid", "==", uid),
+          limit(50),
+        ));
+        if (messages.size > 0) {
+          const batch = writeBatch(db);
+          messages.docs.forEach((message) => batch.delete(message.ref));
+          await batch.commit();
+          cleaned += messages.size;
+        }
+        const members = Array.isArray(data.memberUids) ? (data.memberUids as string[]) : [];
+        if (data.ownerUid === uid) {
+          await deleteDoc(groupRef);
+        } else if (members.includes(uid)) {
+          await updateDoc(groupRef, {
+            memberUids: members.filter((member) => member !== uid),
+            updatedAt: serverTimestamp(),
+          });
+        }
+        await deleteDoc(indexDoc.ref);
+        cleaned += 1;
+      } catch (error) {
+        console.warn(`[Atlasia] ${groupId} grubundan ayrılma tamamlanamadı:`, error);
       }
-      const members = Array.isArray(data.memberUids) ? (data.memberUids as string[]) : [];
-      if (data.ownerUid === uid) {
-        await deleteDoc(groupRef);
-      } else if (members.includes(uid)) {
-        await updateDoc(groupRef, {
-          memberUids: members.filter((member) => member !== uid),
-          updatedAt: serverTimestamp(),
-        });
-      }
-      cleaned += 1;
-    } catch (error) {
-      console.warn(`[Atlasia] ${groupId} grubundan ayrılma tamamlanamadı:`, error);
     }
   }
   return cleaned;
+}
+
+/**
+ * Arkadaşlık kayıtlarını temizler (hesap silme).
+ *
+ * Sıra önemlidir: önce own-scoped aynadan pairId'ler okunur, sonra YETKİLİ rıza
+ * kayıtları (`friendships/{pairId}`) silinir. Rıza kaydı kalktığı için karşı
+ * tarafın aynası da aynı batch'te silinebilir — kural bunu
+ * `!existsAfter(friendships/{pairId})` ile onaylar.
+ *
+ * Kalan durum: karşı tarafın aynası silinememişse (ör. ağ hatası), o kullanıcı
+ * aynayı kendi başına silebilir çünkü kural rıza kaydı yokken `uid == auth.uid`
+ * koşuluna ek olarak `!existsAfter` dalını da kabul eder. Bu bilinen ve kabul
+ * edilen bir artıktır; teslim raporunda risk olarak listelenmiştir.
+ */
+async function deleteOwnedFriendships(uid: string): Promise<number> {
+  if (!db) return 0;
+  const mirrorSnap = await getDocs(query(collection(db, `users/${uid}/friendships`), limit(50)));
+  let deleted = 0;
+  for (const mirrorDoc of mirrorSnap.docs) {
+    const pairId = mirrorDoc.id;
+    try {
+      const friendshipRef = doc(db, "friendships", pairId);
+      const snap = await getDoc(friendshipRef);
+      const batch = writeBatch(db);
+      if (snap.exists()) {
+        const data = snap.data();
+        const participants = Array.isArray(data.participants) ? (data.participants as string[]) : [];
+        batch.delete(friendshipRef);
+        for (const participant of participants) {
+          if (participant === uid) continue;
+          batch.delete(doc(db, `users/${participant}/friendships/${pairId}`));
+        }
+      }
+      batch.delete(doc(db, `users/${uid}/friendships/${pairId}`));
+      await batch.commit();
+      deleted += 1;
+    } catch (error) {
+      console.warn(`[Atlasia] Arkadaşlık kaydı temizlenemedi (${pairId}):`, error);
+    }
+  }
+  return deleted;
 }
 
 async function deleteOwnedVerifications(uid: string): Promise<number> {
@@ -353,7 +430,7 @@ async function deleteOwnedVerifications(uid: string): Promise<number> {
   }
 }
 
-export async function deleteUserData(uid: string): Promise<{ places: number; posts: number; stories: number; reports: number; blocks: number; verifications: number }> {
+export async function deleteUserData(uid: string): Promise<{ places: number; posts: number; stories: number; reports: number; blocks: number; verifications: number; friendships: number }> {
   if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
   const cleanUid = uid.trim();
   if (!cleanUid) throw dataError("auth/required", "Hesap bilgisi geçersiz.");
@@ -365,15 +442,35 @@ export async function deleteUserData(uid: string): Promise<{ places: number; pos
     deleteOwnedBlocks(cleanUid),
     deleteOwnedVerifications(cleanUid),
   ]);
-  // Grup üyeliği, gönderdiği mesajlar ve bildirimler de kalkar.
+  // Grup üyeliği, gönderdiği mesajlar, arkadaşlıklar ve bildirimler de kalkar.
+  let friendships = 0;
+  try {
+    friendships = await deleteOwnedFriendships(cleanUid);
+  } catch (error) {
+    console.warn("[Atlasia] Arkadaşlık verisi temizlenemedi:", error);
+  }
+  // Her adım AYRI try içinde: eskiden üçü tek try'daydı ve ilk adımdaki tek bir
+  // permission-denied, grup indeksi ve BİLDİRİM temizliğini tamamen atlıyordu.
+  // Hesap silme kişisel veri işlemi olduğu için kısmi başarı sessizce yutulamaz;
+  // her adım kendi hatasını raporlar ve diğerleri çalışmaya devam eder.
   try {
     await leaveOrDeleteGroups(cleanUid);
-    await deleteOwnSubcollection(cleanUid, "groups");
-    await deleteOwnSubcollection(cleanUid, "notifications");
   } catch (error) {
-    console.warn("[Atlasia] Grup/notification verisi temizlenemedi:", error);
+    console.warn("[Atlasia] Gruplardan ayrılma/silme tamamlanamadı:", error);
   }
-  return { places, posts, stories, reports, blocks, verifications };
+  try {
+    // users/{uid}/groups liste kuralı boundedList(20) → sayfa 20 olmalı.
+    await deleteOwnSubcollection(cleanUid, "groups", GROUPS_LIMIT);
+  } catch (error) {
+    console.warn("[Atlasia] Grup indeksi temizlenemedi:", error);
+  }
+  try {
+    // users/{uid}/notifications liste kuralı boundedList(50).
+    await deleteOwnSubcollection(cleanUid, "notifications", 50);
+  } catch (error) {
+    console.warn("[Atlasia] Bildirimler temizlenemedi:", error);
+  }
+  return { places, posts, stories, reports, blocks, verifications, friendships };
 }
 
 export async function deleteAccount(uid: string): Promise<void> {

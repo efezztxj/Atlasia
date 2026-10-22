@@ -13,7 +13,12 @@ import { installAppCheckDebugToken } from "./appCheckDebug";
 // değerleri burada sabitlemek, eski Cloudflare ortam değişkenlerinin App Check'i
 // yanlış uygulama kimliğiyle başlatmasını engeller.
 const ATLASIA_MESSAGING_SENDER_ID = "21255827476";
-const ATLASIA_FIREBASE_APP_ID = "1:21255827476:web:318093fd0d09738b3b7701";
+// DİKKAT: Bu değer Firebase Console > Project settings > General > Your apps >
+// Web app > App ID ile BİREBİR aynı olmalıdır. Önceki yazımda "8d" eksikti
+// (...fd0d09738b3b7701 yerine ...fd0d8d09738b3b7701); yanlış appId App Check ve
+// Installations kimliğini bozar. apiKey/authDomain/projectId ortam değişkeninden
+// gelir, bu sabitler yalnız gönderen ve uygulama kimliği içindir.
+const ATLASIA_FIREBASE_APP_ID = "1:21255827476:web:318093fd0d8d09738b3b7701";
 const ATLASIA_APP_CHECK_CONFIG = appCheckConfig();
 
 const firebaseConfig = {
