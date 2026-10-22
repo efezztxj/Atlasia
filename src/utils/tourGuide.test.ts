@@ -9,12 +9,46 @@ import {
 import { EPHESUS_TOUR } from "../data/siteTours";
 
 describe("tourGuide – sıra-duyarlı yakınlık (Adım 9)", () => {
-  it("giriş 35-50m bandında, çıkış histerezisli 20m fazla", () => {
-    expect(enterRadiusM(10)).toBe(35);
-    expect(enterRadiusM(30)).toBe(38);
-    expect(enterRadiusM(100)).toBe(50);
-    expect(exitRadiusM(10)).toBe(55);
-    expect(exitRadiusM(30)).toBe(58);
+  it("giriş 40m, çıkış 60m ve doğruluk eşiği sabittir", () => {
+    expect(enterRadiusM(10)).toBe(40);
+    expect(enterRadiusM(25)).toBe(40);
+    expect(exitRadiusM(10)).toBe(60);
+  });
+
+  it("GPS doğruluğu 60m'den kötüyse yakın anıtı tetiklemez", () => {
+    const candidate = { id: "a", lat: 37.94, lng: 27.34 };
+    const result = resolveGuidePlace({ lat: candidate.lat, lng: candidate.lng, accuracy: 61 }, [candidate], initialGuideState());
+    expect(result.place).toBeNull();
+    expect(result.entered).toBe(false);
+  });
+
+  it("orta doğrulukta (30–50 m) çalışır ama giriş yarıçapı daralır", () => {
+    expect(enterRadiusM(35)).toBe(30);
+    expect(enterRadiusM(50)).toBe(15);
+    const candidate = { id: "a", lat: 37.94, lng: 27.34 };
+    const onTop = resolveGuidePlace({ lat: candidate.lat, lng: candidate.lng, accuracy: 40 }, [candidate], initialGuideState());
+    expect(onTop.entered).toBe(true);
+    // ~33 m uzakta, doğruluk 40 m → yarıçap 25 m → tetiklenmez
+    const away = resolveGuidePlace({ lat: candidate.lat + 0.0003, lng: candidate.lng, accuracy: 40 }, [candidate], initialGuideState());
+    expect(away.place).toBeNull();
+  });
+
+  it("içerideyken tek bir kötü ölçüm durağı kaybettirmez", () => {
+    const candidate = { id: "a", lat: 37.94, lng: 27.34 };
+    const entered = resolveGuidePlace({ lat: candidate.lat, lng: candidate.lng, accuracy: 10 }, [candidate], initialGuideState());
+    const noisy = resolveGuidePlace({ lat: candidate.lat, lng: candidate.lng, accuracy: 200 }, [candidate], entered.nextState);
+    expect(noisy.place?.id).toBe("a");
+    expect(noisy.exited).toBe(false);
+  });
+
+  it("20m aralıklı anıtlarda sıradaki durak öne alınır", () => {
+    const candidates = [
+      { id: "next", lat: 37.94 + 0.00018, lng: 27.34, order: 2 },
+      { id: "later", lat: 37.94, lng: 27.34, order: 3 },
+    ];
+    const result = resolveGuidePlace({ lat: 37.94, lng: 27.34, accuracy: 5 }, candidates,
+      { insideId: null, currentIndex: 1, lastUpdateAt: 0 }, true);
+    expect(result.place?.id).toBe("next");
   });
 
   it("yürürken doğru durağın anlatımı öneriliyor (sıra öncelikli)", () => {

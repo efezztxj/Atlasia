@@ -6,15 +6,7 @@
 import { collection, deleteDoc, doc, limit, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import { db } from "./firebase";
 
-export type NotificationType =
-  | "report_received"
-  | "report_actioned"
-  | "blocked"
-  | "group_invite"
-  | "group_message"
-  | "friend_request"
-  | "friend_accepted"
-  | "system";
+export type NotificationType = "report_received" | "report_actioned" | "blocked" | "group_invite" | "group_message" | "friend_request" | "friend_accepted" | "friend_declined" | "system";
 
 export interface AppNotification {
   id: string;

@@ -1,10 +1,10 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { LEGAL_SOURCE, privacyDocument, termsDocument } from "../content/legal";
+import { kvkkNoticeDocument, LEGAL_SOURCE, privacyDocument, termsDocument, type LegalDocumentType } from "../content/legal";
 import LegalNotice from "./LegalNotice";
 
-function render(type: "privacy" | "terms") {
+function render(type: LegalDocumentType) {
   return renderToStaticMarkup(createElement(LegalNotice, { type, onClose: () => {} }));
 }
 
@@ -12,6 +12,7 @@ describe("LegalNotice", () => {
   it.each([
     ["privacy" as const, privacyDocument],
     ["terms" as const, termsDocument],
+    ["kvkk" as const, kvkkNoticeDocument],
   ])("%s belgesinin tam bölüm yapısını erişilebilir dialog içinde render eder", (type, document) => {
     const markup = render(type);
 

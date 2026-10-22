@@ -1,8 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AtlasRoute, RouteStop } from "../types";
 import {
+  WEATHER_RISK_THRESHOLDS as T,
+  assessWeatherRisk,
   attachStopWeather,
   dailyRainNote,
+  fetchWeatherSeries,
+  isStormWeatherCode,
   optimizeForRain,
   rainExposure,
   rainRisk,
@@ -140,5 +144,203 @@ describe("hava durumu derinleştirme", () => {
     expect(dailyRainNote(hours([[9, 20, 1], [10, 70, 63]]))).toContain("%70");
     expect(dailyRainNote(hours([[9, 5, 0], [10, 10, 1]]))).toContain("belirgin yağış riski görünmüyor");
     expect(dailyRainNote([])).toContain("ulaşamadım");
+  });
+});
+
+describe("fetchWeatherSeries (fixture ile; ağ yok)", () => {
+  /** Open-Meteo şekilli sahte yanıt: istenen koordinat sayısı kadar giriş. */
+  function meteoPayload(url: string) {
+    const count = new URL(url).searchParams.get("latitude")?.split(",").length ?? 1;
+    const entry = {
+      hourly: {
+        time: [`${BASE}T09:00`, `${BASE}T10:00`],
+        temperature_2m: [21, 22],
+        precipitation: [0, 0.4],
+        precipitation_probability: [10, 40],
+        weather_code: [1, 61],
+      },
+    };
+    return count === 1 ? entry : Array.from({ length: count }, () => entry);
+  }
+
+  interface FakeResponse {
+    ok: boolean;
+    status: number;
+    json: () => Promise<unknown>;
+  }
+  const fetchMock = vi.fn(async (input: unknown, _init?: { signal?: AbortSignal }): Promise<FakeResponse> => ({
+    ok: true,
+    status: 200,
+    json: async () => meteoPayload(String(input)),
+  }));
+
+  beforeEach(() => {
+    fetchMock.mockClear();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  it("tek istekte birden çok noktayı kimlikleriyle döndürür", async () => {
+    const series = await fetchWeatherSeries([
+      { id: "a", lat: 40.01, lng: 29.01 },
+      { id: "b", lat: 40.02, lng: 29.02 },
+    ]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(series.a).toHaveLength(2);
+    expect(series.a[1]).toMatchObject({ precipitationProbability: 40, weatherCode: 61 });
+    expect(series.b).toHaveLength(2);
+  });
+
+  it("aynı koordinat farklı kimlikle istenirse veri yeni kimliğe eşlenir (önbellek regresyonu)", async () => {
+    await fetchWeatherSeries([{ id: "center", lat: 41.01, lng: 28.01 }]);
+    const second = await fetchWeatherSeries([{ id: "pin-7", lat: 41.01, lng: 28.01 }]);
+    expect(fetchMock).toHaveBeenCalledTimes(1); // ikinci çağrı ağa gitmez
+    expect(second["pin-7"]).toHaveLength(2); // eski davranış: undefined (eski kimlik)
+  });
+
+  it("kısmi çakışmada yalnız eksik nokta çekilir", async () => {
+    await fetchWeatherSeries([
+      { id: "a", lat: 42.01, lng: 30.01 },
+      { id: "b", lat: 42.02, lng: 30.02 },
+    ]);
+    fetchMock.mockClear();
+    const series = await fetchWeatherSeries([
+      { id: "b", lat: 42.02, lng: 30.02 },
+      { id: "c", lat: 42.03, lng: 30.03 },
+    ]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const url = String(fetchMock.mock.calls[0][0]);
+    expect(url).toContain("latitude=42.030");
+    expect(url).not.toContain("42.020");
+    expect(series.b).toHaveLength(2);
+    expect(series.c).toHaveLength(2);
+  });
+
+  it("önbellek 10 dakika sonra bayatlar ve yeniden çekilir", async () => {
+    const t0 = 1_760_000_000_000;
+    vi.spyOn(Date, "now").mockReturnValue(t0);
+    await fetchWeatherSeries([{ id: "x", lat: 43.01, lng: 31.01 }]);
+    vi.spyOn(Date, "now").mockReturnValue(t0 + 9 * 60 * 1000);
+    await fetchWeatherSeries([{ id: "x", lat: 43.01, lng: 31.01 }]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    vi.spyOn(Date, "now").mockReturnValue(t0 + 11 * 60 * 1000);
+    await fetchWeatherSeries([{ id: "x", lat: 43.01, lng: 31.01 }]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("HTTP hatası Türkçe ve durum koduyla söylenir", async () => {
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 503, json: async () => ({}) });
+    await expect(fetchWeatherSeries([{ id: "h", lat: 44.01, lng: 32.01 }]))
+      .rejects.toThrow("Hava durumu servisi yanıt vermedi (HTTP 503)");
+  });
+
+  it("ağ hatası anlaşılır mesaja çevrilir, boş veri ayrıca söylenir", async () => {
+    fetchMock.mockRejectedValueOnce(new TypeError("fetch failed"));
+    await expect(fetchWeatherSeries([{ id: "n", lat: 44.02, lng: 32.02 }]))
+      .rejects.toThrow("ulaşılamadı");
+
+    fetchMock.mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ hourly: { time: [] } }) });
+    await expect(fetchWeatherSeries([{ id: "e", lat: 44.03, lng: 32.03 }]))
+      .rejects.toThrow("boş döndü");
+  });
+
+  it("önceden iptal edilmiş sinyal AbortError verir, ağa gidilmez", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    await expect(fetchWeatherSeries([{ id: "s", lat: 45.01, lng: 33.01 }], controller.signal))
+      .rejects.toMatchObject({ name: "AbortError" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("iç zaman aşımı iptalden ayırt edilebilir hatayla döner", async () => {
+    vi.useFakeTimers();
+    fetchMock.mockImplementationOnce((_input: unknown, init?: { signal?: AbortSignal }) =>
+      new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")));
+      }));
+    const pending = fetchWeatherSeries([{ id: "t", lat: 46.01, lng: 34.01 }]);
+    const assertion = expect(pending).rejects.toThrow("zaman aşımına uğradı");
+    await vi.advanceTimersByTimeAsync(8000);
+    await assertion;
+  });
+});
+
+describe("assessWeatherRisk — kötü hava uyarısı (Adım 15)", () => {
+  const at = (partial: Partial<WeatherHour>): WeatherHour => ({
+    time: `${BASE}T10:00`,
+    temperature: 20,
+    precipitationMm: 0,
+    precipitationProbability: 0,
+    weatherCode: 0,
+    windSpeedKmh: 5,
+    windGustKmh: 8,
+    ...partial,
+  });
+
+  it("sakin pencerede risk yok; neden listesi boş", () => {
+    const result = assessWeatherRisk([at({}), at({ time: `${BASE}T11:00` })]);
+    expect(result).toEqual({ level: "none", reasons: [], hourCount: 2 });
+  });
+
+  it("yağış eşikleri sınır değerlerde basamak değiştirir", () => {
+    expect(assessWeatherRisk([at({ precipitationProbability: T.warningPrecipitationProbabilityPct })])?.level).toBe("warning");
+    expect(assessWeatherRisk([at({ precipitationProbability: T.warningPrecipitationProbabilityPct - 1 })])?.level).toBe("caution");
+    expect(assessWeatherRisk([at({ precipitationProbability: T.cautionPrecipitationProbabilityPct - 1 })])?.level).toBe("none");
+    // Olasılık düşükken bile 2 mm/sa uyarıdır.
+    expect(assessWeatherRisk([at({ precipitationProbability: 10, precipitationMm: T.warningPrecipitationMmPerHour })])?.level).toBe("warning");
+    expect(assessWeatherRisk([at({ precipitationProbability: 0, precipitationMm: T.cautionPrecipitationMmPerHour })])?.level).toBe("caution");
+  });
+
+  it("rüzgâr ve hamle eşikleri ayrı ayrı tetikler; NaN rüzgâr tetikleyemez", () => {
+    expect(assessWeatherRisk([at({ windSpeedKmh: T.warningWindKmh, windGustKmh: 0 })])?.level).toBe("warning");
+    expect(assessWeatherRisk([at({ windSpeedKmh: 5, windGustKmh: T.warningWindGustKmh })])?.level).toBe("warning");
+    expect(assessWeatherRisk([at({ windSpeedKmh: T.cautionWindKmh, windGustKmh: 0 })])?.level).toBe("caution");
+    expect(assessWeatherRisk([at({ windSpeedKmh: Number.NaN, windGustKmh: undefined })])?.level).toBe("none");
+  });
+
+  it("sıcaklık uçları ve fırtına kodları uyarıdır", () => {
+    expect(assessWeatherRisk([at({ temperature: T.warningHeatC })])?.level).toBe("warning");
+    expect(assessWeatherRisk([at({ temperature: T.warningHeatC - 1 })])?.level).toBe("caution");
+    expect(assessWeatherRisk([at({ temperature: T.warningColdC })])?.level).toBe("warning");
+    expect(assessWeatherRisk([at({ temperature: T.warningColdC + 1 })])?.level).toBe("caution");
+    expect(isStormWeatherCode(95)).toBe(true);
+    expect(isStormWeatherCode(99)).toBe(true);
+    expect(isStormWeatherCode(94)).toBe(false);
+    const storm = assessWeatherRisk([at({ weatherCode: 96 })]);
+    expect(storm?.level).toBe("warning");
+    expect(storm?.reasons.join(" ")).toContain("fırtına");
+  });
+
+  it("nedenler saatli ve kısadır; uyarılar önce gelir, en çok 4 neden", () => {
+    const result = assessWeatherRisk([
+      at({ precipitationProbability: 90, time: `${BASE}T14:00` }),
+      at({ temperature: 38, time: `${BASE}T15:00` }),
+    ]);
+    expect(result?.level).toBe("warning");
+    expect(result?.reasons[0]).toContain("14:00");
+    expect(result?.reasons[0]).toContain("yağış");
+    expect(result?.reasons.join(" ")).toContain("38°C");
+    expect((result?.reasons.length ?? 99) <= 4).toBe(true);
+  });
+
+  it("pencere tarihi ve saat aralığı dışındaki kötü hava sayılmaz", () => {
+    const series = [
+      at({ precipitationProbability: 95, time: `${BASE}T06:00` }), // pencere öncesi
+      at({ time: `${BASE}T10:00` }), // pencere içi sakin
+      at({ precipitationProbability: 95, time: "2026-10-20T10:00" }), // ertesi gün
+    ];
+    const result = assessWeatherRisk(series, { date: BASE, fromClock: "09:00", toClock: "12:00" });
+    expect(result).toEqual({ level: "none", reasons: [], hourCount: 1 });
+  });
+
+  it("boş veri ya da pencere dışı seri 'bilinmiyor' (null) döner — risk yok sanılmaz", () => {
+    expect(assessWeatherRisk([])).toBeNull();
+    expect(assessWeatherRisk([at({})], { date: "2026-11-01" })).toBeNull();
+    expect(assessWeatherRisk([at({})], { fromClock: "20:00", toClock: "21:00" })).toBeNull();
   });
 });

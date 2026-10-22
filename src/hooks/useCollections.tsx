@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { firebaseConfigured } from "../lib/firebase";
 import {
@@ -8,41 +8,24 @@ import {
   subscribeSavedCollections,
   toggleSavedPlace,
 } from "../lib/routeData";
-import { classifyFailure, firestoreErrorCode, type RouteStage } from "../lib/firestoreErrors";
-import {
-  dedupeRecordsErrors,
-  isSharedRecordsError,
-  tabForSavedSource,
-  type RecordsError,
-  type RecordsTab,
-} from "../lib/recordsErrors";
 import type { AtlasRoute, Place, RouteVisibility } from "../types";
+import { resolveTrackShare } from "../utils/trackPrivacy";
 import { storageGet, storageSet } from "../utils/storage";
-
-/** Yazma eylemleri: hata hangi sekmeye yazılacak, çağıran bildirir. */
-export type CollectionWriteAction =
-  | "savePlace"
-  | "togglePlace"
-  | "saveRoute"
-  | "removeRoute"
-  | "deleteTrack";
 
 interface CollectionState {
   savedPlaces: Place[];
   savedRoutes: AtlasRoute[];
   loading: boolean;
-  /**
-   * @deprecated Sekme ayırmayan tek hata metni. Yerine `errors` kullan.
-   * Geriye dönük uyumluluk için korunuyor (ProfilePanel/AtlasAssistant).
-   */
   error: string | null;
-  /** Kaynak bazlı, sekme kapsamlı hata listesi. */
-  errors: RecordsError[];
-  savePlace: (place: Place, activeTab?: RecordsTab) => Promise<void>;
-  saveRoute: (route: AtlasRoute, activeTab?: RecordsTab) => Promise<void>;
-  publishRoute: (route: AtlasRoute, visibility: RouteVisibility) => Promise<void>;
-  removeRoute: (id: string, activeTab?: RecordsTab) => Promise<void>;
-  clearError: (tab?: RecordsTab) => void;
+  savePlace: (place: Place) => void;
+  saveRoute: (route: AtlasRoute) => void;
+  /**
+   * Yayınlama tek gizlilik kapısından geçer. `shareConsent`, çağıran arayüzün
+   * onay kutusundan gelir; private dışı görünürlükte onaysız yayın **çalışmaz**
+   * (kapı hata fırlatır). Varsayılanı yoktur: her çağıran bilinçli geçirir.
+   */
+  publishRoute: (route: AtlasRoute, visibility: RouteVisibility, shareConsent: boolean) => Promise<void>;
+  removeRoute: (id: string) => void;
   isSaved: (id: string) => boolean;
 }
 
@@ -51,165 +34,105 @@ function read<T>(key: string, fallback: T): T {
   try { return JSON.parse(storageGet(key) ?? "null") ?? fallback; } catch { return fallback; }
 }
 
-/** Ham hatayı sekme kapsamlı bir `RecordsError` kaydına çevirir. */
-function toRecordsError(
-  failure: unknown,
-  stage: RouteStage,
-  tab: RecordsTab,
-  scope: RecordsError["scope"],
-  owned = true,
-): RecordsError {
-  const classified = classifyFailure(failure, stage, owned);
-  return {
-    tab,
-    scope: isSharedRecordsError(classified.code, classified.message) ? "shared" : scope,
-    message: classified.message,
-    code: classified.code,
-    genuine: classified.genuinePermissionProblem || !classified.retryable ? classified.genuinePermissionProblem : undefined,
-    retryable: classified.retryable,
-  };
+/**
+ * Bu oturum Firestore'a gerçekten girebilir mi? Yapılandırılmış derlemede
+ * **cihaz hesabının** uid'si Firebase Auth'ta yoktur; Rules `request.auth`
+ * istediği için her okuma/yazma `permission-denied` alır. Yalnız
+ * `firebaseConfigured`a bakmak cihaz kullanıcısını sessizce ne bulut ne
+ * yerel çalışan bir durumda bırakırdı (Madde 12 bulgusu). Bulut/yerel
+ * ayrımı gereken her yer bu tek koşulu kullanır; doğruluk tablosu
+ * useCollections testleriyle kilitlidir.
+ */
+export function isCloudAccount(backend: "firebase" | "device" | undefined): boolean {
+  return firebaseConfigured && backend === "firebase";
 }
 
 export function CollectionsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const prefix = `atlasia.member.${user!.uid}`;
-  const [savedPlaces, setSavedPlaces] = useState<Place[]>(() => firebaseConfigured ? [] : read(`${prefix}.places`, []));
-  const [savedRoutes, setSavedRoutes] = useState<AtlasRoute[]>(() => firebaseConfigured ? [] : read(`${prefix}.routes`, []));
-  const [loading, setLoading] = useState(firebaseConfigured);
-  const [errors, setErrors] = useState<RecordsError[]>([]);
-  /** Oturum değişince eski kullanıcının hataları yeni kullanıcıya sızmamalı. */
-  const errorsRef = useRef<RecordsError[]>([]);
-  errorsRef.current = errors;
+  // Karar (c) ayrımı: bulut hesabı `users/{uid}` altında eşitlenir,
+  // cihaz hesabı bilinçli olarak cihazda kalır. (Madde 12)
+  const cloudCollections = isCloudAccount(user!.backend);
+  const [savedPlaces, setSavedPlaces] = useState<Place[]>(() => cloudCollections ? [] : read(`${prefix}.places`, []));
+  const [savedRoutes, setSavedRoutes] = useState<AtlasRoute[]>(() => cloudCollections ? [] : read(`${prefix}.routes`, []));
+  const [loading, setLoading] = useState(cloudCollections);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!firebaseConfigured) {
+    if (!cloudCollections) {
       storageSet(`${prefix}.places`, JSON.stringify(savedPlaces));
       storageSet(`${prefix}.routes`, JSON.stringify(savedRoutes));
     }
-  }, [prefix, savedPlaces, savedRoutes]);
+  }, [cloudCollections, prefix, savedPlaces, savedRoutes]);
 
   useEffect(() => {
-    setErrors([]);
-    if (!firebaseConfigured) return;
+    if (!cloudCollections) return;
     setLoading(true);
+    setError(null);
     return subscribeSavedCollections(user!.uid, (snapshot) => {
       setSavedPlaces(snapshot.places);
       setSavedRoutes(snapshot.routes);
       setLoading(false);
-    }, (failure, source) => {
+    }, (failure) => {
+      setError(failure.message);
       setLoading(false);
-      if (source === "saved-routes/detail") {
-        // Tek bir rota belgesi okunamadı (silinmiş ya da bize kapalı). Liste
-        // yine de gelir; bu yüzden kullanıcıya ölümcül hata olarak göstermiyoruz
-        // ama teşhis için kaydı tutuyoruz.
-        console.warn("[Atlasia] Kayıtlı rota detayı okunamadı:", failure);
-        return;
-      }
-      const tab = tabForSavedSource(source);
-      const stage: RouteStage = source === "saved-places" ? "saved-places/subscribe" : "saved-routes/subscribe";
-      setErrors((current) => dedupeRecordsErrors([
-        ...current.filter((item) => !(item.scope === "read" && item.tab === tab)),
-        toRecordsError(failure, stage, tab, "read"),
-      ]));
     });
-  }, [user]);
+  }, [cloudCollections, user]);
 
-  /** Yazma hatasını ilgili sekmeye yazar; önceki aynı-sekme yazma hatasını değiştirir. */
-  const recordWriteError = useCallback((failure: unknown, stage: RouteStage, tab: RecordsTab) => {
-    setErrors((current) => dedupeRecordsErrors([
-      ...current.filter((item) => !(item.scope === "write" && item.tab === tab)),
-      toRecordsError(failure, stage, tab, "write"),
-    ]));
-  }, []);
-
-  const clearError = useCallback((tab?: RecordsTab) => {
-    setErrors((current) => (tab === undefined ? [] : current.filter((item) => item.tab !== tab)));
-  }, []);
-
-  const savePlace = useCallback(async (place: Place, activeTab?: RecordsTab) => {
-    const tab: RecordsTab = activeTab ?? "places";
-    if (!firebaseConfigured) {
+  const savePlace = (place: Place) => {
+    if (!cloudCollections) {
       setSavedPlaces((current) => current.some((item) => item.id === place.id) ? current.filter((item) => item.id !== place.id) : [place, ...current]);
       return;
     }
-    try {
-      await toggleSavedPlace(user!.uid, place);
-      setErrors((current) => current.filter((item) => !(item.scope === "write" && item.tab === "places")));
-    } catch (failure) {
-      // Yeniden fırlatmıyoruz: çağıranlar (BottomPanel, PlaceDetails, AtlasAssistant)
-      // Promise'i yakalamıyor ve tarayıcıda unhandled rejection üretirdi. Hata
-      // zaten `errors` listesine sekme kapsamıyla yazıldı; Kayıtlarım oradan okur.
-      recordWriteError(failure, "saved-places/write", tab);
-    }
-  }, [recordWriteError, user]);
+    void toggleSavedPlace(user!.uid, place).catch((failure: unknown) => {
+      setError(failure instanceof Error ? failure.message : "Yer kaydedilemedi.");
+    });
+  };
 
-  const saveRoute = useCallback(async (route: AtlasRoute, activeTab?: RecordsTab) => {
-    const tab: RecordsTab = activeTab ?? "routes";
-    if (!firebaseConfigured) {
+  const saveRoute = (route: AtlasRoute) => {
+    if (!cloudCollections) {
       setSavedRoutes((current) => [route, ...current.filter((item) => item.id !== route.id)].slice(0, 40));
       return;
     }
-    try {
-      await saveRouteReference(user!.uid, route);
-      setErrors((current) => current.filter((item) => !(item.scope === "write" && item.tab === tab)));
-    } catch (failure) {
-      recordWriteError(failure, "route/save-reference", tab);
-    }
-  }, [recordWriteError, user]);
+    void saveRouteReference(user!.uid, route).catch((failure: unknown) => {
+      setError(failure instanceof Error ? failure.message : "Rota kaydedilemedi.");
+    });
+  };
 
-  const publish = useCallback(async (route: AtlasRoute, visibility: RouteVisibility) => {
-    try {
-      await publishRoute(user!.uid, route, visibility);
-      await saveRouteReference(user!.uid, route);
-      setErrors((current) => current.filter((item) => !(item.scope === "write" && item.tab === "routes")));
-    } catch (failure) {
-      // publishRoute ve saveRouteReference kendi aşama etiketlerini taşır;
-      // hangisinin patladığını mesajdan okumak mümkündür.
-      const stage = (failure as { stage?: RouteStage }).stage ?? "route/create";
-      recordWriteError(failure, stage, "routes");
-      throw failure;
+  /**
+   * P16 #1: yerel modda (`firebaseConfigured=false` veya cihaz hesabı) bulut
+   * zinciri **çağrılmaz**. Yerelde yayın diye bir şey yoktur; rota cihazda
+   * saklanır ve kullanıcıya yayımlanamadığı açıkça söylenir. Böylece sahte
+   * "yayınlandı" bağlantısı üretilmez, ağ bağımlılığı olmayan modda hata da
+   * oluşmaz.
+   */
+  const publish = async (route: AtlasRoute, visibility: RouteVisibility, shareConsent: boolean) => {
+    // Tek gizlilik kapısı: ham iz alanları taşınmaz, yayın açık kullanıcı
+    // eylemiyle yapılır (bu fonksiyon yalnız "Yayınla/Kaydet" düğmesinden çağrılır).
+    // Onay burada uydurulmaz; arayüzdeki onay kutusunun değeri aynen geçer.
+    const decision = resolveTrackShare(route, { userInitiated: true, visibility, shareConsent });
+    if (!decision.ok) throw new Error(decision.reason);
+    if (!cloudCollections) {
+      setSavedRoutes((current) => [decision.route, ...current.filter((item) => item.id !== decision.route.id)].slice(0, 40));
+      throw new Error(
+        "Bulut hesabı bağlı değil: rota bu cihazda kaydedildi, yayımlanamadı. Yayımlamak için bulut (e-posta) hesabıyla giriş yap.",
+      );
     }
-  }, [recordWriteError, user]);
+    await publishRoute(user!.uid, decision.route, decision.visibility);
+    await saveRouteReference(user!.uid, decision.route);
+  };
 
-  const removeRoute = useCallback(async (id: string, activeTab?: RecordsTab) => {
-    const tab: RecordsTab = activeTab ?? "routes";
-    if (!firebaseConfigured) {
+  const removeRoute = (id: string) => {
+    if (!cloudCollections) {
       setSavedRoutes((current) => current.filter((route) => route.id !== id));
       return;
     }
-    try {
-      await removeRouteFromLibrary(user!.uid, id);
-      setErrors((current) => current.filter((item) => !(item.scope === "write" && item.tab === tab)));
-    } catch (failure) {
-      recordWriteError(failure, "route/remove-reference", tab);
-    }
-  }, [recordWriteError, user]);
+    void removeRouteFromLibrary(user!.uid, id).catch((failure: unknown) => {
+      setError(failure instanceof Error ? failure.message : "Rota kaydı kaldırılamadı.");
+    });
+  };
 
-  /** Geriye dönük uyumluluk: en kritik (shared > read > write) hatanın metni. */
-  const legacyError = useMemo(() => {
-    const shared = errors.find((item) => item.scope === "shared" && item.genuine !== false);
-    if (shared) return shared.message;
-    const read = errors.find((item) => item.scope === "read" && item.genuine !== false);
-    if (read) return read.message;
-    const write = errors.find((item) => item.scope === "write" && item.genuine !== false);
-    return write?.message ?? null;
-  }, [errors]);
-
-  const value = useMemo<CollectionState>(() => ({
-    savedPlaces,
-    savedRoutes,
-    loading,
-    error: legacyError,
-    errors,
-    savePlace,
-    saveRoute,
-    publishRoute: publish,
-    removeRoute,
-    clearError,
-    isSaved: (id) => savedPlaces.some((place) => place.id === id),
-  }), [clearError, errors, legacyError, loading, publish, removeRoute, savePlace, saveRoute, savedPlaces, savedRoutes]);
-
-  return <Context.Provider value={value}>{children}</Context.Provider>;
+  return <Context.Provider value={{ savedPlaces, savedRoutes, loading, error, savePlace, saveRoute, publishRoute: publish, removeRoute, isSaved: (id) => savedPlaces.some((place) => place.id === id) }}>{children}</Context.Provider>;
 }
 
 export function useCollections() {
@@ -217,6 +140,3 @@ export function useCollections() {
   if (!state) throw new Error("CollectionsProvider is required.");
   return state;
 }
-
-/** Teşhis yardımcıları: bileşen dışında da aynı sınıflandırmayı kullanabilmek için. */
-export { firestoreErrorCode };

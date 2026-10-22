@@ -8,7 +8,9 @@ import {
 import {
   arrayUnion,
   collection,
+  collectionGroup,
   deleteDoc,
+  deleteField,
   doc,
   documentId,
   getDoc,
@@ -31,6 +33,7 @@ import {
   removePostInFirestore,
   togglePostLikeInFirestore,
 } from "../src/lib/firestoreData";
+import { ACCOUNT_DATA_PAGE_SIZE } from "../src/config/firestoreLimits";
 
 const PROJECT_ID = "demo-atlasia-rules";
 let testEnv: RulesTestEnvironment;
@@ -79,61 +82,6 @@ function validStory(uid: string) {
     accent: "dusk",
     createdAt: serverTimestamp(),
     kind: "user",
-  };
-}
-
-/* ─────────────── Arkadaşlık (açık rıza) yardımcıları ─────────────── */
-
-/** Kurallardaki sortedPairId ile AYNI sıralamayı üretir. */
-function pairIdFor(a: string, b: string): string {
-  return a < b ? `${a}_${b}` : `${b}_${a}`;
-}
-
-/** validFriendshipShape'i sağlayan bekleyen istek belgesi. */
-function validFriendship(requesterUid: string, recipientUid: string, requesterName = "Ada") {
-  const [first, second] = requesterUid < recipientUid
-    ? [requesterUid, recipientUid]
-    : [recipientUid, requesterUid];
-  return {
-    requesterUid,
-    recipientUid,
-    participants: [first, second],
-    status: "pending",
-    requesterName,
-    recipientName: "",
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  };
-}
-
-/** Kabul edilmiş arkadaşlık (seed için; timestamps gerçek olmalı). */
-function acceptedFriendship(a: string, b: string) {
-  const [first, second] = a < b ? [a, b] : [b, a];
-  const requesterUid = a;
-  const recipientUid = b;
-  return {
-    requesterUid,
-    recipientUid,
-    participants: [first, second],
-    status: "accepted",
-    requesterName: "Ada",
-    recipientName: "Bora",
-    createdAt: Timestamp.now(),
-    updatedAt: Timestamp.now(),
-    acceptedAt: Timestamp.now(),
-  };
-}
-
-/** validFriendshipMirror'i sağlayan own-scoped ayna belgesi. */
-function validMirror(pairId: string, otherUid: string, direction: "outgoing" | "incoming", status: string, otherName = "") {
-  return {
-    pairId,
-    otherUid,
-    otherName,
-    direction,
-    status,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
   };
 }
 
@@ -455,6 +403,44 @@ describe("Firestore güvenlik kuralları", () => {
     await assertSucceeds(deleteDoc(storyRef));
   });
 
+  it("henüz olmayan rota belgesinin ön okuması reddedilir; yayın ön okumasız oluşturulur (2026-10-21 üretim regresyonu)", async () => {
+    // routes get kuralı resource.data okur. Belge yokken resource null olduğu için
+    // sahibi dahil herkesin ön okuması permission-denied alır. İstemci bu reddi
+    // "okunabilir rota yok" sayıp doğrudan create yazar; kurallar gevşetilmez.
+    const ownerDb = testEnv.authenticatedContext("owner").firestore();
+    await assertFails(getDoc(doc(ownerDb, "routes/route-henuz-yok")));
+
+    // Kayıtlı yer ön okuması resource.data okumadığı için belge yokken de başarılıdır.
+    await assertSucceeds(getDoc(doc(ownerDb, "users/owner/savedPlaces/yer-henuz-yok")));
+    // joinGroup indeks ön kontrolü de belge yokken okunabilir (update kapalı olduğu için gerekli).
+    await assertSucceeds(getDoc(doc(ownerDb, "users/owner/groups/grup-henuz-yok")));
+    // Eksik/kısaltılmış grup kimliği: belge yok, kural yine reddeder (istemci Türkçe mesaja çevirir).
+    await assertFails(getDoc(doc(ownerDb, "groups/Vwd76pz6")));
+
+    // Yürüyüş kaydı taslağı (durak yok, origin alanı hiç yazılmamış) bağlantılı rota olarak oluşturulabilir.
+    await assertSucceeds(setDoc(doc(ownerDb, "routes/route-yuruyus"), {
+      authorUid: "owner",
+      visibility: "unlisted",
+      route: {
+        id: "route-yuruyus",
+        routeTitle: "Kayıtlı yürüyüş",
+        routeSummary: "Yürüyüş kaydından oluşturulan özel taslak. Yaklaşık 0 km.",
+        totalDurationHours: 0,
+        totalDistanceKm: 0,
+        transport: "walking",
+        vibe: "Yürüyüş kaydı",
+        days: [{ dayNumber: 1, title: "Yürüyüş", summary: "Kayıt sırasında tespit edilen duraklar.", stops: [], polyline: "" }],
+        weatherNote: null,
+        alternatives: [],
+        createdAt: Date.now(),
+      },
+      saveCount: 0,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }));
+    await assertSucceeds(getDoc(doc(ownerDb, "routes/route-yuruyus")));
+  });
+
   it("rotaları görünürlük seçimine, izleri ise yalnız sahibine açar", async () => {
     const ownerDb = testEnv.authenticatedContext("owner").firestore();
     const otherDb = testEnv.authenticatedContext("other").firestore();
@@ -586,6 +572,7 @@ describe("Firestore güvenlik kuralları", () => {
       name: "Kapadokya ekibi",
       ownerUid: "owner",
       memberUids: ["owner"],
+      joinCode: "123456",
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
@@ -595,22 +582,17 @@ describe("Firestore güvenlik kuralları", () => {
     await assertFails(setDoc(doc(ownerDb, "groups/empty"), { ...valid, memberUids: [] }));
     await assertFails(setDoc(doc(ownerDb, "groups/too-many"), { ...valid, memberUids: Array.from({ length: 21 }, (_, index) => `member-${index}`) }));
     await assertFails(setDoc(doc(ownerDb, "groups/extra"), { ...valid, visibility: "public" }));
-    // RIZA (2026-10-22 sertleştirmesi): kuruluş anında başkasını doğrudan
-    // eklemek kapalıdır; üye listesi tam olarak [kurucu] olmalıdır.
+    // RIZA (kusur #4, 2026-10-22 denetimi): kuruluş anında başkasını doğrudan
+    // üye yazmak kapalıdır; liste tam olarak [kurucu] olmalıdır. Katılım ancak
+    // davet kabulü (invites/{uid}) veya katılma kodu (joinAttempts/{uid}) ile olur.
     await assertFails(setDoc(doc(ownerDb, "groups/direct-add"), { ...valid, memberUids: ["owner", "member"] }));
     await assertSucceeds(setDoc(doc(ownerDb, "groups/group-1"), valid));
 
     await assertSucceeds(getDoc(doc(ownerDb, "groups/group-1")));
-    // Üye olmayan (henüz daveti kabul etmemiş) kullanıcı grubu okuyamaz.
+    // Yeni model: grup yalnız kurucuyla açılır; listede olmayan kullanıcı okuyamaz
+    // (üye koda veya davete katılarak eklenir).
     await assertFails(getDoc(doc(memberDb, "groups/group-1")));
     await assertFails(getDoc(doc(outsiderDb, "groups/group-1")));
-    // Üyelik ancak kabul edilmiş arkadaşlığın kendini eklemesiyle kazanılır.
-    await seed("friendships/member_owner", acceptedFriendship("member", "owner"));
-    await assertSucceeds(updateDoc(doc(memberDb, "groups/group-1"), {
-      memberUids: arrayUnion("member"),
-      updatedAt: serverTimestamp(),
-    }));
-    await assertSucceeds(getDoc(doc(memberDb, "groups/group-1")));
     // Geniş koleksiyon taraması kapalı; listeleme kullanıcı indeksinden yapılır.
     await assertFails(getDocs(query(collection(outsiderDb, "groups"), limit(20))));
   });
@@ -620,6 +602,7 @@ describe("Firestore güvenlik kuralları", () => {
       name: "Kapadokya ekibi",
       ownerUid: "owner",
       memberUids: ["owner", "member"],
+      joinCode: "123456",
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     });
@@ -666,6 +649,7 @@ describe("Firestore güvenlik kuralları", () => {
       name: "Kapadokya ekibi",
       ownerUid: "owner",
       memberUids: ["owner", "member"],
+      joinCode: "123456",
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     });
@@ -694,13 +678,111 @@ describe("Firestore güvenlik kuralları", () => {
     await assertFails(getDocs(collection(memberDb, "groups/group-1/messages")));
     await assertFails(getDocs(query(collection(outsiderDb, "groups/group-1/messages"), limit(50))));
     await assertFails(updateDoc(doc(memberDb, "groups/group-1/messages/m-1"), { text: "Değiştirildi" }));
-    await assertFails(deleteDoc(doc(ownerDb, "groups/group-1/messages/m-1")));
+    // Üye, kurucunun mesajını silemez (sahip dalı yalnız kurucuya açık).
+    await assertFails(deleteDoc(doc(memberDb, "groups/group-1/messages/m-2")));
     await assertSucceeds(deleteDoc(doc(memberDb, "groups/group-1/messages/m-1")));
   });
 
+  it("grup kurucusu yetim mesajları silebilir; üye ve yabancı başkasının mesajını silemez", async () => {
+    await seed("groups/group-1", {
+      name: "Kapadokya ekibi",
+      ownerUid: "owner",
+      memberUids: ["owner", "member"],
+      joinCode: "123456",
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
+    await seed("groups/group-1/messages/m-member", {
+      senderUid: "member",
+      senderName: "Üye",
+      text: "Merhaba",
+      createdAt: Timestamp.now(),
+    });
+    await seed("groups/group-1/messages/m-owner", {
+      senderUid: "owner",
+      senderName: "Kurucu",
+      text: "Hoş geldiniz",
+      createdAt: Timestamp.now(),
+    });
+    const ownerDb = testEnv.authenticatedContext("owner").firestore();
+    const memberDb = testEnv.authenticatedContext("member").firestore();
+    const outsiderDb = testEnv.authenticatedContext("outsider").firestore();
+
+    await assertFails(deleteDoc(doc(memberDb, "groups/group-1/messages/m-owner")));
+    await assertFails(deleteDoc(doc(outsiderDb, "groups/group-1/messages/m-member")));
+    await assertSucceeds(deleteDoc(doc(ownerDb, "groups/group-1/messages/m-member")));
+    await assertSucceeds(deleteDoc(doc(ownerDb, "groups/group-1/messages/m-owner")));
+  });
+
+  it("katılma denemesi kaydını yalnız kendisi ve pencere dolduktan sonra silebilir", async () => {
+    await seed("groups/group-1", {
+      name: "Kapadokya ekibi",
+      ownerUid: "owner",
+      memberUids: ["owner"],
+      joinCode: "123456",
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
+    const openWindow = Timestamp.fromMillis(Date.now() - 5 * 60_000);
+    const closedWindow = Timestamp.fromMillis(Date.now() - 20 * 60_000);
+    const attempt = (windowStart: Timestamp) => ({
+      code: "000000",
+      attempts: 2,
+      at: windowStart,
+      windowStart,
+    });
+    await seed("groups/group-1/joinAttempts/open", attempt(openWindow));
+    await seed("groups/group-1/joinAttempts/closed", attempt(closedWindow));
+    const openDb = testEnv.authenticatedContext("open").firestore();
+    const closedDb = testEnv.authenticatedContext("closed").firestore();
+    const otherDb = testEnv.authenticatedContext("other").firestore();
+
+    // Pencere açıkken silinemez: sayaç sıfırlanıp atlatılamaz.
+    await assertFails(deleteDoc(doc(openDb, "groups/group-1/joinAttempts/open")));
+    // Başkasının kaydı silinemez.
+    await assertFails(deleteDoc(doc(otherDb, "groups/group-1/joinAttempts/closed")));
+    // Kendi kaydı, pencere dolduktan sonra silinebilir.
+    await assertSucceeds(deleteDoc(doc(closedDb, "groups/group-1/joinAttempts/closed")));
+  });
+
+  it("yanıtların collection-group listesi yalnız kendi yanıtlarını döndürür", async () => {
+    await seed("posts/p-1", {
+      author: "Yazar",
+      authorUid: "author",
+      text: "Gönderi",
+      createdAt: Timestamp.now(),
+      likes: 0,
+      likedBy: [],
+      kind: "user",
+    });
+    await seed("posts/p-1/replies/r-mine", { authorUid: "member", text: "Benim", createdAt: Timestamp.now() });
+    await seed("posts/p-1/replies/r-other", { authorUid: "other", text: "Başkası", createdAt: Timestamp.now() });
+    const memberDb = testEnv.authenticatedContext("member").firestore();
+    const guestDb = testEnv.unauthenticatedContext().firestore();
+
+    await assertSucceeds(getDocs(query(
+      collectionGroup(memberDb, "replies"),
+      where("authorUid", "==", "member"),
+      limit(50),
+    )));
+    // Başkasının yanıtlarını listeleme veya filtresiz listeleme reddedilir.
+    await assertFails(getDocs(query(
+      collectionGroup(memberDb, "replies"),
+      where("authorUid", "==", "other"),
+      limit(50),
+    )));
+    await assertFails(getDocs(query(collectionGroup(memberDb, "replies"), limit(50))));
+    await assertFails(getDocs(query(
+      collectionGroup(guestDb, "replies"),
+      where("authorUid", "==", "member"),
+      limit(50),
+    )));
+  });
+
   it("grup indeksini yalnız sahibi yazar ve sınırlı listeler", async () => {
-    // 2026-10-22 sertleştirmesi: indeks artık GERÇEK üyeliği yansıtmak zorunda.
-    // Bu yüzden önce grup belgesi tohumlanır; üye olmayan indekse yazamaz.
+    // Kusur #2 (2026-10-22 denetimi): indeks artık GERÇEK üyeliği yansıtmak
+    // zorunda, bu yüzden önce grup belgesi tohumlanır. Üye olmayan yazamaz ve
+    // rol, grup belgesindeki sahiplikle birebir tutarlı olmalıdır.
     await seed("groups/group-1", {
       name: "Kapadokya ekibi",
       ownerUid: "owner",
@@ -718,8 +800,7 @@ describe("Firestore güvenlik kuralları", () => {
     };
 
     await assertFails(setDoc(doc(otherDb, "users/member/groups/group-1"), entry));
-    // Rol, grup belgesindeki sahiplikle tutarlı olmalıdır: member sahibi gibi
-    // davranamaz, sahip de member rolüyle yazamaz.
+    // member kurucu değil: kendi indeksine 'owner' rolü yazamaz (kusur #2).
     await assertFails(setDoc(doc(memberDb, "users/member/groups/group-1"), { ...entry, role: "owner" }));
     await assertFails(setDoc(doc(memberDb, "users/member/groups/group-1"), { ...entry, role: "admin" }));
     await assertSucceeds(setDoc(doc(memberDb, "users/member/groups/group-1"), entry));
@@ -841,6 +922,130 @@ describe("Firestore güvenlik kuralları", () => {
     await assertSucceeds(deleteDoc(doc(recipientDb, "users/recipient/notifications/note-1")));
   });
 
+  it("beğeni güncellemesi yalnız kendi UID'sidir; sayaç ve metin müdahaleleri reddedilir", async () => {
+    await seed("posts/post-1", {
+      ...validPost("owner"),
+      createdAt: Timestamp.now(),
+    });
+    const ownerDb = testEnv.authenticatedContext("owner").firestore();
+    const memberDb = testEnv.authenticatedContext("member").firestore();
+    const guestDb = testEnv.unauthenticatedContext().firestore();
+
+    // Başkası adına beğeni eklenemez, beğeni sayacı doğrudan yazılamaz.
+    await assertFails(updateDoc(doc(memberDb, "posts/post-1"), { likedBy: arrayUnion("other") }));
+    await assertFails(updateDoc(doc(memberDb, "posts/post-1"), { likes: 42 }));
+    // Tam bir liste ezmesi (birden fazla üyelik değişimi) transform yerine geçmez.
+    await assertFails(updateDoc(doc(memberDb, "posts/post-1"), { likedBy: ["member", "other"] }));
+    // Update yalnız likedBy etkileşimidir: sahibi bile metni değiştiremez.
+    await assertFails(updateDoc(doc(ownerDb, "posts/post-1"), { text: "Sonradan değiştirildi" }));
+    // Oturumsuz beğeni yok; kendi adına tek ekleme serbest.
+    await assertFails(updateDoc(doc(guestDb, "posts/post-1"), { likedBy: arrayUnion("guest") }));
+    await assertSucceeds(updateDoc(doc(memberDb, "posts/post-1"), { likedBy: arrayUnion("member") }));
+  });
+
+  it("var olmayan gönderiye yanıt yazılamaz; yanıt silmede sahiplik matrisi geçerlidir", async () => {
+    const ownerDb = testEnv.authenticatedContext("owner").firestore();
+    const memberDb = testEnv.authenticatedContext("member").firestore();
+    const otherDb = testEnv.authenticatedContext("other").firestore();
+    const reply = {
+      author: "Üye",
+      authorUid: "member",
+      text: "Yanıt metni.",
+      createdAt: serverTimestamp(),
+      kind: "user",
+    };
+
+    await assertFails(setDoc(doc(memberDb, "posts/yok/replies/reply-1"), reply));
+    await assertFails(getDocs(query(collection(memberDb, "posts/yok/replies"), limit(10))));
+
+    await seed("posts/post-1", {
+      ...validPost("owner"),
+      createdAt: Timestamp.now(),
+    });
+    await seed("posts/post-1/replies/reply-1", {
+      ...reply,
+      createdAt: Timestamp.now(),
+    });
+    // Üçüncü kişi silemez; gönderi sahibi moderasyon için silebilir.
+    await assertFails(deleteDoc(doc(otherDb, "posts/post-1/replies/reply-1")));
+    await assertSucceeds(deleteDoc(doc(ownerDb, "posts/post-1/replies/reply-1")));
+  });
+
+  it("kullanıcı altındaki engelleme listesi özeldir ve kimlik eşleşmesi zorunludur", async () => {
+    const memberDb = testEnv.authenticatedContext("member").firestore();
+    const otherDb = testEnv.authenticatedContext("other").firestore();
+    const valid = {
+      blockerUid: "member",
+      blockedUid: "spammer",
+      createdAt: serverTimestamp(),
+    };
+
+    await assertSucceeds(setDoc(doc(memberDb, "users/member/blocks/spammer"), valid));
+    // Belge kimliği engellenen kişiyle aynı olmalı; başkası adına blok yazılamaz.
+    await assertFails(setDoc(doc(memberDb, "users/member/blocks/yanlis-id"), valid));
+    await assertFails(setDoc(doc(otherDb, "users/member/blocks/biri"), {
+      blockerUid: "member",
+      blockedUid: "biri",
+      createdAt: serverTimestamp(),
+    }));
+    await assertFails(getDoc(doc(otherDb, "users/member/blocks/spammer")));
+    await assertFails(getDocs(query(collection(memberDb, "users/member/blocks"), limit(51))));
+    await assertFails(updateDoc(doc(memberDb, "users/member/blocks/spammer"), { createdAt: serverTimestamp() }));
+    await assertSucceeds(deleteDoc(doc(memberDb, "users/member/blocks/spammer")));
+  });
+
+  it("kayıtlı yerler çapraz UID ile yazılamaz; place.id belge kimliğiyle eşleşmek zorundadır", async () => {
+    const ownerDb = testEnv.authenticatedContext("owner").firestore();
+    const otherDb = testEnv.authenticatedContext("other").firestore();
+
+    await assertFails(setDoc(doc(otherDb, "users/owner/savedPlaces/p1"), {
+      place: { id: "p1", title: "Sahte" },
+      savedAt: serverTimestamp(),
+    }));
+    await assertFails(setDoc(doc(ownerDb, "users/owner/savedPlaces/p1"), {
+      place: { id: "baska-id", title: "Uyumsuz" },
+      savedAt: serverTimestamp(),
+    }));
+    await assertSucceeds(setDoc(doc(ownerDb, "users/owner/savedPlaces/p1"), {
+      place: { id: "p1", title: "Kordon" },
+      savedAt: serverTimestamp(),
+    }));
+    await assertFails(getDocs(query(collection(ownerDb, "users/owner/savedPlaces"), limit(101))));
+    await assertFails(deleteDoc(doc(otherDb, "users/owner/savedPlaces/p1")));
+  });
+
+  it("grup üyesi yalnız kendisini çıkarır; tanımsız koleksiyonlar varsayılan olarak kapalıdır", async () => {
+    await seed("groups/group-1", {
+      name: "Kapadokya ekibi",
+      ownerUid: "owner",
+      memberUids: ["owner", "member", "third"],
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
+    const memberDb = testEnv.authenticatedContext("member").firestore();
+    const guestDb = testEnv.unauthenticatedContext().firestore();
+
+    // Başkasını çıkarmak veya yeni üye eklemek üye yetkisinin dışındadır.
+    await assertFails(updateDoc(doc(memberDb, "groups/group-1"), {
+      memberUids: ["owner", "member"],
+      updatedAt: serverTimestamp(),
+    }));
+    await assertFails(updateDoc(doc(memberDb, "groups/group-1"), {
+      memberUids: ["owner", "member", "third", "invited"],
+      updatedAt: serverTimestamp(),
+    }));
+    await assertSucceeds(updateDoc(doc(memberDb, "groups/group-1"), {
+      memberUids: ["owner", "third"],
+      updatedAt: serverTimestamp(),
+    }));
+
+    // match /{document=**} kapısı: tanımlanmamış her koleksiyon kapalıdır.
+    await assertFails(getDoc(doc(memberDb, "admin/config")));
+    await assertFails(setDoc(doc(memberDb, "admin/config"), { role: "admin" }));
+    await assertFails(getDoc(doc(guestDb, "admin/config")));
+    await assertFails(getDocs(query(collection(memberDb, "bilinmeyen"), limit(1))));
+  });
+
   it("emekliye ayrılan kullanıcı profili koleksiyonunu tamamen kapalı tutar", async () => {
     await seed("users/owner", { displayName: "Eski profil" });
     const ownerDb = testEnv.authenticatedContext("owner").firestore();
@@ -853,373 +1058,486 @@ describe("Firestore güvenlik kuralları", () => {
     await assertFails(deleteDoc(profileRef));
   });
 
-  // ───────────────── Arkadaşlık · açık rıza (emülatör) ─────────────────
-  // NOT: Bu vakalar Java 21 + Firestore Emulator gerektirir. Görevi yürüten
-  // sandbox'ta Java YOK, bu yüzden bu tur ÇALIŞTIRILAMADI; CI'da koşar.
-
-  it("arkadaşlık kaydını yalnız iki taraf okur, koleksiyon listesi kapalıdır", async () => {
-    await seed("friendships/alice_bob", acceptedFriendship("alice", "bob"));
+  // === C1 — Karşılıklı rıza: friendships create yalnız bekleyen friendRequest varken ===
+  it("C1 arkadaslik istek olmadan kabul edilmiş arkadaşlık → FAIL; başkasının listesine kendini yazma → FAIL; meşru kabul → SUCCEED", async () => {
     const aliceDb = testEnv.authenticatedContext("alice").firestore();
     const bobDb = testEnv.authenticatedContext("bob").firestore();
-    const strangerDb = testEnv.authenticatedContext("stranger").firestore();
-    const guestDb = testEnv.unauthenticatedContext().firestore();
-
-    await assertSucceeds(getDoc(doc(aliceDb, "friendships/alice_bob")));
-    await assertSucceeds(getDoc(doc(bobDb, "friendships/alice_bob")));
-    // Taraf olmayan okuyamaz: görünür ad sızamaz.
-    await assertFails(getDoc(doc(strangerDb, "friendships/alice_bob")));
-    await assertFails(getDoc(doc(guestDb, "friendships/alice_bob")));
-    // Enumeration kapalı.
-    await assertFails(getDocs(query(collection(aliceDb, "friendships"), limit(50))));
-  });
-
-  it("isteği yalnız isteyen kendi adına oluşturur; alıcı adına istek yazılamaz", async () => {
-    const aliceDb = testEnv.authenticatedContext("alice").firestore();
-    const bobDb = testEnv.authenticatedContext("bob").firestore();
-
-    await assertSucceeds(setDoc(doc(aliceDb, "friendships/alice_bob"), validFriendship("alice", "bob")));
-    await testEnv.clearFirestore();
-
-    // Bob, Alice adına istek açamaz (requesterUid != auth.uid).
-    await assertFails(setDoc(doc(bobDb, "friendships/alice_bob"), validFriendship("alice", "bob")));
-    // Kendine istek de açılamaz.
-    await assertFails(setDoc(doc(aliceDb, "friendships/alice_alice"), validFriendship("alice", "alice")));
-  });
-
-  it("belge kimliği deterministik sıralı çift olmalıdır; yanlış pairId reddedilir", async () => {
-    const aliceDb = testEnv.authenticatedContext("alice").firestore();
-    // Doğru kimlik "alice_bob"; tersten yazılmış kimlik reddedilmeli.
-    await assertFails(setDoc(doc(aliceDb, "friendships/bob_alice"), validFriendship("alice", "bob")));
-    await assertSucceeds(setDoc(doc(aliceDb, `friendships/${pairIdFor("alice", "bob")}`), validFriendship("alice", "bob")));
-  });
-
-  it("istek yalnız pending olarak açılır; doğrudan accepted yazılamaz", async () => {
-    const aliceDb = testEnv.authenticatedContext("alice").firestore();
-    const forged = { ...validFriendship("alice", "bob"), status: "accepted", acceptedAt: serverTimestamp() };
-    await assertFails(setDoc(doc(aliceDb, "friendships/alice_bob"), forged));
-  });
-
-  it("engelleme iki yönde de istek oluşturmayı keser", async () => {
-    // Bob, Alice'i engelledi → Alice istek gönderemez.
-    await seed("blocks/bob_alice", { blockerUid: "bob", blockedUid: "alice", createdAt: Timestamp.now() });
-    const aliceDb = testEnv.authenticatedContext("alice").firestore();
-    await assertFails(setDoc(doc(aliceDb, "friendships/alice_bob"), validFriendship("alice", "bob")));
-
-    await testEnv.clearFirestore();
-    // Alice, Bob'u engelledi → yine gönderemez.
-    await seed("blocks/alice_bob", { blockerUid: "alice", blockedUid: "bob", createdAt: Timestamp.now() });
-    await assertFails(setDoc(doc(aliceDb, "friendships/alice_bob"), validFriendship("alice", "bob")));
-  });
-
-  it("kabulü YALNIZ alıcı verebilir; isteyen kendi isteğini kabul edemez", async () => {
-    await seed("friendships/alice_bob", {
-      ...validFriendship("alice", "bob"),
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now(),
-    });
-    const aliceDb = testEnv.authenticatedContext("alice").firestore();
-    const bobDb = testEnv.authenticatedContext("bob").firestore();
-    const strangerDb = testEnv.authenticatedContext("stranger").firestore();
-
-    const accept = {
+    const charlieDb = testEnv.authenticatedContext("charlie").firestore();
+    // Bekleyen istek yokken friendships create reddedilir
+    const valid = {
+      users: ["alice", "bob"],
+      requesterUid: "alice",
+      recipientUid: "bob",
       status: "accepted",
-      recipientName: "Bora",
-      acceptedAt: serverTimestamp(),
+      createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
+    } as const;
+    await assertFails(setDoc(doc(bobDb, "friendships/alice_bob"), valid));
+    // Bekleyen istek oluştur
+    await seed("users/bob/friendRequests/alice", { fromUid: "alice", fromName: "Alice", toUid: "bob", createdAt: Timestamp.now() });
+    // Gönderen kabul edemez (recipientUid != auth)
+    await assertFails(setDoc(doc(aliceDb, "friendships/alice_bob"), valid));
+    // Meşru kabul: alıcı batch ile friendships create + request delete (getAfter)
+    const okBatch = writeBatch(bobDb);
+    okBatch.set(doc(bobDb, "friendships/alice_bob"), valid);
+    okBatch.delete(doc(bobDb, "users/bob/friendRequests/alice"));
+    await assertSucceeds(okBatch.commit());
+    await assertSucceeds(getDoc(doc(bobDb, "friendships/alice_bob")));
+    await assertSucceeds(getDoc(doc(aliceDb, "friendships/alice_bob")));
+    await assertFails(getDoc(doc(charlieDb, "friendships/alice_bob")));
+    // Başkasının arkadaş listesine kendini ekleme → FAIL (C1)
+    await seed("friendships/alice_bob", { users: ["alice", "bob"], requesterUid: "alice", recipientUid: "bob", status: "accepted", createdAt: Timestamp.now(), updatedAt: Timestamp.now() });
+    await assertFails(setDoc(doc(aliceDb, "users/bob/friends/alice"), { friendUid: "alice", friendName: "Alice", since: serverTimestamp() }));
+    // Kendi listene valid friendship ile → SUCCEED
+    await assertSucceeds(setDoc(doc(aliceDb, "users/alice/friends/bob"), { friendUid: "bob", friendName: "Bob", since: serverTimestamp() }));
+    await assertSucceeds(setDoc(doc(bobDb, "users/bob/friends/alice"), { friendUid: "alice", friendName: "Alice", since: serverTimestamp() }));
+    // Yetkisiz okuma → FAIL
+    await assertFails(getDoc(doc(bobDb, "users/alice/friends/bob")));
+  });
+
+  // === Canlı hata 2026-10-22: sendFriendRequest başkasının istek kutusunu ve var
+  // olmayan arkadaşlık belgesini okuyordu → permission-denied. İstemci akışı:
+  // yalnız kendi belgelerini okur, sonra karşı tarafın kutusuna create yapar.
+  it("arkadaşlık isteği istemci akışı: okumalar yalnız kendi belgeleri, create başarılı; ikinci istek ve eski okumalar FAIL", async () => {
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    // Eski istemcinin yaptığı ve kuralın reddettiği okumalar
+    await assertFails(getDoc(doc(aliceDb, "users/bob/friendRequests/alice")));
+    await assertFails(getDoc(doc(aliceDb, "friendships/alice_bob")));
+    // Yeni istemci: kendi arkadaş listesi + kendi kutusundaki ters istek
+    await assertSucceeds(getDoc(doc(aliceDb, "users/alice/friends/bob")));
+    await assertSucceeds(getDoc(doc(aliceDb, "users/alice/friendRequests/bob")));
+    const request = { fromUid: "alice", fromName: "Alice", toUid: "bob", createdAt: serverTimestamp() };
+    await assertSucceeds(setDoc(doc(aliceDb, "users/bob/friendRequests/alice"), request));
+    // Aynı isteği yeniden yazmak update sayılır → FAIL (istemci "zaten gönderdin" der)
+    await assertFails(setDoc(doc(aliceDb, "users/bob/friendRequests/alice"), request));
+  });
+
+  // === C2 — Katılma kodu en az 6 hane + deneme sınırı ve kilit ===
+  it("C2 kod en az 6 hane olmalı; yeni grup kodlu oluşur, 4 hane reddedilir", async () => {
+    const ownerDb = testEnv.authenticatedContext("owner").firestore();
+    // 4 haneli kod ile oluşturma → FAIL
+    await assertFails(
+      setDoc(doc(ownerDb, "groups/short-code"), {
+        name: "Kısa Kod",
+        ownerUid: "owner",
+        memberUids: ["owner"],
+        joinCode: "1234",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }),
+    );
+    // 6 haneli kod ile oluşturma → SUCCEED
+    await assertSucceeds(
+      setDoc(doc(ownerDb, "groups/good-code"), {
+        name: "İyi Kod",
+        ownerUid: "owner",
+        memberUids: ["owner"],
+        joinCode: "123456",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }),
+    );
+    // 8 hane de geçerli
+    await assertSucceeds(
+      setDoc(doc(ownerDb, "groups/good-code-8"), {
+        name: "8 Hane",
+        ownerUid: "owner",
+        memberUids: ["owner"],
+        joinCode: "12345678",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }),
+    );
+  });
+
+  // C2/#37-düzeltme: okumasız katılma. İstemci gerçek yazım sırasını izler:
+  // 1) kendi deneme belgesini ayrı commit eder (yanlış kodda da kalır),
+  // 2) grubu yalnız memberUids arrayUnion ile günceller (grup okuması yok).
+  it("C2 okumasız kod katılması: yanlış kod attempts artırır, doğru kod katılır; 6. deneme ve geri yazma reddedilir", async () => {
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    const bobDb = testEnv.authenticatedContext("bob").firestore();
+    await seed("groups/group-code", {
+      name: "KodGrubu",
+      ownerUid: "alice",
+      memberUids: ["alice"],
+      joinCode: "123456",
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
+    const attemptRef = doc(bobDb, "groups/group-code/joinAttempts/bob");
+    const groupRef = doc(bobDb, "groups/group-code");
+    const join = () => updateDoc(groupRef, { memberUids: arrayUnion("bob"), updatedAt: serverTimestamp() });
+
+    // Yanlış kod: deneme belgesi ayrı yazılır (SUCCEED), grup güncellemesi reddedilir (FAIL)
+    await assertSucceeds(setDoc(attemptRef, { code: "999999", at: serverTimestamp(), attempts: 1, windowStart: serverTimestamp() }));
+    await assertFails(join());
+    // Sayaç geri yazılamaz: attempts 1'e düşürme (pencere açıkken) → FAIL
+    await assertFails(setDoc(attemptRef, { code: "123456", at: serverTimestamp(), attempts: 1, windowStart: Timestamp.now() }));
+    // Doğru kod: sayaç 2 olur (önceki windowStart korunur) → SUCCEED; katılım → SUCCEED
+    const prev = (await getDoc(attemptRef)).data()!;
+    await assertSucceeds(setDoc(attemptRef, { code: "123456", at: serverTimestamp(), attempts: 2, windowStart: prev.windowStart }));
+    await assertSucceeds(join());
+    const groupAfter = await getDoc(doc(aliceDb, "groups/group-code"));
+    expect(groupAfter.data()!.memberUids).toContain("bob");
+    // Kendi deneme kaydını silemez → FAIL; başkası bob'un denemesini yazamaz → FAIL
+    await assertFails(deleteDoc(attemptRef));
+    const charlieDb = testEnv.authenticatedContext("charlie").firestore();
+    await assertFails(setDoc(doc(charlieDb, "groups/group-code/joinAttempts/bob"), { code: "123456", at: serverTimestamp(), attempts: 1, windowStart: serverTimestamp() }));
+  });
+
+  it("C2 pencere içinde 6. deneme FAIL; pencere dolunca sayaç 1'e döner ve doğru kod SUCCEED", async () => {
+    const bobDb = testEnv.authenticatedContext("bob").firestore();
+    await seed("groups/group-lock", { name: "KilitGrubu", ownerUid: "alice", memberUids: ["alice"], joinCode: "654321", createdAt: Timestamp.now(), updatedAt: Timestamp.now() });
+    const attemptRef = doc(bobDb, "groups/group-lock/joinAttempts/bob");
+    const groupRef = doc(bobDb, "groups/group-lock");
+    // Pencere açık, 5 deneme dolmuş → 6. deneme (attempts 6) reddedilir
+    await seed("groups/group-lock/joinAttempts/bob", {
+      code: "000000",
+      at: Timestamp.now(),
+      attempts: 5,
+      windowStart: Timestamp.now(),
+    });
+    const prev = (await getDoc(attemptRef)).data()!;
+    await assertFails(setDoc(attemptRef, { code: "654321", at: serverTimestamp(), attempts: 6, windowStart: prev.windowStart }));
+    // Sayaç 5'te: bu pencerede yeni sayaç 1'e sıfırlanamaz (pencere açık) → FAIL
+    await assertFails(setDoc(attemptRef, { code: "654321", at: serverTimestamp(), attempts: 1, windowStart: serverTimestamp() }));
+    // Pencere dolmuş (16 dk önce başladı) → sayaç 1, doğru kod SUCCEED, katılım SUCCEED
+    await seed("groups/group-lock/joinAttempts/bob", {
+      code: "000000",
+      at: Timestamp.now(),
+      attempts: 5,
+      windowStart: Timestamp.fromDate(new Date(Date.now() - 16 * 60 * 1000)),
+    });
+    await assertSucceeds(setDoc(attemptRef, { code: "654321", at: serverTimestamp(), attempts: 1, windowStart: serverTimestamp() }));
+    await assertSucceeds(updateDoc(groupRef, { memberUids: arrayUnion("bob"), updatedAt: serverTimestamp() }));
+  });
+
+  it("C2 bayat deneme (2 dakikadan eski) ile katılım reddedilir; üye olmayan grup belgesini okuyamaz", async () => {
+    const bobDb = testEnv.authenticatedContext("bob").firestore();
+    const charlieDb = testEnv.authenticatedContext("charlie").firestore();
+    await seed("groups/group-stale", { name: "Bayat", ownerUid: "alice", memberUids: ["alice"], joinCode: "246810", createdAt: Timestamp.now(), updatedAt: Timestamp.now() });
+    await seed("groups/group-stale/joinAttempts/bob", {
+      code: "246810",
+      at: Timestamp.fromDate(new Date(Date.now() - 3 * 60 * 1000)),
+      attempts: 1,
+      windowStart: Timestamp.fromDate(new Date(Date.now() - 3 * 60 * 1000)),
+    });
+    await assertFails(updateDoc(doc(bobDb, "groups/group-stale"), { memberUids: arrayUnion("bob"), updatedAt: serverTimestamp() }));
+    // Üye olmayan grup belgesini okuma → permission-denied (okumasız katılma bunu gerektirmez)
+    await assertFails(getDoc(doc(charlieDb, "groups/group-stale")));
+  });
+
+  it("C2 deneme kaydı yalnız kendi uid'iyle, kod biçimi 6–8 hane ve bilinmeyen alan olmadan yazılır", async () => {
+    const bobDb = testEnv.authenticatedContext("bob").firestore();
+    await assertFails(setDoc(doc(bobDb, "groups/group-x/joinAttempts/bob"), { code: "1234", at: serverTimestamp(), attempts: 1, windowStart: serverTimestamp() }));
+    await assertFails(setDoc(doc(bobDb, "groups/group-x/joinAttempts/bob"), { code: "123456", at: serverTimestamp(), attempts: 2, windowStart: serverTimestamp() }));
+    await assertFails(setDoc(doc(bobDb, "groups/group-x/joinAttempts/bob"), { code: "123456", at: serverTimestamp(), attempts: 1, windowStart: serverTimestamp(), lockedUntil: Timestamp.now() }));
+    await assertSucceeds(setDoc(doc(bobDb, "groups/group-x/joinAttempts/bob"), { code: "123456", at: serverTimestamp(), attempts: 1, windowStart: serverTimestamp() }));
+  });
+
+  // === Eski gruplarla uyum: joinCode isteğe bağlı ===
+  it("Eski gruplarla uyum: kodsuz eski grup güncellenir; yeni grup kodlu oluşur; eski gruba kod eklenebilir", async () => {
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    const bobDb = testEnv.authenticatedContext("bob").firestore();
+    // Eski grup: joinCode yok
+    await seed("groups/legacy-group", {
+      name: "EskiGrup",
+      ownerUid: "alice",
+      memberUids: ["alice", "bob"],
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
+    // Üye son mesaj yazabilir (joinCode olmadan)
+    await assertSucceeds(
+      updateDoc(doc(bobDb, "groups/legacy-group"), {
+        lastMessage: { text: "Selam", senderUid: "bob", senderName: "Bob", createdAt: serverTimestamp() },
+        updatedAt: serverTimestamp(),
+      }),
+    );
+    // Üye ayrılabilir
+    await assertSucceeds(updateDoc(doc(bobDb, "groups/legacy-group"), { memberUids: ["alice"], updatedAt: serverTimestamp() }));
+    await seed("groups/legacy-group", {
+      name: "EskiGrup",
+      ownerUid: "alice",
+      memberUids: ["alice", "bob"],
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
+    // Kurucu kodsuz eski gruba 6 haneli kod ekleyebilir → SUCCEED
+    const legacySnap = await getDoc(doc(aliceDb, "groups/legacy-group"));
+    const createdAt = legacySnap.data()!.createdAt;
+    await assertSucceeds(
+      updateDoc(doc(aliceDb, "groups/legacy-group"), {
+        name: "EskiGrup",
+        ownerUid: "alice",
+        memberUids: ["alice", "bob"],
+        joinCode: "112233",
+        createdAt,
+        updatedAt: serverTimestamp(),
+      }),
+    );
+    // Kodlu grup kodsuz bırakılamaz → FAIL
+    await assertFails(updateDoc(doc(aliceDb, "groups/legacy-group"), { joinCode: deleteField(), updatedAt: serverTimestamp() }));
+    // 4 haneli kod ekleme → FAIL
+    await seed("groups/legacy-group2", { name: "Eski2", ownerUid: "alice", memberUids: ["alice"], createdAt: Timestamp.now(), updatedAt: Timestamp.now() });
+    const snap2 = await getDoc(doc(aliceDb, "groups/legacy-group2"));
+    await assertFails(
+      updateDoc(doc(aliceDb, "groups/legacy-group2"), {
+        name: "Eski2",
+        ownerUid: "alice",
+        memberUids: ["alice"],
+        joinCode: "1234",
+        createdAt: snap2.data()!.createdAt,
+        updatedAt: serverTimestamp(),
+      }),
+    );
+    // Kurucu kodsuz eski grubun yalnız adını değiştirebilir (kod eklemeden) → SUCCEED
+    await assertSucceeds(updateDoc(doc(aliceDb, "groups/legacy-group2"), { name: "Eski2 yeni ad", updatedAt: serverTimestamp() }));
+    // Üye olmayan kodsuz eski grubun adını değiştiremez → FAIL
+    await assertFails(updateDoc(doc(bobDb, "groups/legacy-group2"), { name: "Ele geçirildi", updatedAt: serverTimestamp() }));
+    // Tam kimlikle katılma (kodsuz eski grup) (#31 akışı) çalışır — üye olmayan davet olmadan eklenemez ama tam kimlikle joinGroup yolu var
+    // Kodsuz grupta kod yolu çalışmaz, ancak davet yolu çalışır
+    await seed("groups/group-invite-old", {
+      name: "DavetEski",
+      ownerUid: "alice",
+      memberUids: ["alice"],
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
+    await seed("groups/group-invite-old/invites/bob", {
+      invitedUid: "bob",
+      inviterUid: "alice",
+      groupId: "group-invite-old",
+      groupName: "DavetEski",
+      createdAt: Timestamp.now(),
+    });
+    const acceptBatch = writeBatch(bobDb);
+    acceptBatch.update(doc(bobDb, "groups/group-invite-old"), { memberUids: ["alice", "bob"], updatedAt: serverTimestamp() });
+    acceptBatch.delete(doc(bobDb, "groups/group-invite-old/invites/bob"));
+    await assertSucceeds(acceptBatch.commit());
+  });
+
+  // === P4 — rota görünürlüğü: bulunmayan ve özel rota aynı şekilde reddedilir (KARAR: varlık sızdırılmaz) ===
+  it("bulunmayan ve başkasının özel rotası aynı şekilde okunamaz; sahibi okuyabilir", async () => {
+    await seed("routes/private-1", { authorUid: "alice", visibility: "private", saveCount: 0 });
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    const bobDb = testEnv.authenticatedContext("bob").firestore();
+
+    await assertFails(getDoc(doc(bobDb, "routes/missing")));
+    await assertFails(getDoc(doc(bobDb, "routes/private-1")));
+    await assertSucceeds(getDoc(doc(aliceDb, "routes/private-1")));
+  });
+
+  // === P4 — hesap silme: sahip olunan veri ve kayıtlı rota sayacı kurala uygun silinir ===
+  it("hesap silme: kendi rota/iz kaydını siler, başkasınınkini silemez; kayıtlı rota yalnız sayaç düşürülerek silinir", async () => {
+    // Sayaç güncellemesi validRouteDocument'tan geçmeli: rota belgesi tam şemayla tohumlanır.
+    await seed("routes/r-del", {
+      authorUid: "bob",
+      visibility: "public",
+      route: {
+        id: "r-del",
+        routeTitle: "Kordon",
+        routeSummary: "Kıyı yürüyüşü.",
+        totalDurationHours: 1,
+        totalDistanceKm: 1,
+        transport: "walking",
+        vibe: "Sakin",
+        days: [],
+        weatherNote: null,
+        alternatives: [],
+        createdAt: Date.now(),
+      },
+      saveCount: 1,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
+    await seed("routes/r-mine", { authorUid: "alice", visibility: "public", saveCount: 0 });
+    await seed("tracks/t-alice", { authorUid: "alice" });
+    await seed("users/alice/savedRoutes/r-del", { routeId: "r-del", savedAt: Timestamp.now() });
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    const bobDb = testEnv.authenticatedContext("bob").firestore();
+
+    await assertFails(deleteDoc(doc(aliceDb, "routes/r-del")));
+    await assertFails(deleteDoc(doc(bobDb, "tracks/t-alice")));
+    await assertSucceeds(deleteDoc(doc(aliceDb, "routes/r-mine")));
+    await assertSucceeds(deleteDoc(doc(aliceDb, "tracks/t-alice")));
+
+    // Sayaç düşürülmeden kayıt silinemez.
+    await assertFails(deleteDoc(doc(aliceDb, "users/alice/savedRoutes/r-del")));
+    const batch = writeBatch(aliceDb);
+    batch.delete(doc(aliceDb, "users/alice/savedRoutes/r-del"));
+    batch.update(doc(aliceDb, "routes/r-del"), { saveCount: 0, updatedAt: serverTimestamp() });
+    await assertSucceeds(batch.commit());
+  });
+
+  // === P4 — hesap silme: her sahip koleksiyonunda yalnız sahibi siler, başkası silemez ===
+  it("hesap silme: sahip olunan her belge sahibince silinir; başkasınınki silinemez", async () => {
+    const owned: Array<[string, Record<string, unknown>]> = [
+      ["places/pl-alice", { authorUid: "alice" }],
+      ["posts/po-alice", { authorUid: "alice" }],
+      ["stories/st-alice", { authorUid: "alice", createdAt: Timestamp.now() }],
+      ["reports/rp-alice", { reporterUid: "alice" }],
+      ["blocks/alice_bob", { blockerUid: "alice", blockedUid: "bob" }],
+      ["verifications/vf-alice", { uid: "alice" }],
+      ["users/alice/savedPlaces/pl-x", { place: { id: "pl-x" }, savedAt: Timestamp.now() }],
+      ["users/alice/notifications/nt-1", { type: "system", createdAt: Timestamp.now() }],
+      ["users/alice/friendRequests/bob", { fromUid: "bob", toUid: "alice" }],
+      ["users/alice/groupInvites/g-1", { groupId: "g-1", invitedUid: "alice" }],
+      ["users/alice/friends/bob", { friendUid: "bob" }],
+      ["friendships/alice_bob", { users: ["alice", "bob"] }],
+      ["userProfiles/alice", { uid: "alice" }],
+    ];
+    for (const [path, data] of owned) await seed(path, data);
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    const carolDb = testEnv.authenticatedContext("carol").firestore();
+
+    // Başkası (carol) hiçbirini silemez.
+    for (const [path] of owned) {
+      await assertFails(deleteDoc(doc(carolDb, path)));
+    }
+    // Sahip hepsini siler.
+    for (const [path] of owned) {
+      await assertSucceeds(deleteDoc(doc(aliceDb, path)));
+    }
+  });
+
+  // === P4 — geri bildirim kanalı: dar şema, yalnız sahibi listeler/siler ===
+  it("geri bildirim: giriş yapmış kullanıcı dar şemayla yazar; okuma/güncelleme yok; yalnız sahibi listeler ve siler", async () => {
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    const bobDb = testEnv.authenticatedContext("bob").firestore();
+    const anonDb = testEnv.unauthenticatedContext().firestore();
+    const valid = {
+      uid: "alice",
+      category: "bug",
+      message: "Harita açılışta donuyor.",
+      appVersion: "0.1.0",
+      createdAt: serverTimestamp(),
     };
-    // İstek sahibi kendi isteğini kabul edemez — rıza tek taraflı üretilemez.
-    await assertFails(updateDoc(doc(aliceDb, "friendships/alice_bob"), accept));
-    // Taraf olmayan hiç kabul edemez.
-    await assertFails(updateDoc(doc(strangerDb, "friendships/alice_bob"), accept));
-    // Alıcı kabul edebilir.
-    await assertSucceeds(updateDoc(doc(bobDb, "friendships/alice_bob"), accept));
+
+    await assertSucceeds(setDoc(doc(aliceDb, "feedback/f-ok"), valid));
+    await assertFails(setDoc(doc(anonDb, "feedback/f-anon"), valid));
+    await assertFails(setDoc(doc(aliceDb, "feedback/f-cat"), { ...valid, category: "spam" }));
+    await assertFails(setDoc(doc(aliceDb, "feedback/f-empty"), { ...valid, message: "" }));
+    await assertFails(setDoc(doc(aliceDb, "feedback/f-long"), { ...valid, message: "a".repeat(1001) }));
+    await assertFails(setDoc(doc(aliceDb, "feedback/f-extra"), { ...valid, lat: 38.4 }));
+    await assertFails(setDoc(doc(aliceDb, "feedback/f-spoof"), { ...valid, uid: "bob" }));
+    await assertFails(setDoc(doc(aliceDb, "feedback/f-time"), { ...valid, createdAt: Timestamp.now() }));
+    await assertFails(setDoc(doc(aliceDb, "feedback/f-ver"), { ...valid, appVersion: "x".repeat(41) }));
+
+    await assertFails(getDoc(doc(aliceDb, "feedback/f-ok")));
+    await assertFails(updateDoc(doc(aliceDb, "feedback/f-ok"), { message: "değişti" }));
+    await assertSucceeds(getDocs(query(collection(aliceDb, "feedback"), where("uid", "==", "alice"), limit(20))));
+    await assertFails(getDocs(collection(aliceDb, "feedback")));
+    await assertFails(getDocs(query(collection(bobDb, "feedback"), where("uid", "==", "alice"), limit(20))));
+    await assertFails(deleteDoc(doc(bobDb, "feedback/f-ok")));
+    await assertSucceeds(deleteDoc(doc(aliceDb, "feedback/f-ok")));
   });
 
-  it("kabul sırasında kimlik, taraf listesi ve oluşturma anı değiştirilemez", async () => {
-    await seed("friendships/alice_bob", {
-      ...validFriendship("alice", "bob"),
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now(),
-    });
+  // === P4 — görünürlük matrisi (docs/denetim/gorunurluk-matrisi.md ile birebir) ===
+  it("görünürlük matrisi: profil, iz, rota, hikâye, yer, kayıt, grup, bildirim, arkadaş", async () => {
+    await seed("userProfiles/alice", { uid: "alice", displayName: "Ada", createdAt: Timestamp.now(), updatedAt: Timestamp.now() });
+    await seed("tracks/tr-alice", { authorUid: "alice" });
+    await seed("routes/rt-private", { authorUid: "alice", visibility: "private", saveCount: 0 });
+    await seed("routes/rt-unlisted", { authorUid: "alice", visibility: "unlisted", saveCount: 0 });
+    await seed("routes/rt-public", { authorUid: "alice", visibility: "public", saveCount: 0 });
+    // Gerçek bir hikâyede createdAt her zaman vardır (create kuralı
+    // `createdAt == request.time` ister); kusur #5'in 24 saat penceresi bu
+    // alandan hesaplanır, bu yüzden fixture alanında da bulunmalıdır.
+    await seed("stories/st-public", { authorUid: "alice", createdAt: Timestamp.now() });
+    await seed("users/alice/savedPlaces/pl-1", { place: { id: "pl-1" }, savedAt: Timestamp.now() });
+    await seed("users/alice/notifications/nt-1", { type: "system", createdAt: Timestamp.now() });
+    await seed("users/alice/friends/bob", { friendUid: "bob" });
+    await seed("groups/grp-1", { name: "Ekip", ownerUid: "alice", memberUids: ["alice"], joinCode: "123456", createdAt: Timestamp.now(), updatedAt: Timestamp.now() });
+    const anonDb = testEnv.unauthenticatedContext().firestore();
     const bobDb = testEnv.authenticatedContext("bob").firestore();
-
-    await assertFails(updateDoc(doc(bobDb, "friendships/alice_bob"), {
-      status: "accepted", recipientName: "Bora", acceptedAt: serverTimestamp(),
-      updatedAt: serverTimestamp(), requesterUid: "bob",
-    }));
-    await assertFails(updateDoc(doc(bobDb, "friendships/alice_bob"), {
-      status: "accepted", recipientName: "Bora", acceptedAt: serverTimestamp(),
-      updatedAt: serverTimestamp(), participants: ["bob", "bob"],
-    }));
-    // Kabul edilmiş kayıt tekrar pending'e çekilemez (status yalnız pending'den geçer).
-    await seed("friendships/carol_dave", {
-      ...acceptedFriendship("carol", "dave"),
-    });
-    const daveDb = testEnv.authenticatedContext("dave").firestore();
-    await assertFails(updateDoc(doc(daveDb, "friendships/carol_dave"), {
-      status: "pending", updatedAt: serverTimestamp(),
-    }));
-  });
-
-  it("kabul anında engelleme varsa rıza geçerli değildir", async () => {
-    await seed("friendships/alice_bob", {
-      ...validFriendship("alice", "bob"),
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now(),
-    });
-    await seed("blocks/bob_alice", { blockerUid: "bob", blockedUid: "alice", createdAt: Timestamp.now() });
-    const bobDb = testEnv.authenticatedContext("bob").firestore();
-    await assertFails(updateDoc(doc(bobDb, "friendships/alice_bob"), {
-      status: "accepted", recipientName: "Bora", acceptedAt: serverTimestamp(), updatedAt: serverTimestamp(),
-    }));
-  });
-
-  it("reddetme yalnız alıcıya açıktır ve declined durumu üretir", async () => {
-    await seed("friendships/alice_bob", {
-      ...validFriendship("alice", "bob"),
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now(),
-    });
     const aliceDb = testEnv.authenticatedContext("alice").firestore();
-    const bobDb = testEnv.authenticatedContext("bob").firestore();
-    await assertFails(updateDoc(doc(aliceDb, "friendships/alice_bob"), { status: "declined", updatedAt: serverTimestamp() }));
-    await assertSucceeds(updateDoc(doc(bobDb, "friendships/alice_bob"), { status: "declined", updatedAt: serverTimestamp() }));
+
+    // Profil: giriş yapmış herkes okur; anonim okuyamaz.
+    await assertFails(getDoc(doc(anonDb, "userProfiles/alice")));
+    await assertSucceeds(getDoc(doc(bobDb, "userProfiles/alice")));
+    // İz: yalnız sahibi (arkadaş dahil başkası okuyamaz).
+    await assertFails(getDoc(doc(bobDb, "tracks/tr-alice")));
+    await assertSucceeds(getDoc(doc(aliceDb, "tracks/tr-alice")));
+    // Rota: taslak/özel yalnız sahibi; unlisted bağlantıyla herkes; yayın herkes.
+    await assertFails(getDoc(doc(bobDb, "routes/rt-private")));
+    await assertSucceeds(getDoc(doc(aliceDb, "routes/rt-private")));
+    await assertSucceeds(getDoc(doc(anonDb, "routes/rt-unlisted")));
+    await assertSucceeds(getDoc(doc(anonDb, "routes/rt-public")));
+    // Hikâye: 24 saatlik pencere içinde herkes (anonim dahil) okur.
+    await assertSucceeds(getDoc(doc(anonDb, "stories/st-public")));
+    // Kayıtlı yer ve bildirim, arkadaş listesi: yalnız sahibi.
+    await assertFails(getDoc(doc(bobDb, "users/alice/savedPlaces/pl-1")));
+    await assertFails(getDoc(doc(bobDb, "users/alice/notifications/nt-1")));
+    await assertFails(getDoc(doc(bobDb, "users/alice/friends/bob")));
+    await assertSucceeds(getDoc(doc(aliceDb, "users/alice/savedPlaces/pl-1")));
+    // Grup: yalnız üye; üye olmayan (bob) okuyamaz, anonim okuyamaz.
+    await assertFails(getDoc(doc(bobDb, "groups/grp-1")));
+    await assertFails(getDoc(doc(anonDb, "groups/grp-1")));
+    await assertSucceeds(getDoc(doc(aliceDb, "groups/grp-1")));
   });
 
-  it("silme iki tarafa açıktır, taraf olmayana kapalıdır", async () => {
-    await seed("friendships/alice_bob", acceptedFriendship("alice", "bob"));
-    const strangerDb = testEnv.authenticatedContext("stranger").firestore();
-    const aliceDb = testEnv.authenticatedContext("alice").firestore();
-    await assertFails(deleteDoc(doc(strangerDb, "friendships/alice_bob")));
-    await assertSucceeds(deleteDoc(doc(aliceDb, "friendships/alice_bob")));
-  });
-
-  it("own-scoped aynayı yalnız sahibi okur ve 50 kayıtla sınırlı listeler", async () => {
-    await seed("users/alice/friendships/alice_bob", validMirror("alice_bob", "bob", "outgoing", "accepted", "Bora"));
+  // === C4 — userProfiles sadece displayName ve photoURL ===
+  it("C4 userProfiles displayName ve photoURL dışında alan okunmuyor/yazılmıyor", async () => {
     const aliceDb = testEnv.authenticatedContext("alice").firestore();
     const bobDb = testEnv.authenticatedContext("bob").firestore();
-
-    await assertSucceeds(getDoc(doc(aliceDb, "users/alice/friendships/alice_bob")));
-    await assertFails(getDoc(doc(bobDb, "users/alice/friendships/alice_bob")));
-    await assertSucceeds(getDocs(query(collection(aliceDb, "users/alice/friendships"), limit(50))));
-    await assertFails(getDocs(query(collection(aliceDb, "users/alice/friendships"), limit(51))));
-    await assertFails(getDocs(collection(aliceDb, "users/alice/friendships")));
+    // displayName + photoURL ile oluşturma → SUCCEED
+    await assertSucceeds(
+      setDoc(doc(aliceDb, "userProfiles/alice"), {
+        uid: "alice",
+        displayName: "Alice",
+        photoURL: "https://example.com/a.jpg",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }),
+    );
+    // Fazladan alan (email) → FAIL
+    await assertFails(
+      setDoc(doc(aliceDb, "userProfiles/alice2"), {
+        uid: "alice2",
+        displayName: "Alice2",
+        email: "alice@example.com",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }),
+    );
+    // Başkasının profilini yazma → FAIL
+    await assertFails(
+      setDoc(doc(bobDb, "userProfiles/alice"), {
+        uid: "alice",
+        displayName: "Hacked",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }),
+    );
+    // Okuma: herkes oturumlu okuyabilir
+    await assertSucceeds(getDoc(doc(bobDb, "userProfiles/alice")));
+    // Liste 20 ile sınırlı → SUCCEED, 21 → FAIL
+    await assertSucceeds(getDocs(query(collection(aliceDb, "userProfiles"), limit(20))));
+    await assertFails(getDocs(query(collection(aliceDb, "userProfiles"), limit(21))));
   });
-
-  it("karşı tarafın aynası ancak gerçek rıza kaydı varsa yazılabilir", async () => {
+  // Hesap silme ve "Verilerimi indir", tek tek belge silmeden ÖNCE bu liste
+  // sorgularını çalıştırır. Sayfa boyutu herhangi bir boundedList sınırını
+  // aşarsa sorgu reddedilir ve hesap silme hiç tamamlanmaz.
+  it("hesap silme ve veri indirme sorguları kural sınırları içinde (ACCOUNT_DATA_PAGE_SIZE)", async () => {
+    const n = ACCOUNT_DATA_PAGE_SIZE;
+    await seed("groups/g-q", { name: "Ekip", ownerUid: "alice", memberUids: ["alice"], joinCode: "123456", createdAt: Timestamp.now(), updatedAt: Timestamp.now() });
     const aliceDb = testEnv.authenticatedContext("alice").firestore();
-    // Rıza kaydı yokken Bob'a ayna yazılamaz (existsAfter başarısız).
-    await assertFails(setDoc(
-      doc(aliceDb, "users/bob/friendships/alice_bob"),
-      validMirror("alice_bob", "alice", "incoming", "pending", "Ada"),
-    ));
-  });
-
-  it("istek gönderen kendi ve karşı aynayı aynı batch'te yazabilir", async () => {
-    const aliceDb = testEnv.authenticatedContext("alice").firestore();
-    const batch = writeBatch(aliceDb);
-    batch.set(doc(aliceDb, "friendships/alice_bob"), validFriendship("alice", "bob"));
-    batch.set(doc(aliceDb, "users/alice/friendships/alice_bob"), validMirror("alice_bob", "bob", "outgoing", "pending"));
-    batch.set(doc(aliceDb, "users/bob/friendships/alice_bob"), validMirror("alice_bob", "alice", "incoming", "pending", "Ada"));
-    await assertSucceeds(batch.commit());
-  });
-
-  it("ayna kimliği rıza kaydıyla tutarsızsa reddedilir (sahte yön/karşı taraf)", async () => {
-    await seed("friendships/alice_bob", {
-      ...validFriendship("alice", "bob"),
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now(),
-    });
-    const aliceDb = testEnv.authenticatedContext("alice").firestore();
-
-    // Alice isteyendir; kendi aynası 'outgoing' olmalı, 'incoming' yazılamaz.
-    await assertFails(setDoc(
-      doc(aliceDb, "users/alice/friendships/alice_bob"),
-      validMirror("alice_bob", "bob", "incoming", "pending"),
-    ));
-    // otherUid karşı taraf olmalı; üçüncü bir kimlik yazılamaz.
-    await assertFails(setDoc(
-      doc(aliceDb, "users/alice/friendships/alice_bob"),
-      validMirror("alice_bob", "stranger", "outgoing", "pending"),
-    ));
-    // Ayna, rıza kaydının önüne geçip 'accepted' iddia edemez.
-    await assertFails(setDoc(
-      doc(aliceDb, "users/alice/friendships/alice_bob"),
-      validMirror("alice_bob", "bob", "outgoing", "accepted"),
-    ));
-    // Doğru yazım geçer.
-    await assertSucceeds(setDoc(
-      doc(aliceDb, "users/alice/friendships/alice_bob"),
-      validMirror("alice_bob", "bob", "outgoing", "pending"),
-    ));
-  });
-
-  it("taraf olmayan kullanıcı hiçbir aynaya yazamaz", async () => {
-    await seed("friendships/alice_bob", {
-      ...validFriendship("alice", "bob"),
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now(),
-    });
-    const strangerDb = testEnv.authenticatedContext("stranger").firestore();
-    await assertFails(setDoc(
-      doc(strangerDb, "users/alice/friendships/alice_bob"),
-      validMirror("alice_bob", "bob", "outgoing", "pending"),
-    ));
-  });
-
-  it("kabul sonrası iki tarafın aynası accepted'a güncellenir", async () => {
-    await seed("friendships/alice_bob", {
-      ...validFriendship("alice", "bob"),
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now(),
-    });
-    await seed("users/alice/friendships/alice_bob", {
-      pairId: "alice_bob", otherUid: "bob", otherName: "", direction: "outgoing",
-      status: "pending", createdAt: Timestamp.now(), updatedAt: Timestamp.now(),
-    });
-    await seed("users/bob/friendships/alice_bob", {
-      pairId: "alice_bob", otherUid: "alice", otherName: "Ada", direction: "incoming",
-      status: "pending", createdAt: Timestamp.now(), updatedAt: Timestamp.now(),
-    });
-    const bobDb = testEnv.authenticatedContext("bob").firestore();
-
-    const batch = writeBatch(bobDb);
-    batch.update(doc(bobDb, "friendships/alice_bob"), {
-      status: "accepted", recipientName: "Bora", acceptedAt: serverTimestamp(), updatedAt: serverTimestamp(),
-    });
-    batch.update(doc(bobDb, "users/bob/friendships/alice_bob"), {
-      otherName: "Ada", status: "accepted", updatedAt: serverTimestamp(),
-    });
-    batch.update(doc(bobDb, "users/alice/friendships/alice_bob"), {
-      otherName: "Bora", status: "accepted", updatedAt: serverTimestamp(),
-    });
-    await assertSucceeds(batch.commit());
-  });
-
-  it("ayna güncellemesi kimlik alanlarını değiştiremez", async () => {
-    await seed("friendships/alice_bob", acceptedFriendship("alice", "bob"));
-    await seed("users/alice/friendships/alice_bob", {
-      pairId: "alice_bob", otherUid: "bob", otherName: "Bora", direction: "outgoing",
-      status: "accepted", createdAt: Timestamp.now(), updatedAt: Timestamp.now(),
-    });
-    const aliceDb = testEnv.authenticatedContext("alice").firestore();
-    await assertFails(updateDoc(doc(aliceDb, "users/alice/friendships/alice_bob"), {
-      otherUid: "stranger", status: "accepted", updatedAt: serverTimestamp(),
-    }));
-    await assertSucceeds(updateDoc(doc(aliceDb, "users/alice/friendships/alice_bob"), {
-      otherName: "Bora Y.", status: "accepted", updatedAt: serverTimestamp(),
-    }));
-  });
-
-  it("rıza kaydı silindiğinde karşı tarafın aynası da temizlenebilir", async () => {
-    await seed("friendships/alice_bob", acceptedFriendship("alice", "bob"));
-    await seed("users/alice/friendships/alice_bob", {
-      pairId: "alice_bob", otherUid: "bob", otherName: "Bora", direction: "outgoing",
-      status: "accepted", createdAt: Timestamp.now(), updatedAt: Timestamp.now(),
-    });
-    await seed("users/bob/friendships/alice_bob", {
-      pairId: "alice_bob", otherUid: "alice", otherName: "Ada", direction: "incoming",
-      status: "accepted", createdAt: Timestamp.now(), updatedAt: Timestamp.now(),
-    });
-    const aliceDb = testEnv.authenticatedContext("alice").firestore();
-
-    // Rıza kaydı dururken karşı aynayı silmek yalnız own-scoped kurala takılır.
-    await assertFails(deleteDoc(doc(aliceDb, "users/bob/friendships/alice_bob")));
-
-    const batch = writeBatch(aliceDb);
-    batch.delete(doc(aliceDb, "friendships/alice_bob"));
-    batch.delete(doc(aliceDb, "users/alice/friendships/alice_bob"));
-    batch.delete(doc(aliceDb, "users/bob/friendships/alice_bob"));
-    await assertSucceeds(batch.commit());
-  });
-
-  it("grup davetini yalnız KABUL EDİLMİŞ arkadaş kendini ekleyerek kabul eder", async () => {
-    await seed("groups/group-1", {
-      name: "Kapadokya ekibi", ownerUid: "owner", memberUids: ["owner"],
-      createdAt: Timestamp.now(), updatedAt: Timestamp.now(),
-    });
-    const friendDb = testEnv.authenticatedContext("friend").firestore();
-    const strangerDb = testEnv.authenticatedContext("stranger").firestore();
-
-    // Arkadaşlık yokken kendini ekleyemez.
-    await assertFails(updateDoc(doc(strangerDb, "groups/group-1"), {
-      memberUids: arrayUnion("stranger"), updatedAt: serverTimestamp(),
-    }));
-
-    await seed("friendships/friend_owner", acceptedFriendship("friend", "owner"));
-
-    // Kabul edilmiş arkadaş kendini ekleyebilir.
-    await assertSucceeds(updateDoc(doc(friendDb, "groups/group-1"), {
-      memberUids: arrayUnion("friend"), updatedAt: serverTimestamp(),
-    }));
-  });
-
-  it("bekleyen (pending) arkadaşlık grup daveti için yeterli değildir", async () => {
-    await seed("groups/group-1", {
-      name: "Kapadokya ekibi", ownerUid: "owner", memberUids: ["owner"],
-      createdAt: Timestamp.now(), updatedAt: Timestamp.now(),
-    });
-    await seed("friendships/friend_owner", {
-      ...validFriendship("owner", "friend"),
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now(),
-    });
-    const friendDb = testEnv.authenticatedContext("friend").firestore();
-    await assertFails(updateDoc(doc(friendDb, "groups/group-1"), {
-      memberUids: arrayUnion("friend"), updatedAt: serverTimestamp(),
-    }));
-  });
-
-  it("kendini ekleyen davetli başkasını ekleyemez, adı veya sahibi değiştiremez", async () => {
-    await seed("groups/group-1", {
-      name: "Kapadokya ekibi", ownerUid: "owner", memberUids: ["owner"],
-      createdAt: Timestamp.now(), updatedAt: Timestamp.now(),
-    });
-    await seed("friendships/friend_owner", acceptedFriendship("friend", "owner"));
-    await seed("friendships/other_owner", acceptedFriendship("other", "owner"));
-    const friendDb = testEnv.authenticatedContext("friend").firestore();
-
-    // Başkasını da eklemek: toSet eşitliği bozulur → red.
-    await assertFails(updateDoc(doc(friendDb, "groups/group-1"), {
-      memberUids: arrayUnion("friend", "other"), updatedAt: serverTimestamp(),
-    }));
-    // Grup adını değiştirmek: affectedKeys sınırı → red.
-    await assertFails(updateDoc(doc(friendDb, "groups/group-1"), {
-      memberUids: arrayUnion("friend"), name: "Ele geçirildi", updatedAt: serverTimestamp(),
-    }));
-    // Sahibi değiştirmek: red.
-    await assertFails(updateDoc(doc(friendDb, "groups/group-1"), {
-      memberUids: arrayUnion("friend"), ownerUid: "friend", updatedAt: serverTimestamp(),
-    }));
-  });
-
-  it("grup üyesi olmayan yabancı grup dokümanını okuyamaz", async () => {
-    await seed("groups/group-1", {
-      name: "Kapadokya ekibi", ownerUid: "owner", memberUids: ["owner"],
-      createdAt: Timestamp.now(), updatedAt: Timestamp.now(),
-    });
-    const strangerDb = testEnv.authenticatedContext("stranger").firestore();
-    await assertFails(getDoc(doc(strangerDb, "groups/group-1")));
-    await assertFails(getDocs(query(collection(strangerDb, "groups"), limit(20))));
-  });
-
-  it("friend_request ve friend_accepted bildirimleri alıcı adına yazılabilir", async () => {
-    const aliceDb = testEnv.authenticatedContext("alice").firestore();
-    await assertSucceeds(setDoc(doc(aliceDb, "users/bob/notifications/nt-1"), {
-      recipientUid: "bob", actorUid: "alice", type: "friend_request",
-      title: "Arkadaşlık isteği", body: "Ada seninle arkadaş olmak istiyor.",
-      read: false, createdAt: serverTimestamp(), targetId: "alice_bob",
-    }));
-    await assertSucceeds(setDoc(doc(aliceDb, "users/bob/notifications/nt-2"), {
-      recipientUid: "bob", actorUid: "alice", type: "friend_accepted",
-      title: "Arkadaşlık kabul edildi", body: "Ada isteğini kabul etti.",
-      read: false, createdAt: serverTimestamp(),
-    }));
-    // Aktör kendi adına yazmak zorunda; başkası adına yazılamaz.
-    await assertFails(setDoc(doc(aliceDb, "users/bob/notifications/nt-3"), {
-      recipientUid: "bob", actorUid: "stranger", type: "friend_request",
-      title: "Sahte", body: "Sahte istek", read: false, createdAt: serverTimestamp(),
-    }));
+    const owned: Array<[string, string]> = [
+      ["places", "authorUid"], ["posts", "authorUid"], ["stories", "authorUid"],
+      ["routes", "authorUid"], ["tracks", "authorUid"], ["reports", "reporterUid"],
+      ["blocks", "blockerUid"], ["verifications", "uid"], ["feedback", "uid"],
+    ];
+    for (const [name, field] of owned) {
+      await assertSucceeds(getDocs(query(collection(aliceDb, name), where(field, "==", "alice"), limit(n))));
+      await assertSucceeds(getDocs(query(collection(aliceDb, name), where(field, "==", "alice"), orderBy(documentId()), limit(n))));
+    }
+    for (const sub of ["notifications", "savedPlaces", "savedRoutes", "friendRequests", "blocks", "friends", "groupInvites", "groups"]) {
+      await assertSucceeds(getDocs(query(collection(aliceDb, `users/alice/${sub}`), limit(n))));
+      await assertSucceeds(getDocs(query(collection(aliceDb, `users/alice/${sub}`), orderBy(documentId()), limit(n))));
+    }
+    await assertSucceeds(getDocs(query(collectionGroup(aliceDb, "replies"), where("authorUid", "==", "alice"), limit(n))));
+    await assertSucceeds(getDocs(query(collection(aliceDb, "groups/g-q/messages"), where("senderUid", "==", "alice"), limit(n))));
+    await assertSucceeds(getDocs(query(collection(aliceDb, "groups/g-q/messages"), limit(n))));
   });
   it("süresi dolmuş hikâyeyi yabancı okuyamaz, sahibi okur (kusur #5)", async () => {
     const ownerDb = testEnv.authenticatedContext("owner").firestore();
@@ -1227,38 +1545,50 @@ describe("Firestore güvenlik kuralları", () => {
     const expired = Timestamp.fromMillis(Date.now() - 25 * 60 * 60 * 1000);
     await seed("stories/old-1", { ...validStory("owner"), createdAt: expired });
 
-    // 24 saat penceresi doldu: halka açık okuma kapanır.
+    // 24 saatlik pencere doldu: doğrudan id ile halka açık okuma kapanır.
     await assertFails(getDoc(doc(guestDb, "stories/old-1")));
     // Sahip kendi eski hikâyesini hâlâ okuyabilir (silme hakkı için).
     await assertSucceeds(getDoc(doc(ownerDb, "stories/old-1")));
     // Canlı hikâye herkese açık kalmaya devam eder.
     await seed("stories/live-1", validStory("owner"));
     await assertSucceeds(getDoc(doc(guestDb, "stories/live-1")));
+    // LİSTE kuralı resource.data'ya dokunamaz (CI kanıtı: "Property createdAt is
+    // undefined on object. for 'list'"); liste yalnız 50 kayıtla sınırlı kalır.
+    await assertSucceeds(getDocs(query(collection(guestDb, "stories"), limit(50))));
+    await assertFails(getDocs(query(collection(guestDb, "stories"), limit(51))));
   });
 
   it("grup lastMessage yazımı updatedAt olmadan reddedilir (kusur #1)", async () => {
     await seed("groups/group-1", {
       name: "Kapadokya ekibi", ownerUid: "owner", memberUids: ["owner", "member"],
-      createdAt: Timestamp.now(), updatedAt: Timestamp.now(),
+      joinCode: "123456", createdAt: Timestamp.now(), updatedAt: Timestamp.now(),
     });
     const memberDb = testEnv.authenticatedContext("member").firestore();
+    // hasOnly(['lastMessage','updatedAt']) alana izin verir, DEĞERİ kısıtlamaz;
+    // updatedAt serbest bırakıldığında üye saati geriye/alıp ileriye yazabilirdi.
     await assertFails(updateDoc(doc(memberDb, "groups/group-1"), {
       lastMessage: { text: "sa", senderUid: "member", senderName: "Üye", createdAt: serverTimestamp() },
+    }));
+    await assertSucceeds(updateDoc(doc(memberDb, "groups/group-1"), {
+      lastMessage: { text: "sa", senderUid: "member", senderName: "Üye", createdAt: serverTimestamp() },
+      updatedAt: serverTimestamp(),
     }));
   });
 
   it("silinmiş grubun mesajları kural hatasına düşmeden reddedilir (kusur #3)", async () => {
     await seed("groups/gone-1", {
       name: "Eski grup", ownerUid: "owner", memberUids: ["owner", "member"],
-      createdAt: Timestamp.now(), updatedAt: Timestamp.now(),
+      joinCode: "123456", createdAt: Timestamp.now(), updatedAt: Timestamp.now(),
     });
     await seed("groups/gone-1/messages/m-1", {
       senderUid: "member", senderName: "Üye", text: "selam", createdAt: Timestamp.now(),
     });
     const ownerDb = testEnv.authenticatedContext("owner").firestore();
     const memberDb = testEnv.authenticatedContext("member").firestore();
+    await assertSucceeds(getDoc(doc(memberDb, "groups/gone-1/messages/m-1")));
     await assertSucceeds(deleteDoc(doc(ownerDb, "groups/gone-1")));
-    // Grup yok: üyelik listesi boş döner, istek temiz biçimde reddedilir.
+    // Grup yok: üyelik listesi boş döner, istek temiz biçimde reddedilir
+    // (önceden get(...).data null olur ve kural değerlendirme hatası verirdi).
     await assertFails(getDoc(doc(memberDb, "groups/gone-1/messages/m-1")));
   });
 });

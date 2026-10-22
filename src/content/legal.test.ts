@@ -5,6 +5,8 @@ import {
   LEGAL_REVIEW_NOTICE,
   LEGAL_SOURCE,
   LEGAL_VERSION,
+  getLegalDocument,
+  kvkkNoticeDocument,
   legalDocumentText,
   privacyDocument,
   termsDocument,
@@ -50,12 +52,62 @@ describe("TASK-021 A yasal metin paketi", () => {
     expect(unresolvedLegalPlaceholders(termsDocument)).toEqual(["[TARİH]", "[E-POSTA]", "[ŞEHİR]"]);
     expect(LEGAL_REVIEW_NOTICE).toBe("Taslak · Künye ve avukat onayı bekleniyor");
   });
+});
+
+describe("TASK KVKK aydınlatma akışı (Tur 4)", () => {
+  it("kvkk belgesi zorunlu başlıklarla ayrı bir dokümandır", () => {
+    expect(getLegalDocument("kvkk")).toBe(kvkkNoticeDocument);
+    const kvkk = legalDocumentText(kvkkNoticeDocument);
+    for (const heading of ["VERİ SORUMLUSU", "İŞLEME AMAÇLARI", "HUKUKİ SEBEPLER", "AKTARIM", "HAKLARIN VE BAŞVURU"]) {
+      expect(kvkk).toContain(heading);
+    }
+    expect(kvkk).toContain("KVKK");
+    // Künye bilinçli yer tutucu; gerçek kimlik uydurulmaz.
+    expect(unresolvedLegalPlaceholders(kvkkNoticeDocument)).toEqual(["[TARİH]", "[AD SOYAD / UNVAN]", "[E-POSTA]"]);
+    expect(kvkkNoticeDocument.title).toBe("KVKK Aydınlatma Metni");
+  });
+
+  it("privacy/terms belgeleri kvkk'dan bağımsız kalır ve getLegalDocument üçünü de doğru yönlendirir", () => {
+    expect(getLegalDocument("privacy")).toBe(privacyDocument);
+    expect(getLegalDocument("terms")).toBe(termsDocument);
+    expect(legalDocumentText(privacyDocument)).not.toContain("İŞLEME AMAÇLARI\n");
+  });
+
+  it("aydınlatma metinleri kabule bağlanmaz; tek KVKK aydınlatma metni vardır", () => {
+    expect(privacyDocument.title).toBe("Gizlilik Açıklaması");
+    expect(legalDocumentText(privacyDocument)).not.toContain("kabul etmeden önce");
+    const terms = legalDocumentText(termsDocument);
+    expect(terms).not.toContain("Gizlilik/KVKK metnini kabul");
+    expect(terms).toContain("kabul edilmesi gerekmez");
+  });
+
+  it("kayıt akışında iki ayrı yasal öğe vardır: zorunlu koşul onayı + kutusuz KVKK bilgilendirmesi", () => {
+    const accountAccess = readFileSync("src/components/AccountAccess.tsx", "utf8");
+
+    // (a) Tek zorunlu onay kutusu: yalnız kullanım koşulları.
+    expect(accountAccess).toContain("Kullanım koşullarını kabul ediyorum.");
+    expect(accountAccess).not.toContain("Kullanım koşullarını ve gizlilik açıklamasını kabul ediyorum.");
+
+    // (b) KVKK "okudum" ibaresi + bağlantı; onay kutusu DEĞİL.
+    expect(accountAccess).toContain("KVKK aydınlatma metnini okudum");
+    expect(accountAccess).toContain('onClick={() => setLegal("kvkk")}');
+    expect(accountAccess).not.toMatch(/type="checkbox"[^>]*\/?>\s*<span>[^<]*KVKK/);
+
+    // Açık rıza gerektiren bir işleme yok; açık rıza kutusu eklenmedi.
+    expect(accountAccess).not.toContain("açık rıza");
+
+    // Modal bağları korunur; kvkk da aynı modalde açılır.
+    expect(accountAccess).toContain("<LegalNotice type={legal}");
+    const legalNotice = readFileSync("src/components/LegalNotice.tsx", "utf8");
+    expect(legalNotice).toContain("getLegalDocument(type)");
+    expect(legalNotice).toContain("aria-modal=\"true\"");
+    expect(legalNotice).toContain("data-legal-source={LEGAL_SOURCE}");
+  });
 
   it("mevcut kayıt onayını yeni tam metin modalına bağlı tutar", () => {
     const accountAccess = readFileSync("src/components/AccountAccess.tsx", "utf8");
     const legalNotice = readFileSync("src/components/LegalNotice.tsx", "utf8");
 
-    expect(accountAccess).toContain("Kullanım koşullarını ve gizlilik açıklamasını kabul ediyorum.");
     expect(accountAccess).toContain("<LegalNotice type={legal}");
     expect(legalNotice).toContain("getLegalDocument(type)");
     expect(legalNotice).toContain("aria-modal=\"true\"");

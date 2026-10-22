@@ -17,6 +17,7 @@ type Busy = "email" | "google" | "apple" | "phone" | "code" | "reset" | "recover
 type FieldErrors = Partial<Record<"email" | "password" | "name" | "terms" | "phone" | "code" | "recovery", string>>;
 const LANDSCAPE = "https://images.pexels.com/photos/19139425/pexels-photo-19139425.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=1600&w=2400";
 const APPLE_AUTH_ENABLED = import.meta.env.VITE_APPLE_AUTH_ENABLED === "true";
+const PHONE_AUTH_ENABLED = import.meta.env.VITE_PHONE_AUTH_ENABLED === "true";
 
 function GoogleMark() {
   return <svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24"><path fill="#4285F4" d="M21.6 12.23c0-.71-.06-1.4-.18-2.07H12v3.92h5.38a4.6 4.6 0 0 1-2 3.02v2.5h3.24c1.9-1.75 2.98-4.33 2.98-7.37Z"/><path fill="#34A853" d="M12 22c2.7 0 4.96-.9 6.62-2.4l-3.24-2.5c-.9.6-2.07.97-3.38.97-2.6 0-4.8-1.76-5.6-4.12H3.05v2.58A10 10 0 0 0 12 22Z"/><path fill="#FBBC05" d="M6.4 13.95A6 6 0 0 1 6.08 12c0-.68.12-1.34.32-1.95V7.47H3.05A10 10 0 0 0 2 12c0 1.61.38 3.14 1.05 4.53l3.35-2.58Z"/><path fill="#EA4335" d="M12 5.93c1.47 0 2.79.5 3.83 1.52l2.87-2.87A9.64 9.64 0 0 0 12 2a10 10 0 0 0-8.95 5.47l3.35 2.58c.8-2.36 3-4.12 5.6-4.12Z"/></svg>;
@@ -26,7 +27,7 @@ function AuthFrame({ signup = false, children, onSwitch, onLegal }: {
   signup?: boolean;
   children: ReactNode;
   onSwitch?: () => void;
-  onLegal?: (type: "privacy" | "terms") => void;
+  onLegal?: (type: "privacy" | "terms" | "kvkk") => void;
 }) {
   const { backend } = useAuth();
   return <main className={`auth-page ${signup ? "auth-signup-page" : "auth-login-page"}`}>
@@ -46,7 +47,7 @@ function AuthFrame({ signup = false, children, onSwitch, onLegal }: {
     <section className="auth-access" aria-label={signup ? "Atlasia üyelik formu" : "Atlasia giriş formu"}>
       {signup ? <div className="auth-account-switch">Zaten hesabın var mı? <button type="button" onClick={onSwitch}>Giriş yap <ArrowRight size={14} /></button></div> : <a className="auth-login-brand" href="/" aria-label="Atlasia başlangıç"><span><Compass size={32} strokeWidth={1.25} /></span><strong>Atlasia<span>.</span></strong></a>}
       <div className="auth-form-wrap">{children}</div>
-      <footer className="auth-access-footer"><p>© {new Date().getFullYear()} Atlasia</p><div>{onLegal ? <><button type="button" onClick={() => onLegal("privacy")}>Gizlilik</button><span>·</span><button type="button" onClick={() => onLegal("terms")}>Koşullar</button></> : <span>{backend === "device" ? "Bu cihaza özel hesap" : "Firebase Authentication"}</span>}</div></footer>
+      <footer className="auth-access-footer"><p>© {new Date().getFullYear()} Atlasia</p><div>{onLegal ? <><button type="button" onClick={() => onLegal("privacy")}>Gizlilik</button><span>·</span><button type="button" onClick={() => onLegal("terms")}>Koşullar</button><span>·</span><button type="button" onClick={() => onLegal("kvkk")}>KVKK</button></> : <span>{backend === "device" ? "Bu cihaza özel hesap" : "Firebase Authentication"}</span>}</div></footer>
     </section>
   </main>;
 }
@@ -118,7 +119,7 @@ export default function AccountAccess() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [busy, setBusy] = useState<Busy | null>(null);
-  const [legal, setLegal] = useState<"privacy" | "terms" | null>(null);
+  const [legal, setLegal] = useState<"privacy" | "terms" | "kvkk" | null>(null);
   const [phone, setPhone] = useState("");
   const [prefix, setPrefix] = useState("+90");
   const [code, setCode] = useState("");
@@ -250,6 +251,7 @@ export default function AccountAccess() {
 
   const sendCode = async (event?: FormEvent) => {
     event?.preventDefault();
+    if (!PHONE_AUTH_ENABLED) return;
     if (cooldown) return;
     const next = mode === "signup" ? signupErrors() : {};
     const digits = phone.replace(/\D/g, "").replace(/^0+/, "");
@@ -273,6 +275,7 @@ export default function AccountAccess() {
 
   const verifyCode = async (event: FormEvent) => {
     event.preventDefault();
+    if (!PHONE_AUTH_ENABLED) return;
     if (!pendingPhone.current || code.length !== 6) { setErrors({ code: "SMS'teki 6 haneli kodu yaz." }); return; }
     await task("code", async () => { await pendingPhone.current!.confirm(code); });
   };
@@ -282,7 +285,7 @@ export default function AccountAccess() {
     <div className="auth-field"><label htmlFor="account-name">Profil adın</label><input id="account-name" value={name} onChange={(event) => { setName(event.target.value); clearField("name"); }} autoComplete="nickname" placeholder="Adın veya takma adın" maxLength={40} disabled={blocked} aria-invalid={!!errors.name} aria-describedby={errors.name ? "account-name-error" : undefined} /><FormError message={errors.name} id="account-name-error" /></div>
     <div className="auth-field"><label htmlFor="account-country">Ülke / bölge</label><select id="account-country" value={country} onChange={(event) => setCountry(event.target.value)} disabled={blocked} autoComplete="country-name"><option>Türkiye</option><option>Kuzey Kıbrıs Türk Cumhuriyeti</option><option>Almanya</option><option>Birleşik Krallık</option><option>Amerika Birleşik Devletleri</option><option>Japonya</option><option>Diğer</option></select></div>
   </>;
-  const consent = <div className="auth-consent-wrap"><label className="auth-consent"><input type="checkbox" checked={accepted} onChange={(event) => { setAccepted(event.target.checked); clearField("terms"); }} disabled={blocked} /><span>Kullanım koşullarını ve gizlilik açıklamasını kabul ediyorum.</span></label><div className="auth-legal-links"><button type="button" onClick={() => setLegal("terms")}>Kullanım koşulları</button><span>·</span><button type="button" onClick={() => setLegal("privacy")}>Gizlilik açıklaması</button></div><FormError message={errors.terms} /></div>;
+  const consent = <div className="auth-consent-wrap"><label className="auth-consent"><input type="checkbox" checked={accepted} onChange={(event) => { setAccepted(event.target.checked); clearField("terms"); }} disabled={blocked} /><span>Kullanım koşullarını kabul ediyorum.</span></label><div className="auth-legal-links"><span>KVKK aydınlatma metnini okudum</span><button type="button" onClick={() => setLegal("kvkk")}>Metni görüntüle</button></div><div className="auth-legal-links"><button type="button" onClick={() => setLegal("terms")}>Kullanım koşulları</button><span>·</span><button type="button" onClick={() => setLegal("privacy")}>Gizlilik açıklaması</button></div><FormError message={errors.terms} /></div>;
   const providers = <div className="auth-provider-actions auth-secondary-providers">
     <button type="button" disabled={blocked || !authConfigured} title={!authConfigured ? "Google bağlantısı henüz yapılandırılmadı" : undefined} onClick={() => void social("google")} className="auth-google">{busy === "google" ? <Loader2 className="animate-spin" size={17} /> : <GoogleMark />}<span>Google ile devam et</span></button>
     <button type="button" disabled={blocked || !authConfigured || !APPLE_AUTH_ENABLED} title={!APPLE_AUTH_ENABLED ? "Apple ile giriş hazırlık aşamasında" : !authConfigured ? "Apple bağlantısı henüz yapılandırılmadı" : undefined} onClick={() => void social("apple")} className="auth-apple">{busy === "apple" ? <Loader2 className="animate-spin" size={17} /> : <Apple size={20} fill="currentColor" />}<span>{APPLE_AUTH_ENABLED ? "Apple ile devam et" : "Apple ile giriş yakında"}</span></button>
@@ -305,8 +308,8 @@ export default function AccountAccess() {
           <button className="auth-submit" type="submit" disabled={blocked}>{busy === "email" ? <Loader2 size={18} className="animate-spin" /> : mode === "signup" ? <ArrowRight size={16} /> : <LockKeyhole size={16} />}{busy === "email" ? "Lütfen bekle..." : mode === "signup" ? "Hesap oluştur" : "Giriş yap"}</button>
         </form>
         {mode === "signin" && <><div className="auth-separator"><span />veya<span /></div>{providers}</>}
-        <button type="button" disabled={blocked || !authConfigured} onClick={() => { resetMessages(); setScreen("phone"); }} className="auth-phone-alternative"><Phone size={14} />Telefon numarasıyla giriş yap</button>
-        {!authConfigured && <p className="auth-provider-note">Google, Apple ve SMS bağlantısı henüz etkin değil. Bu cihaza özel hesabın için e-posta ve şifre kullan.</p>}
+        {PHONE_AUTH_ENABLED && <button type="button" disabled={blocked || !authConfigured} onClick={() => { resetMessages(); setScreen("phone"); }} className="auth-phone-alternative"><Phone size={14} />Telefon numarasıyla giriş yap</button>}
+        {!authConfigured && <p className="auth-provider-note">Google ve Apple bağlantısı henüz etkin değil. Bu cihaza özel hesabın için e-posta ve şifre kullan.</p>}
         <p className="auth-bottom-switch">{mode === "signin" ? "Henüz hesabın yok mu?" : "Zaten hesabın var mı?"}<button type="button" disabled={blocked} onClick={switchMode}>{mode === "signin" ? "Üye ol" : "Giriş yap"}</button></p>
       </>}
 
@@ -318,7 +321,7 @@ export default function AccountAccess() {
         {screen === "recovery" && <p className="auth-form-hint">Anahtarın yoksa bu modda e-posta ile kurtarma yapılamaz. Mevcut kayıtların silinmez; yeni hesap açmak onları aktarmaz.</p>}
       </form>}
 
-      {screen === "phone" && <form className="auth-email-form" onSubmit={(event) => void sendCode(event)} noValidate>
+      {PHONE_AUTH_ENABLED && screen === "phone" && <form className="auth-email-form" onSubmit={(event) => void sendCode(event)} noValidate>
         {mode === "signup" && profileFields}
         <div className="auth-field"><label htmlFor="account-phone">Telefon numaran</label><div className="auth-phone-input"><select value={prefix} onChange={(event) => setPrefix(event.target.value)} aria-label="Ülke kodu" disabled={blocked}><option value="+90">TR +90</option><option value="+1">US +1</option><option value="+44">UK +44</option><option value="+49">DE +49</option><option value="+33">FR +33</option><option value="+81">JP +81</option></select><input id="account-phone" type="tel" inputMode="tel" value={phone} onChange={(event) => { setPhone(event.target.value); clearField("phone"); }} autoComplete="tel-national" placeholder="5XX XXX XX XX" disabled={blocked} aria-invalid={!!errors.phone} /></div><FormError message={errors.phone} /></div>
         <p className="auth-form-hint">Numarana doğrulama SMS’i gönderilir. Google reCAPTCHA, kötüye kullanımı azaltmak için cihaz ve etkileşim sinyallerini otomatik olarak doğrulayabilir; bu kontrol mutlak güvenlik garantisi vermez. Standart SMS ücretleri uygulanabilir.</p>
@@ -326,7 +329,7 @@ export default function AccountAccess() {
         <button type="submit" disabled={blocked || cooldown > 0} className="auth-submit">{busy === "phone" ? <Loader2 size={18} className="animate-spin" /> : <Phone size={17} />}Doğrulama kodu gönder</button><button type="button" className="auth-back auth-back-centered" disabled={blocked} onClick={() => { setScreen("credentials"); resetMessages(); }}><ArrowLeft size={14} />Diğer giriş yöntemleri</button>
       </form>}
 
-      {screen === "code" && <form className="auth-email-form" onSubmit={(event) => void verifyCode(event)} noValidate>
+      {PHONE_AUTH_ENABLED && screen === "code" && <form className="auth-email-form" onSubmit={(event) => void verifyCode(event)} noValidate>
         <div className="auth-field"><label htmlFor="account-sms-code">6 haneli doğrulama kodu</label><input id="account-sms-code" className="auth-code-input" inputMode="numeric" autoComplete="one-time-code" value={code} onChange={(event) => { setCode(event.target.value.replace(/\D/g, "").slice(0, 6)); clearField("code"); }} maxLength={6} placeholder="000000" autoFocus disabled={blocked} aria-invalid={!!errors.code} /><FormError message={errors.code} /></div><p className="auth-form-hint">Kod, {prefix} {phone} numarasına gönderildi.</p><button type="submit" className="auth-submit" disabled={blocked || code.length !== 6}>{busy === "code" ? <Loader2 size={17} className="animate-spin" /> : <Check size={17} />}Doğrula ve giriş yap</button><button type="button" className="auth-resend" disabled={blocked || cooldown > 0} onClick={() => void sendCode()}>{cooldown ? `${cooldown} saniye sonra yeniden gönder` : "Yeni kod gönder"}</button><button type="button" className="auth-back auth-back-centered" disabled={blocked} onClick={() => { setScreen("phone"); resetMessages(); }}><ArrowLeft size={14} />Numarayı değiştir</button>
       </form>}
       <div id="atlasia-recaptcha" />

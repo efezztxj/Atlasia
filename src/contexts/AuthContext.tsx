@@ -64,7 +64,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (next && !isSupportedAccount(next)) {
           setUser(null);
           setError("Bu hesap için desteklenen bir giriş yöntemi kullanmalısın.");
-          void signOut(auth).catch(() => {});
+          void signOut(auth).catch((signOutError: unknown) => {
+            // Desteklenmeyen hesap zaten hata mesajıyla durduruldu; otomatik
+            // çıkış da başarısızsa tanılama için sessiz kalma.
+            console.warn("Desteklenmeyen hesap otomatik olarak kapatılamadı.", signOutError);
+          });
         } else {
           if (next) {
             let pendingName: string | null = null;

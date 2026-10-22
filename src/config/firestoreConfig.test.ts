@@ -48,6 +48,20 @@ describe("Firestore sorgu yapılandırması", () => {
         ],
       }),
     ]));
-    expect(config.fieldOverrides).toEqual([]);
+    // Hesap silme/veri indirme: collectionGroup("replies") where authorUid ==.
+    // Koleksiyon grubu kapsamlı otomatik indeks varsayılan olarak yoktur; override
+    // varsayılan koleksiyon kapsamlı indeksleri de korumalıdır (yoksa düşer).
+    expect(config.fieldOverrides).toEqual([
+      {
+        collectionGroup: "replies",
+        fieldPath: "authorUid",
+        indexes: [
+          { order: "ASCENDING", queryScope: "COLLECTION" },
+          { order: "DESCENDING", queryScope: "COLLECTION" },
+          { arrayConfig: "CONTAINS", queryScope: "COLLECTION" },
+          { order: "ASCENDING", queryScope: "COLLECTION_GROUP" },
+        ],
+      },
+    ]);
   });
 });

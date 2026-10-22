@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Ban,
   CornerDownRight,
@@ -32,8 +32,12 @@ import Avatar from "./Avatar";
 import StoryComposer from "./StoryComposer";
 import StoryViewer from "./StoryViewer";
 import ReportDialog from "./ReportDialog";
-import GroupsPanel from "./GroupsPanel";
+import type { SocialTarget } from "../utils/inviteLink";
+
+// Gruplar/arkadaşlar paneli yalnız açılınca yüklenir (ilk paket bütçesi).
+const GroupsPanel = lazy(() => import("./GroupsPanel"));
 import { blockUser } from "../lib/moderation";
+import { friendlyDataError } from "../lib/firestoreValue";
 
 const SEEN_KEY = "atlasia.feed.seen.v1";
 const NEARBY_KM = 900;
@@ -69,8 +73,8 @@ interface Props {
   onRemoveStory: (id: string) => Promise<unknown> | unknown;
   blockedSet: Set<string>;
   isBlocked: (uid?: string | null) => boolean;
-  pendingGroupId?: string | null;
-  onGroupOpened?: () => void;
+  socialTarget?: SocialTarget | null;
+  onSocialTargetHandled?: () => void;
 }
 
 export default function SocialPanel({
@@ -102,8 +106,8 @@ export default function SocialPanel({
   onRemoveStory,
   blockedSet,
   isBlocked,
-  pendingGroupId,
-  onGroupOpened,
+  socialTarget,
+  onSocialTargetHandled,
 }: Props) {
   const [seen, setSeen] = useState<string[]>(() => {
     try {
@@ -131,11 +135,14 @@ export default function SocialPanel({
   const [reportPost, setReportPost] = useState<FeedPost | null>(null);
   const [menuPostId, setMenuPostId] = useState<string | null>(null);
   const [groupsOpen, setGroupsOpen] = useState(false);
+  // Hedef yerel kopyada tutulur: üst bileşen hedefi temizlese de panel onu alır.
+  const [groupsTarget, setGroupsTarget] = useState<SocialTarget | null>(null);
   useEffect(() => {
-    if (!pendingGroupId) return;
+    if (!socialTarget) return;
+    setGroupsTarget(socialTarget);
     setGroupsOpen(true);
-    onGroupOpened?.();
-  }, [pendingGroupId, onGroupOpened]);
+    onSocialTargetHandled?.();
+  }, [socialTarget, onSocialTargetHandled]);
 
   const listRef = useRef<HTMLDivElement>(null);
   const replyInputRef = useRef<HTMLInputElement>(null);
@@ -498,7 +505,7 @@ export default function SocialPanel({
                                 if (!p.authorUid) return;
                                 if (!confirm(`${p.author} kullanıcısını engellemek istiyor musun?`)) return;
                                 setMenuPostId(null);
-                                try { await blockUser(p.authorUid, currentUid); setActionError(`${p.author} engellendi.`); } catch (e) { setActionError((e as Error).message); }
+                                try { await blockUser(p.authorUid, currentUid); setActionError(`${p.author} engellendi.`); } catch (e) { setActionError(friendlyDataError(e, "Kullanıcı engellenemedi.")); }
                               }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[12px] text-mint/80 hover:bg-white/5"><Ban size={14} />Engelle</button>
                               <button type="button" onClick={() => setMenuPostId(null)} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[11px] text-mint/50">Kapat</button>
                             </div>
@@ -613,7 +620,7 @@ export default function SocialPanel({
                           onChange={(e) => setReplyText(e.target.value)}
                           maxLength={200}
                           placeholder={`${p.author} kullanıcısına yanıt ver…`}
-                          className="min-w-0 flex-1 bg-transparent py-1.5 text-[12px] text-mint outline-none placeholder:text-mint/35"
+                          className="min-w-0 flex-1 bg-transparent py-1.5 text-[12px] text-mint outline-none placeholder:text-mint/70 focus:ring-2 focus:ring-sun/40 rounded-md"
                         />
                         <button
                           type="submit"
@@ -679,7 +686,7 @@ export default function SocialPanel({
                 rows={1}
                 maxLength={280}
                 placeholder="Gördüğün, duyduğun, tavsiye ettiğin bir şey…"
-                className="thin-scroll max-h-[76px] w-full resize-none rounded-2xl border border-white/10 bg-ink px-3 py-2 text-[12.5px] leading-snug text-white outline-none transition placeholder:text-mint/35 focus:border-sun/60"
+                className="thin-scroll max-h-[76px] w-full resize-none rounded-2xl border border-white/10 bg-ink px-3 py-2 text-[12.5px] leading-snug text-white outline-none transition placeholder:text-mint/70 focus:border-sun/60 focus:ring-2 focus:ring-sun/40"
               />
               <div className="mt-1.5 flex items-center gap-1.5">
                 <button
@@ -789,7 +796,9 @@ export default function SocialPanel({
         <ReportDialog targetType="post" targetId={reportPost.id} targetOwnerUid={reportPost.authorUid} targetLabel={reportPost.text.slice(0,40)} reporterUid={currentUid} onClose={() => setReportPost(null)} onReported={() => setActionError("Raporun alındı, inceleyeceğiz.")} />
       )}
       {groupsOpen && (
-        <GroupsPanel currentUid={currentUid} currentName={author()} blockedSet={blockedSet} isBlocked={isBlocked} initialGroupId={pendingGroupId} onClose={() => setGroupsOpen(false)} />
+        <Suspense fallback={<div className="fixed inset-0 z-[66] grid place-items-center bg-black/40"><Loader2 className="size-6 animate-spin text-leaf" aria-label="Yükleniyor" /></div>}>
+          <GroupsPanel key={groupsTarget ? JSON.stringify(groupsTarget) : "panel"} currentUid={currentUid} currentName={author()} blockedSet={blockedSet} isBlocked={isBlocked} initialTarget={groupsTarget} onClose={() => { setGroupsOpen(false); setGroupsTarget(null); }} />
+        </Suspense>
       )}
     </>
   );

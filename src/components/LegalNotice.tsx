@@ -47,7 +47,7 @@ export default function LegalNotice({ type, onClose }: LegalNoticeProps) {
         <p className="pr-12 text-[11px] font-semibold tracking-[0.15em] text-sun uppercase">Sürüm {LEGAL_VERSION}</p>
         <h2 id="account-legal-title" className="font-display mt-2 pr-12 text-2xl leading-tight">{document.title}</h2>
         <p id="account-legal-review" role="status" className="mt-3 inline-flex rounded-full border border-amber-200/20 bg-amber-100/10 px-3 py-1.5 text-[11px] font-semibold text-amber-100">{LEGAL_REVIEW_NOTICE}</p>
-        <p className="mt-3 text-[12px] text-mint/60">{document.updatedLine}</p>
+        <p className="mt-3 text-[12px] text-mint/70">{document.updatedLine}</p>
       </header>
 
       <div className="thin-scroll min-h-0 flex-1 overscroll-contain overflow-y-auto px-6 py-6 sm:px-7">

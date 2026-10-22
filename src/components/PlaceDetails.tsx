@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import {
   Ban,
   Bookmark,
@@ -29,6 +29,10 @@ import { VERIFICATION_LABELS, VERIFICATION_STATUSES, type VerificationStatus } f
 import ReportDialog from "./ReportDialog";
 import { advice } from "../utils/placeAdvice";
 import { buildGooglePlaceDirectionsUrl, buildYandexPlaceDirectionsUrl } from "../utils/mapLinks";
+import { friendlyDataError } from "../lib/firestoreValue";
+
+// P14: tarihçe listesi ve Overpass/Wikipedia kodu yalnız detay açılınca yüklenir.
+const NearbyHistory = lazy(() => import("./NearbyHistory"));
 
 interface Props {
   place: Place;
@@ -38,9 +42,11 @@ interface Props {
   canDelete?: boolean;
   onDelete?: () => Promise<boolean>;
   onVerify?: (status: VerificationStatus, note?: string) => Promise<void>;
+  /** Yakındaki tarihî yer listesinden bir yer açılınca. */
+  onOpenPlace?: (place: Place) => void;
 }
 
-export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDelete = false, onDelete, onVerify }: Props) {
+export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDelete = false, onDelete, onVerify, onOpenPlace }: Props) {
   const { photos: allPhotos, loading, error } = usePlaceGallery(place);
   const { savePlace, isSaved } = useCollections();
   const panelRef = usePanelAccess(true, onClose, true);
@@ -65,7 +71,7 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDele
       setVerifyNote("");
       setVerifyStatus("Doğrulaman kaydedildi. Teşekkürler!");
     } catch (error) {
-      setVerifyStatus((error as Error).message || "Doğrulama kaydedilemedi.");
+      setVerifyStatus(friendlyDataError(error, "Doğrulama kaydedilemedi."));
     } finally {
       setVerifyBusy(null);
     }
@@ -181,7 +187,7 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDele
                 if (!user || !place.authorUid) return;
                 if (!confirm(`${place.author} kullanıcısını engellemek istiyor musun?`)) return;
                 setBlocking(true);
-                try { await blockUser(place.authorUid, user.uid); setStatus("Kullanıcı engellendi."); } catch (e) { setStatus((e as Error).message); } finally { setBlocking(false); }
+                try { await blockUser(place.authorUid, user.uid); setStatus("Kullanıcı engellendi."); } catch (e) { setStatus(friendlyDataError(e, "Kullanıcı engellenemedi.")); } finally { setBlocking(false); }
               }} className="flex min-h-11 items-center gap-2 rounded-full border border-white/10 px-4 text-sm text-mint/70 disabled:opacity-50">
                 {blocking ? <Loader2 size={15} className="animate-spin" /> : <Ban size={15} />}Engelle
               </button>
@@ -191,6 +197,17 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDele
 
           {status && <p role="status" className="mt-2 text-[13px] text-sun">{status}</p>}
           <p className="mt-5 text-[15px] leading-[1.8] text-mint/90">{story}</p>
+          {place.historySource ? (
+            <p className="mt-2 text-[11px] leading-relaxed text-mint/70" data-testid="place-attribution">
+              Metin: <a href={place.historySource.url} target="_blank" rel="noreferrer" className="underline underline-offset-2">{place.historySource.name} · {place.historySource.title}</a> ({place.historySource.license}, özetlendi). Konum verisi © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="underline underline-offset-2">OpenStreetMap katkıcıları</a> (ODbL).
+            </p>
+          ) : place.dataSources?.length ? (
+            <p className="mt-2 text-[11px] leading-relaxed text-mint/70" data-testid="place-attribution">Kaynak: {place.dataSources.join(" · ")}</p>
+          ) : null}
+
+          <Suspense fallback={null}>
+            <NearbyHistory key={place.id} place={place} onOpen={onOpenPlace} />
+          </Suspense>
 
           <section aria-labelledby="freshness-title" className="mt-7 rounded-2xl border border-leaf/25 bg-white/[0.03] p-3.5">
             <h3 id="freshness-title" className="flex items-center gap-2 text-[13px] font-semibold"><Clock3 size={16} className="text-leaf" />Tazelik</h3>
@@ -219,7 +236,7 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDele
                     </button>
                   ))}
                 </div>
-                <label className="mt-2 block text-[11px] text-mint/60">
+                <label className="mt-2 block text-[11px] text-mint/70">
                   İsteğe bağlı not (max 280)
                   <input value={verifyNote} onChange={(event) => setVerifyNote(event.target.value)} maxLength={280} placeholder="Örn. giriş ücreti 200 TL oldu" className="mt-1 h-9 w-full rounded-lg border border-white/10 bg-ink px-2 text-[12px] text-mint outline-none focus:border-leaf/50" />
                 </label>
@@ -238,7 +255,7 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDele
 
           <section aria-labelledby="directions-title" className="mt-7 rounded-2xl border border-leaf/20 bg-white/[0.025] p-3.5">
             <h3 id="directions-title" className="flex items-center gap-2 text-[13px] font-semibold"><Navigation size={16} className="text-leaf" />Yol tarifi</h3>
-            <p className="mt-1 text-[12px] leading-relaxed text-mint/60">Atlasia açık kalır; rota yeni sekmede veya uygun harita uygulamasında açılır.</p>
+            <p className="mt-1 text-[12px] leading-relaxed text-mint/70">Atlasia açık kalır; rota yeni sekmede veya uygun harita uygulamasında açılır.</p>
             <div className="mt-3 grid grid-cols-2 gap-2">
               {googleMapsUrl && <a href={googleMapsUrl} target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-white px-3 text-center text-[13px] font-semibold text-[#1f2937]">Google Maps <ExternalLink size={14} /></a>}
               {yandexMapsUrl && <a href={yandexMapsUrl} target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#ffdf35] px-3 text-center text-[13px] font-semibold text-[#201d12]">Yandex Maps <ExternalLink size={14} /></a>}

@@ -1,0 +1,72 @@
+name: Firestore rules (Windows, Türkçe locale)
+
+# P5 kanıtı: emulator koşucusunun JVM'e verdiği İngilizce locale bayrakları,
+# Türkçe bölge ayarlı Windows'ta da kural testlerini çalıştırabilmeli.
+# Yalnız rules veya koşucu değiştiğinde (ve elle) çalışır; Linux CI'ı yerine geçmez.
+on:
+  pull_request:
+    paths:
+      - firestore.rules
+      - scripts/run-firestore-rules-tests.mjs
+      - tests/firestore.rules.test.ts
+      - vitest.rules.config.ts
+      - .github/workflows/rules-windows.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: atlasia-rules-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rules-windows:
+    name: Firestore rules tests on Windows (tr-TR)
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      # Türkçe makineyi taklit eder: her JVM varsayılan olarak tr-TR başlar.
+      # Koşucunun komut satırındaki -Duser.language=en bunu ezmelidir (P5 iddiası).
+      JAVA_TOOL_OPTIONS: -Duser.language=tr -Duser.country=TR
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Use Java 21 for the Firestore emulator
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Cache the pinned Firestore emulator
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/atlasia/firebase-emulators
+          key: firestore-emulator-${{ runner.os }}-1.22.0
+
+      - name: Switch the user locale to Turkish
+        shell: pwsh
+        run: |
+          Set-Culture tr-TR
+          Get-Culture | Format-List Name, DisplayName
+
+      - name: Install exact dependencies
+        run: npm ci
+
+      - name: Assert the JVM default locale is Turkish
+        shell: pwsh
+        run: |
+          $props = (java -XshowSettings:properties -version 2>&1 | Out-String)
+          $props -split "`n" | Select-String "user.language|user.country"
+          if ($props -notmatch "user\.language = tr") { throw "JVM varsayılan dili tr değil; P5 senaryosu kurulamadı." }
+
+      - name: Firestore security rules tests
+        run: npm run test:rules:emulator

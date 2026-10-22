@@ -1,5 +1,16 @@
-import type { AtlasTrackStop } from "../types";
+/**
+ * Yürüyüş izi işleme — P17 boru hattının saf (React'siz, ağsız) çekirdeği.
+ *
+ * Sözleşme (ROADMAP §5.6): **durak tespiti polyline'dan SONRA yapılamaz** —
+ * `encodePolyline` yalnız `[lng, lat]` kodlar, zaman taşımaz. Tespit kayıt
+ * sırasında, tam çözünürlüklü akışta yapılır; bu dosya o akışın karar
+ * fonksiyonlarını ve kayıt sonundaki taslak üretimini tutar.
+ *
+ * Tüm eşikler `TRACK_DETECTION` içinde **isimli** durur; sihirli sayı yok.
+ */
+import type { AtlasRoute, AtlasTrack, AtlasTrackStop, RouteLeg, RouteStop } from "../types";
 import { haversineKm } from "./geo";
+import { encodePolyline } from "./polyline";
 
 export interface TrackPoint {
   lng: number;
@@ -8,51 +19,237 @@ export interface TrackPoint {
   accuracy: number;
 }
 
-export interface DwellState {
-  candidate: { startedAt: number; lastAt: number; latTotal: number; lngTotal: number; count: number; accuracyTotal: number } | null;
-  stops: AtlasTrackStop[];
+export interface DwellCandidate {
+  startedAt: number;
+  lastAt: number;
+  /**
+   * Adayın **ilk** ölçümü. Yarıçap bu sabit çapaya göre ölçülür: yürüyen bir
+   * kullanıcının ortalaması kaydıkça aday "yanında taşınıp" sahte durak
+   * üretmesin (sürüklenen merkez hatası).
+   */
+  anchorLat: number;
+  anchorLng: number;
+  latTotal: number;
+  lngTotal: number;
+  count: number;
+  accuracyTotal: number;
 }
 
-const DWELL_MIN_MS = 3 * 60 * 1000;
+export interface DwellState {
+  candidate: DwellCandidate | null;
+  stops: AtlasTrackStop[];
+  /**
+   * Sıçrama denetiminde referans alınan son **kabul edilmiş** ölçüm.
+   * Opsiyonel: eski çağıranlar `{ candidate: null, stops: [] }` ile başlatabilir.
+   */
+  lastAccepted?: TrackPoint | null;
+  /** Art arda reddedilen sıçrama sayısı (ısrarcı sıçramada referansı tazelemek için). */
+  spikeStreak?: number;
+}
 
-function centerOf(candidate: NonNullable<DwellState["candidate"]>) {
+/**
+ * Durak tespiti ve sadeleştirme eşikleri — tek konfigürasyon.
+ *
+ * Gerekçeler:
+ * - `dwellMinMs = 3 dk`: kısa molalar (fotoğraf, trafik ışığı) durak değildir;
+ *   3 dk, "burada gerçekten durdum" eşiğidir (P2 saha deneyimi + ROADMAP Adım 4).
+ * - `dwellMaxAccuracyM = 50`: ±50 m'den kötü ölçüm "duruyorum" sinyali sayılmaz;
+ *   kentsel yansıma ve tünel çıkışı sahte durak üretirdi.
+ * - `dwellRadiusM = 40…100`: yarıçap ortalama doğrulukla ölçeklenir (kötü doğruluk
+ *   daha geniş yarıçap hak eder); alt sınır 40 m GPS gürültüsünü yutar, üst sınır
+ *   100 m "aynı noktada durma" anlamını korur.
+ * - `spike.*`: yürüyüşte 25 km/h üstü hız ve 60 m üstü tek atlama GPS sıçramasıdır.
+ *   Sıçrama, süren bir durağı **bölmemeli** ve yeni sahte durak **açmamalı**.
+ * - `maxFixGapMs = 5 dk`: iki ölçüm arasındaki boşluk bundan uzunsa "sürekli
+ *   buradaydım" kanıtı yoktur. Boşluk boyunca durak süresi **sayılmaz**; aksi
+ *   hâlde tünel/çekim boşluğu sahte durak üretir (sinyal kaybı fixture'ı).
+ * - `simplifyToleranceM = 7`: 1 km'lik yürüyüşte geometri sapması sahada <10 m
+ *   ölçüldü; 7 m tolerans bu bütçenin içinde kalır ve jitter'ı eler.
+ */
+export const TRACK_DETECTION = {
+  dwellMinMs: 3 * 60 * 1000,
+  dwellMaxAccuracyM: 50,
+  dwellRadiusM: { min: 40, max: 100 },
+  spike: { minJumpM: 60, maxSpeedKmh: 25, streakResync: 2 },
+  maxFixGapMs: 5 * 60 * 1000,
+  simplifyToleranceM: 7,
+} as const;
+
+/** Geriye uyumluluk: eski ad (P2 sözleşmesi). */
+export const TRACK_DWELL_MAX_ACCURACY_M = TRACK_DETECTION.dwellMaxAccuracyM;
+
+/**
+ * Bir izde saklanabilecek en fazla durak sayısı. `firestore.rules`
+ * (`validTrackDocument`) `stops.size() <= 100` ister; kayıt sırasında sınır
+ * uygulanmazsa uzun bir yürüyüşün izi **yazma anında reddedilir** ve kullanıcı
+ * kaydını kaybeder. Bu yüzden sınır istemcide de uygulanır (ilk 100 durak).
+ */
+export const TRACK_MAX_STOPS = 100;
+
+/** Kurala göre bir izin polyline alanı en fazla bu kadar karakter olabilir. */
+export const TRACK_MAX_POLYLINE_CHARS = 250_000;
+
+export function capTrackStops(stops: AtlasTrackStop[], max = TRACK_MAX_STOPS): AtlasTrackStop[] {
+  return stops.length <= max ? stops : stops.slice(0, max);
+}
+
+function newCandidate(point: TrackPoint): DwellCandidate {
+  return {
+    startedAt: point.timestamp,
+    lastAt: point.timestamp,
+    anchorLat: point.lat,
+    anchorLng: point.lng,
+    latTotal: point.lat,
+    lngTotal: point.lng,
+    count: 1,
+    accuracyTotal: point.accuracy,
+  };
+}
+
+function centerOf(candidate: DwellCandidate) {
   return { lat: candidate.latTotal / candidate.count, lng: candidate.lngTotal / candidate.count };
+}
+
+/**
+ * GPS sıçraması mı? Aynı ölçüm serisi içinde iki nokta arasındaki mesafe
+ * `minJumpM`'yi aşıyor **ve** bu mesafeyi kat etmek `maxSpeedKmh`'den hızlı
+ * gerekiyorsa nokta gerçek bir hareket değil, sıçramadır.
+ *
+ * Zaman farkı ≤ 0 ise (saat geri sıçraması) hız hesaplanamaz: nokta sıçrama
+ * sayılmaz, yalnız referans güncellenir.
+ */
+export function isGpsSpike(previous: TrackPoint | null | undefined, next: TrackPoint): boolean {
+  if (!previous) return false;
+  const jumpMeters = haversineKm(previous.lat, previous.lng, next.lat, next.lng) * 1000;
+  if (jumpMeters < TRACK_DETECTION.spike.minJumpM) return false;
+  const elapsedMs = next.timestamp - previous.timestamp;
+  if (elapsedMs <= 0) return false;
+  const speedKmh = (jumpMeters / 1000) / (elapsedMs / 3_600_000);
+  return speedKmh > TRACK_DETECTION.spike.maxSpeedKmh;
+}
+
+/**
+ * Geometri tarafındaki sıçrama filtresi. Durak tespiti sıçramayı zaten yok
+ * sayar; **çizgi** de aynı korumayı hak eder: 400 m'lik tek bir aykırı ölçüm
+ * aksi hâlde sadeleştirilmiş izi ve dolayısıyla mesafeyi şişirir.
+ *
+ * Israrcı sıçrama (`streakResync` kez üst üste) gerçek yer değiştirme sayılır
+ * ve referans tazelenir — kullanıcı gerçekten taşınmış olabilir.
+ */
+export function removeGpsSpikes(points: TrackPoint[]): TrackPoint[] {
+  if (points.length <= 2) return [...points];
+  const kept: TrackPoint[] = [points[0]];
+  let streak = 0;
+  for (let index = 1; index < points.length; index += 1) {
+    const last = kept[kept.length - 1];
+    if (isGpsSpike(last, points[index])) {
+      streak += 1;
+      if (streak < TRACK_DETECTION.spike.streakResync) continue;
+      streak = 0;
+    } else {
+      streak = 0;
+    }
+    kept.push(points[index]);
+  }
+  return kept;
 }
 
 function finishDwell(state: DwellState): DwellState {
   const candidate = state.candidate;
-  if (!candidate || candidate.lastAt - candidate.startedAt < DWELL_MIN_MS) return { candidate: null, stops: state.stops };
+  if (!candidate || candidate.lastAt - candidate.startedAt < TRACK_DETECTION.dwellMinMs) {
+    return { ...state, candidate: null };
+  }
   const center = centerOf(candidate);
   return {
+    ...state,
     candidate: null,
-    stops: [...state.stops, {
-      startedAt: candidate.startedAt,
-      endedAt: candidate.lastAt,
+    stops: capTrackStops([...state.stops, {
+      // `firestore.rules` `is int` ister: GPS zaman damgası kesirli gelebilir.
+      startedAt: Math.round(candidate.startedAt),
+      endedAt: Math.round(candidate.lastAt),
       lat: center.lat,
       lng: center.lng,
       pointCount: candidate.count,
-    }],
+    }]),
   };
 }
 
-/** Her watchPosition callback'inde çağrılır; dwell polyline sadeleştirmesinden önce saptanır. */
+/**
+ * İzin başlangıç/bitiş zamanı. GPS saati geri sıçrayabilir (`position.timestamp`
+ * monoton değil); ham ilk/son nokta kullanılırsa `endedAt < startedAt` olur ve
+ * kural (`endedAt >= startedAt`) belgeyi reddeder. Bu yüzden min/max kullanılır.
+ */
+export function trackWindow(points: Array<{ timestamp: number }>): { startedAt: number; endedAt: number } {
+  let startedAt = Number.POSITIVE_INFINITY;
+  let endedAt = Number.NEGATIVE_INFINITY;
+  for (const point of points) {
+    if (point.timestamp < startedAt) startedAt = point.timestamp;
+    if (point.timestamp > endedAt) endedAt = point.timestamp;
+  }
+  if (!Number.isFinite(startedAt) || !Number.isFinite(endedAt)) return { startedAt: 0, endedAt: 0 };
+  return { startedAt, endedAt };
+}
+
+/**
+ * Her `watchPosition` callback'inde çağrılır; dwell polyline sadeleştirmesinden
+ * **önce** saptanır.
+ *
+ * Sıçrama koruması: tek bir aykırı ölçüm ne süren adayı kapatır ne de yeni aday
+ * açar — böylece 6 dakikalık gerçek mola, ortasındaki sıçrama yüzünden iki kısa
+ * molaya bölünmez. Art arda `streakResync` sıçrama gelirse (dünya gerçekten
+ * değişmiş olabilir) referans tazelenir.
+ */
 export function recordDwellPoint(state: DwellState, point: TrackPoint): DwellState {
+  if (!Number.isFinite(point.accuracy) || point.accuracy > TRACK_DETECTION.dwellMaxAccuracyM) return state;
+
+  const previous = state.lastAccepted ?? null;
+  if (isGpsSpike(previous, point)) {
+    const streak = (state.spikeStreak ?? 0) + 1;
+    if (streak < TRACK_DETECTION.spike.streakResync) {
+      // Aday korunur, referans korunur: sıçrama tamamen yok sayılır.
+      return { ...state, spikeStreak: streak };
+    }
+    // Israrcı sıçrama: referansı tazele, süren adayı bozma.
+    return { ...state, lastAccepted: point, spikeStreak: 0 };
+  }
+
+  // Kanıtsız aralık: iki kabul edilmiş ölçüm arasında `maxFixGapMs`'den uzun
+  // boşluk varsa süren aday bu boşluk boyunca uzatılamaz. Boşluktan önceki
+  // (kanıtlı) kısım kapatılır, yeni aday bu ölçümle başlar.
+  if (state.candidate && previous && point.timestamp - previous.timestamp > TRACK_DETECTION.maxFixGapMs) {
+    const finalized = finishDwell(state);
+    return {
+      ...finalized,
+      candidate: newCandidate(point),
+      lastAccepted: point,
+      spikeStreak: 0,
+    };
+  }
+
   const candidate = state.candidate;
   if (!candidate) {
     return {
       ...state,
-      candidate: { startedAt: point.timestamp, lastAt: point.timestamp, latTotal: point.lat, lngTotal: point.lng, count: 1, accuracyTotal: point.accuracy },
+      candidate: newCandidate(point),
+      lastAccepted: point,
+      spikeStreak: 0,
     };
   }
 
-  const center = centerOf(candidate);
-  const radiusMeters = Math.max(40, Math.min(100, (candidate.accuracyTotal / candidate.count + point.accuracy) / 2));
-  const fromCenterMeters = haversineKm(center.lat, center.lng, point.lat, point.lng) * 1000;
+  const meanAccuracy = candidate.accuracyTotal / candidate.count;
+  // Yarıçap sabit çapaya göre: ortalama doğrulukla ölçeklenir, 40–100 m arasında.
+  const radiusMeters = Math.max(
+    TRACK_DETECTION.dwellRadiusM.min,
+    Math.min(TRACK_DETECTION.dwellRadiusM.max, (meanAccuracy + point.accuracy) / 2),
+  );
+  const fromCenterMeters = haversineKm(candidate.anchorLat, candidate.anchorLng, point.lat, point.lng) * 1000;
   if (fromCenterMeters > radiusMeters) {
     const finalized = finishDwell(state);
     return {
       ...finalized,
-      candidate: { startedAt: point.timestamp, lastAt: point.timestamp, latTotal: point.lat, lngTotal: point.lng, count: 1, accuracyTotal: point.accuracy },
+      candidate: newCandidate(point),
+      lastAccepted: point,
+      spikeStreak: 0,
     };
   }
   return {
@@ -65,6 +262,8 @@ export function recordDwellPoint(state: DwellState, point: TrackPoint): DwellSta
       count: candidate.count + 1,
       accuracyTotal: candidate.accuracyTotal + point.accuracy,
     },
+    lastAccepted: point,
+    spikeStreak: 0,
   };
 }
 
@@ -89,10 +288,13 @@ function segmentDistanceMeters(point: [number, number], start: [number, number],
   return Math.hypot(px - (sx + projection * dx), py - (sy + projection * dy));
 }
 
-/** Douglas–Peucker sadeleştirmesi; aralık metre cinsinden ve uç noktalar korunur. */
-export function simplifyTrack(points: TrackPoint[], toleranceMeters = 7): [number, number][] {
-  if (points.length <= 2) return points.map((point): [number, number] => [point.lng, point.lat]);
+/** DP'nin tutma maskesi: hangi kaynak noktalar sadeleşmiş çizgide köşe olur. */
+function douglasPeuckerKeep(points: TrackPoint[], toleranceMeters: number): Uint8Array {
   const keep = new Uint8Array(points.length);
+  if (points.length <= 2) {
+    keep.fill(1);
+    return keep;
+  }
   keep[0] = 1;
   keep[points.length - 1] = 1;
   const stack: [number, number][] = [[0, points.length - 1]];
@@ -117,6 +319,12 @@ export function simplifyTrack(points: TrackPoint[], toleranceMeters = 7): [numbe
       stack.push([startIndex, farthest], [farthest, endIndex]);
     }
   }
+  return keep;
+}
+
+/** Douglas–Peucker sadeleştirmesi; aralık metre cinsinden ve uç noktalar korunur. */
+export function simplifyTrack(points: TrackPoint[], toleranceMeters: number = TRACK_DETECTION.simplifyToleranceM): [number, number][] {
+  const keep = douglasPeuckerKeep(points, toleranceMeters);
   return points.flatMap((point, index) => keep[index] ? [[point.lng, point.lat] as [number, number]] : []);
 }
 
@@ -128,4 +336,320 @@ export function simplifiedDistanceKm(coords: [number, number][]): number {
     distance += haversineKm(lat1, lng1, lat2, lng2);
   }
   return Math.round(distance * 100) / 100;
+}
+
+/** Sadeleştirmenin ölçülebilir sözleşmesi: kaç nokta atıldı, sapma ne kadar? */
+export interface SimplificationStats {
+  coords: [number, number][];
+  /**
+   * `coords[k]` köşesinin kaynak noktalar dizisindeki indeksi (`keptIndices[k]`).
+   * Zaman bilgisi polyline'da taşınmadığı için durak → köşe eşlemesi ancak bu
+   * karşılıkla yapılabilir (durak bazlı bacak bölme).
+   */
+  keptIndices: number[];
+  keptCount: number;
+  removedCount: number;
+  /** Atılan noktaların sadeleşmiş çizgiye en büyük dik uzaklığı (m). */
+  maxDeviationM: number;
+  /** Ham (jitter'lı) toplam uzunluk — yalnız teşhis; mesafe iddiası değildir. */
+  rawLengthKm: number;
+  simplifiedLengthKm: number;
+}
+
+/** Atılan noktanın çoklu çizgiye en kısa mesafesi (m). */
+function distanceToPolylineM(point: [number, number], coords: [number, number][]): number {
+  if (coords.length === 0) return Number.POSITIVE_INFINITY;
+  if (coords.length === 1) {
+    return haversineKm(coords[0][1], coords[0][0], point[1], point[0]) * 1000;
+  }
+  let best = Number.POSITIVE_INFINITY;
+  for (let index = 1; index < coords.length; index += 1) {
+    const distance = segmentDistanceMeters(point, coords[index - 1], coords[index]);
+    if (distance < best) best = distance;
+  }
+  return best;
+}
+
+/**
+ * Dolu sadeleştirme: DP çıktısı + politika ölçümleri.
+ *
+ * Epsilon politikası: `maxDeviationM <= toleranceM` **sözleşmedir** (DP'nin
+ * tanımı) ve testle sabitlenir. Uzunluk tarafında ham jitter'lı toplam
+ * karşılaştırma anlamlı değildir (ROADMAP §7-D: jitter mesafeyi %20–100 şişirir);
+ * bu yüzden `simplifiedLengthKm` gerçek mesafe iddiasıdır, `rawLengthKm` yalnız
+ * teşhis alanıdır.
+ */
+export function simplifyTrackWithStats(
+  points: TrackPoint[],
+  toleranceMeters: number = TRACK_DETECTION.simplifyToleranceM,
+): SimplificationStats {
+  const keep = douglasPeuckerKeep(points, toleranceMeters);
+  const keptIndices: number[] = [];
+  const coords: [number, number][] = [];
+  points.forEach((point, index) => {
+    if (keep[index]) {
+      keptIndices.push(index);
+      coords.push([point.lng, point.lat]);
+    }
+  });
+  const kept = new Set(coords.map((coord) => `${coord[0].toFixed(7)},${coord[1].toFixed(7)}`));
+  let maxDeviationM = 0;
+  let removedCount = 0;
+  for (const point of points) {
+    const key = `${point.lng.toFixed(7)},${point.lat.toFixed(7)}`;
+    if (kept.has(key)) continue;
+    removedCount += 1;
+    const deviation = distanceToPolylineM([point.lng, point.lat], coords);
+    if (deviation > maxDeviationM) maxDeviationM = deviation;
+  }
+  const rawLengthKm = Math.round(points.reduce((total, point, index) => (
+    index === 0 ? 0 : total + haversineKm(points[index - 1].lat, points[index - 1].lng, point.lat, point.lng)
+  ), 0) * 100) / 100;
+  return {
+    coords,
+    keptIndices,
+    keptCount: coords.length,
+    removedCount,
+    maxDeviationM: Math.round(maxDeviationM * 10) / 10,
+    rawLengthKm,
+    simplifiedLengthKm: simplifiedDistanceKm(coords),
+  };
+}
+
+/* ─────────────────── Taslak rota üretimi (saf) ─────────────────── */
+
+function formatClock(timestamp: number): string {
+  const date = new Date(timestamp);
+  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+}
+
+function stopToRouteStop(stop: AtlasTrackStop, index: number, name: string | null): RouteStop {
+  const durationMinutes = Math.max(0, Math.round((stop.endedAt - stop.startedAt) / 60_000));
+  return {
+    order: index + 1,
+    name: name?.trim() || `Durak ${index + 1}`,
+    type: "other",
+    lat: stop.lat,
+    lng: stop.lng,
+    startTime: formatClock(stop.startedAt),
+    endTime: formatClock(stop.endedAt),
+    durationMinutes,
+    description: `Kayıt sırasında yaklaşık ${durationMinutes} dakika burada durdun.`,
+    // Dürüst gerekçe: uydurma "öneri" yok, yalnız kayıttan ölçülen süre.
+    aiReason: `Senin kaydından: burada ${durationMinutes} dakika durdun.`,
+    tips: [],
+    isCommunityPin: false,
+    pinId: null,
+    category: "Kayıtlı iz",
+    imageUrl: null,
+    source: "atlasia",
+  };
+}
+
+export interface TrackDraftInput {
+  /** Kayıt sırasında toplanan tam çözünürlüklü noktalar (zaman damgalı). */
+  points: TrackPoint[];
+  /** Kayıt sırasında her callback'te işlenmiş dwell durumu. */
+  dwell: DwellState;
+  uid: string;
+  /** İz dokümanı kimliği; taslak rota kimliği bundan türetilir. */
+  trackId: string;
+  /** Durakların ters coğrafi adları (ağ çağrısı çağıranda kalır). */
+  stopNames?: Array<string | null>;
+  /** Testler için sabit zaman. */
+  now?: number;
+}
+
+export interface TrackDraftResult {
+  track: AtlasTrack;
+  route: AtlasRoute;
+  stats: SimplificationStats;
+}
+
+/**
+ * Bir durağın sadeleşmiş köşelerdeki aralığı. Köşe zamanları `keptTimes`
+ * (köşenin kaynak ölçümünün zaman damgası); durak penceresiyle kesişen ilk ve
+ * son köşe aralığı verir. Pencereye hiç köşe düşmüyorsa (sadeleştirme duruş
+ * sırasındaki tüm köşeleri atmış olabilir) zamanca en yakın köşe seçilir;
+ * aralık tek köşeye iner ama bacak sınırı yine de tanımlı kalır.
+ *
+ * GPS saati monoton olmayabilir; bu yüzden ikili arama yerine doğrusal tarama
+ * ile ilk/son eşleşme bulunur.
+ */
+export function vertexRangeForStop(
+  stop: Pick<AtlasTrackStop, "startedAt" | "endedAt">,
+  keptTimes: readonly number[],
+): { startPointIndex: number; endPointIndex: number } | null {
+  if (keptTimes.length === 0) return null;
+  let first = -1;
+  let last = -1;
+  keptTimes.forEach((time, index) => {
+    if (time >= stop.startedAt && time <= stop.endedAt) {
+      if (first < 0) first = index;
+      last = index;
+    }
+  });
+  if (first >= 0) return { startPointIndex: first, endPointIndex: last };
+  const middle = (stop.startedAt + stop.endedAt) / 2;
+  let nearest = 0;
+  keptTimes.forEach((time, index) => {
+    if (Math.abs(time - middle) < Math.abs(keptTimes[nearest] - middle)) nearest = index;
+  });
+  return { startPointIndex: nearest, endPointIndex: nearest };
+}
+
+/**
+ * Durak-durak bacak bölme: sadeleşmiş geometri, durakların **bitiş**
+ * köşelerinden bölünür. Ardışık bacaklar sınır köşesini paylaşır; çizgi
+ * kesintisiz kalır ve bacak mesafelerinin toplamı toplam mesafeye eşittir.
+ * Bacak süresi plan katsayısıyla değil, kayıttaki gerçek zamanlardan ölçülür
+ * (önceki durağın bitişi → sonraki durağın başlangıcı; uçlarda iz penceresi).
+ *
+ * İndeks aralığı taşımayan (eski) duraklar bölme noktası üretmez; duraksız
+ * izde tek bacak çıkar — eski davranışla birebir aynı.
+ */
+export function buildStopLegs(
+  coords: [number, number][],
+  stops: readonly AtlasTrackStop[],
+  windowMs: { startedAt: number; endedAt: number },
+  trackId: string,
+): RouteLeg[] {
+  if (coords.length === 0) return [];
+  const lastIndex = coords.length - 1;
+  const ranged = stops.filter(
+    (stop): stop is AtlasTrackStop & { endPointIndex: number } =>
+      typeof stop.endPointIndex === "number" && Number.isFinite(stop.endPointIndex),
+  );
+  // Sınırlar: artan, tekil, [0, son) aralığında. Son köşedeki sınır bacak üretmez.
+  const boundaries: { at: number; stopIndex: number }[] = [];
+  ranged.forEach((stop, stopIndex) => {
+    const at = Math.max(0, Math.min(lastIndex, Math.round(stop.endPointIndex)));
+    if (at >= lastIndex && lastIndex > 0) return;
+    if (boundaries.some((boundary) => boundary.at === at)) return;
+    boundaries.push({ at, stopIndex });
+  });
+  boundaries.sort((a, b) => a.at - b.at);
+
+  const legs: RouteLeg[] = [];
+  let from = 0;
+  let fromTime = windowMs.startedAt;
+  const pushLeg = (to: number, toTime: number) => {
+    const slice = coords.slice(from, to + 1);
+    if (slice.length >= 2) {
+      legs.push({
+        id: `leg-${trackId}-${legs.length + 1}`,
+        coords: slice,
+        mode: "walking",
+        distanceKm: simplifiedDistanceKm(slice),
+        durationMinutes: Math.max(0, Math.round((toTime - fromTime) / 60_000)),
+      });
+    }
+    from = to;
+    fromTime = toTime;
+  };
+  boundaries.forEach(({ at, stopIndex }) => {
+    pushLeg(at, ranged[stopIndex].startedAt);
+    // Sonraki bacak durağın bitişinde başlar: duruş süresi bacağa yazılmaz.
+    fromTime = ranged[stopIndex].endedAt;
+  });
+  pushLeg(lastIndex, windowMs.endedAt);
+
+  if (legs.length === 0) {
+    // 2'den az köşe: çizilebilecek bacak yok; eski tek-bacak şekli korunur.
+    return [{
+      id: `leg-${trackId}`,
+      coords,
+      mode: "walking",
+      distanceKm: simplifiedDistanceKm(coords),
+      durationMinutes: Math.max(1, Math.round((windowMs.endedAt - windowMs.startedAt) / 60_000)),
+    }];
+  }
+  // Tek bacak kaldıysa eski kimlik biçimi korunur (geriye uyum).
+  if (legs.length === 1) legs[0] = { ...legs[0], id: `leg-${trackId}` };
+  return legs;
+}
+
+/**
+ * Kayıt sonu: özel `tracks` belgesi + dürüst metinli taslak rota.
+ *
+ * Duraklar, sadeleşmiş köşelerdeki indeks aralıklarıyla saklanır ve rota
+ * **durak-durak bacaklara** bölünür (`buildStopLegs`). Eski izler aralık
+ * taşımaz; bu fonksiyon yeni kayıtlara aralığı her zaman yazar.
+ */
+export function buildTrackDraft(input: TrackDraftInput): TrackDraftResult {
+  const { points, uid, trackId } = input;
+  if (points.length === 0) throw new Error("Henüz konum ölçümü alınmadı; taslak üretilemez.");
+  const dwell = finishDwellDetection(input.dwell);
+  // Geometri ve doğruluk istatistikleri sıçramalardan arındırılmış seriden:
+  // tek bir aykırı ölçüm mesafeyi/çizgiyi şişirmemeli.
+  const geometryPoints = removeGpsSpikes(points);
+  const usedPoints = geometryPoints.length >= 2 ? geometryPoints : points;
+  const stats = simplifyTrackWithStats(usedPoints);
+  const window = trackWindow(usedPoints);
+  // Kural `startedAt`/`endedAt` için `int` ister; kesirli zaman damgası yuvarlanır.
+  const startedAt = Math.round(window.startedAt);
+  const endedAt = Math.round(window.endedAt);
+  const polyline = encodePolyline(stats.coords);
+  if (polyline.length > TRACK_MAX_POLYLINE_CHARS) {
+    throw new Error("İz çok uzun; sadeleştirilmiş çizgi kayıt sınırını aşıyor.");
+  }
+  // Durak → köşe aralığı: köşe zamanları kaynak ölçümlerden gelir (keptIndices).
+  const keptTimes = stats.keptIndices.map((index) => usedPoints[index]?.timestamp ?? Number.NaN);
+  const stops = capTrackStops(dwell.stops).map((stop) => {
+    const range = vertexRangeForStop(stop, keptTimes);
+    return range ? { ...stop, ...range } : stop;
+  });
+  const meanMeters = Math.round((usedPoints.reduce((sum, point) => sum + point.accuracy, 0) / usedPoints.length) * 10) / 10;
+  const maxMeters = Math.round(usedPoints.reduce((max, point) => Math.max(max, point.accuracy), 0) * 10) / 10;
+
+  const track: AtlasTrack = {
+    id: trackId,
+    authorUid: uid,
+    startedAt,
+    endedAt,
+    distanceKm: stats.simplifiedLengthKm,
+    polyline,
+    stops,
+    accuracy: { sampleCount: usedPoints.length, meanMeters, maxMeters },
+  };
+
+  const legs = buildStopLegs(stats.coords, stops, { startedAt, endedAt }, trackId);
+
+  const routeStops = stops.map((stop, index) => stopToRouteStop(stop, index, input.stopNames?.[index] ?? null));
+  const route: AtlasRoute = {
+    id: `route-${trackId.replace(/^track-/, "")}`,
+    routeTitle: "Kayıtlı yürüyüş",
+    routeSummary: `Yürüyüş kaydından oluşturulan özel taslak. Yaklaşık ${stats.simplifiedLengthKm} km; süre, çizgi ve duraklar cihaz kaydından türetildi.`,
+    totalDurationHours: Math.round((endedAt - startedAt) / 360_000) / 10,
+    totalDistanceKm: stats.simplifiedLengthKm,
+    transport: "walking",
+    vibe: "Yürüyüş kaydı",
+    days: [{
+      dayNumber: 1,
+      title: "Yürüyüş",
+      summary: "Kayıt sırasında tespit edilen duraklar.",
+      stops: routeStops,
+      polyline,
+      legs,
+    }],
+    weatherNote: null,
+    alternatives: [],
+    createdAt: input.now ?? Date.now(),
+    origin: stops[0] ? { lat: stops[0].lat, lng: stops[0].lng } : { lat: points[0].lat, lng: points[0].lng },
+  };
+
+  return { track, route, stats };
+}
+
+/** Firestore kurallarının iz sınırlarını önceden denetler (yazmadan önce net hata). */
+export function trackRuleViolation(track: AtlasTrack): string | null {
+  if (!track.id.trim()) return "İz kimliği boş.";
+  if (!track.authorUid.trim()) return "İz sahibi belirsiz.";
+  if (track.endedAt < track.startedAt) return "İz bitişi başlangıcından önce.";
+  if (!Number.isFinite(track.distanceKm) || track.distanceKm < 0 || track.distanceKm > 100_000) return "İz mesafesi geçersiz.";
+  if (track.polyline.length > TRACK_MAX_POLYLINE_CHARS) return "İz çizgisi kayıt sınırını aşıyor.";
+  if (track.stops.length > TRACK_MAX_STOPS) return "İzde çok fazla durak var.";
+  if (!Number.isFinite(track.accuracy.meanMeters) || track.accuracy.meanMeters < 0) return "Doğruluk ortalaması geçersiz.";
+  if (track.accuracy.maxMeters < track.accuracy.meanMeters) return "En kötü doğruluk ortalamadan küçük olamaz.";
+  return null;
 }

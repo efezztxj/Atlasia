@@ -10,9 +10,10 @@ interface Props {
   onMarkAllRead: () => void;
   onMarkRead: (id: string) => void;
   onOpenGroup?: (groupId: string) => void;
+  onOpenFriends?: () => void;
 }
 
-export default function NotificationsPanel({ notifications, unreadCount, onClose, onMarkAllRead, onMarkRead, onOpenGroup }: Props) {
+export default function NotificationsPanel({ notifications, unreadCount, onClose, onMarkAllRead, onMarkRead, onOpenGroup, onOpenFriends }: Props) {
   const panelRef = usePanelAccess(true, onClose);
   return (
     <aside ref={panelRef} aria-label="Bildirimler" className="mobile-notifications fixed inset-0 z-[60] flex justify-end bg-black/35 md:inset-auto md:right-4 md:top-[88px] md:bg-transparent">
@@ -40,7 +41,10 @@ export default function NotificationsPanel({ notifications, unreadCount, onClose
               <div className="mt-2 flex items-center gap-3">
                 {!n.read && <button type="button" onClick={() => onMarkRead(n.id)} className="text-[11px] text-sun">Okundu işaretle</button>}
                 {(n.type === "group_invite" || n.type === "group_message") && n.targetId && onOpenGroup && (
-                  <button type="button" onClick={() => onOpenGroup(n.targetId as string)} className="text-[11px] text-leaf">Grubu aç</button>
+                  <button type="button" onClick={() => onOpenGroup(n.targetId as string)} className="text-[11px] text-leaf">{n.type === "group_invite" ? "Daveti gör" : "Grubu aç"}</button>
+                )}
+                {(n.type === "friend_request" || n.type === "friend_accepted") && onOpenFriends && (
+                  <button type="button" onClick={onOpenFriends} className="text-[11px] text-leaf">{n.type === "friend_request" ? "İsteği gör" : "Arkadaşlar"}</button>
                 )}
               </div>
             </article>

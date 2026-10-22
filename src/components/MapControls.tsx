@@ -1,4 +1,5 @@
-import { Globe2, Locate, RotateCcw, Tags, ZoomIn, ZoomOut } from "lucide-react";
+import { CloudSun, Globe2, Locate, RotateCcw, Tags, ZoomIn, ZoomOut } from "lucide-react";
+import { useEffect, useState } from "react";
 import { cn } from "../utils/cn";
 
 interface Props {
@@ -61,6 +62,18 @@ export default function MapControls({
   labels,
   terrain,
 }: Props) {
+  const [weather, setWeather] = useState(false);
+  useEffect(() => {
+    // Hava katmanı parçası yüklenemezse (ağ kopuk) düğme kapalıya döner.
+    const unavailable = () => setWeather(false);
+    window.addEventListener("atlasia:weather-unavailable", unavailable);
+    return () => window.removeEventListener("atlasia:weather-unavailable", unavailable);
+  }, []);
+  const toggleWeather = () => {
+    const next = !weather;
+    setWeather(next);
+    window.dispatchEvent(new CustomEvent("atlasia:weather-toggle", { detail: next }));
+  };
   return (
     <div
       role="toolbar"
@@ -86,6 +99,9 @@ export default function MapControls({
       </RoundBtn>
       <RoundBtn label="3B arazi" onClick={onToggleTerrain} active={terrain} pressed={terrain}>
         <Globe2 className="size-[18px]" />
+      </RoundBtn>
+      <RoundBtn label="Hava katmanı" onClick={toggleWeather} active={weather} pressed={weather}>
+        <CloudSun className="size-[18px]" />
       </RoundBtn>
     </div>
   );

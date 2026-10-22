@@ -3,6 +3,7 @@ import type { FeedPost, Place, Story, UploadPhotoKind } from "../types";
 import { withoutSeedPosts, withoutSeedStories } from "../lib/contentIntegrity";
 import { compressImage } from "../utils/image";
 import { isStoryAlive } from "../utils/time";
+import { toggleLikedBy } from "../utils/likes";
 import { storageGet, storageSet } from "../utils/storage";
 
 const PLACES_KEY = "atlasia.places.v2";
@@ -109,15 +110,16 @@ export function useAtlasData(uid: string) {
     return posts.find((post) => post.id === postId)?.replies ?? [];
   }, [posts]);
 
+  /**
+   * P16 #2: sayaç tek yerden türetilir — `totalLikes(post)` = içerik tabanı
+   * (`likes`) + benzersiz `likedBy` üyeleri. Bu yüzden burada `likes`
+   * **artırılmaz**; artırmak aynı beğeniyi iki kez sayardı. `likedBy` her
+   * durumda tekilleştirilir ki eski/bozuk kayıtlar sayacı şişirmesin.
+   */
   const toggleLike = useCallback(async (postId: string) => {
     const who = me.current;
     setPosts((prev) =>
-      prev.map((p) => {
-        if (p.id !== postId) return p;
-        const likedBy = p.likedBy ?? [];
-        const has = likedBy.includes(who);
-        return { ...p, likedBy: has ? likedBy.filter((x) => x !== who) : [...likedBy, who] };
-      }),
+      prev.map((p) => (p.id === postId ? { ...p, likedBy: toggleLikedBy(p.likedBy, who) } : p)),
     );
   }, []);
 

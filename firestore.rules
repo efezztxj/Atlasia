@@ -303,73 +303,6 @@ service cloud.firestore {
              && data.createdAt == request.time;
     }
 
-    // ─────────────────── Arkadaşlık (açık rıza) yardımcıları ───────────────────
-    // pairId deterministiktir: iki UID sıralanır ve '_' ile birleşir. İstemcideki
-    // friendshipIdFor() (src/lib/friends.ts) aynı sırayı üretir ve isSafeFriendUid()
-    // UID'lerin ASCII + ayracsız olmasını zorunlu kılar; aksi hâlde istemcideki '<'
-    // (UTF-16) ile buradaki '<' (kod noktası) farklı sıra verebilirdi.
-    function friendshipPathFor(a, b) {
-      return /databases/$(database)/documents/friendships/$(a < b ? a + '_' + b : b + '_' + a);
-    }
-
-    // İki kullanıcı arasında karşılıklı KABUL EDİLMİŞ arkadaşlık var mı?
-    // getAfter kullanılır ki kabul yazımıyla aynı batch'teki grup kendini-ekleme
-    // yazımı doğru değerlendirilsin. exists() ön koşulu null .data erişimini önler.
-    function isAcceptedFriendWith(a, b) {
-      return a != b
-             && exists(friendshipPathFor(a, b))
-             && getAfter(friendshipPathFor(a, b)).data.status == 'accepted'
-             && a in getAfter(friendshipPathFor(a, b)).data.participants
-             && b in getAfter(friendshipPathFor(a, b)).data.participants;
-    }
-
-    // blockerUid, blockedUid'i engellemiş mi? blocks/{blocker}_{blocked} biçimi
-    // moderation.ts içindeki blockIdFor() ile aynıdır.
-    function hasBlocked(blockerUid, blockedUid) {
-      return exists(/databases/$(database)/documents/blocks/$(blockerUid + '_' + blockedUid));
-    }
-
-    function sortedPairId(a, b) {
-      return a < b ? a + '_' + b : b + '_' + a;
-    }
-
-    function validFriendshipShape(data) {
-      return data.keys().hasAll([
-               'requesterUid', 'recipientUid', 'participants', 'status',
-               'requesterName', 'recipientName', 'createdAt', 'updatedAt'
-             ])
-             && data.keys().hasOnly([
-               'requesterUid', 'recipientUid', 'participants', 'status',
-               'requesterName', 'recipientName', 'createdAt', 'updatedAt', 'acceptedAt'
-             ])
-             && stringBetween(data.requesterUid, 1, 128)
-             && stringBetween(data.recipientUid, 1, 128)
-             && data.requesterUid != data.recipientUid
-             && data.participants is list
-             && data.participants.size() == 2
-             && data.participants[0] < data.participants[1]
-             && data.participants[0] == (data.requesterUid < data.recipientUid ? data.requesterUid : data.recipientUid)
-             && data.participants[1] == (data.requesterUid < data.recipientUid ? data.recipientUid : data.requesterUid)
-             && data.status in ['pending', 'accepted', 'declined']
-             && stringBetween(data.requesterName, 1, 40)
-             && stringBetween(data.recipientName, 0, 40)
-             && data.createdAt is timestamp
-             && data.updatedAt == request.time
-             && (!('acceptedAt' in data) || data.acceptedAt is timestamp);
-    }
-
-    function validFriendshipMirror(data, pairId) {
-      return data.keys().hasAll(['pairId', 'otherUid', 'otherName', 'direction', 'status', 'createdAt', 'updatedAt'])
-             && data.keys().hasOnly(['pairId', 'otherUid', 'otherName', 'direction', 'status', 'createdAt', 'updatedAt'])
-             && data.pairId == pairId
-             && stringBetween(data.otherUid, 1, 128)
-             && stringBetween(data.otherName, 0, 40)
-             && data.direction in ['outgoing', 'incoming']
-             && data.status in ['pending', 'accepted', 'declined']
-             && data.createdAt is timestamp
-             && data.updatedAt == request.time;
-    }
-
     function validVerification(data) {
       return data.keys().hasAll(['placeId', 'uid', 'status', 'createdAt'])
              && data.keys().hasOnly(['placeId', 'uid', 'status', 'createdAt', 'note'])
@@ -383,10 +316,11 @@ service cloud.firestore {
 
     function validGroupShape(data) {
       return data.keys().hasAll(['name', 'ownerUid', 'memberUids', 'createdAt', 'updatedAt'])
-             && data.keys().hasOnly(['name', 'ownerUid', 'memberUids', 'createdAt', 'updatedAt', 'lastMessage'])
+             && data.keys().hasOnly(['name', 'ownerUid', 'memberUids', 'joinCode', 'createdAt', 'updatedAt', 'lastMessage'])
              && stringBetween(data.name, 1, 80)
              && stringBetween(data.ownerUid, 1, 128)
              && data.ownerUid == request.auth.uid
+             && (!('joinCode' in data) || data.joinCode.matches('[0-9]{6,8}'))
              && data.memberUids is list
              && data.memberUids.size() >= 1
              && data.memberUids.size() <= 20
@@ -395,6 +329,96 @@ service cloud.firestore {
              && data.createdAt is timestamp
              && data.updatedAt == request.time
              && (!('lastMessage' in data) || validLastMessage(data.lastMessage));
+    }
+
+    // KARAR (e): create geriye uyumlu. Eski istemci (kodsuz ya da çok üyeli
+    // liste ile) grup oluşturabilir; yeni istemci her zaman 6–8 haneli kod yazar
+    // (validGroupShape joinCode'u biçimce denetler). Rules önce deploy edilir.
+    function validGroupCreateShape(data) {
+      return validGroupShape(data)
+             && data.createdAt == request.time;
+    }
+
+    function validGroupInvite(data, groupId, invitedUid) {
+      return data.keys().hasAll(['invitedUid', 'inviterUid', 'groupId', 'groupName', 'createdAt'])
+             && data.keys().hasOnly(['invitedUid', 'inviterUid', 'groupId', 'groupName', 'createdAt'])
+             && data.invitedUid == invitedUid
+             && stringBetween(data.invitedUid, 1, 128)
+             && stringBetween(data.inviterUid, 1, 128)
+             && data.inviterUid == request.auth.uid
+             && data.groupId == groupId
+             && stringBetween(data.groupName, 1, 80)
+             && data.createdAt == request.time;
+    }
+
+    function validFriendRequest(data, uid, requesterUid) {
+      return data.keys().hasAll(['fromUid', 'fromName', 'toUid', 'createdAt'])
+             && data.keys().hasOnly(['fromUid', 'fromName', 'toUid', 'createdAt'])
+             && data.fromUid == requesterUid
+             && data.toUid == uid
+             && data.fromUid == request.auth.uid
+             && data.fromUid != data.toUid
+             && stringBetween(data.fromUid, 1, 128)
+             && stringBetween(data.toUid, 1, 128)
+             && stringBetween(data.fromName, 2, 100)
+             && data.createdAt == request.time;
+    }
+
+    function validFriendship(data) {
+      return data.keys().hasAll(['users', 'requesterUid', 'recipientUid', 'status', 'createdAt', 'updatedAt'])
+             && data.keys().hasOnly(['users', 'requesterUid', 'recipientUid', 'status', 'createdAt', 'updatedAt'])
+             && data.users is list
+             && data.users.size() == 2
+             && data.users.toSet().size() == 2
+             && request.auth.uid in data.users
+             && stringBetween(data.requesterUid, 1, 128)
+             && stringBetween(data.recipientUid, 1, 128)
+             && data.requesterUid in data.users
+             && data.recipientUid in data.users
+             && data.requesterUid != data.recipientUid
+             && data.status == 'accepted'
+             && data.createdAt == request.time
+             && data.updatedAt == request.time;
+    }
+
+    function validFriendIndex(data, friendUid) {
+      return data.keys().hasAll(['friendUid', 'friendName', 'since'])
+             && data.keys().hasOnly(['friendUid', 'friendName', 'since'])
+             && data.friendUid == friendUid
+             && stringBetween(data.friendUid, 1, 128)
+             && stringBetween(data.friendName, 2, 100)
+             && data.since == request.time;
+    }
+
+    function friendshipId(uidA, uidB) {
+      return uidA < uidB ? uidA + "_" + uidB : uidB + "_" + uidA;
+    }
+
+    function reverseFriendshipId(fid) {
+      let parts = fid.split("_");
+      return parts[1] + "_" + parts[0];
+    }
+
+    function isAcceptedFriendship(uid, friendUid) {
+      let fid = friendshipId(uid, friendUid);
+      let path = /databases/$(database)/documents/friendships/$(fid);
+      return (exists(path) && get(path).data.status == "accepted" && get(path).data.users.hasAll([uid, friendUid]))
+             || (existsAfter(path) && getAfter(path).data.status == "accepted" && getAfter(path).data.users.hasAll([uid, friendUid]));
+    }
+
+    function pendingFriendRequestExists(requesterUid, recipientUid) {
+      return exists(/databases/$(database)/documents/users/$(recipientUid)/friendRequests/$(requesterUid));
+    }
+
+    function validUserProfile(data, uid) {
+      return data.keys().hasAll(['uid', 'displayName', 'createdAt', 'updatedAt'])
+             && data.keys().hasOnly(['uid', 'displayName', 'photoURL', 'createdAt', 'updatedAt'])
+             && data.uid == uid
+             && data.uid == request.auth.uid
+             && stringBetween(data.displayName, 2, 40)
+             && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 500 && data.photoURL.matches('https?://.*')))
+             && data.createdAt == request.time
+             && data.updatedAt == request.time;
     }
 
     function validLastMessage(message) {
@@ -431,7 +455,7 @@ service cloud.firestore {
              && stringBetween(data.recipientUid, 1, 128)
              && stringBetween(data.actorUid, 1, 128)
              && data.actorUid == request.auth.uid
-             && data.type in ['report_received', 'report_actioned', 'blocked', 'group_invite', 'group_message', 'friend_request', 'friend_accepted', 'system']
+             && data.type in ['report_received', 'report_actioned', 'blocked', 'group_invite', 'group_message', 'friend_request', 'friend_accepted', 'friend_declined', 'system']
              && stringBetween(data.title, 1, 200)
              && stringBetween(data.body, 0, 500)
              && data.read is bool
@@ -492,32 +516,29 @@ service cloud.firestore {
     }
 
     match /stories/{storyId} {
-      // Kusur #5: "24 saat" yalnız istemcideydi; kurallar süreyi uygulamıyordu ve
-      // base64 fotoğraflı eski hikâyeler süresiz herkese açık kalıyordu. Pencere
-      // artık kural tarafında da zorunlu. İstemci sorgusu zaten
-      // where(createdAt >= now-24h) gönderdiği (firestoreData.ts STORY_TTL_MS)
-      // için liste akışı kırılmaz; süresi dolmuş bir hikâyeyi doğrudan id ile
-      // ancak sahibi okuyabilir (silme hakkını korumak için).
+      // Kusur #5 (2026-10-22 denetimi): "24 saat" yalnız yorumda ve istemcideydi
+      // (firestoreData.ts STORY_TTL_MS); kurallar süreyi uygulamıyordu, yani
+      // base64 fotoğraflı eski hikâyeler id'si bilinen herkese süresiz açıktı.
+      // Pencere artık get'te zorunlu; süresi dolmuş hikâyeyi yalnız sahibi
+      // okuyabilir (silme hakkını korumak için).
       function storyLive() {
         return resource.data.createdAt >= request.time - duration.value(24, 'h');
       }
       allow get: if storyLive()
                  || (signedIn() && resource.data.authorUid == request.auth.uid);
-      // LİSTEDE 24 SAAT PENCERESİ UYGULANAMIYOR — kanıtlı sınır (CI, 2026-10-22):
+      // LİSTEDE 24 SAAT PENCERESİ UYGULANAMIYOR — kanıtlı sınır (PR #51 CI):
       // Firestore list kuralları tek tek belgelere değil, sorgudan türetilen
       // sentetik bir nesneye karşı değerlendiriliyor. Eşitlik filtresi
-      // kanıtlanabiliyor (routes: where visibility == 'public' → allow), ama
+      // kanıtlanabiliyor (routes: where visibility == 'public' → allow),
       // createdAt için aralık filtresi (>= now-24h) kanıtlanamıyor: emülatör
-      // "Property createdAt is undefined on object. for 'list' @ L507" hatasıyla
-      // reddediyor ve herkese açık hikâye akışı kırılıyordu. Pencereyi burada
-      // zorlamak ayrıca istemci saatine bağımlı (cutoff, request.time'dan
-      // milisaniyeler önce hesaplanırsa akış kapanır) olurdu. Bu yüzden liste
-      // yalnız 50 kayıtla sınırlı kalır; süre zorunluluğu get'te uygulanır ve
-      // istemci sorgusu createdAt >= now-24h filtresini zaten sunucuya gönderir
-      // (firestoreData.ts STORY_TTL_MS). Kalan 🟡 risk: filtresiz bir liste
-      // sorgusu süresi dolmuş kayıtları da döndürebilir; bunu kapatmak için
-      // listeyi oturuma bağlamak (ürün kararı) veya TTL/veri modeli değişikliği
-      // gerekir — ikisi de ayrı onay konusu.
+      // "Property createdAt is undefined on object. for 'list'" hatasıyla
+      // reddediyor ve herkese açık hikâye akışı kırılıyordu. Ayrıca istemci
+      // saatine bağımlı olurdu (cutoff, request.time-24h'ten milisaniyeler önce
+      // hesaplandığı anda akış kapanırdı). Bu yüzden liste yalnız 50 kayıtla
+      // sınırlı kalır; istemci sorgusu createdAt >= now-24h filtresini zaten
+      // sunucuya gönderir. Kalan risk: filtresiz liste sorgusu süresi dolmuş
+      // kayıtları döndürebilir — kapatmak için listeyi oturuma bağlamak (ürün
+      // kararı) veya TTL/veri modeli değişikliği gerekir.
       allow list: if boundedList(50);
       allow create: if signedIn()
                     && validStoryShape(request.resource.data)
@@ -603,6 +624,36 @@ service cloud.firestore {
                     && savedRouteCounterDecreased(routeId);
     }
 
+    // Yanıtların collection-group listesi: yalnız yazarın kendi yanıtları (hesap silme).
+    // Doğrudan posts/{id}/replies kuralları değişmez; bu yalnız collection-group sorgusuna uygulanır.
+    match /{path=**}/replies/{replyId} {
+      allow list: if signedIn()
+                  && resource.data.authorUid == request.auth.uid
+                  && boundedList(50);
+    }
+
+    // P4 geri bildirim kanalı. KARAR: yalnız giriş yapmış kullanıcı en fazla
+    // dar şemalı kayıt yazar. get/update yok. Liste ve silme yalnız sahibine
+    // açıktır; bu, hesap silmenin kendi geri bildirimini silebilmesi içindir.
+    // Konum ve cihaz parmak izi alanı kabul edilmez (hasOnly).
+    match /feedback/{feedbackId} {
+      allow get: if false;
+      allow list: if signedIn() && resource.data.uid == request.auth.uid && boundedList(50);
+      allow create: if signedIn()
+                    && request.resource.data.keys().hasOnly(['uid', 'category', 'message', 'appVersion', 'createdAt'])
+                    && request.resource.data.keys().hasAll(['uid', 'category', 'message', 'appVersion', 'createdAt'])
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.category in ['bug', 'idea', 'other']
+                    && request.resource.data.message is string
+                    && request.resource.data.message.size() >= 1
+                    && request.resource.data.message.size() <= 1000
+                    && request.resource.data.appVersion is string
+                    && request.resource.data.appVersion.size() <= 40
+                    && request.resource.data.createdAt == request.time;
+      allow update: if false;
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+
     // Tazelik doğrulamaları: herkese açık okuma, yalnız kendi adına yazma.
     // Liste isteği 50 kayıtla sınırlıdır; canlı dinleyici tek pencere tutar.
     match /verifications/{verificationId} {
@@ -635,77 +686,108 @@ service cloud.firestore {
     // Okuma sınırı: grup listesi kullanıcının kendi indeksinden (limit 20), mesajlar
     // tek grupta en yeni 50 kayıttan okunur. Realtime Database veya üçüncü taraf yok.
     match /groups/{groupId} {
-      // Daveti KABUL eden üye olmayan kullanıcı YALNIZ kendini ekleyebilir ve
-      // kurucuyla kabul edilmiş arkadaşlığı olduğunu kanıtlamak zorundadır.
-      // Başkasını ekleyemez, adı/sahibi/kod alanlarına dokunamaz. Böylece
-      // "kabul edilmiş arkadaşlık veya davet olmadan doğrudan ekleme" kapanır.
-      function friendInviteSelfAdd() {
-        return !(request.auth.uid in resource.data.memberUids)
-               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberUids', 'updatedAt'])
-               && request.resource.data.name == resource.data.name
-               && request.resource.data.ownerUid == resource.data.ownerUid
-               && request.resource.data.createdAt == resource.data.createdAt
-               && request.resource.data.updatedAt == request.time
-               && request.resource.data.memberUids.toSet() == resource.data.memberUids.toSet().union([request.auth.uid].toSet())
-               && request.resource.data.memberUids.size() >= 1
-               && request.resource.data.memberUids.size() <= 20
-               && isAcceptedFriendWith(request.auth.uid, resource.data.ownerUid);
-      }
-
       allow get: if signedIn() && request.auth.uid in resource.data.memberUids;
       // Geniş koleksiyon taraması kapalı: kullanıcı yalnız üyesi olduğu grubu tek
       // belge olarak okur; liste kendi users/{uid}/groups indeksinden gelir.
       allow list: if false;
-      allow create: if signedIn() && validGroupShape(request.resource.data)
-                    && request.resource.data.createdAt == request.time
-                    // RIZA (kusur #4): kuruluş anında üye listesi YALNIZ kurucuyu
-                    // içerebilir. Başkasını doğrudan eklemek kapalıdır; diğerleri
-                    // ancak group_invite + kabul ile (friendInviteSelfAdd) katılır.
-                    // validGroupShape zaten auth.uid in memberUids ve size>=1 der,
-                    // hasOnly ile liste tam olarak [kurucu] olur.
+      allow create: if signedIn()
+                    && validGroupCreateShape(request.resource.data)
+                    // Kusur #4 (2026-10-22 denetimi): validGroupShape yalnız
+                    // "auth.uid in memberUids" ve size<=20 der; kurucu 19 kişiyi
+                    // rızaları olmadan üye yazabiliyordu. Kuruluşta liste TAM
+                    // olarak [kurucu] olmalı; başkaları ancak davet kabulü
+                    // (invites/{uid}) veya katılma kodu (joinAttempts/{uid}) ile
+                    // katılır. İstemci createGroup zaten memberUids:[ownerUid]
+                    // gönderir ve davetleri AYRI yazar (deliverGroupInvites).
                     && request.resource.data.memberUids.hasOnly([request.auth.uid]);
       allow update: if signedIn()
                     && (
+                      // Kurucu metadata gunceller (isim/kod) — uye listesi degismez
                       (
-                        // Üyeler: grup düzenleme, son mesaj ve kendi kendine ayrılma.
-                        request.auth.uid in resource.data.memberUids
+                        resource.data.ownerUid == request.auth.uid
+                        && request.resource.data.ownerUid == resource.data.ownerUid
+                        && request.resource.data.createdAt == resource.data.createdAt
+                        && request.resource.data.memberUids == resource.data.memberUids
+                        // Kodlu grup kodsuz bırakılamaz; kodsuz eski grup kodsuz kalarak adını değiştirebilir.
                         && (
-                          (
-                            resource.data.ownerUid == request.auth.uid
-                            && validGroupShape(request.resource.data)
-                            && request.resource.data.ownerUid == resource.data.ownerUid
-                            && request.resource.data.createdAt == resource.data.createdAt
-                          ) || (
-                            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'updatedAt'])
-                            && validLastMessage(request.resource.data.lastMessage)
-                            && request.resource.data.name == resource.data.name
-                            && request.resource.data.ownerUid == resource.data.ownerUid
-                            && request.resource.data.memberUids == resource.data.memberUids
-                            // Kusur #1: updatedAt daha önce doğrulanmıyordu; hasOnly
-                            // değeri kısıtlamaz, yalnız alana izin verir. İstemci
-                            // (sendGroupMessage) updatedAt gönderir, bu şart akışı kırmaz.
-                            && request.resource.data.updatedAt == request.time
-                          ) || (
-                            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberUids', 'updatedAt'])
-                            && request.resource.data.name == resource.data.name
-                            && request.resource.data.ownerUid == resource.data.ownerUid
-                            && request.resource.data.memberUids.toSet() == resource.data.memberUids.toSet().difference([request.auth.uid].toSet())
-                            // Kusur #1 (aynı neden): kendini-çıkarma dalı da updatedAt'i
-                            // serbest bırakıyordu. İstemci (leaveGroup) updatedAt gönderir.
-                            && request.resource.data.updatedAt == request.time
-                          )
+                          ('joinCode' in request.resource.data && request.resource.data.joinCode.matches('[0-9]{6,8}'))
+                          || (!('joinCode' in resource.data) && !('joinCode' in request.resource.data))
                         )
+                        && validGroupShape(request.resource.data)
+                      ) || (
+                        // Eski gruba kod ekleme: joinCode yoksa kurucu ekleyebilir (backward compat)
+                        resource.data.ownerUid == request.auth.uid
+                        && !('joinCode' in resource.data)
+                        && 'joinCode' in request.resource.data
+                        && request.resource.data.joinCode.matches('[0-9]{6,8}')
+                        && request.resource.data.ownerUid == resource.data.ownerUid
+                        && request.resource.data.createdAt == resource.data.createdAt
+                        && request.resource.data.memberUids == resource.data.memberUids
+                        && validGroupShape(request.resource.data)
+                      ) || (
+                        // Uye son mesaji yazar
+                        request.auth.uid in resource.data.memberUids
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'updatedAt'])
+                        && validLastMessage(request.resource.data.lastMessage)
+                        && request.resource.data.name == resource.data.name
+                        && request.resource.data.ownerUid == resource.data.ownerUid
+                        && ((!('joinCode' in resource.data) && !('joinCode' in request.resource.data)) || request.resource.data.joinCode == resource.data.joinCode)
+                        && request.resource.data.memberUids == resource.data.memberUids
+                        // Kusur #1 (2026-10-22 denetimi): hasOnly(['lastMessage','updatedAt'])
+                        // alana izin verir ama DEĞERİ kısıtlamaz; üye updatedAt'i
+                        // keyfi bir zamana yazabiliyordu. İstemci (sendGroupMessage)
+                        // zaten serverTimestamp() gönderdiği için akış kırılmaz.
+                        && request.resource.data.updatedAt == request.time
+                      ) || (
+                        // Uye ayrilir — yalniz kendini cikarir
+                        request.auth.uid in resource.data.memberUids
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberUids', 'updatedAt'])
+                        && request.resource.data.name == resource.data.name
+                        && request.resource.data.ownerUid == resource.data.ownerUid
+                        && ((!('joinCode' in resource.data) && !('joinCode' in request.resource.data)) || request.resource.data.joinCode == resource.data.joinCode)
+                        && request.resource.data.memberUids.toSet() == resource.data.memberUids.toSet().difference([request.auth.uid].toSet())
+                        && request.resource.data.updatedAt == request.time
+                      ) || (
+                        // Davetli kabul — yalniz kendini ekler, davet varligi kanitli
+                        !(request.auth.uid in resource.data.memberUids)
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberUids', 'updatedAt'])
+                        && request.resource.data.memberUids.toSet() == resource.data.memberUids.toSet().union([request.auth.uid].toSet())
+                        && request.resource.data.memberUids.size() == resource.data.memberUids.size() + 1
+                        && request.resource.data.memberUids.size() <= 20
+                        && request.resource.data.name == resource.data.name
+                        && request.resource.data.ownerUid == resource.data.ownerUid
+                        && ((!('joinCode' in resource.data) && !('joinCode' in request.resource.data)) || request.resource.data.joinCode == resource.data.joinCode)
+                        && request.resource.data.createdAt == resource.data.createdAt
+                        && request.resource.data.updatedAt == request.time
+                        && exists(/databases/$(database)/documents/groups/$(groupId)/invites/$(request.auth.uid))
+                      ) || (
+                        // Kod ile katılma (okumasız): üye olmayan yalnız kendini ekler. Kod,
+                        // kullanıcının KENDİ deneme belgesinde (ayrı, önceden commit edilmiş
+                        // yazım) bulunmalı; deneme sayacı 5'i aşmamış ve yazım son 2 dakikada olmalı.
+                        !(request.auth.uid in resource.data.memberUids)
+                        && 'joinCode' in resource.data
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberUids', 'updatedAt'])
+                        && request.resource.data.memberUids.toSet() == resource.data.memberUids.toSet().union([request.auth.uid].toSet())
+                        && request.resource.data.memberUids.size() == resource.data.memberUids.size() + 1
+                        && request.resource.data.memberUids.size() <= 20
+                        && request.resource.data.name == resource.data.name
+                        && request.resource.data.ownerUid == resource.data.ownerUid
+                        && request.resource.data.joinCode == resource.data.joinCode
+                        && request.resource.data.createdAt == resource.data.createdAt
+                        && request.resource.data.updatedAt == request.time
+                        && get(/databases/$(database)/documents/groups/$(groupId)/joinAttempts/$(request.auth.uid)).data.code == resource.data.joinCode
+                        && get(/databases/$(database)/documents/groups/$(groupId)/joinAttempts/$(request.auth.uid)).data.attempts <= 5
+                        && request.time < get(/databases/$(database)/documents/groups/$(groupId)/joinAttempts/$(request.auth.uid)).data.at + duration.value(2, 'm')
                       )
-                      // Üye olmayan: yalnız kabul edilmiş arkadaş davetiyle kendini ekler.
-                      || friendInviteSelfAdd()
                     );
       allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
 
       match /messages/{messageId} {
-        // Kusur #3: grup silinmişse get(...).data null olur ve kural değerlendirme
-        // hatasına düşüp permission-denied üretirdi. exists guard'ı ile silinmiş
-        // grup için üyelik listesi boş döner; istek temiz biçimde reddedilir.
         function groupMembers() {
+          // Kusur #3 (2026-10-22 denetimi): grup silinmişse get(...).data null
+          // olur, kural değerlendirme hatasına düşer ve istemciye ayırt
+          // edilemeyen permission-denied dönerdi. exists guard'ı ile silinmiş
+          // grupta boş liste döner; istek temiz biçimde reddedilir.
           return exists(/databases/$(database)/documents/groups/$(groupId))
                  ? get(/databases/$(database)/documents/groups/$(groupId)).data.memberUids
                  : [];
@@ -716,7 +798,83 @@ service cloud.firestore {
                       && request.auth.uid in groupMembers()
                       && validGroupMessage(request.resource.data);
         allow update: if false;
-        allow delete: if signedIn() && resource.data.senderUid == request.auth.uid;
+        // Gönderen kendi mesajını siler; grup sahibi grup silinirken yetim mesajları
+        // temizleyebilir (yalnız sahibi; üye başkasının mesajını silemez).
+        allow delete: if signedIn() && (
+                        resource.data.senderUid == request.auth.uid
+                        || get(/databases/$(database)/documents/groups/$(groupId)).data.ownerUid == request.auth.uid
+                      );
+      }
+
+      // Katılma denemesi (sunucu zorunlu sayaç): yalnız kendi belgesini okur/yazar,
+      // silemez. Pencere 15 dk (sabit, windowStart'tan). Pencere içinde en fazla 5
+      // deneme: önceki attempts < 5 ve attempts +1. Pencere dolunca sayaç 1'e döner.
+      // Kod, grup güncellemesinde get() ile okunur; istemci attempts'i geri yazamaz.
+      match /joinAttempts/{joinId} {
+        function attemptShape(data) {
+          return data.keys().hasAll(['code', 'at', 'attempts', 'windowStart'])
+                 && data.keys().hasOnly(['code', 'at', 'attempts', 'windowStart'])
+                 && data.code is string
+                 && data.code.matches('[0-9]{6,8}')
+                 && data.at == request.time
+                 && data.attempts is int
+                 && data.windowStart is timestamp;
+        }
+        allow get: if signedIn() && joinId == request.auth.uid;
+        allow list: if false;
+        allow create: if signedIn()
+                      && joinId == request.auth.uid
+                      && attemptShape(request.resource.data)
+                      && request.resource.data.attempts == 1
+                      && request.resource.data.windowStart == request.time;
+        allow update: if signedIn()
+                      && joinId == request.auth.uid
+                      && attemptShape(request.resource.data)
+                      && (
+                        (
+                          request.time < resource.data.windowStart + duration.value(15, 'm')
+                          && resource.data.attempts < 5
+                          && request.resource.data.attempts == resource.data.attempts + 1
+                          && request.resource.data.windowStart == resource.data.windowStart
+                        ) || (
+                          request.time >= resource.data.windowStart + duration.value(15, 'm')
+                          && request.resource.data.attempts == 1
+                          && request.resource.data.windowStart == request.time
+                        )
+                      );
+        // Hesap silme: yalnız kendi belgesi ve 15 dk penceresi dolmuşsa silinir.
+        // Pencere içindeki kayıt silinemez (sayaç atlatılmasın); hesap silmede açık kalır.
+        allow delete: if signedIn()
+                      && joinId == request.auth.uid
+                      && request.time >= resource.data.windowStart + duration.value(15, 'm');
+      }
+
+      // Grup davetleri: yalniz kurucu davet edebilir, yalniz davetli gorebilir/kabul edebilir
+      match /invites/{invitedUid} {
+        allow get: if signedIn()
+                   && (invitedUid == request.auth.uid
+                       || request.auth.uid == get(/databases/$(database)/documents/groups/$(groupId)).data.ownerUid
+                       || request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.memberUids);
+        allow list: if signedIn()
+                    && boundedList(50)
+                    && (resource.data.invitedUid == request.auth.uid
+                        || resource.data.inviterUid == request.auth.uid);
+        allow create: if signedIn()
+                      && validGroupInvite(request.resource.data, groupId, invitedUid)
+                      && (
+                        (exists(/databases/$(database)/documents/groups/$(groupId)) && get(/databases/$(database)/documents/groups/$(groupId)).data.ownerUid == request.auth.uid)
+                        || (existsAfter(/databases/$(database)/documents/groups/$(groupId)) && getAfter(/databases/$(database)/documents/groups/$(groupId)).data.ownerUid == request.auth.uid)
+                      )
+                      && (
+                        (exists(/databases/$(database)/documents/groups/$(groupId)) && !(invitedUid in get(/databases/$(database)/documents/groups/$(groupId)).data.memberUids))
+                        || (existsAfter(/databases/$(database)/documents/groups/$(groupId)) && !(invitedUid in getAfter(/databases/$(database)/documents/groups/$(groupId)).data.memberUids))
+                      )
+                      && isAcceptedFriendship(request.auth.uid, invitedUid);
+        allow update: if false;
+        allow delete: if signedIn()
+                      && (resource.data.invitedUid == request.auth.uid
+                          || resource.data.inviterUid == request.auth.uid
+                          || get(/databases/$(database)/documents/groups/$(groupId)).data.ownerUid == request.auth.uid);
       }
     }
 
@@ -726,18 +884,43 @@ service cloud.firestore {
       allow list: if signedIn() && uid == request.auth.uid && boundedList(20);
       allow create: if signedIn() && uid == request.auth.uid
                     && validGroupIndex(request.resource.data, groupId)
-                    // Kusur #2: indeks daha önce üyelik kanıtı istemiyordu; kullanıcı
-                    // kendi indeksine üye/sahibi olmadığı bir grup için sahte rol
-                    // yazabiliyordu. İndeks ancak GERÇEK üyeliği yansıtabilir ve rol
-                    // grup belgesindeki sahiplikle birebir tutarlı olmalıdır.
-                    // createGroup ve acceptGroupInvite indeksi grup yazıldıktan SONRA
-                    // (sıralı) yazar, bu yüzden get() burada güvenlidir.
+                    // Kusur #2 (2026-10-22 denetimi): indeks daha önce üyelik
+                    // kanıtı istemiyordu; kullanıcı kendi indeksine üye/sahibi
+                    // olmadığı bir grup için sahte rol yazabiliyordu. İndeks
+                    // ancak GERÇEK üyeliği yansıtabilir ve rol, grup
+                    // belgesindeki sahiplikle birebir tutarlı olmalıdır.
+                    // Dört writeGroupIndex çağrısının hepsi (createGroup:415,
+                    // acceptGroupInvite:466, joinGroupWithCode:508, joinGroup:545)
+                    // indeksi grup yazımından SONRA yazar; bu yüzden get()
+                    // güvenlidir, getAfter gerekmez.
                     && exists(/databases/$(database)/documents/groups/$(groupId))
                     && request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.memberUids
                     && (request.resource.data.role == 'owner')
                        == (get(/databases/$(database)/documents/groups/$(groupId)).data.ownerUid == request.auth.uid);
       allow update: if false;
       allow delete: if signedIn() && uid == request.auth.uid;
+    }
+
+    // Grup davet aynası: kullanıcının kendi davet kutusu (UI icin)
+    match /users/{uid}/groupInvites/{groupId} {
+      allow get: if signedIn() && uid == request.auth.uid;
+      allow list: if signedIn() && uid == request.auth.uid && boundedList(50);
+      allow create: if signedIn()
+                    && request.resource.data.invitedUid == uid
+                    && request.resource.data.inviterUid == request.auth.uid
+                    && request.resource.data.groupId == groupId
+                    && validGroupInvite(request.resource.data, groupId, uid)
+                    && (
+                      (exists(/databases/$(database)/documents/groups/$(groupId)) && get(/databases/$(database)/documents/groups/$(groupId)).data.ownerUid == request.auth.uid)
+                      || (existsAfter(/databases/$(database)/documents/groups/$(groupId)) && getAfter(/databases/$(database)/documents/groups/$(groupId)).data.ownerUid == request.auth.uid)
+                    )
+                    && (
+                      (exists(/databases/$(database)/documents/groups/$(groupId)) && !(uid in get(/databases/$(database)/documents/groups/$(groupId)).data.memberUids))
+                      || (existsAfter(/databases/$(database)/documents/groups/$(groupId)) && !(uid in getAfter(/databases/$(database)/documents/groups/$(groupId)).data.memberUids))
+                    )
+                    && isAcceptedFriendship(request.auth.uid, uid);
+      allow update: if false;
+      allow delete: if signedIn() && (uid == request.auth.uid || resource.data.inviterUid == request.auth.uid || get(/databases/$(database)/documents/groups/$(groupId)).data.ownerUid == request.auth.uid);
     }
 
     // Notifications: kullanıcı subcollection — yalnız alıcı okur, aktör yazar (engelleme hariç)
@@ -760,103 +943,56 @@ service cloud.firestore {
       allow delete: if signedIn() && uid == request.auth.uid;
     }
 
-    // ─────────────────────── Arkadaşlık · açık rıza ───────────────────────
-    // Yetkili rıza kaydı. Yalnız iki taraf okur; koleksiyon taraması KAPALIDIR,
-    // böylece kimlik enumeration'ı ve dizin harmanı mümkün değildir. Görünen ad
-    // yalnız burada ve own-scoped aynada durur; telefon/e-posta hiçbir alanda yok.
-    match /friendships/{pairId} {
-      allow get: if signedIn() && request.auth.uid in resource.data.participants;
-      allow list: if false;
-      allow create: if signedIn()
-                    // Yalnız isteyen taraf, yalnız kendisi adına isteyebilir.
-                    && request.resource.data.requesterUid == request.auth.uid
-                    && request.resource.data.recipientUid != request.auth.uid
-                    // Belge kimliği deterministik sıralı çift olmalı; aksi hâlde
-                    // aynı ilişki için iki ayrı belge açılıp rıza atlanabilirdi.
-                    && pairId == sortedPairId(request.resource.data.requesterUid, request.resource.data.recipientUid)
-                    && request.resource.data.status == 'pending'
-                    && request.resource.data.createdAt == request.time
-                    && validFriendshipShape(request.resource.data)
-                    // Engelleme iki yönde de istek üretmeyi keser.
-                    && !hasBlocked(request.resource.data.recipientUid, request.resource.data.requesterUid)
-                    && !hasBlocked(request.resource.data.requesterUid, request.resource.data.recipientUid);
-      allow update: if signedIn()
-                    // Rızayı YALNIZ alıcı verebilir; isteyen kendi isteğini kabul edemez.
-                    && resource.data.recipientUid == request.auth.uid
-                    && resource.data.status == 'pending'
-                    && request.resource.data.status in ['accepted', 'declined']
-                    // Kimlik, taraf listesi ve oluşturma anı değiştirilemez.
-                    && request.resource.data.requesterUid == resource.data.requesterUid
-                    && request.resource.data.recipientUid == resource.data.recipientUid
-                    && request.resource.data.participants == resource.data.participants
-                    && request.resource.data.requesterName == resource.data.requesterName
-                    && request.resource.data.createdAt == resource.data.createdAt
-                    && request.resource.data.updatedAt == request.time
-                    && request.resource.data.diff(resource.data).affectedKeys()
-                         .hasOnly(['status', 'recipientName', 'acceptedAt', 'updatedAt'])
-                    && (
-                      request.resource.data.status == 'declined'
-                      || (
-                        stringBetween(request.resource.data.recipientName, 1, 40)
-                        && request.resource.data.acceptedAt == request.time
-                        // Kabul anında engelleme varsa rıza geçerli değildir.
-                        && !hasBlocked(resource.data.requesterUid, resource.data.recipientUid)
-                        && !hasBlocked(resource.data.recipientUid, resource.data.requesterUid)
-                      )
-                    );
-      // Geri çekme veya arkadaşlıktan çıkma: iki taraftan biri silebilir.
-      allow delete: if signedIn() && request.auth.uid in resource.data.participants;
+    match /userProfiles/{uid} {
+      allow get: if signedIn();
+      allow list: if signedIn() && boundedList(20);
+      allow create: if signedIn() && validUserProfile(request.resource.data, uid);
+      allow update: if signedIn() && validUserProfile(request.resource.data, uid) && resource.data.uid == request.auth.uid && request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
     }
 
-    // Ayna kayıt: UI'ın tek doğruluk kaynağı (gönderilen/alınan istekler + kabul
-    // edilmiş arkadaşlar). Liste own-scoped ve 50 kayıtla sınırlı; composite index
-    // gerektirmez. Grup seçim listesi status == 'accepted' kayıtlarından gelir.
-    match /users/{uid}/friendships/{pairId} {
-      function friendshipAfter() {
-        return getAfter(/databases/$(database)/documents/friendships/$(pairId)).data;
-      }
-
+    match /users/{uid}/friendRequests/{requesterUid} {
       allow get: if signedIn() && uid == request.auth.uid;
       allow list: if signedIn() && uid == request.auth.uid && boundedList(50);
       allow create: if signedIn()
-                    && request.resource.data.pairId == pairId
-                    && validFriendshipMirror(request.resource.data, pairId)
-                    // Karşı tarafın aynasını yazabilmek için rıza kaydı VAR olmalı
-                    // ve hem yazan hem ayna sahibi onun tarafı olmalı. existsAfter
-                    // ön koşulu null .data erişimini engeller.
-                    && existsAfter(/databases/$(database)/documents/friendships/$(pairId))
-                    && request.auth.uid in friendshipAfter().participants
-                    && uid in friendshipAfter().participants
-                    && request.resource.data.status == friendshipAfter().status
-                    // Ayna kimliği rıza kaydıyla tutarlı olmalı: diğer taraf ve yön.
-                    && request.resource.data.otherUid == (
-                         friendshipAfter().requesterUid == uid
-                         ? friendshipAfter().recipientUid
-                         : friendshipAfter().requesterUid)
-                    && request.resource.data.direction == (
-                         friendshipAfter().requesterUid == uid ? 'outgoing' : 'incoming')
-                    && request.resource.data.createdAt == request.time;
-      allow update: if signedIn()
-                    // Ayna sahibi ya da karşı taraf güncelleyebilir ama yalnız rıza
-                    // kaydının gerçek durumuna eşitleyebilir; ayna rızanın önüne geçemez.
-                    && existsAfter(/databases/$(database)/documents/friendships/$(pairId))
-                    && request.auth.uid in friendshipAfter().participants
-                    && uid in friendshipAfter().participants
-                    && request.resource.data.pairId == pairId
-                    && request.resource.data.otherUid == resource.data.otherUid
-                    && request.resource.data.direction == resource.data.direction
-                    && request.resource.data.createdAt == resource.data.createdAt
-                    && request.resource.data.status == friendshipAfter().status
-                    && stringBetween(request.resource.data.otherName, 0, 40)
-                    && request.resource.data.updatedAt == request.time
-                    && request.resource.data.diff(resource.data).affectedKeys()
-                         .hasOnly(['status', 'otherName', 'updatedAt']);
-      // Kendi aynasını her zaman silebilir; rıza kaydı kalktıysa karşı taraf da
-      // temizleyebilir (arkadaşlıktan çıkma tek batch'te iki aynayı kaldırır).
-      allow delete: if signedIn()
-                    && (uid == request.auth.uid
-                        || !existsAfter(/databases/$(database)/documents/friendships/$(pairId)));
+                    && validFriendRequest(request.resource.data, uid, requesterUid)
+                    && requesterUid == request.resource.data.fromUid
+                    && !exists(/databases/$(database)/documents/friendships/$(friendshipId(uid, requesterUid)))
+                    && !exists(/databases/$(database)/documents/users/$(request.auth.uid)/friendRequests/$(uid));
+      allow delete: if signedIn() && (uid == request.auth.uid || resource.data.fromUid == request.auth.uid);
+      allow update: if false;
     }
+
+    // C1: sadece kendi friend-listene yazabilirsin; baska kullanici listesi yasak — valid friendship gerekli
+    match /users/{uid}/friends/{friendUid} {
+      allow get: if signedIn() && uid == request.auth.uid;
+      allow list: if signedIn() && uid == request.auth.uid && boundedList(100);
+      allow create: if signedIn()
+                    && uid == request.auth.uid
+                    && validFriendIndex(request.resource.data, friendUid)
+                    && isAcceptedFriendship(uid, friendUid);
+      allow update: if false;
+      allow delete: if signedIn() && uid == request.auth.uid;
+    }
+
+    // Kabul edilmis arkadasliklar (atomik): yalniz users icinde olanlar okur/siler
+    // Gercek bekleyen istegin alici tarafindan kabul edildigini Rules'ta kanitla — kurallari gevseltme
+    // C1: ayni batch'te karsilikli onay — pending istek getAfter ile yok olmali, writeBatch ile atomik
+    match /friendships/{fid} {
+      allow get: if signedIn() && request.auth.uid in resource.data.users;
+      allow list: if false;
+      allow create: if signedIn()
+                    && validFriendship(request.resource.data)
+                    && request.auth.uid in request.resource.data.users
+                    && request.resource.data.recipientUid == request.auth.uid
+                    && request.resource.data.users.hasAll([request.resource.data.requesterUid, request.resource.data.recipientUid])
+                    && fid == friendshipId(request.resource.data.requesterUid, request.resource.data.recipientUid)
+                    && pendingFriendRequestExists(request.resource.data.requesterUid, request.resource.data.recipientUid)
+                    && !existsAfter(/databases/$(database)/documents/users/$(request.resource.data.recipientUid)/friendRequests/$(request.resource.data.requesterUid));
+      allow update: if false;
+      allow delete: if signedIn() && request.auth.uid in resource.data.users;
+    }
+
 
     match /{document=**} {
       allow read, write: if false;

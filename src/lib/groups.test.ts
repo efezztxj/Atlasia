@@ -15,6 +15,7 @@ const group: Group = {
   name: "Kapadokya ekibi",
   ownerUid: "user-a",
   memberUids: ["user-a", "user-b"],
+  joinCode: "123456",
   createdAt: 1,
   updatedAt: 1,
 };
@@ -79,5 +80,18 @@ describe("grup ve sohbet sözleşmesi", () => {
     ];
     expect(visibleMessages(messages, new Set(["user-b"])).map((item) => item.id)).toEqual(["m-1"]);
     expect(visibleMessages(messages, new Set())).toHaveLength(2);
+  });
+
+  it("katılma kodunu 6–8 hane rakamla sınırlar", async () => {
+    const { validateJoinCode, generateJoinCode } = await import("./groups");
+    expect(validateJoinCode("123456")).toBeNull();
+    expect(validateJoinCode("12345678")).toBeNull();
+    expect(validateJoinCode("12345")).toBe("group/join-code-length");
+    expect(validateJoinCode("123456789")).toBe("group/join-code-length");
+    expect(validateJoinCode("12a456")).toBe("group/join-code-digits");
+    expect(validateJoinCode("  ")).toBe("group/join-code-length");
+    expect(validateJoinCode(" 123456 ")).toBeNull();
+    const code = generateJoinCode();
+    expect(code).toMatch(/^\d{6,8}$/);
   });
 });

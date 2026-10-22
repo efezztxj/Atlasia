@@ -13,6 +13,8 @@ import { KKTC_GEOMETRY, KKTC_NAME } from "../data/regions";
 import { attachMapResume } from "../lib/mapResume";
 import type { PlaceViewport } from "../lib/firestoreData";
 import type { Place, RouteLeg, ViewState } from "../types";
+import { shouldAdvanceSpin } from "../utils/mapLifecycle";
+import type { WeatherLayerHandle } from "../utils/mapWeather";
 
 maplibregl.setWorkerUrl(maplibreWorkerUrl);
 
@@ -84,6 +86,13 @@ function openFreeMapLayerVisible(layerId: string, labels: boolean, baseMap: Base
     return labels && (baseMap === "dark" || baseMap === "satellite");
   }
   return baseMap === "dark";
+}
+
+function kktcLabelVisible(labels: boolean, baseMap: BaseMapStyle) {
+  // Street/topographic Esri altlıklarının gömülü etiketleri vardır; özel KKTC
+  // yazısı orada ikinci bir isim katmanı oluşturur. Sınır çizgisi metin
+  // çakışmasına yol açmadığı için bu koşul yalnız etikete uygulanır.
+  return labels && (baseMap === "dark" || baseMap === "satellite");
 }
 
 function openFreeMapLayers(
@@ -253,6 +262,17 @@ function buildStyle(
           "line-dasharray": [3, 3],
         },
       },
+      // KÖK NEDEN (kktc-label fontu): Stil snapshot'ının glyphs ucu
+      // tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf yalnız kendi
+      // kümesini sunar; snapshot'ın 13 symbol katmanının TAMAMI "Noto Sans
+      // Regular" kullanır. Buradaki "Open Sans Semibold" 404 dönüyor ve
+      // maplibre yerel glyph üretimine düşüyordu (konsolda iki 404 + "Unable to
+      // load glyph range"). Haritanın geri kalanıyla aynı ve endpoint'in
+      // gerçekten sunduğu fonta eşitlendi.
+      // Not: bu açıklama bilerek `id:` satırının ÜSTÜNDE durur.
+      // mapLabelVisibility.test.ts katman bloğunu `id: "kktc-label"`'dan
+      // itibaren 700 karakter keserek doğruluyor; blok içine yazılan uzun
+      // yorum, `"text-allow-overlap": true` kilidini pencerenin dışına itiyordu.
       {
         id: "kktc-label",
         type: "symbol",
@@ -260,15 +280,8 @@ function buildStyle(
         minzoom: 5.2,
         maxzoom: 11,
         layout: {
-          visibility: labels ? "visible" : "none",
+          visibility: kktcLabelVisible(labels, baseMap) ? "visible" : "none",
           "text-field": ["get", "name"],
-          // KÖK NEDEN: Stil snapshot'ının glyphs ucu
-          // tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf yalnız kendi
-          // kümesini sunar; snapshot'ın 13 symbol katmanının TAMAMI "Noto Sans
-          // Regular" kullanır. Buradaki "Open Sans Semibold" 404 dönüyor ve
-          // maplibre yerel glyph üretimine düşüyordu (konsolda iki 404 +
-          // "Unable to load glyph range"). Haritanın geri kalanıyla aynı ve
-          // endpoint'in gerçekten sunduğu fonta eşitlendi.
           "text-font": ["Noto Sans Regular"],
           "text-size": ["interpolate", ["linear"], ["zoom"], 5, 10, 8, 14],
           "text-letter-spacing": 0.08,
@@ -607,6 +620,21 @@ export default function MapView({
     });
     mapRef.current = map;
 
+    // Hava katmanı ayrı parçada; yalnız ilk açılışta yüklenir (mapView bütçesi).
+    let weatherWanted = false;
+    let weatherDisposed = false;
+    let weatherLayer: WeatherLayerHandle | null = null;
+    const onWeatherToggle = (event: Event) => {
+      weatherWanted = (event as CustomEvent<boolean>).detail === true;
+      if (weatherLayer) { weatherLayer.setEnabled(weatherWanted); return; }
+      if (!weatherWanted) return;
+      void import("../utils/mapWeather").then(({ createWeatherLayer }) => {
+        if (weatherDisposed) return;
+        weatherLayer ??= createWeatherLayer(map, maplibregl.Marker);
+        weatherLayer.setEnabled(weatherWanted);
+      }, () => window.dispatchEvent(new CustomEvent("atlasia:weather-unavailable")));
+    };
+    window.addEventListener("atlasia:weather-toggle", onWeatherToggle);
     map.once("style.load", () => setReady(true));
     if (map.isStyleLoaded()) setReady(true);
 
@@ -648,11 +676,14 @@ export default function MapView({
 
     // Otomatik dönüş
     let raf = 0;
-    let last = performance.now();
+    let lastFrameAt = 0;
+    let lastSpinAt = performance.now();
+    const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
     const tick = (t: number) => {
-      const dt = Math.min(t - last, 100);
-      last = t;
-      if (live.current.spin && !document.hidden && map.getZoom() < SPIN_MAX_ZOOM && !map.isMoving()) {
+      if (shouldAdvanceSpin(t, lastFrameAt, live.current.spin, document.hidden, motionPreference.matches, map.getZoom(), SPIN_MAX_ZOOM, map.isMoving())) {
+        const dt = Math.min(t - lastSpinAt, 1000 / 15);
+        lastFrameAt = t;
+        lastSpinAt = t;
         const c = map.getCenter();
         let lng = c.lng - (SPIN_DEG_PER_SEC * dt) / 1000;
         if (lng < -180) lng += 360;
@@ -678,6 +709,9 @@ export default function MapView({
       // bir pageshow/focus olayı kaldırılmış harita üzerinde resize dener.
       resume.dispose();
       cancelAnimationFrame(raf);
+      window.removeEventListener("atlasia:weather-toggle", onWeatherToggle);
+      weatherDisposed = true;
+      weatherLayer?.destroy();
       markers.forEach((value) => value.marker.remove());
       markers.clear();
       meMarkerRef.current?.remove();
@@ -713,9 +747,12 @@ export default function MapView({
       map.setPaintProperty(layerId, "text-halo-width", paint["text-halo-width"]);
       map.setPaintProperty(layerId, "text-halo-blur", paint["text-halo-blur"]);
     }
-    for (const layer of ["kktc-outline", "kktc-label"]) {
-      map.setLayoutProperty(layer, "visibility", showLabels ? "visible" : "none");
-    }
+    map.setLayoutProperty("kktc-outline", "visibility", showLabels ? "visible" : "none");
+    map.setLayoutProperty(
+      "kktc-label",
+      "visibility",
+      kktcLabelVisible(showLabels, baseMap) ? "visible" : "none",
+    );
   }, [baseMap, showLabels, ready, theme]);
 
   // Yakınlaşınca gerçek yükseklik verisini ister; düşük güçlü cihazlarda kapatılabilir.

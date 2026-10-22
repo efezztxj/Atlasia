@@ -113,7 +113,10 @@ export function useGeolocation() {
         accuracy: pos.coords.accuracy ?? 0,
         timestamp: pos.timestamp,
       };
-      if (![next.lng, next.lat, next.accuracy].every(Number.isFinite) || next.accuracy < 0) return;
+      // Geçersiz ölçüm fix olmaz: sonlu değer + geçerli koordinat aralığı
+      // (iz kaydedicinin kabul sözleşmesiyle aynı; P16 #5).
+      if (![next.lng, next.lat, next.accuracy, next.timestamp].every(Number.isFinite)
+        || next.accuracy < 0 || Math.abs(next.lat) > 90 || Math.abs(next.lng) > 180) return;
       permissionRef.current = "granted";
       setPermission("granted");
       // Daha kötü bir ölçüm gelirse mevcut konumu bozma
@@ -163,7 +166,9 @@ export function useGeolocation() {
           if (requestId !== generation.current) return;
           generation.current += 1;
           dispose();
-          setStatus("ready");
+          // ready ⇒ fix var sözleşmesi: pencere hiç geçerli ölçüm görmeden
+          // dolarsa (geçersiz ilk ölçüm akışı) durum "unavailable" olur (P16 #5).
+          setStatus(fixRef.current ? "ready" : "unavailable");
         }, REFINE_MS);
       },
       onError,

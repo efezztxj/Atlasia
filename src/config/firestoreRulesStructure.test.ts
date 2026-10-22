@@ -100,118 +100,99 @@ describe("firestore.rules yapısal bütünlük", () => {
   });
 });
 
-describe("arkadaşlık kuralları — fail-closed yapı", () => {
-  it("friendships bloğu var, listesi kapalı (enumeration yok)", () => {
-    const block = matchBlock(rules, "match /friendships/{pairId} {");
-    expect(block).toContain("allow get: if signedIn() && request.auth.uid in resource.data.participants;");
-    expect(block).toContain("allow list: if false;");
-    expect(block).not.toMatch(/allow\s+list\s*:[^;]*if\s+true/);
+describe("arkadaşlık kuralları — main'in rıza modeli (fail-closed)", () => {
+  const friendships = matchBlock(rules, "match /friendships/{fid} {");
+  const requests = matchBlock(rules, "match /users/{uid}/friendRequests/{requesterUid} {");
+  const friendIndex = matchBlock(rules, "match /users/{uid}/friends/{friendUid} {");
+
+  it("friendships kökü listelemeye kapalı ve yalnız katılımcılarına açık", () => {
+    expect(friendships).toContain("allow list: if false;");
+    expect(friendships).toContain("request.auth.uid in resource.data.users");
+    // Rıza kaydı sonradan değiştirilemez; geri çekme silme ile olur.
+    expect(friendships).toContain("allow update: if false;");
+    expect(friendships).toContain("allow delete: if signedIn() && request.auth.uid in resource.data.users;");
   });
 
-  it("istek oluşturma yalnız isteyene açık ve engelleme kontrolü yapıyor", () => {
-    const block = matchBlock(rules, "match /friendships/{pairId} {");
-    expect(block).toContain("request.resource.data.requesterUid == request.auth.uid");
-    expect(block).toContain("request.resource.data.recipientUid != request.auth.uid");
-    expect(block).toContain("request.resource.data.status == 'pending'");
-    expect(block).toContain("pairId == sortedPairId(");
-    expect(block).toContain("!hasBlocked(request.resource.data.recipientUid, request.resource.data.requesterUid)");
-    expect(block).toContain("!hasBlocked(request.resource.data.requesterUid, request.resource.data.recipientUid)");
-    expect(block).toContain("validFriendshipShape(request.resource.data)");
+  it("kabul, bekleyen isteğin varlığını ve aynı batch'te silinmesini kanıtlar", () => {
+    // Kabulü YALNIZ alıcı yazabilir ve gerçek bir bekleyen istek şarttır.
+    expect(friendships).toContain("request.resource.data.recipientUid == request.auth.uid");
+    expect(friendships).toContain("pendingFriendRequestExists(");
+    // Belge kimliği deterministik çift olmalı; aksi hâlde çift kayıt açılırdı.
+    expect(friendships).toContain("fid == friendshipId(");
+    // Atomiklik: istek aynı batch'te yok olmalı, yoksa tekrar tekrar kabul yazılabilir.
+    expect(friendships).toContain(
+      "!existsAfter(/databases/$(database)/documents/users/$(request.resource.data.recipientUid)/friendRequests/$(request.resource.data.requesterUid))",
+    );
   });
 
-  it("kabulü YALNIZ alıcı verebilir; isteyen kendi isteğini kabul edemez", () => {
-    const block = matchBlock(rules, "match /friendships/{pairId} {");
-    // update dalı alıcıya kilitli ve yalnız pending'den geçer.
-    expect(block).toMatch(/allow update: if signedIn\(\)\s*\n\s*\/\/[^\n]*\n\s*&& resource\.data\.recipientUid == request\.auth\.uid/);
-    expect(block).toContain("resource.data.status == 'pending'");
-    expect(block).toContain("request.resource.data.status in ['accepted', 'declined']");
-    // Kimlik ve taraf alanları değiştirilemez.
-    expect(block).toContain("request.resource.data.participants == resource.data.participants");
-    expect(block).toContain("request.resource.data.requesterUid == resource.data.requesterUid");
-    expect(block).toContain("request.resource.data.createdAt == resource.data.createdAt");
-    expect(block).toContain(".hasOnly(['status', 'recipientName', 'acceptedAt', 'updatedAt'])");
+  it("istek own-scoped, 50 ile sınırlı ve karşılıklı tekrara kapalı", () => {
+    expect(requests).toContain("uid == request.auth.uid");
+    expect(requests).toContain("boundedList(50)");
+    expect(requests).toContain("allow update: if false;");
+    // Zaten arkadaşlık varsa yeni istek yazılamaz.
+    expect(requests).toContain(
+      "!exists(/databases/$(database)/documents/friendships/$(friendshipId(uid, requesterUid)))",
+    );
+    // Karşı taraf da aynı çift için istek gönderdiyse ikinci istek yazılamaz.
+    expect(requests).toContain(
+      "!exists(/databases/$(database)/documents/users/$(request.auth.uid)/friendRequests/$(uid))",
+    );
   });
 
-  it("silme iki tarafa açık (geri çekme / arkadaşlıktan çıkma)", () => {
-    const block = matchBlock(rules, "match /friendships/{pairId} {");
-    expect(block).toContain("allow delete: if signedIn() && request.auth.uid in resource.data.participants;");
-  });
-
-  it("own-scoped ayna: okuma sahibine, liste 50 ile sınırlı", () => {
-    const block = matchBlock(rules, "match /users/{uid}/friendships/{pairId} {");
-    expect(block).toContain("allow get: if signedIn() && uid == request.auth.uid;");
-    expect(block).toContain("allow list: if signedIn() && uid == request.auth.uid && boundedList(50);");
-  });
-
-  it("çapraz ayna yazımı rıza kaydının varlığına ve taraflığına bağlı", () => {
-    const block = matchBlock(rules, "match /users/{uid}/friendships/{pairId} {");
-    expect(block).toContain("existsAfter(/databases/$(database)/documents/friendships/$(pairId))");
-    expect(block).toContain("request.auth.uid in friendshipAfter().participants");
-    expect(block).toContain("uid in friendshipAfter().participants");
-    expect(block).toContain("request.resource.data.status == friendshipAfter().status");
-    // Yön ve karşı taraf kimliği rıza kaydından türetilmeli; sahte ayna yazılamaz.
-    expect(block).toContain("friendshipAfter().requesterUid == uid ? 'outgoing' : 'incoming'");
-    expect(block).toContain("validFriendshipMirror(request.resource.data, pairId)");
-  });
-
-  it("ayna güncellemesi rızanın ÖNÜNE geçemez (status kayda eşitlenir)", () => {
-    const block = matchBlock(rules, "match /users/{uid}/friendships/{pairId} {");
-    expect(block).toContain("request.resource.data.status == friendshipAfter().status");
-    expect(block).toContain("request.resource.data.otherUid == resource.data.otherUid");
-    expect(block).toContain("request.resource.data.direction == resource.data.direction");
-    expect(block).toContain(".hasOnly(['status', 'otherName', 'updatedAt'])");
-  });
-
-  it("ayna silme: kendi kaydı her zaman, rıza kalktıysa karşı taraf da", () => {
-    const block = matchBlock(rules, "match /users/{uid}/friendships/{pairId} {");
-    expect(block).toContain("uid == request.auth.uid");
-    expect(block).toContain("!existsAfter(/databases/$(database)/documents/friendships/$(pairId))");
-  });
-
-  it("katılımcı listesi sıralı çift zorunlu (çift pairId üretimi engellenir)", () => {
-    expect(rules).toContain("data.participants[0] < data.participants[1]");
-    expect(rules).toContain("data.participants.size() == 2");
-  });
-
-  it("isAcceptedFriendWith getAfter ile accepted durumunu kanıtlar", () => {
-    expect(rules).toContain("function isAcceptedFriendWith(a, b)");
-    expect(rules).toMatch(/getAfter\(friendshipPathFor\(a, b\)\)\.data\.status == 'accepted'/);
-    expect(rules).toContain("exists(friendshipPathFor(a, b))");
+  it("arkadaş indeksi gerçek kabul edilmiş arkadaşlığa bağlı", () => {
+    expect(friendIndex).toContain("isAcceptedFriendship(uid, friendUid)");
+    expect(friendIndex).toContain("boundedList(100)");
+    expect(friendIndex).toContain("allow update: if false;");
   });
 });
 
-describe("grup daveti — rızasız doğrudan ekleme kapalı", () => {
-  it("friendInviteSelfAdd yalnız kendini eklemeye izin verir", () => {
-    const block = matchBlock(rules, "match /groups/{groupId} {");
-    expect(block).toContain("function friendInviteSelfAdd()");
-    expect(block).toContain("!(request.auth.uid in resource.data.memberUids)");
-    expect(block).toContain(".hasOnly(['memberUids', 'updatedAt'])");
-    expect(block).toContain("request.resource.data.memberUids.toSet() == resource.data.memberUids.toSet().union([request.auth.uid].toSet())");
-    expect(block).toContain("isAcceptedFriendWith(request.auth.uid, resource.data.ownerUid)");
+describe("grup katılımı — davet ve kod kanıtlı (rızasız ekleme kapalı)", () => {
+  const groups = matchBlock(rules, "match /groups/{groupId} {");
+  const invites = matchBlock(rules, "match /invites/{invitedUid} {");
+  const attempts = matchBlock(rules, "match /joinAttempts/{joinId} {");
+
+  it("davet kabulü yalnız kendi davet belgesinin varlığıyla mümkün", () => {
+    expect(groups).toContain(
+      "exists(/databases/$(database)/documents/groups/$(groupId)/invites/$(request.auth.uid))",
+    );
   });
 
-  it("self-add dalı adı, sahibi ve oluşturma anını değiştiremez", () => {
-    const block = matchBlock(rules, "match /groups/{groupId} {");
-    expect(block).toContain("request.resource.data.name == resource.data.name");
-    expect(block).toContain("request.resource.data.ownerUid == resource.data.ownerUid");
-    expect(block).toContain("request.resource.data.createdAt == resource.data.createdAt");
-    expect(block).toContain("request.resource.data.updatedAt == request.time");
+  it("kodla katılma deneme belgesini, kodu, tavanı ve pencereyi kanıtlar", () => {
+    expect(groups).toContain("joinAttempts/$(request.auth.uid)).data.code == resource.data.joinCode");
+    expect(groups).toContain(".data.attempts <= 5");
+    expect(groups).toContain("duration.value(2, 'm')");
+    // Deneme belgesi own-scoped; liste kapalı (kod enumeration'ı yok).
+    expect(attempts).toContain("allow get: if signedIn() && joinId == request.auth.uid;");
+    expect(attempts).toContain("allow list: if false;");
+    // Sayaç sunucu zorunlu: ilk yazım 1, sonra +1; kilit penceresi 15 dk.
+    expect(attempts).toContain("request.resource.data.attempts == 1");
+    expect(attempts).toContain("request.resource.data.attempts == resource.data.attempts + 1");
+    expect(attempts).toContain("resource.data.attempts < 5");
+    expect(attempts).toContain("duration.value(15, 'm')");
   });
 
-  it("self-add dalı 20 üye tavanını aşamaz", () => {
-    const block = matchBlock(rules, "match /groups/{groupId} {");
-    expect(block).toContain("request.resource.data.memberUids.size() <= 20");
+  it("üye olmayan iki dal da YALNIZ kendini ekler ve 20 tavanını aşamaz", () => {
+    const countLines = (needle: string): number =>
+      groups.split("\n").filter((line) => line.includes(needle)).length;
+    expect(
+      countLines("!(request.auth.uid in resource.data.memberUids)"),
+      "davet ve kod dalları üye-olmayan durumu ayrıca kanıtlamalı",
+    ).toBeGreaterThanOrEqual(2);
+    expect(countLines("union([request.auth.uid].toSet())")).toBeGreaterThanOrEqual(2);
+    expect(countLines("request.resource.data.memberUids.size() <= 20")).toBeGreaterThanOrEqual(2);
   });
 
-  it("update kuralı üye ve üye-olmayan dallarını ayırıyor", () => {
-    const block = matchBlock(rules, "match /groups/{groupId} {");
-    expect(block).toContain("request.auth.uid in resource.data.memberUids");
-    expect(block).toContain("|| friendInviteSelfAdd()");
+  it("davet yazımı kurucu kimliği ve kabul edilmiş arkadaşlık ister", () => {
+    expect(invites).toContain("isAcceptedFriendship(request.auth.uid, invitedUid)");
+    expect(invites).toContain(".data.ownerUid == request.auth.uid");
+    // Zaten üye olan kişiye davet yazılamaz.
+    expect(invites).toContain(".data.memberUids))");
+    expect(invites).toContain("allow update: if false;");
   });
 
-  it("grup listesi hâlâ kapalı (koleksiyon taraması yok)", () => {
-    const block = matchBlock(rules, "match /groups/{groupId} {");
-    expect(block).toContain("allow list: if false;");
+  it("grup kökü ve katılma denemeleri listelemeye kapalı", () => {
+    expect(groups).toContain("allow list: if false;");
+    expect(attempts).toContain("allow list: if false;");
   });
 });
 

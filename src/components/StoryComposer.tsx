@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { ImagePlus, Loader2, MapPin, Send, X } from "lucide-react";
 import { STORY_ACCENTS } from "../data/feed";
 import type { StoryAccent, UploadPhotoKind } from "../types";
 import { mediaUrl } from "../utils/api";
 import { cn } from "../utils/cn";
+import { usePanelAccess } from "../hooks/usePanelAccess";
 
 interface Props {
   place: { label: string; lng: number; lat: number };
@@ -38,11 +39,8 @@ export default function StoryComposer({
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  // Odak tuzağı + Esc + odak dönüşü (P18).
+  const panelRef = usePanelAccess(true, onClose, true) as React.RefObject<HTMLFormElement>;
 
   const pick = async (file?: File) => {
     if (!file) return;
@@ -85,9 +83,13 @@ export default function StoryComposer({
 
   return (
     <div className="animate-fade fixed inset-0 z-[70] grid place-items-center bg-black/70 p-4 backdrop-blur-sm">
-      <div className="absolute inset-0" onClick={onClose} />
+      <button type="button" tabIndex={-1} aria-label="Pencereyi kapat" className="absolute inset-0 cursor-default" onClick={onClose} />
 
       <form
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Hikâye oluştur"
         onSubmit={submit}
         className="animate-rise thin-scroll relative max-h-[94vh] w-full max-w-[400px] overflow-y-auto rounded-3xl border border-leaf/25 bg-ink-2 shadow-2xl shadow-black/70"
       >
@@ -130,7 +132,7 @@ export default function StoryComposer({
             maxLength={160}
             rows={3}
             placeholder="24 saat boyunca akışta kalacak kısa bir not bırak…"
-            className="mt-3 w-full resize-none rounded-xl border border-white/10 bg-ink px-3.5 py-2.5 text-[13.5px] leading-relaxed text-white outline-none transition placeholder:text-mint/35 focus:border-sun/70"
+            className="mt-3 w-full resize-none rounded-xl border border-white/10 bg-ink px-3.5 py-2.5 text-[13.5px] leading-relaxed text-white outline-none transition placeholder:text-mint/70 focus:border-sun/70"
           />
           <span className="-mt-1 block text-right text-[10px] text-mint/40">{text.length}/160</span>
 
@@ -164,7 +166,7 @@ export default function StoryComposer({
             onChange={(e) => void pick(e.target.files?.[0])}
           />
 
-          {error && <p className="mt-2 text-[11.5px] text-red-300/90">{error}</p>}
+          {error && <p role="alert" className="mt-2 text-[11.5px] text-red-300/90">{error}</p>}
 
           {/* Renk */}
           <div className="mt-3 flex items-center gap-2">
@@ -207,7 +209,7 @@ export default function StoryComposer({
             onChange={(e) => setAuthor(e.target.value)}
             maxLength={24}
             placeholder="Takma adın"
-            className="mt-3 w-full rounded-xl border border-white/10 bg-ink px-3.5 py-2.5 text-[13px] text-white outline-none transition placeholder:text-mint/35 focus:border-sun/70"
+            className="mt-3 w-full rounded-xl border border-white/10 bg-ink px-3.5 py-2.5 text-[13px] text-white outline-none transition placeholder:text-mint/70 focus:border-sun/70"
           />
 
           <div className="mt-4 flex items-center justify-end gap-2">

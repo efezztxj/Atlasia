@@ -39,6 +39,8 @@ export interface Place {
   createdAt?: number;
   /** Veri kaynağı atıfları: ODbL (OSM) ve CC BY-SA (Wikipedia) */
   dataSources?: string[];
+  /** Hikâye metni canlı kaynaktan geldiyse (P14): madde adı, adresi ve lisansı. */
+  historySource?: { name: string; title: string; url: string; license: string; lang: string };
   /**
    * Yalnız istemcide hesaplanır (Firestore alanı değil). Adım 14 tazelik döngüsü
    * yerin bilgisinin hâlâ doğru olduğunu gösteren doğrulama özetidir.
@@ -175,6 +177,15 @@ export interface AtlasTrackStop {
   lat: number;
   lng: number;
   pointCount: number;
+  /**
+   * Durağın, izin **sadeleştirilmiş** `polyline` köşelerindeki kapsadığı
+   * aralık (0 tabanlı, iki uç dahil). Durak-durak bacak bölmenin dayanağıdır:
+   * saklı iz tek başına bu aralıklarla yeniden bacaklanabilir.
+   * İsteğe bağlıdır — bu alan eklenmeden yazılmış eski izlerde bulunmaz;
+   * tüketiciler yokluğunda tek bacaklı eski davranışa düşer.
+   */
+  startPointIndex?: number;
+  endPointIndex?: number;
 }
 
 /** Sahibe özel ham iz: zaman bilgisi tam çözünürlüklü noktalarla kayıtta türetilir. */

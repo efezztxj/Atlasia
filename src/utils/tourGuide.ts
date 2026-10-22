@@ -7,8 +7,13 @@ import { haversineKm } from "./geo";
  * Çözüm: eşik 35-50m (site ölçeği), histerezis 20m, sıradaki durak öncelikli.
  */
 
-export const TOUR_ENTER_BASE_M = 35;
+export const TOUR_ENTER_BASE_M = 40;
 export const TOUR_EXIT_HYSTERESIS_M = 20;
+/** Bu doğruluğa kadar tam 40 m giriş yarıçapı kullanılır. */
+export const TOUR_GOOD_ACCURACY_M = 25;
+/** Bunun üstünde yeni giriş yapılmaz (şehir içi/kapalı alanda telefonlar sık 30–50 m verir). */
+export const TOUR_MAX_ACCURACY_M = 60;
+export const TOUR_MIN_ENTER_M = 15;
 
 export interface TourGuideState {
   insideId: string | null;
@@ -17,14 +22,15 @@ export interface TourGuideState {
 }
 
 export function enterRadiusM(accuracy: number): number {
-  // Site ölçeğinde anıtlar 20-40m arayla; 120m eşik yanlış anıt tetikler.
-  // Daha sıkı: 35-50m bandı, doğruluğa ölçekli
-  const a = Number.isFinite(accuracy) ? accuracy : 50;
-  return Math.max(35, Math.min(50, a + 8));
+  // Site ölçeğinde anıtlar 20-40 m arayla; iyi sinyalde 40 m giriş ve 60 m çıkış.
+  // Sinyal zayıfladıkça giriş yarıçapı daralır: yanlış anıtın tetiklenmesi yerine
+  // kullanıcının anıta biraz daha yaklaşması beklenir (eskiden 25 m üstünde hiç çalışmıyordu).
+  if (!Number.isFinite(accuracy) || accuracy <= TOUR_GOOD_ACCURACY_M) return TOUR_ENTER_BASE_M;
+  return Math.max(TOUR_MIN_ENTER_M, TOUR_ENTER_BASE_M - (accuracy - TOUR_GOOD_ACCURACY_M));
 }
 
-export function exitRadiusM(accuracy: number): number {
-  return enterRadiusM(accuracy) + TOUR_EXIT_HYSTERESIS_M;
+export function exitRadiusM(_accuracy: number): number {
+  return TOUR_ENTER_BASE_M + TOUR_EXIT_HYSTERESIS_M;
 }
 
 export interface GuideCandidate {
@@ -57,6 +63,11 @@ export function resolveGuidePlace(
 ): GuideResolution {
   if (!location || candidates.length === 0) {
     return { place: null, meters: null, nextState: state, entered: false, exited: false };
+  }
+  if (!Number.isFinite(location.accuracy) || location.accuracy > TOUR_MAX_ACCURACY_M) {
+    // Zayıf konum: yeni giriş yok, ama içinde olunan durak tek bir kötü ölçümle kaybolmaz.
+    const inside = state.insideId ? candidates.find((c) => c.id === state.insideId) ?? null : null;
+    return { place: inside, meters: null, nextState: state, entered: false, exited: false };
   }
 
   const enterR = enterRadiusM(location.accuracy);

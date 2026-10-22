@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ArrowRight,
   CheckCircle2,
@@ -6,6 +6,7 @@ import {
   Download,
   Eye,
   Globe2,
+  HardDriveDownload,
   Loader2,
   Map,
   MapPin,
@@ -24,6 +25,10 @@ import type { AppTheme } from "../hooks/useTheme";
 import type { InstallAppController } from "../hooks/useInstallApp";
 import { cn } from "../utils/cn";
 import { formatCoords } from "../utils/geo";
+import type { BBox } from "../utils/offlineCache";
+
+// P15: indirme kodu yalnız kullanıcı bölümü açınca yüklenir (entry bütçesi).
+const OfflinePackage = lazy(() => import("./OfflinePackage"));
 
 export type SettingsTab = "location";
 
@@ -45,6 +50,8 @@ interface Props {
   onAllowLocation: () => void;
   onClearLocation: () => void;
   onShowLocation: () => void;
+  /** Haritanın görünen alanı; çevrimdışı paket bu alanı indirir. */
+  mapBounds?: BBox | null;
 }
 
 function InfoRow({ icon: Icon, title, children }: { icon: LucideIcon; title: string; children: ReactNode }) {
@@ -81,10 +88,12 @@ export default function SettingsPanel({
   onAllowLocation,
   onClearLocation,
   onShowLocation,
+  mapBounds = null,
 }: Props) {
   const panelRef = useRef<HTMLElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const [installNotice, setInstallNotice] = useState<string | null>(null);
+  const [offlineOpen, setOfflineOpen] = useState(false);
 
   const requestInstall = async () => {
     try {
@@ -215,6 +224,25 @@ export default function SettingsPanel({
               ))}
             </div>
             <p className="mt-2 text-[11.5px] leading-relaxed text-mint/45">Pinlerin, rota çizgin ve 3B arazi tercihin korunur.</p>
+          </section>
+
+          <div className="my-6 h-px bg-leaf/15" />
+          <section aria-labelledby="offline-title">
+            <p id="offline-title" className="text-[12px] font-bold tracking-[0.16em] text-mint/55 uppercase">Çevrimdışı harita</p>
+            {offlineOpen ? (
+              <Suspense fallback={<p className="mt-3 flex items-center gap-2 text-[13px] text-mint/70"><Loader2 className="size-4 animate-spin" />Yükleniyor…</p>}>
+                <OfflinePackage bbox={mapBounds} />
+              </Suspense>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setOfflineOpen(true)}
+                aria-expanded={false}
+                className="mt-3 flex min-h-11 w-full items-center gap-2 rounded-2xl border border-leaf/20 bg-white/[0.04] px-4 text-left text-[14px] font-semibold text-mint transition hover:border-leaf/45"
+              >
+                <HardDriveDownload className="size-4 text-leaf" />Görünen alanı internetsiz kullanmak için indir
+              </button>
+            )}
           </section>
 
           <div className="my-6 h-px bg-leaf/15" />

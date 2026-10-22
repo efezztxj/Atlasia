@@ -6,14 +6,20 @@
  * bile aşsa sorgu `permission-denied` döner — hata mesajı "Missing or
  * insufficient permissions" olur ve gerçek neden (limit) mesajda görünmez.
  *
- * KANITLANAN ÖRNEK: `users/{uid}/groups` liste kuralı boundedList(20) iken
- * hesap silme yolu `limit(50)` kullanıyordu. Sorgu her zaman reddedildi; hata
- * `deleteUserData`'daki ortak catch'e düştüğü için grup indeksi ve BİLDİRİMLER
- * de hiç silinmiyordu. Bu test o sınıfı otomatik yakalar.
+ * KANITLANAN ÖRNEK (P5, 5. kök neden): `users/{uid}/groups` liste kuralı
+ * boundedList(20) iken hesap silme yolu `limit(50)` kullanıyordu. Sorgu her
+ * zaman reddedildi; hata `deleteUserData`'daki ortak catch'e düştüğü için grup
+ * indeksi ve BİLDİRİMLER de hiç silinmiyordu. Bu test o sınıfı otomatik yakalar.
  *
- * Test Java/emülatör istemez; doğrudan `firestore.rules` metnini ve `src/`
- * kaynaklarını ayrıştırır. Yeni bir liste sorgusu eklenirse tablo elle
- * güncellenmek zorunda DEĞİLDİR — sorgu otomatik bulunur.
+ * MERGE NOTU (2026-10-22, PR #51): `main` aynı kök nedeni `ACCOUNT_DATA_PAGE_SIZE`
+ * (=20, `src/config/firestoreLimits.ts`) ile çözmüş ve emülatör testine
+ * bağlamıştı. Bu dosya aynı invariantı **Java/emülatör gerektirmeden** denetler:
+ * `firestore.rules` metnini ve `src/` kaynaklarını doğrudan ayrıştırır. Böylece
+ * kural sınırı değişirse CI'ın iki katmanı da (statik + emülatör) uyarı verir.
+ *
+ * Yeni bir liste sorgusu eklenirse tablo elle güncellenmek zorunda DEĞİLDİR —
+ * sorgu otomatik bulunur. Sabit takma adları (`const DELETE_PAGE_SIZE =
+ * ACCOUNT_DATA_PAGE_SIZE`) ve `collectionGroup` sorguları da çözülür.
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
@@ -35,7 +41,7 @@ interface RuleBound {
  * İç içe match bloklarını tam yola açarak `allow list` sınırlarını çıkarır.
  *
  * DİKKAT: Yalnız `match` satırlarını saymak YETMEZ. Kurallar `match` bloğunun
- * içinde `function friendshipAfter() { ... }` gibi yardımcılar barındırır; o
+ * içinde `function groupMembers() { ... }` gibi yardımcılar barındırır; o
  * fonksiyonun kapanış süslü parantezi match'i erken düşürür ve yol boş kalır.
  * Bu yüzden TÜM süslü parantezlerle bir derinlik sayacı tutulur ve bir match
  * yalnız derinlik onun açılış seviyesinin altına inince çıkarılır.
@@ -53,7 +59,7 @@ function parseRuleListBounds(source: string): RuleBound[] {
     if (matchDeclaration) {
       const opens = (withoutComment.match(/\{/g) || []).length;
       const closes = (withoutComment.match(/\}/g) || []).length;
-      // Yolun kendisi de süslü parantez içerir: /users/{uid}/friendships/{pairId}
+      // Yolun kendisi de süslü parantez içerir: /users/{uid}/groups/{groupId}
       depth += opens - closes;
       stack.push({ depth, path: matchDeclaration[1]! });
       continue;
@@ -143,15 +149,40 @@ function extractQueryBodies(source: string): Array<{ body: string; startLine: nu
 
 const CONSTANTS = new Map<string, number>();
 
-/** Tüm src/ içindeki sayısal sabitleri toplar (yerel ve export edilen). */
+/**
+ * Tüm src/ içindeki sayısal sabitleri toplar (yerel ve export edilen) ve
+ * TAKMA ADLARI çözer.
+ *
+ * Takma ad şart: `moderation.ts` içinde `const DELETE_PAGE_SIZE =
+ * ACCOUNT_DATA_PAGE_SIZE;` biçiminde bir yönlendirme var. Yalnız sayısal
+ * literalleri toplayan bir tarayıcı bu sorguları "çözülemedi" diye atlar ve
+ * hesap silme yolu denetimsiz kalırdı — yani tam da bu bekçinin var oluş nedeni.
+ */
 function collectConstants(files: string[]): void {
+  const aliases = new Map<string, string>();
   for (const file of files) {
     const source = readFileSync(file, "utf8");
-    const pattern = /(?:export\s+)?const\s+([A-Z][A-Z0-9_]*)\s*(?::[^=]+)?=\s*(\d+)/g;
+    const numeric = /(?:export\s+)?const\s+([A-Z][A-Z0-9_]*)\s*(?::[^=]+)?=\s*(\d+)\s*[;]/g;
     let found: RegExpExecArray | null;
-    while ((found = pattern.exec(source)) !== null) {
+    while ((found = numeric.exec(source)) !== null) {
       CONSTANTS.set(found[1]!, Number(found[2]));
     }
+    const alias = /(?:export\s+)?const\s+([A-Z][A-Z0-9_]*)\s*(?::[^=]+)?=\s*([A-Z][A-Z0-9_]*)\s*[;]/g;
+    while ((found = alias.exec(source)) !== null) {
+      if (found[1] !== found[2]) aliases.set(found[1]!, found[2]!);
+    }
+  }
+  // Zinciri çöz (döngü korumalı): A = B = C = 20.
+  for (const [name] of aliases) {
+    let cursor = name;
+    const seen = new Set<string>([name]);
+    while (aliases.has(cursor) && !CONSTANTS.has(cursor)) {
+      cursor = aliases.get(cursor)!;
+      if (seen.has(cursor)) break;
+      seen.add(cursor);
+    }
+    const value = CONSTANTS.get(cursor);
+    if (typeof value === "number") CONSTANTS.set(name, value);
   }
 }
 
@@ -199,6 +230,19 @@ function splitTopLevelArgs(args: string): string[] {
   return out;
 }
 
+/** Dengeli parantezle bir çağrının argüman listesini döndürür. */
+function callArgs(body: string, callPattern: RegExp): string[] | null {
+  const start = callPattern.exec(body);
+  if (!start) return null;
+  let depth = 0;
+  let end = start.index + start[0].length - 1;
+  for (let i = end; i < body.length; i += 1) {
+    if (body[i] === "(") depth += 1;
+    else if (body[i] === ")") { depth -= 1; if (depth === 0) { end = i; break; } }
+  }
+  return splitTopLevelArgs(body.slice(start.index + start[0].length, end));
+}
+
 /**
  * `collection(...)` yolunu TÜM segmentleriyle çıkarır.
  *
@@ -207,25 +251,25 @@ function splitTopLevelArgs(args: string): string[] {
  * `groups/{groupId}/messages` alt koleksiyonudur. Kök `/groups` koleksiyonu
  * kurallarda `list: if false` olduğundan bu yanlış okuma sahte bir ihlal üretir.
  * Değişken segmentler `{*}` olarak işaretlenir.
+ *
+ * `collectionGroup(db, "replies")` da desteklenir: kural tarafındaki karşılığı
+ * `/{path=**}/replies` olduğu için yol `{*}/replies` olarak üretilir.
  */
 function extractCollectionPath(body: string): string | null {
-  const start = /\bcollection\s*\(/.exec(body);
-  if (!start) return null;
-  let depth = 0;
-  let end = start.index + start[0].length - 1;
-  for (let i = end; i < body.length; i += 1) {
-    if (body[i] === "(") depth += 1;
-    else if (body[i] === ")") { depth -= 1; if (depth === 0) { end = i; break; } }
+  const group = callArgs(body, /\bcollectionGroup\s*\(/);
+  if (group && group.length >= 2) {
+    const literal = /^["'`](.*)["'`]$/s.exec(group[1]!);
+    if (literal) return `{*}/${literal[1]!.replace(/\$\{[^}]+\}/g, "{*}")}`;
   }
-  const args = splitTopLevelArgs(body.slice(start.index + start[0].length, end));
-  if (args.length < 2) return null;
+  const args = callArgs(body, /\bcollection\s*\(/);
+  if (!args || args.length < 2) return null;
   // İlk argüman db/firestore örneğidir, yol segmenti değildir.
   const segments = args.slice(1).map((arg) => {
     const literal = /^["'`](.*)["'`]$/s.exec(arg);
     return literal ? literal[1]!.replace(/\$\{[^}]+\}/g, "{*}") : "{*}";
   });
   const joined = segments.join("/").replace(/\/+/g, "/");
-  // Tamamen değişken yol statik çözülemez (deleteOwnedCollection gibi).
+  // Tamamen değişken yol statik çözülemez (deleteOwnSubcollection gibi).
   return joined.split("/").every((segment) => segment === "{*}") ? null : joined;
 }
 
@@ -252,27 +296,66 @@ function collectClientQueries(files: string[]): ClientQuery[] {
 }
 
 /**
- * Koleksiyon adı VE limit'i fonksiyon parametresi olan sorgular kaynak içinde
- * statik çözülemez. `deleteOwnSubcollection(uid, subcollection, pageLimit)` tam
- * bu biçimdeydi ve hesap silme hatasının kaynağıydı; bu yüzden çağıran yerler
- * taranıp her çağrı SOMUT bir sorguya dönüştürülür. Böylece parametreli yol da
- * gerçekten denetlenmiş olur, "çözülemedi" diye atlanmaz.
+ * Koleksiyon adı fonksiyon parametresi olan sorgular kaynak içinde statik
+ * çözülemez. `deleteOwnSubcollection(uid, subcollection)` ve
+ * `deleteOwnedTopLevel(uid, collectionName, uidField)` tam bu biçimdedir ve
+ * hesap silme hatasının kaynağıydı.
+ *
+ * `main` bu çağrıları veri güdümlü listelerle yapar: `OWNED_TOP_LEVEL` ve
+ * `OWN_SUBCOLLECTIONS`. Bu iki liste ayrıştırılıp her giriş SOMUT bir sorguya
+ * dönüştürülür; böylece parametreli yol da gerçekten denetlenmiş olur,
+ * "çözülemedi" diye atlanmaz.
  */
-function expandParameterizedQueries(files: string[]): ClientQuery[] {
+function expandDeletionTargets(files: string[]): ClientQuery[] {
   const expanded: ClientQuery[] = [];
-  const callPattern = /deleteOwnSubcollection\(\s*[^,]+,\s*"([^"]+)"\s*,\s*([A-Za-z0-9_]+)\s*\)/g;
   for (const file of files) {
     const source = readFileSync(file, "utf8");
-    let found: RegExpExecArray | null;
-    while ((found = callPattern.exec(source)) !== null) {
-      const subcollection = found[1]!;
-      const limit = resolveLimit(found[2]!);
-      expanded.push({
-        file,
-        line: source.slice(0, found.index).split("\n").length,
-        rawPath: `users/\${uid}/${subcollection}`,
-        limit: limit ?? Number.NaN,
-        limitSource: found[2]!,
+    if (!source.includes("deleteOwnedTopLevel") && !source.includes("deleteOwnSubcollection")) continue;
+
+    const lineOf = (index: number): number => source.slice(0, index).split("\n").length;
+    // Silme sayfalamasının limiti ilgili fonksiyonun GÖVDESİNDEN alınır.
+    // Dosyadaki ilk `limit(...)` ifadesine bakmak yetmez: moderation.ts'te
+    // rapor sorgusu `limit(REPORT_LIMIT=50)` ile başlar ve bu, /routes
+    // boundedList(40) sınırına karşı SAHTE bir ihlal üretir.
+    const limitInside = (fnName: string): string | null => {
+      const start = source.indexOf(`async function ${fnName}(`);
+      if (start < 0) return null;
+      const end = source.indexOf("\n}", start);
+      const body = source.slice(start, end < 0 ? undefined : end);
+      return /limit\(\s*([A-Z][A-Z0-9_]*)\s*\)/.exec(body)?.[1] ?? null;
+    };
+    const subLimitSource = limitInside("deleteOwnSubcollection") ?? "DELETE_PAGE_SIZE";
+    const topLimitSource = limitInside("deleteOwnedTopLevel") ?? subLimitSource;
+    const subLimit = resolveLimit(subLimitSource);
+    const topLimit = resolveLimit(topLimitSource);
+
+    const subList = /const\s+OWN_SUBCOLLECTIONS[^=]*=\s*\[([^\]]*)\]/.exec(source)?.[1];
+    if (subList) {
+      const names = [...subList.matchAll(/["'`]([^"'`]+)["'`]/g)].map((match) => match[1]!);
+      const anchor = source.indexOf("const OWN_SUBCOLLECTIONS");
+      names.forEach((name, offset) => {
+        expanded.push({
+          file,
+          line: lineOf(anchor) + offset,
+          rawPath: `users/\${uid}/${name}`,
+          limit: subLimit ?? Number.NaN,
+          limitSource: subLimitSource,
+        });
+      });
+    }
+
+    const topList = /const\s+OWNED_TOP_LEVEL[^=]*=\s*\[([\s\S]*?)\n\];/.exec(source)?.[1];
+    if (topList) {
+      const names = [...topList.matchAll(/collectionName:\s*["'`]([^"'`]+)["'`]/g)].map((match) => match[1]!);
+      const anchor = source.indexOf("const OWNED_TOP_LEVEL");
+      names.forEach((name, offset) => {
+        expanded.push({
+          file,
+          line: lineOf(anchor) + offset,
+          rawPath: name,
+          limit: topLimit ?? Number.NaN,
+          limitSource: topLimitSource,
+        });
       });
     }
   }
@@ -286,36 +369,34 @@ const ruleBounds = parseRuleListBounds(rulesSource);
 const sourceFiles = listSourceFiles("src");
 collectConstants(sourceFiles);
 const clientQueries = collectClientQueries(sourceFiles);
-const parameterizedQueries = expandParameterizedQueries(sourceFiles);
-/** Ana denetime giren tüm sorgular: doğrudan bulunanlar + çağrı yerinden somutlaştırılanlar. */
-const allQueries = [...clientQueries, ...parameterizedQueries];
-
-/**
- * Koleksiyon adı değişkenle verilen sorgular (`deleteOwnedCollection`) statik
- * çözülemez; çağıranların gerçek değerleri burada açıkça denetlenir.
- */
-const DYNAMIC_QUERIES: Array<{ collectionName: string; limit: number; caller: string }> = [
-  { collectionName: "places", limit: 50, caller: "deleteOwnedPlaces" },
-  { collectionName: "posts", limit: 50, caller: "deleteOwnedPosts" },
-  { collectionName: "stories", limit: 50, caller: "deleteOwnedStories" },
-  { collectionName: "reports", limit: 50, caller: "deleteOwnedReports" },
-];
+const deletionQueries = expandDeletionTargets(sourceFiles);
+/** Ana denetime giren tüm sorgular: doğrudan bulunanlar + listeden somutlaştırılanlar. */
+const allQueries = [...clientQueries, ...deletionQueries];
 
 describe("firestore.rules — boundedList sınırları ayrıştırılabiliyor", () => {
   it("beklenen koleksiyonların hepsi listede", () => {
     const paths = ruleBounds.map((entry) => entry.collectionPath);
+    // Ayrıştırıcı sessizce boş dönerse tüm denetim anlamsızlaşır; bu liste
+    // kural dosyasının gerçekten okunduğunu kanıtlar (2026-10-22 merge sonrası
+    // main'in koleksiyon kümesi).
     for (const expected of [
       "/users/{uid}/groups",
+      "/users/{uid}/groupInvites",
       "/users/{uid}/notifications",
-      "/users/{uid}/friendships",
       "/users/{uid}/savedPlaces",
       "/users/{uid}/savedRoutes",
+      "/users/{uid}/friendRequests",
+      "/users/{uid}/friends",
+      "/users/{uid}/blocks",
       "/groups/{groupId}/messages",
+      "/groups/{groupId}/invites",
       "/routes",
       "/tracks",
       "/blocks",
       "/reports",
       "/verifications",
+      "/feedback",
+      "/userProfiles",
     ]) {
       expect(paths, `${expected} kuralı bulunamadı`).toContain(expected);
     }
@@ -332,6 +413,15 @@ describe("firestore.rules — boundedList sınırları ayrıştırılabiliyor", 
     expect(friendships).toBeDefined();
     expect(friendships!.bound).toBe(0);
   });
+
+  it("grup kökü ve katılma denemeleri listelemeye kapalı", () => {
+    // Gruplar yalnız indeks üzerinden bulunur; joinAttempts kaba kuvvete kapalı.
+    for (const path of ["/groups", "/groups/{groupId}/joinAttempts"]) {
+      const rule = ruleBounds.find((entry) => entry.collectionPath === path);
+      expect(rule, `${path} liste kuralı bulunamadı`).toBeDefined();
+      expect(rule!.bound, `${path} listelemeye açık olmamalı`).toBe(0);
+    }
+  });
 });
 
 describe("istemci limit() hiçbir kural sınırını aşmaz", () => {
@@ -341,9 +431,9 @@ describe("istemci limit() hiçbir kural sınırını aşmaz", () => {
   });
 
   it("her sorgunun limiti sayısal olarak çözülebildi", () => {
-    // Koleksiyon adı VE limiti fonksiyon parametresi olan sorgular burada
-    // çözülemez; onlar expandParameterizedQueries ile çağrı yerinden
-    // somutlaştırılıp ayrı bir testte denetlenir. Sessizce atlanmazlar.
+    // Koleksiyon adı fonksiyon parametresi olan sorgular burada çözülemez;
+    // onlar expandDeletionTargets ile veri listelerinden somutlaştırılıp ayrı
+    // bir testte denetlenir. Sessizce atlanmazlar.
     // Biçim: `users/{*}/{*}` — son segment dinamik koleksiyon adıdır.
     const isParameterized = (rawPath: string): boolean => rawPath.split("/").pop() === "{*}";
     const unresolved = clientQueries
@@ -380,21 +470,30 @@ describe("istemci limit() hiçbir kural sınırını aşmaz", () => {
     expect(hits.map((entry) => `${entry.file}:${entry.line} ${entry.rawPath}`)).toEqual([]);
   });
 
-  it("parametreli alt koleksiyon sorguları çağrı yerlerinden somutlaştırıldı", () => {
-    // Bu bekçi olmazsa ayrıştırıcı sessizce 0 çağrı bulup test "geçmiş" görünürdü.
-    // Gerçek hata tam bu yoldaydı: deleteOwnSubcollection(uid,"groups",50).
-    expect(parameterizedQueries.length).toBeGreaterThanOrEqual(2);
-    const names = parameterizedQueries.map((entry) => entry.rawPath.split("/").pop());
-    expect(names).toContain("groups");
-    expect(names).toContain("notifications");
-    for (const entry of parameterizedQueries) {
-      expect(Number.isNaN(entry.limit), `${entry.rawPath} limiti çözülemedi`).toBe(false);
+  it("hesap silme hedefleri veri listelerinden somutlaştırıldı", () => {
+    // Bu bekçi olmazsa ayrıştırıcı sessizce 0 giriş bulup test "geçmiş"
+    // görünürdü. Gerçek hata tam bu yoldaydı: users/{uid}/groups limit(50) > 20.
+    expect(deletionQueries.length).toBeGreaterThanOrEqual(10);
+    const names = deletionQueries.map((entry) => entry.rawPath.split("/").pop());
+    expect(names, "bildirimler OWN_SUBCOLLECTIONS'tan somutlaşmalı").toContain("notifications");
+    expect(names, "hikâyeler OWNED_TOP_LEVEL'dan somutlaşmalı").toContain("stories");
+    // Grup indeksi silmesi veri listesinde DEĞİL, leaveOrDeleteGroups içindeki
+    // satır içi sorgudadır; bu yüzden tüm sorgu kümesi üzerinden doğrulanır.
+    // (P5'in 5. kök nedeni tam bu sorguydu: kural 20, istemci limit(50).)
+    const groupIndex = allQueries.filter((entry) => normalizePath(entry.rawPath) === "/users/{*}/groups");
+    expect(groupIndex.length, "grup indeksi sorgusu bulunamadı").toBeGreaterThan(0);
+    for (const entry of groupIndex) {
+      expect(Number.isNaN(entry.limit), "grup indeksi limiti çözülemedi").toBe(false);
+      expect(entry.limit, "grup indeksi limiti kural sınırını aşamaz").toBeLessThanOrEqual(20);
+    }
+    for (const entry of deletionQueries) {
+      expect(Number.isNaN(entry.limit), `${entry.rawPath} limiti çözülemedi (${entry.limitSource})`).toBe(false);
     }
   });
 
-  it("parametreli sorguların her biri kendi kural sınırına uyar", () => {
+  it("hesap silme sorgularının her biri kendi kural sınırına uyar", () => {
     const violations: string[] = [];
-    for (const entry of parameterizedQueries) {
+    for (const entry of deletionQueries) {
       const clientPath = normalizePath(entry.rawPath);
       const rule = clientPath
         ? ruleBounds.find((candidate) => pathsMatch(clientPath, candidate.collectionPath))
@@ -407,21 +506,25 @@ describe("istemci limit() hiçbir kural sınırını aşmaz", () => {
         );
       }
     }
-    expect(violations, `PARAMETRELİ LİMİT AŞIMI:\n${violations.join("\n")}`).toEqual([]);
+    expect(violations, `HESAP SİLME LİMİT AŞIMI:\n${violations.join("\n")}`).toEqual([]);
   });
 
-  it("dinamik koleksiyon adlı silme sorguları da sınırları aşmaz", () => {
-    const violations: string[] = [];
-    for (const entry of DYNAMIC_QUERIES) {
-      const rule = ruleBounds.find((candidate) => candidate.collectionPath === `/${entry.collectionName}`);
-      expect(rule, `${entry.collectionName} için liste kuralı yok`).toBeDefined();
-      if (rule && entry.limit > rule.bound) {
-        violations.push(
-          `${entry.caller}: ${entry.collectionName} limit(${entry.limit}) > boundedList(${rule.bound})`,
-        );
-      }
-    }
-    expect(violations).toEqual([]);
+  it("ACCOUNT_DATA_PAGE_SIZE silinen her koleksiyonun en küçük sınırını aşmaz", () => {
+    // firestoreLimits.ts'teki belgelenmiş invariant: silme sayfası, sorgulanan
+    // koleksiyonların EN KÜÇÜK boundedList değerinden büyük olamaz (aksi hâlde
+    // hesap silme permission-denied ile yarıda kalır).
+    const pageSize = CONSTANTS.get("ACCOUNT_DATA_PAGE_SIZE");
+    expect(pageSize, "ACCOUNT_DATA_PAGE_SIZE çözülemedi").toBeDefined();
+    const bounds = deletionQueries
+      .map((entry) => {
+        const clientPath = normalizePath(entry.rawPath);
+        return clientPath
+          ? ruleBounds.find((candidate) => pathsMatch(clientPath, candidate.collectionPath))?.bound
+          : undefined;
+      })
+      .filter((bound): bound is number => typeof bound === "number" && bound > 0);
+    expect(bounds.length).toBeGreaterThan(5);
+    expect(pageSize!).toBeLessThanOrEqual(Math.min(...bounds));
   });
 });
 
@@ -431,7 +534,7 @@ describe("bilinen sınır değerleri — regresyon kilidi", () => {
     const rule = ruleBounds.find((entry) => entry.collectionPath === "/users/{uid}/groups");
     expect(rule!.bound).toBe(20);
     expect(CONSTANTS.get("GROUPS_LIMIT")).toBe(20);
-    const groupQueries = clientQueries.filter((entry) => normalizePath(entry.rawPath) === "/users/{*}/groups");
+    const groupQueries = allQueries.filter((entry) => normalizePath(entry.rawPath) === "/users/{*}/groups");
     expect(groupQueries.length).toBeGreaterThan(0);
     for (const entry of groupQueries) expect(entry.limit).toBeLessThanOrEqual(20);
   });
@@ -444,9 +547,16 @@ describe("bilinen sınır değerleri — regresyon kilidi", () => {
     }
   });
 
-  it("rota keşif sayfası 40'tır (ROUTE_PAGE_SIZE kurala tam oturur)", () => {
-    expect(CONSTANTS.get("ROUTE_PAGE_SIZE")).toBe(40);
+  it("rota keşif sayfası 40'tır (PUBLIC_ROUTE_PAGE_SIZE kurala tam oturur)", () => {
+    expect(CONSTANTS.get("PUBLIC_ROUTE_PAGE_SIZE")).toBe(40);
     const rule = ruleBounds.find((entry) => entry.collectionPath === "/routes");
     expect(rule!.bound).toBe(40);
+  });
+
+  it("grup üyeliği ve mesaj sayfaları kural ile istemcide aynı", () => {
+    expect(CONSTANTS.get("GROUP_MEMBERS_MAX")).toBe(20);
+    expect(CONSTANTS.get("MESSAGES_LIMIT")).toBe(50);
+    const messages = ruleBounds.find((entry) => entry.collectionPath === "/groups/{groupId}/messages");
+    expect(messages!.bound).toBe(50);
   });
 });

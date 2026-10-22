@@ -3,8 +3,8 @@
 > Bu dosya, Atlasia'ya eklenecek işlerin **bağımlılık sırasıdır**; özellik listesi değil.
 > Ajanlar için yazıldı: her adımın amacı, girdisi, dosya yolları, "bitti kanıtı" komutu ve riski var.
 >
-> - **Son güncelleme:** 2026-10-20 (P1 · TEMEL & KAPANIŞ)
-> - **Durum:** Adım 0–2 ve kapanış uygulandı; Arena CI run `39333404281` tüm gate'lerde geçti (Rules emulator dahil). Yerel sandbox'ta Java 21 yok; yerel emulator komutu bu yüzden başlamaz. Kanıtlar `teslimat-p1.md` içinde. Karar (a) alt koleksiyon olarak seçildi; (b–g) açık.
+> - **Son güncelleme:** 2026-10-22 (P1 Tur 4: durum satırı `b6922d1`'e çekildi; §8(c)/§9 düzeltildi; Adım 11/15 kısmi notları)
+> - **Durum:** main `b6922d1`. Bitti: P1 kapanış, T1-AUTH (#33), P17 çekirdeği (#32; onaylı kaydet akışı **açık**), üretim izin düzeltmesi (#31). Açık: P14 (Overpass + Wikidata içerik hattı), P15 (çevrimdışı saha paketi), P18 (erişilebilirlik — P1 Tur 4 denetimi `docs/denetim/p18-erisilebilirlik.md`), P20 (paylaşım linki, karar bekliyor), T1-SOSYAL (P4, düzeltme bekliyor). Karar (a) alt koleksiyon; (c) uygulandı ama kullanıcı onayı bekliyor; (b, d–g) açık.
 > - **Kural:** ⛔ işaretli adımlarda insan onayı olmadan kod yazılmaz.
 > - **v1'e göre değişiklik:** ürün tezi netleşti (topluluk uygulaması) → sosyal katman silinmiyor, fonlanıyor; `routes`/`tracks` nesneleri eklendi; içerik boru hattı ayrı faz oldu.
 
@@ -61,7 +61,7 @@ Env: `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJEC
 | `posts/{id}/replies/{replyId}` | tek yanıt belgesi | bounded public read; yazar UID ile doğrulanır; değiştirilemez |
 | `stories/{id}` | 24 saat ömürlü | görüldü durumu cihaz bazlı localStorage'da; Firestore `seen` yok |
 | `users/{uid}` | profil | `xp`/`level` istemciden yazılamaz |
-| — | **rotalar** | **yalnız localStorage** (`atlasia.member.{uid}`) |
+| `routes/{id}`, `users/{uid}/savedPlaces\|savedRoutes` | **rotalar + kayıtlı koleksiyonlar** | Firestore'da (görünürlüklü yayın + kayıt); yalnız Firebase yapılandırması yoksa localStorage (`atlasia.member.{uid}`) |
 | — | **grup / mesaj** | **hiç yok** |
 | — | **iz kaydı** | **hiç yok** |
 
@@ -100,24 +100,50 @@ Hiçbir moderasyon yapısı yok: `report`, `şikayet`, `block`, `ban` araması g
 | 6 | Eski sosyal katman yardımcıları | gerçek `src/` taraması | eski `awardXp`/`followUser` ailesi bu checkout'ta mevcut değil; yeniden tanıtılırsa deprecated işaretle ve finansman kararı bekle |
 | 7 | Story `seen` alanı global dokümanda | `types.ts`, `firestoreData.ts`, rules | tamamlandı: Firestore şemasından çıkarıldı; UI yalnız cihaz bazlı `atlasia.feed.seen.v1` kullanır |
 | 8 | Reply veri yolu sözleşmesi | `firestoreData.ts`, README, rules | tamamlandı: başlık, yazma/okuma, rules ve doküman aynı alt koleksiyon modelini kullanır |
-| 9 | Sokak/topoğrafik altlıklarda `kktc-label` ile Esri'nin gömülü etiketleri **üst üste gelebilir** | `MapView.tsx` efektler | aynı bölge iki farklı adla yazılabilir — tarayıcıda gözle doğrulanmalı |
+| 9 | Sokak/topoğrafik altlıklarda `kktc-label` ile Esri'nin gömülü etiketleri üst üste gelebiliyordu | `MapView.tsx` efektler | tamamlandı (2026-10-21, B seçeneği): `kktc-outline` korunur, `kktc-label` yalnız dark/satellite altlıklarında görünür; sözleşme `mapLabelVisibility.test.ts` ile kilitli |
+
+### 2.5 Adım durumu (2026-10-22, main `0ad774f` üzerinde commit ataları doğrulanarak)
+
+> ✅ = ilk sürümü main'de. Şu an P1–P4'e verilmiş ya da açık PR'da süren derinleştirmeler **işaretlenmedi**; "Süren iş" sütununda yalnız adı geçer.
+
+| Adım | Konu | Durum | Kanıt (main'deki commit) | Süren iş (işaretlenmedi) |
+|---|---|---|---|---|
+| 0 | Depo temizliği ve kurulum kapısı | ✅ | P1 kapanışı (`teslimat-p1.md`) | — |
+| 1 | Sözleşmeyi dondur | ✅ | `8a7261d` | — |
+| 2 | Test + CI kapısı | ✅ | CI emulator dahil (P12, PR #20) | — |
+| 3 | `routes` + `tracks` modeli ve kuralları | ✅ | `72001ac`, #31 (`7df4ffb`) | karar (b) foto, (c) senkron açık |
+| 4 | İz kaydı → taslak rota | ✅ çekirdek | `471f9f7`, #32 (`6a4d2aa`) | onaylı kaydet akışı (PR #35), saha testi |
+| 5 | Rotayı düzenle, yayınla, paylaş | ✅ | `5a6b666` | link içi paylaşım P20 (karar) |
+| 6 | Rota keşif yüzeyi | ✅ | `e244c39` | — |
+| 7 | Overpass + Wikidata/Wikipedia | ✅ ilk sürüm | `67dfd61` | P14 derinleştirme |
+| 8 | Site içi tur modeli (Efes) | ✅ ilk sürüm | `0cdd24e` | — |
+| 9 | Sıra-duyarlı yakınlık anlatımı | ✅ ilk sürüm | `a7e43d4` | — |
+| 10 | Erişim tipi duraklar + bacak modu | ✅ | `91f5ff3` | — |
+| 11 | Yükseklik profili + bacak çizimi | ✅ | `0c60c6a`, #32 (DEM yoksa "bilinmiyor") | ElevationProfile'ın ekrana bağlanması |
+| 12 | Çevrimdışı saha paketi | ✅ ilk sürüm | `e57b61f`, P11 allowlist `f3c28e5` | P15 tile paketi |
+| 13 | Moderasyon temeli | ✅ | `0e36583` (bildir, engelle, hesap silme) | — |
+| 14 | Tazelik döngüsü | ✅ ilk sürüm | `b8ed369` | PR #38; XP kararı (d) açık |
+| 15 | Hava durumu (durağa varış saati) | ✅ ilk sürüm | `2d75a79` | — |
+| 16 | Grup + sohbet | ✅ temel | `75d7fd1`, #31 (tam kimlikle katılma) | T1-SOSYAL (PR #37); karar (g) açık |
+
+**Ek tamamlananlar:** #31 üretim izin/undefined düzeltmesi · #32 P17 çekirdeği + bacaklı rota serileştirmesi · #33 T1-AUTH (telefon bayrağı, üretim env kapısı) · #36 P1 hijyen dokümanları · P11 tile allowlist (tam host/path) · P12 · P13 · P16 · P19.
 
 ## 3. Vizyon → kod boşluk haritası
 
 | Vizyondaki yetenek | Durum | Eksik olan | Adım |
 |---|---|---|---|
-| Gidilen yerin rehberliği | Var, içerik zayıf | 19 yerin 5'inde gerçek içerik; OSM yerleri jenerik not | 7 |
-| Yaklaşınca tarihçe açılsın | **Mekanizma var** | içerik + canlı OSM envanteri + sıra duyarlılığı | 7, 9 |
+| Gidilen yerin rehberliği | Var; Overpass + Wikidata ilk sürümü ✅ (`67dfd61`) | 19 yerin 5'inde gerçek içerik; OSM yerleri jenerik not | 7 |
+| Yaklaşınca tarihçe açılsın | ✅ Mekanizma + sıra-duyarlı anlatım (`a7e43d4`) | içerik + canlı OSM envanteri + sıra duyarlılığı | 7, 9 |
 | Rota oluştur / gezi planla | Var ve güçlü | — | — |
-| Hava durumu anlık takip | Kısmen | saatlik, durağa varış saatine göre, harita katmanı, uyarı | 15 |
-| Başkalarının gittiği yerler | Var | kim/ne zaman gitti, tazelik | 13, 14 |
-| **Başkalarının rotalarını kaydet + paylaş** | **YOK** | `routes` koleksiyonu, paylaşım linki, kaydetme | 3, 5, 6 |
-| **Yürüdüğüm yeri kaydet → otomatik rota** | **YOK** | kayıt kancası, durak tespiti, sadeleştirme, `tracks` | 3, 4 |
-| **Site içi turlar (her tarihî alan)** | **YOK** | site modeli, sıralı duraklar, patika geometrisi | 7, 8 |
-| **Erişim rotaları (yol yok: park et, yürü, in)** | **YOK** | erişim tipi duraklar, bacak modu, yükseklik | 10, 11 |
-| Çevrimdışı saha kullanımı | Kabuk var, harita yok | tile önbelleği | 12 |
-| Kişisel gruplar + sohbet | **YOK** | grup/mesaj modeli, kurallar, maliyet kararı | 16 |
-| Moderasyon | **YOK** | bildir, engelle, sil | 13 |
+| Hava durumu anlık takip | ✅ Durağa varış saatine göre (`2d75a79`); kalan kısmen | saatlik, durağa varış saatine göre, harita katmanı, uyarı | 15 |
+| Başkalarının gittiği yerler | Var; tazelik ilk sürümü ✅ (`b8ed369`) | kim/ne zaman gitti, tazelik | 13, 14 |
+| **Başkalarının rotalarını kaydet + paylaş** | ✅ Var (`72001ac`, `5a6b666`, `e244c39`, #31) | `routes` koleksiyonu, paylaşım linki, kaydetme | 3, 5, 6 |
+| **Yürüdüğüm yeri kaydet → otomatik rota** | ✅ Çekirdek var (`471f9f7`, #32) | kayıt kancası, durak tespiti, sadeleştirme, `tracks` | 3, 4 |
+| **Site içi turlar (her tarihî alan)** | ✅ Efes modeli var (`0cdd24e`); diğer alanlar yok | site modeli, sıralı duraklar, patika geometrisi | 7, 8 |
+| **Erişim rotaları (yol yok: park et, yürü, in)** | ✅ Var (`91f5ff3`, `0c60c6a`) | erişim tipi duraklar, bacak modu, yükseklik | 10, 11 |
+| Çevrimdışı saha kullanımı | ✅ Saha paketi ilk sürümü (`e57b61f`); tile paketi yok | tile önbelleği | 12 |
+| Kişisel gruplar + sohbet | ✅ Temel var (`75d7fd1`, #31) | grup/mesaj modeli, kurallar, maliyet kararı | 16 |
+| Moderasyon | ✅ Temel var (`0e36583`) | bildir, engelle, sil | 13 |
 | Bildirimler | İskelet | veri kaynağı, push | 13, 16 |
 
 ## 4. Dokunma listesi
@@ -324,6 +350,7 @@ Wikidata / Wikipedia geosearch  →  tarihçe metni
 **Neden ucuz:** `terrain` raster-dem kaynağı **zaten var**, rota motoruna bağlanmamış.
 **Yapılacak:** Rota boyunca örnekleme → toplam tırmanış, en dik eğim, Naismith süresi. `drawRoute` şu an tek çizgi (`#F2D77C`, 3.2); `coords[]` yerine **bacak listesi** alır, her bacağa `mode` özelliği koyar, MapLibre data-driven styling ile patika kesikli / yol düz.
 **Bitti kanıtı:** Profil grafiği + haritada mod ayrımı görünüyor.
+**Durum (2026-10-22, P1 Tur 4): İlk sürüm kısmi; kalan:** `ElevationProfile`'ın ekrana bağlanması (bileşen var, hiçbir yüzeyde render edilmiyor), `drawRoute`'un bacak listesiyle mod-ayrımlı çizimi (patika kesikli / yol düz), Naismith süresi hesabı. Kanıt: `src/utils/elevation.ts` + testleri main'de; `grep ElevationProfile src/App.tsx` boş.
 
 ## Adım 12 · Çevrimdışı saha paketi
 **2 gün · bağımlılık: Adım 2**
@@ -358,6 +385,7 @@ Wikidata / Wikipedia geosearch  →  tarihçe metni
 **Mevcut:** `AtlasAssistant` tek nokta için `current=precipitation` çekiyor, 4,5 sn timeout.
 **Yapılacak:** Saatlik + günlük (open-meteo, keyless), **her durağın varış saatindeki** hava, harita katmanı, uyarı. `RouteBrief.rain: "auto"` ve `ROUTE_ALTERNATIVES`'teki "Yağmur planı" zaten tanımlı ama kullanılmıyor.
 **Bitti kanıtı:** Rota duraklarında varış saatine göre hava görünüyor; yağmur planı çalışıyor.
+**Durum (2026-10-22, P1 Tur 4): İlk sürüm kısmi; kalan:** harita hava katmanı, durak varış saati hava rozeti/uyarısı (`attachStopWeather`/`weatherAtClock` çıktılarının UI'a bağlanması; bugün yalnız `AtlasAssistant` içinde `optimizeForRain`/`dailyRainNote` kullanılıyor), `RouteBrief.rain: "auto"` akışının açılması.
 
 ## Adım 16 · Grup + sohbet *(en son)*
 **⛔ karar (g) gerekli · 4+ gün · bağımlılık: Adım 13**
@@ -388,9 +416,9 @@ Wikidata / Wikipedia geosearch  →  tarihçe metni
 |---|---|---|---|---|
 | a | Yanıtlar: dizi mi alt koleksiyon mu | **Seçildi:** `posts/{id}/replies` | 1, 7 | orta — uygulandı; eski gömülü değerler yalnız okuma uyumluluğu |
 | b | Fotoğraf depolama | (1) data URL kalır (2) nesne depolamaya geç | 3, 6, 12 | yüksek — feed sorgusu + kural + yükleme birlikte değişir |
-| c | Koleksiyon senkronu | (1) cihazda kalır (2) `users/{uid}` altında buluta | 3, 6 | orta — veri biriktikçe pahalanır |
-| d | XP/rozet/takip | (1) silinir (2) Adım 14'te Cloud Functions ile fonlanır | 14 | yüksek — ölü kod her okumada yanlış izlenim verir |
-| e | Saha rehberi | (1) web/PWA kalır, ekran açık şartı kabul (2) native/Capacitor sarmalayıcı | 9, 12 | yüksek — arka plan konumu web'de yok |
+| c | Koleksiyon senkronu | **Uygulandı (2):** `useCollections` + `subscribeSavedCollections`, `users/{uid}/savedPlaces\|savedRoutes` — **kullanıcı onayı bekliyor** | 3, 6 | orta — veri biriktikçe pahalanır |
+| d | XP/rozet/takip | **Kullanıcı kararı (2026-10-22):** XP kaldırılacak; rozet ve takip kalacak (fonlaması Adım 14, Cloud Functions) | 14 | yüksek — ölü kod her okumada yanlış izlenim verir |
+| e | Saha rehberi | **Kullanıcı kararı (2026-10-22):** ikisi de — önce web/PWA, sonra native uygulama (Capacitor) | 9, 12 | yüksek — arka plan konumu web'de yok |
 | f | İçerik kaynağı | (1) Overpass + Wikidata/Wikipedia (2) elle içerik (3) LLM özeti | 7, 9, 14 | orta — lisans/atıf yükümlülüğü doğar |
 | g | Sohbet altyapısı | (1) Firestore (2) Realtime Database (3) üçüncü taraf | 16 | yüksek — maliyet mimarisi |
 
@@ -402,8 +430,8 @@ Wikidata / Wikipedia geosearch  →  tarihçe metni
 | Bağımsız aynı-candidate audit bekliyor | kullanıcı no-deploy/no-bypass gate | üretim dağıtımı veya audit bypass yapılmadı |
 | Eski gömülü reply verisi Firestore'da kalabilir | yeni kontrat alt koleksiyon | normalize edilir; bu işin otomatik prod veri migrasyonu/deploy'u yok |
 | Yol çizgileri yol navigasyonu değildir | routePlanner mevcut davranışı | kullanıcıya gerçek yol/navigasyon gibi sunulmamalı |
-| Rotalar ve kayıtlı koleksiyonlar localStorage'dadır | Adım 3 bekliyor | başka cihaza senkron olmaz |
-| Moderasyon yok | Adım 13 eksikse | grup/sohbet açılamaz |
+| ~~Rotalar ve kayıtlı koleksiyonlar localStorage'da~~ ✅ | Adım 3 uygulandı (`routes`, `users/{uid}/savedPlaces\|savedRoutes`) | Firebase yapılandırmasında cihazlar arası senkron çalışır; yalnız yerel modda localStorage yedeği kalır |
+| ~~Moderasyon yok~~ ✅ | Adım 13 uygulandı (`0e36583`) | bildir/engelle/hesap silme main'de |
 | Sokak/topoda çakışan etiket riski | doğrulanmadı | aynı bölge iki adla yazılabilir |
 
 ## 10. Değişiklik geçmişi
@@ -412,3 +440,5 @@ Wikidata / Wikipedia geosearch  →  tarihçe metni
 |---|---|---|
 | 2026-10-14 | v1 | İlk sürüm: denetim/onarım eksenli sıra (Adım 0–8), kanıtlanmış durum tablosu |
 | 2026-10-14 | v2 | Ürün tezi netleşti (topluluk uygulaması): sosyal katman silinmiyor, fonlanıyor. `routes`/`tracks` nesneleri, iz kaydı (arz motoru), site ölçeği, içerik boru hattı (Overpass+Wikidata), erişim bacakları, çevrimdışı saha paketi, moderasyon ve sohbet eklendi. Antipattern listesi, sert kısıtlar ve 7 karar maddesi çıkarıldı |
+| 2026-10-22 | v3 | #31 üretim izin düzeltmesi, #32 P17 çekirdeği (onaylı kaydet açık), #33 T1-AUTH (telefon bayrağı, üretim env kapısı). Açık: P14 içerik hattı, P15 çevrimdışı paket, P18 erişilebilirlik, P20 paylaşım linki, T1-SOSYAL |
+| 2026-10-22 | v3.1 | Tamamlanan adımlar ve işler §2.5'te işaretlendi (commit ataları doğrulandı); süren P1–P4 işleri işaretlenmedi |

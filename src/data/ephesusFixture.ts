@@ -4,7 +4,9 @@ import type { Place } from "../types";
  * Efes Antik Kenti merkez koordinatı (Celsus Kütüphanesi çevresi).
  * ROADMAP §5.5 ODbL + CC BY-SA atıf zorunluluğu için her kayıtta dataSources tutulur.
  */
-export const EPHESUS_CENTER = { lat: 37.9395, lng: 27.3417 } as const;
+import { EPHESUS_CENTER } from "./ephesusCenter";
+
+export { EPHESUS_CENTER };
 
 function note(name: string) {
   return `${name}, OpenStreetMap verisinde tarihî veya kültürel bir nokta olarak işaretli. Güncel erişim, çalışma saati, ücret ve saha koşullarını gitmeden doğrula.`;
