@@ -14,12 +14,14 @@
 import {
   collection,
   doc,
+  getCountFromServer,
   limit,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
   setDoc,
+  where,
 } from "firebase/firestore";
 import { db } from "./firebase";
 import {
@@ -126,4 +128,22 @@ export async function addPlaceVerification(input: NewVerificationInput): Promise
     note: note || undefined,
     createdAt: Date.now(),
   };
+}
+
+/**
+ * Bir yerin doğrulama sayısı (rozet önkoşulu).
+ *
+ * `count()` toplama sorgusudur: belge okumaz, ücretsiz planda da çalışır. Kural
+ * `list` için `signedIn()` + `boundedList(50)` istediği için sorguya aynı tavanı
+ * (`limit`) koyuyoruz; kural gevşetilmedi, istemci kurala uyuyor.
+ */
+export async function countPlaceVerifications(placeId: string): Promise<number> {
+  const clean = placeId.trim();
+  if (!db || !clean) return 0;
+  const snap = await getCountFromServer(query(
+    collection(db, "verifications"),
+    where("placeId", "==", clean),
+    limit(VERIFICATIONS_LIMIT),
+  ));
+  return snap.data().count;
 }
