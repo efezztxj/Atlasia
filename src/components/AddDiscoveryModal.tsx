@@ -6,6 +6,7 @@ import { mediaUrl } from "../utils/api";
 import { cn } from "../utils/cn";
 import { formatCoords, reverseName } from "../utils/geo";
 import { storageGet, storageSet } from "../utils/storage";
+import { usePanelAccess } from "../hooks/usePanelAccess";
 
 interface Props {
   draft: { lng: number; lat: number };
@@ -45,11 +46,8 @@ export default function AddDiscoveryModal({ draft, uploadPhoto, onClose, onSave 
     return () => ctrl.abort();
   }, [draft.lat, draft.lng]);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  // Odak tuzağı + Esc + kapanınca açan öğeye odak dönüşü (P18).
+  const panelRef = usePanelAccess(true, onClose, true) as React.RefObject<HTMLFormElement>;
 
   const coords = formatCoords(draft.lat, draft.lng);
   const canSave = title.trim().length >= 2 && !saving && !uploading;
@@ -94,8 +92,12 @@ export default function AddDiscoveryModal({ draft, uploadPhoto, onClose, onSave 
 
   return (
     <div className="animate-fade fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 backdrop-blur-sm">
-      <div className="absolute inset-0" onClick={onClose} />
+      <button type="button" tabIndex={-1} aria-label="Pencereyi kapat" className="absolute inset-0 cursor-default" onClick={onClose} />
       <form
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Keşif ekle"
         onSubmit={submit}
         className="animate-rise thin-scroll relative max-h-[92vh] w-full max-w-[480px] overflow-y-auto rounded-3xl border border-leaf/25 bg-ink-2 p-6 shadow-2xl shadow-black/70"
       >
@@ -134,7 +136,7 @@ export default function AddDiscoveryModal({ draft, uploadPhoto, onClose, onSave 
             onChange={(e) => setTitle(e.target.value)}
             maxLength={60}
             placeholder="Örn. Sessiz koy, sabah pazarı…"
-            className="mt-1.5 w-full rounded-xl border border-white/10 bg-ink px-3.5 py-2.5 text-[14px] text-white outline-none transition placeholder:text-mint/35 focus:border-sun/70"
+            className="mt-1.5 w-full rounded-xl border border-white/10 bg-ink px-3.5 py-2.5 text-[14px] text-white outline-none transition placeholder:text-mint/70 focus:border-sun/70"
           />
         </label>
 
@@ -172,7 +174,7 @@ export default function AddDiscoveryModal({ draft, uploadPhoto, onClose, onSave 
             maxLength={180}
             rows={3}
             placeholder="Gelecek gezginlere ne söylemek istersin? Hangi saatte, neye dikkat etmeli?"
-            className="mt-1.5 w-full resize-none rounded-xl border border-white/10 bg-ink px-3.5 py-2.5 text-[13px] leading-relaxed text-white outline-none transition placeholder:text-mint/35 focus:border-sun/70"
+            className="mt-1.5 w-full resize-none rounded-xl border border-white/10 bg-ink px-3.5 py-2.5 text-[13px] leading-relaxed text-white outline-none transition placeholder:text-mint/70 focus:border-sun/70"
           />
           <span className="mt-1 block text-right text-[10px] text-mint/40">{note.length}/180</span>
         </label>
@@ -226,7 +228,7 @@ export default function AddDiscoveryModal({ draft, uploadPhoto, onClose, onSave 
             onChange={(e) => setAuthor(e.target.value)}
             maxLength={24}
             placeholder="Gezgin"
-            className="mt-1.5 w-full rounded-xl border border-white/10 bg-ink px-3.5 py-2.5 text-[14px] text-white outline-none transition placeholder:text-mint/35 focus:border-sun/70"
+            className="mt-1.5 w-full rounded-xl border border-white/10 bg-ink px-3.5 py-2.5 text-[14px] text-white outline-none transition placeholder:text-mint/70 focus:border-sun/70"
           />
         </label>
 

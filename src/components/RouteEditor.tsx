@@ -16,6 +16,7 @@ import {
 } from "../utils/weather";
 import { cn } from "../utils/cn";
 import { friendlyDataError } from "../lib/firestoreValue";
+import { usePanelAccess } from "../hooks/usePanelAccess";
 
 interface Props {
   route: AtlasRoute;
@@ -48,7 +49,7 @@ function dayClockWindow(day: RouteDay): { fromClock?: string; toClock?: string }
 
 function riskBadge(assessment: WeatherRiskAssessment | null): { text: string; className: string } {
   // null = pencerede veri yok. "Risk yok" DENMEZ; bilinmiyor açıkça söylenir.
-  if (!assessment) return { text: "Hava durumu bilinmiyor", className: "border-white/10 text-mint/55" };
+  if (!assessment) return { text: "Hava durumu bilinmiyor", className: "border-white/10 text-mint/70" };
   if (assessment.level === "warning") return { text: "Kötü hava uyarısı", className: "border-red-300/40 bg-red-400/10 text-red-200" };
   if (assessment.level === "caution") return { text: "Dikkat", className: "border-sun/40 bg-sun/10 text-sun" };
   return { text: "Belirgin risk yok", className: "border-leaf/30 bg-leaf/10 text-leaf" };
@@ -214,6 +215,8 @@ function RouteElevationPanel({ route }: { route: AtlasRoute }) {
 }
 
 export default function RouteEditor({ route, onClose, onSaved }: Props) {
+  // Esc + odak tuzağı + kapanınca odak dönüşü (P18).
+  const panelRef = usePanelAccess(true, onClose, true);
   const { publishRoute } = useCollections();
   const [title, setTitle] = useState(route.routeTitle);
   const [summary, setSummary] = useState(route.routeSummary);
@@ -326,7 +329,7 @@ export default function RouteEditor({ route, onClose, onSaved }: Props) {
   };
 
   return <div className="fixed inset-0 z-[80] grid place-items-center bg-black/65 p-3" role="presentation">
-    <section role="dialog" aria-modal="true" aria-labelledby="route-editor-title" className="thin-scroll max-h-[min(92dvh,900px)] w-full max-w-[620px] overflow-y-auto rounded-[26px] border border-leaf/30 bg-[#031c16] p-5 text-mint shadow-2xl md:p-7">
+    <section ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="route-editor-title" className="thin-scroll max-h-[min(92dvh,900px)] w-full max-w-[620px] overflow-y-auto rounded-[26px] border border-leaf/30 bg-[#031c16] p-5 text-mint shadow-2xl md:p-7">
       <header className="flex items-start justify-between gap-3">
         <div><p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-sun">Önce sen karar ver</p><h2 id="route-editor-title" className="mt-1 font-display text-2xl font-semibold">Rotayı düzenle ve paylaş</h2></div>
         <button type="button" onClick={onClose} aria-label="Rota düzenleyiciyi kapat" className="grid size-11 shrink-0 place-items-center rounded-full hover:bg-white/5"><X size={18} /></button>
@@ -339,12 +342,12 @@ export default function RouteEditor({ route, onClose, onSaved }: Props) {
         <label className="grid gap-1.5 text-[13px] font-medium">Not / açıklama
           <textarea value={summary} maxLength={5000} onChange={(event) => setSummary(event.target.value)} rows={4} className="rounded-xl border border-white/15 bg-black/20 p-3 text-[14px] leading-relaxed outline-none focus:border-sun/60" />
         </label>
-        <label className="grid gap-1.5 text-[13px] font-medium">Bölge <span className="font-normal text-mint/55">(keşif filtrelemesi için)</span>
+        <label className="grid gap-1.5 text-[13px] font-medium">Bölge <span className="font-normal text-mint/70">(keşif filtrelemesi için)</span>
           <input value={region} maxLength={120} onChange={(event) => setRegion(event.target.value)} placeholder="Örn. İzmir · Kordon" className="min-h-12 rounded-xl border border-white/15 bg-black/20 px-3 text-[15px] outline-none focus:border-sun/60" />
         </label>
 
         <div>
-          <p className="mb-2 text-[13px] font-medium">Kapak fotoğrafı <span className="font-normal text-mint/55">(JPEG data URL, ücretsiz Firestore sınırı)</span></p>
+          <p className="mb-2 text-[13px] font-medium">Kapak fotoğrafı <span className="font-normal text-mint/70">(JPEG data URL, ücretsiz Firestore sınırı)</span></p>
           {photo && <div className="relative mb-2 overflow-hidden rounded-2xl border border-white/10"><img src={photo} alt="Rota kapak fotoğrafı" className="max-h-56 w-full object-cover" /><button type="button" onClick={() => setPhoto("")} aria-label="Kapak fotoğrafını sil" className="absolute right-2 top-2 grid size-10 place-items-center rounded-full bg-black/75 text-white"><Trash2 size={16} /></button></div>}
           <label className="flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-full border border-white/15 px-4 text-[13px] text-mint/85 hover:border-sun/50"><ImagePlus size={16} />{photo ? "Başka fotoğraf seç" : "Fotoğraf ekle"}<input type="file" accept="image/*" className="sr-only" onChange={(event) => void selectPhoto(event.currentTarget.files?.[0])} /></label>
         </div>

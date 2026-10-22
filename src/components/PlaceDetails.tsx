@@ -220,7 +220,7 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDele
                     </button>
                   ))}
                 </div>
-                <label className="mt-2 block text-[11px] text-mint/60">
+                <label className="mt-2 block text-[11px] text-mint/70">
                   İsteğe bağlı not (max 280)
                   <input value={verifyNote} onChange={(event) => setVerifyNote(event.target.value)} maxLength={280} placeholder="Örn. giriş ücreti 200 TL oldu" className="mt-1 h-9 w-full rounded-lg border border-white/10 bg-ink px-2 text-[12px] text-mint outline-none focus:border-leaf/50" />
                 </label>
@@ -239,7 +239,7 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDele
 
           <section aria-labelledby="directions-title" className="mt-7 rounded-2xl border border-leaf/20 bg-white/[0.025] p-3.5">
             <h3 id="directions-title" className="flex items-center gap-2 text-[13px] font-semibold"><Navigation size={16} className="text-leaf" />Yol tarifi</h3>
-            <p className="mt-1 text-[12px] leading-relaxed text-mint/60">Atlasia açık kalır; rota yeni sekmede veya uygun harita uygulamasında açılır.</p>
+            <p className="mt-1 text-[12px] leading-relaxed text-mint/70">Atlasia açık kalır; rota yeni sekmede veya uygun harita uygulamasında açılır.</p>
             <div className="mt-3 grid grid-cols-2 gap-2">
               {googleMapsUrl && <a href={googleMapsUrl} target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-white px-3 text-center text-[13px] font-semibold text-[#1f2937]">Google Maps <ExternalLink size={14} /></a>}
               {yandexMapsUrl && <a href={yandexMapsUrl} target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#ffdf35] px-3 text-center text-[13px] font-semibold text-[#201d12]">Yandex Maps <ExternalLink size={14} /></a>}

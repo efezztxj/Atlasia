@@ -614,7 +614,7 @@ export default function SocialPanel({
                           onChange={(e) => setReplyText(e.target.value)}
                           maxLength={200}
                           placeholder={`${p.author} kullanıcısına yanıt ver…`}
-                          className="min-w-0 flex-1 bg-transparent py-1.5 text-[12px] text-mint outline-none placeholder:text-mint/65 focus:ring-2 focus:ring-sun/40 rounded-md"
+                          className="min-w-0 flex-1 bg-transparent py-1.5 text-[12px] text-mint outline-none placeholder:text-mint/70 focus:ring-2 focus:ring-sun/40 rounded-md"
                         />
                         <button
                           type="submit"
@@ -680,7 +680,7 @@ export default function SocialPanel({
                 rows={1}
                 maxLength={280}
                 placeholder="Gördüğün, duyduğun, tavsiye ettiğin bir şey…"
-                className="thin-scroll max-h-[76px] w-full resize-none rounded-2xl border border-white/10 bg-ink px-3 py-2 text-[12.5px] leading-snug text-white outline-none transition placeholder:text-mint/65 focus:border-sun/60 focus:ring-2 focus:ring-sun/40"
+                className="thin-scroll max-h-[76px] w-full resize-none rounded-2xl border border-white/10 bg-ink px-3 py-2 text-[12.5px] leading-snug text-white outline-none transition placeholder:text-mint/70 focus:border-sun/60 focus:ring-2 focus:ring-sun/40"
               />
               <div className="mt-1.5 flex items-center gap-1.5">
                 <button

@@ -107,7 +107,7 @@ export default function SearchBox({ places, onPick, onOpenFilters }: Props) {
             }}
             placeholder="Ülke, şehir ya da yer ara..."
             autoComplete="off"
-            className="min-w-0 flex-1 bg-transparent text-[13px] text-mint outline-none placeholder:text-mint/70 md:placeholder:text-mint/45"
+            className="min-w-0 flex-1 bg-transparent text-[13px] text-mint outline-none placeholder:text-mint/70"
           />
           {loading ? (
             <Loader2 className="size-4 shrink-0 animate-spin text-sun" />
