@@ -417,8 +417,8 @@ Wikidata / Wikipedia geosearch  →  tarihçe metni
 | a | Yanıtlar: dizi mi alt koleksiyon mu | **Seçildi:** `posts/{id}/replies` | 1, 7 | orta — uygulandı; eski gömülü değerler yalnız okuma uyumluluğu |
 | b | Fotoğraf depolama | (1) data URL kalır (2) nesne depolamaya geç | 3, 6, 12 | yüksek — feed sorgusu + kural + yükleme birlikte değişir |
 | c | Koleksiyon senkronu | **Uygulandı (2):** `useCollections` + `subscribeSavedCollections`, `users/{uid}/savedPlaces\|savedRoutes` — **kullanıcı onayı bekliyor** | 3, 6 | orta — veri biriktikçe pahalanır |
-| d | XP/rozet/takip | (1) silinir (2) Adım 14'te Cloud Functions ile fonlanır | 14 | yüksek — ölü kod her okumada yanlış izlenim verir |
-| e | Saha rehberi | (1) web/PWA kalır, ekran açık şartı kabul (2) native/Capacitor sarmalayıcı | 9, 12 | yüksek — arka plan konumu web'de yok |
+| d | XP/rozet/takip | **Kullanıcı kararı (2026-10-22):** XP kaldırılacak; rozet ve takip kalacak (fonlaması Adım 14, Cloud Functions) | 14 | yüksek — ölü kod her okumada yanlış izlenim verir |
+| e | Saha rehberi | **Kullanıcı kararı (2026-10-22):** ikisi de — önce web/PWA, sonra native uygulama (Capacitor) | 9, 12 | yüksek — arka plan konumu web'de yok |
 | f | İçerik kaynağı | (1) Overpass + Wikidata/Wikipedia (2) elle içerik (3) LLM özeti | 7, 9, 14 | orta — lisans/atıf yükümlülüğü doğar |
 | g | Sohbet altyapısı | (1) Firestore (2) Realtime Database (3) üçüncü taraf | 16 | yüksek — maliyet mimarisi |
 

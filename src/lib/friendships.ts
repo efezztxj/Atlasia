@@ -30,7 +30,7 @@ import {
   type DocumentData,
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { withoutUndefined } from "./firestoreValue";
+import { isPermissionDenied, withoutUndefined } from "./firestoreValue";
 import { createNotification } from "./notifications";
 
 export const FRIEND_REQUESTS_LIMIT = 50;
@@ -159,23 +159,29 @@ export async function sendFriendRequest(input: { fromUid: string; fromName: stri
   if (!fromUid || !toUid) throw dataError("friend-request/uid-invalid", "Kullanici kimligi gecersiz.");
   if (fromUid === toUid) throw dataError("friend-request/self", "Kendine istek gonderemezsin.");
   const fromName = input.fromName.trim().slice(0, 40) || "Gezgin";
-  const ref = doc(db, `users/${toUid}/friendRequests/${fromUid}`);
-  const existing = await getDoc(ref);
-  if (existing.exists()) throw dataError("friend-request/exists", "Bu kisiye zaten istek gonderdin.");
+  // Kural: başkasının istek kutusu ve var olmayan arkadaşlık belgesi okunamaz
+  // (get reddedilir). Bu yüzden yalnız KENDİ belgelerimize bakılır; "zaten
+  // istek gönderdin / zaten arkadaşsınız" koşullarını kural create'te zorlar.
+  const ownIndex = await getDoc(doc(db, `users/${fromUid}/friends/${toUid}`));
+  if (ownIndex.exists()) throw dataError("friend-request/already-friends", "Zaten arkadassiniz.");
   const opposite = await getDoc(doc(db, `users/${fromUid}/friendRequests/${toUid}`));
   if (opposite.exists()) throw dataError("friend-request/opposite-exists", "Karsi taraf zaten sana istek gondermis; onun isteğini kabul et.");
-  const fid = friendshipIdFor(fromUid, toUid);
-  const friendshipSnap = await getDoc(doc(db, `friendships/${fid}`));
-  if (friendshipSnap.exists()) throw dataError("friend-request/already-friends", "Zaten arkadassiniz.");
-  await setDoc(
-    ref,
-    withoutUndefined({
-      fromUid,
-      fromName,
-      toUid,
-      createdAt: serverTimestamp(),
-    }),
-  );
+  const ref = doc(db, `users/${toUid}/friendRequests/${fromUid}`);
+  try {
+    await setDoc(
+      ref,
+      withoutUndefined({
+        fromUid,
+        fromName,
+        toUid,
+        createdAt: serverTimestamp(),
+      }),
+    );
+  } catch (failure) {
+    // Var olan istek üzerine yazmak update sayılır (kapalı); arkadaşlık varsa create reddedilir.
+    if (isPermissionDenied(failure)) throw dataError("friend-request/exists", "Bu kisiye zaten istek gondermis olabilirsin ya da zaten arkadassiniz.");
+    throw failure;
+  }
   try {
     await createNotification({
       recipientUid: toUid,
