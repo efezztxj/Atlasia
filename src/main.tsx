@@ -4,6 +4,10 @@ import "./index.css";
 import App from "./App";
 import AppErrorBoundary from "./components/AppErrorBoundary";
 import NetworkStatus from "./components/NetworkStatus";
+import { captureInviteFromLocation } from "./utils/inviteLink";
+
+// Davet bağlantısı giriş ekranından önce yakalanır; girişten sonra açılır.
+captureInviteFromLocation();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

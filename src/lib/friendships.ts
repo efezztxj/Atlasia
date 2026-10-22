@@ -259,7 +259,8 @@ export async function acceptFriendRequest(recipientUid: string, requesterUid: st
   batch.delete(requestRef);
   await batch.commit();
   await writeFriendIndex(cleanRecipient, cleanRequester, fromName);
-  await writeFriendIndex(cleanRequester, cleanRecipient, recipientName.trim().slice(0, 40) || "Gezgin");
+  // İstek sahibinin listesine yazmak kuralca yasak (yalnız kendi listesi). O
+  // taraf "friend_accepted" bildirimini görünce ensureFriendIndex ile kendisi yazar.
   try {
     await createNotification({
       recipientUid: cleanRequester,
@@ -281,6 +282,28 @@ export async function acceptFriendRequest(recipientUid: string, requesterUid: st
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };
+}
+
+/**
+ * Kendi arkadaş listende eksik olan kabul edilmiş arkadaşlığı tamamlar
+ * (istek sahibi tarafı). Arkadaşlık yoksa ya da okunamıyorsa false döner.
+ */
+export async function ensureFriendIndex(uid: string, friendUid: string, friendName: string): Promise<boolean> {
+  if (!db) return false;
+  const cleanUid = uid.trim();
+  const cleanFriend = friendUid.trim();
+  if (!cleanUid || !cleanFriend || cleanUid === cleanFriend) return false;
+  const own = await getDoc(doc(db, `users/${cleanUid}/friends/${cleanFriend}`));
+  if (own.exists()) return false;
+  let friendship: Friendship | null = null;
+  try {
+    friendship = await fetchFriendship(cleanUid, cleanFriend);
+  } catch {
+    return false;
+  }
+  if (!friendship || !friendship.users.includes(cleanUid) || !friendship.users.includes(cleanFriend)) return false;
+  await writeFriendIndex(cleanUid, cleanFriend, friendName);
+  return true;
 }
 
 export async function removeFriend(uid: string, friendUid: string): Promise<void> {

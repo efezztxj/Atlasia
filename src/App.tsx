@@ -44,6 +44,9 @@ import { useBlocks } from "./hooks/useBlocks";
 import { useFreshness } from "./hooks/useFreshness";
 import { subscribeNotifications, markNotificationRead, markAllRead, type AppNotification } from "./lib/notifications";
 import NotificationsPanel from "./components/NotificationsPanel";
+import { takePendingInvite, type SocialTarget } from "./utils/inviteLink";
+// friendships zaten ilk pakette (moderation.ts); dinamik import bölmez.
+import { ensureFriendIndex } from "./lib/friendships";
 
 const MapView = lazy(() => import("./components/MapView"));
 // Profil paneli yalnız açılınca yüklenir (ilk paket bütçesi).
@@ -148,7 +151,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   const [myPlacesOpen, setMyPlacesOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
-  const [pendingGroupId, setPendingGroupId] = useState<string | null>(null);
+  const [socialTarget, setSocialTarget] = useState<SocialTarget | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [resumeRoute, setResumeRoute] = useState<AtlasRoute | null>(null);
   const [routeEditorRoute, setRouteEditorRoute] = useState<AtlasRoute | null>(null);
@@ -176,6 +179,15 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   }, []);
 
   useEffect(() => { if (user?.displayName) storageSet("atlasia.author", user.displayName); }, [user?.displayName]);
+  // Arkadaş aramasında görünmek için profil dizine yazılır (ad değişmediyse yazım yok).
+  useEffect(() => {
+    const uid = user?.uid;
+    const name = user?.displayName?.trim();
+    if (!uid || !name || name.length < 2) return;
+    void import("./lib/userProfiles")
+      .then(({ syncUserProfile }) => syncUserProfile({ uid, displayName: name, photoURL: user?.photoURL ?? undefined }))
+      .catch((failure: unknown) => console.warn("[Atlasia] Profil arama dizinine yazılamadı:", failure));
+  }, [user?.uid, user?.displayName, user?.photoURL]);
   useEffect(() => { storageSet(MAP_STYLE_KEY, baseMap); }, [baseMap]);
 
   const handledShareLinkRef = useRef<string | null>(null);
@@ -263,16 +275,43 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
     const unsub = subscribeNotifications(user.uid, setNotifications);
     return () => unsub();
   }, [user?.uid]);
+  // Kabul edilen arkadaşlık isteği: karşı taraf benim listeme yazamaz (kural);
+  // "friend_accepted" bildirimi gelince kendi listemi ben tamamlarım.
+  const reconciledFriendsRef = useRef(new Set<string>());
+  useEffect(() => {
+    const uid = user?.uid;
+    if (!uid) return;
+    const pending = notifications.filter((item) => item.type === "friend_accepted" && item.actorUid && !reconciledFriendsRef.current.has(item.actorUid));
+    if (pending.length === 0) return;
+    pending.forEach((item) => reconciledFriendsRef.current.add(item.actorUid));
+    void import("./lib/userProfiles").then(async (profiles) => {
+      for (const item of pending) {
+        try {
+          const profile = await profiles.fetchUserProfile(item.actorUid).catch(() => null);
+          await ensureFriendIndex(uid, item.actorUid, profile?.displayName ?? "Gezgin");
+        } catch (failure) {
+          console.warn("[Atlasia] Arkadaş listesi tamamlanamadı:", failure);
+        }
+      }
+    });
+  }, [notifications, user?.uid]);
   const visibleNotifications = notifications.filter((item) => !isBlocked(item.actorUid));
   const unreadCount = visibleNotifications.filter((n) => !n.read).length;
   const handleMarkAllRead = () => { if (user?.uid) void markAllRead(user.uid, notifications); };
   const handleNotificationRead = (id: string) => { if (user?.uid) void markNotificationRead(user.uid, id, true); };
-  const clearPendingGroup = useCallback(() => setPendingGroupId(null), []);
-  const openGroupFromNotification = useCallback((groupId: string) => {
+  const clearSocialTarget = useCallback(() => setSocialTarget(null), []);
+  const openSocial = useCallback((target: SocialTarget) => {
     closePanels();
     setFeedOpen(true);
-    setPendingGroupId(groupId);
+    setSocialTarget(target);
   }, []);
+  const openGroupFromNotification = useCallback((groupId: string) => openSocial({ kind: "group", groupId }), [openSocial]);
+  const openFriendsFromNotification = useCallback(() => openSocial({ kind: "friends" }), [openSocial]);
+  // Davet bağlantısı (main.tsx açılışta yakalar; giriş sonrası burada tüketilir).
+  useEffect(() => {
+    const invite = takePendingInvite();
+    if (invite) openSocial({ kind: "invite", invite });
+  }, [openSocial]);
 
   const precise = useMemo(
     () =>
@@ -830,8 +869,8 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         onRemoveStory={cloud.removeStory}
         blockedSet={blockedSet}
         isBlocked={isBlocked}
-        pendingGroupId={pendingGroupId}
-        onGroupOpened={clearPendingGroup}
+        socialTarget={socialTarget}
+        onSocialTargetHandled={clearSocialTarget}
       />
 
       {recordsOpen && <RecordsDock onClose={() => setRecordsOpen(false)} onPlace={(place) => { closePanels(); focusPlace(place); setStoryPlace(place); }} onRoute={(route) => { closePanels(); setResumeRoute(route); setAtlasOpen(true); }} />}
@@ -879,7 +918,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
       />
 
       {notificationsOpen && (
-        <NotificationsPanel notifications={visibleNotifications} unreadCount={unreadCount} onClose={() => setNotificationsOpen(false)} onMarkAllRead={handleMarkAllRead} onMarkRead={handleNotificationRead} onOpenGroup={openGroupFromNotification} />
+        <NotificationsPanel notifications={visibleNotifications} unreadCount={unreadCount} onClose={() => setNotificationsOpen(false)} onMarkAllRead={handleMarkAllRead} onMarkRead={handleNotificationRead} onOpenGroup={openGroupFromNotification} onOpenFriends={openFriendsFromNotification} />
       )}
 
       {draft && (
