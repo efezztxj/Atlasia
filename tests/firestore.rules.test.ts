@@ -1439,7 +1439,7 @@ describe("Firestore güvenlik kuralları", () => {
     await seed("routes/rt-private", { authorUid: "alice", visibility: "private", saveCount: 0 });
     await seed("routes/rt-unlisted", { authorUid: "alice", visibility: "unlisted", saveCount: 0 });
     await seed("routes/rt-public", { authorUid: "alice", visibility: "public", saveCount: 0 });
-    await seed("stories/st-public", { authorUid: "alice" });
+    await seed("stories/st-public", { authorUid: "alice", createdAt: Timestamp.now() });
     await seed("users/alice/savedPlaces/pl-1", { place: { id: "pl-1" }, savedAt: Timestamp.now() });
     await seed("users/alice/notifications/nt-1", { type: "system", createdAt: Timestamp.now() });
     await seed("users/alice/friends/bob", { friendUid: "bob" });
