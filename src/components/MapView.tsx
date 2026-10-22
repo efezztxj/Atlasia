@@ -270,7 +270,7 @@ function buildStyle(
         layout: {
           visibility: kktcLabelVisible(labels, baseMap) ? "visible" : "none",
           "text-field": ["get", "name"],
-          "text-font": ["Open Sans Semibold"],
+          "text-font": ["Noto Sans Regular"], // glyph sunucusunda olan tek yazı tipi (stil JSON ile aynı)
           "text-size": ["interpolate", ["linear"], ["zoom"], 5, 10, 8, 14],
           "text-letter-spacing": 0.08,
           "text-line-height": 1.4,
