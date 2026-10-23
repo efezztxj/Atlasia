@@ -33,7 +33,7 @@
     "@types/tz-lookup": "^6.1.2",
     "clsx": "2.1.1",
     "fflate": "^0.8.3",
-    "firebase": "^12.19.0",
+    "firebase": "^13.0.0",
     "lucide-react": "^1.59.0",
     "maplibre-gl": "6.4.1",
     "react": "19.2.6",
