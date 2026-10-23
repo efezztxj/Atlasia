@@ -43,11 +43,33 @@ export default function FriendsTab({ currentUid, currentName, friends, requests,
   const [busyUid, setBusyUid] = useState<string | null>(null);
   const [inviter, setInviter] = useState<UserProfile | null>(null);
 
+  // Arama yarışı koruması (#76): her arama bir sıra numarası alır; yalnız en
+  // güncel numara sonucu, hatayı ve geçmişi güncelleyebilir. Aynı terim
+  // zaten sorgudaysa ikinci Firestore okuması açılmaz.
+  const searchSeqRef = useRef(0);
+  const activeTermRef = useRef<string | null>(null);
+  const completedTermRef = useRef<string | null>(null);
+
+  /** Bekleyen aramayı geçersiz kılar; eski sonuç ve "aranıyor" durumu temizlenir. */
+  const invalidateSearch = () => {
+    searchSeqRef.current += 1;
+    activeTermRef.current = null;
+    completedTermRef.current = null;
+    setSearching(false);
+    setResults(null);
+  };
+
   const friendSet = new Set(friends.map((friend) => friend.friendUid));
   const incoming = requests.filter((request) => !isBlocked(request.fromUid));
   const incomingSet = new Set(incoming.map((request) => request.fromUid));
 
+  // En son `invalidateSearch` kimliği; hesap efekti işlevi ref üzerinden çağırır.
+  const invalidateSearchRef = useRef(invalidateSearch);
+  useEffect(() => { invalidateSearchRef.current = invalidateSearch; });
+
   useEffect(() => {
+    // Hesap değişimi: önceki hesabın bekleyen araması/sonucu yeni hesaba sızmaz.
+    invalidateSearchRef.current();
     setRecent(readRecentSearches(currentUid));
   }, [currentUid]);
 
@@ -65,15 +87,24 @@ export default function FriendsTab({ currentUid, currentName, friends, requests,
 
   const runSearch = async (term: string) => {
     if (!isSearchableQuery(term)) return;
+    if (activeTermRef.current === term) return;
+    const seq = ++searchSeqRef.current;
+    activeTermRef.current = term;
     setSearching(true);
     try {
-      setResults((await searchUserProfiles(term, currentUid)).filter((profile) => !isBlocked(profile.uid)));
+      const found = await searchUserProfiles(term, currentUid);
+      if (seq !== searchSeqRef.current) return; // eski yanıt: sonucu da geçmişi de yazma
+      completedTermRef.current = term;
+      setResults(found.filter((profile) => !isBlocked(profile.uid)));
       // Son aramalar cihazda, kişi başına tutulur (gizlilik + kota).
       setRecent(pushRecentSearch(currentUid, term));
     } catch (failure) {
+      if (seq !== searchSeqRef.current) return;
+      completedTermRef.current = null; // hata sonrası aynı terim tekrar denenebilir
       onError(friendlyDataError(failure, "Arama yapılamadı."));
     } finally {
-      setSearching(false);
+      if (activeTermRef.current === term) activeTermRef.current = null;
+      if (seq === searchSeqRef.current) setSearching(false);
     }
   };
 
@@ -88,11 +119,14 @@ export default function FriendsTab({ currentUid, currentName, friends, requests,
   const debouncedQuery = useDebouncedValue(queryText);
   useEffect(() => {
     const term = debouncedQuery.trim();
-    if (term.length < PROFILE_SEARCH_MIN_CHARS) {
-      // Girdi kısaldıysa eski sonuç ekranda kalmaz.
-      if (term.length === 0) setResults(null);
+    if (!isSearchableQuery(term)) {
+      // Girdi boşaldı ya da minimumun altında: bekleyen arama geçersizleşir
+      // (tuş anında da yapılır; burası debounce sonrası güvencesidir).
+      invalidateSearchRef.current();
       return;
     }
+    // Çip/form aynı terimi zaten aradıysa (ya da arıyorsa) tekrar sorgu yok.
+    if (activeTermRef.current === term || completedTermRef.current === term) return;
     void runSearchRef.current(term);
     // Tetikleyici yalnız geciktirilmiş girdi; işlev en güncel hâliyle ref'ten gelir.
   }, [debouncedQuery]);
@@ -184,7 +218,7 @@ export default function FriendsTab({ currentUid, currentName, friends, requests,
       <button type="button" onClick={() => void shareMyLink()} className="flex min-h-11 items-center justify-center gap-2 rounded-full bg-sun px-4 text-[13px] font-semibold text-ink"><Link2 size={15} />Arkadaş davet bağlantımı paylaş</button>
 
       <form onSubmit={(event) => { event.preventDefault(); void search(); }} className="flex items-center gap-2">
-        <input value={queryText} onChange={(event) => setQueryText(event.target.value)} maxLength={40} aria-label="İsimle kişi ara" placeholder={`İsimle ara (en az ${PROFILE_SEARCH_MIN_CHARS} harf)`} className="h-10 min-w-0 flex-1 rounded-full border border-white/10 bg-ink px-3 text-[13px] text-mint outline-none focus:border-sun/50" />
+        <input value={queryText} onChange={(event) => { const value = event.target.value; setQueryText(value); if (!isSearchableQuery(value)) invalidateSearch(); }} maxLength={40} aria-label="İsimle kişi ara" placeholder={`İsimle ara (en az ${PROFILE_SEARCH_MIN_CHARS} harf)`} className="h-10 min-w-0 flex-1 rounded-full border border-white/10 bg-ink px-3 text-[13px] text-mint outline-none focus:border-sun/50" />
         <button type="submit" disabled={searching || !isSearchableQuery(queryText)} aria-label="Ara" className="grid size-10 shrink-0 place-items-center rounded-full border border-leaf/30 text-leaf disabled:opacity-50">{searching ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />}</button>
       </form>
       {recent.length > 0 && (
