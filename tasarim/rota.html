@@ -43,8 +43,8 @@
           <div class="browser__screen">
             <section class="screen screen--desktop grain" aria-label="Masaüstü rota planlayıcı ekranı">
               <div class="map">
-                <img class="map__img" src="assets/harita.jpg" alt="Rota bölgesinin uydu görüntüsü" style="object-position: 52% 48%; filter: saturate(0.94) contrast(1.02) brightness(0.82)" />
-                <div class="map__scrim" style="background: linear-gradient(180deg, rgba(2,16,13,.72) 0%, rgba(2,16,13,.16) 22%, rgba(2,16,13,0) 45%, rgba(2,15,12,.55) 78%, rgba(2,15,12,.9) 100%)"></div>
+                <img class="map__img map__img--rota" src="assets/harita.jpg" alt="Rota bölgesinin uydu görüntüsü" style="object-position: 52% 48%" />
+                <div class="map__scrim map__scrim--rota"></div>
                 <div class="map__glow" style="background: radial-gradient(40% 32% at 66% 30%, rgba(242,198,102,.14), transparent 70%)"></div>
                 <div class="map__labels" aria-hidden="true">
                   <span class="map-label map-label--water" style="left: 24%; top: 62%">Ege Denizi</span>
@@ -66,8 +66,8 @@
                     </filter>
                   </defs>
                   <!-- arazi gölgesi -->
-                  <path d="M604 470 C 660 440, 700 404, 762 412 S 866 366, 918 398 S 1006 452, 1058 512"
-                        fill="none" stroke="rgba(2,14,11,.55)" stroke-width="12" stroke-linecap="round" />
+                  <path class="route-shadow" d="M604 470 C 660 440, 700 404, 762 412 S 866 366, 918 398 S 1006 452, 1058 512"
+                        fill="none" stroke-width="12" stroke-linecap="round" />
                   <!-- yol bacağı (düz) -->
                   <path d="M604 470 C 660 440, 700 404, 762 412" fill="none" stroke="url(#routeGrad)" stroke-width="4.5" stroke-linecap="round" />
                   <!-- patika bacağı (kesikli) -->

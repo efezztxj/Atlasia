@@ -45,6 +45,10 @@ Derleme adımı yoktur; `index.html` dosyasını doğrudan açmak da yeterlidir.
 - **Açık tema gerçek açık tema:** krem-beyaz zemin (`#F5F3EA`), koyu mürekkep metin,
   altın `#A9711F`'e düşürüldü (AA kontrast). Harita üstü metinler açık temada koyu mürekkep
   + açık kapsül olarak yeniden renklendirildi.
+- **Harita açık temada da açık.** `rota.html` ve `profil.html` haritanın karartmasını satır içi
+  stille yazıyordu; açık temada bu koyu kalıp etiketleri okunamaz hâle getiriyordu. Karartma,
+  görsel filtresi ve rota çizgisinin arazi gölgesi `.map__scrim--rota`, `.map__img--rota`,
+  `.route-shadow` sınıflarına taşındı; her biri iki temada ayrı değer alıyor.
 - **Harita üstünde blur yok:** paneller opak `--panel-on-map` yüzeyi kullanır; bulanıklık
   yalnız sunum kabuğunda (vitrin çubuğu) var.
 - **Korunan yerleşim:** masaüstünde başlık solda, arama sağda; Atlas AI sağ altta; sağ harita
@@ -101,6 +105,9 @@ Ek olarak tasarım kiti için headless Chromium ile yapılan kontroller:
 - **14 sayfa × 2 tema** (koyu/açık): 0 JS hatası, 0 konsol hatası, 0 başarısız istek,
   0 eksik ikon, 0 kırık görsel, 0 eksik `alt`, yatay taşma yok.
 - Ekran görüntüleri: mobil 390×844, masaüstü 1440×900, vitrin 1440 px ve 430×932 doğrulandı.
+- Ekran görüntüleri `onizleme/` altında: `atlasia-ui-kiti-koyu-tema.jpg`, `atlasia-ui-kiti-acik-tema.jpg`
+  (tek sayfalık kontakt sayfası) ve `onizleme/koyu|acik/01–13.jpg` (tek tek ekranlar). Bu klasör
+  bilerek git'e eklenmedi; üretilmiş önizleme çıktısıdır.
   Galeri kartlarındaki telefon çerçeveleri 390:844 oranında; alt çubuk ve home indicator kırpılmıyor.
 - Sunum çubuğu 13 ekranla 1440 px'te tam sığıyor (tüm etiketler kesilmeden); 1366 ve 1280'de
   sayfa taşmıyor, yalnız şerit kendi içinde yatay kayıyor ve aktif ekran otomatik görünür oluyor.
