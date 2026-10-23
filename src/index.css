@@ -1054,3 +1054,62 @@ html[data-theme="light"] .space-bg .btn-gold-round {
     0 0 0 4px rgba(255, 253, 247, .9),
     inset 0 1px 0 rgba(255, 244, 214, .6);
 }
+
+/* ---------- Erişilebilirlik tercihleri (Ayarlar → Erişilebilirlik) ----------
+   Bu blok yalnız ek kural ekler; yukarıdaki mevcut kuralları değiştirmez.
+   Tercihler useAccessibilityPrefs ile <html> veri özniteliklerine yazılır. */
+html[data-motion="reduced"] *,
+html[data-motion="reduced"] *::before,
+html[data-motion="reduced"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+html[data-text-scale="large"] .text-\[9px\],
+html[data-text-scale="large"] .text-\[9\.5px\],
+html[data-text-scale="large"] .text-\[10px\],
+html[data-text-scale="large"] .text-\[10\.5px\],
+html[data-text-scale="large"] .text-\[11px\],
+html[data-text-scale="large"] .text-\[11\.5px\] {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+html[data-text-scale="large"] .text-\[12px\],
+html[data-text-scale="large"] .text-\[12\.5px\] {
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+html[data-text-scale="large"] .text-\[13px\],
+html[data-text-scale="large"] .text-\[13\.5px\] {
+  font-size: 15.5px;
+  line-height: 1.6;
+}
+
+html[data-contrast="high"] .text-mint\/35,
+html[data-contrast="high"] .text-mint\/40,
+html[data-contrast="high"] .text-mint\/45,
+html[data-contrast="high"] .text-mint\/50,
+html[data-contrast="high"] .text-mint\/55,
+html[data-contrast="high"] .text-mint\/60,
+html[data-contrast="high"] .text-mint\/65,
+html[data-contrast="high"] .text-mint\/70,
+html[data-contrast="high"] .text-mint\/75,
+html[data-contrast="high"] .text-mint\/80,
+html[data-contrast="high"] .text-mint\/85,
+html[data-contrast="high"] .text-mint {
+  color: #ffffff;
+}
+
+html[data-contrast="high"] .gold-frame,
+html[data-contrast="high"] .mobile-tab-bar {
+  border-color: rgba(243, 200, 112, 0.9) !important;
+}
+
+html[data-contrast="high"] :focus-visible {
+  outline-width: 4px;
+  outline-offset: 3px;
+}
