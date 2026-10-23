@@ -9,24 +9,27 @@
 
 ## Ne teslim edildi
 
-`tasarim/` altında bağımsız, statik ve çalışan bir UI kiti — **13 ekran**, iki cihaz sınıfı:
+`tasarim/` altında bağımsız, statik ve çalışan bir UI kiti — **16 ekran**, iki cihaz sınıfı:
 
 | Dosya | İçerik |
 | --- | --- |
-| `tasarim/index.html` | Vitrin: hero + canlı önizleme, 13 kartlık galeri, tasarım sistemi, bileşen kütüphanesi, ürün kuralları |
+| `tasarim/index.html` | Vitrin: hero + canlı önizleme, 16 kartlık galeri, tasarım sistemi, bileşen kütüphanesi, ürün kuralları |
 | `tasarim/on-giris.html` | **Mobil · 01 Ön giriş** — tam ekran fotoğraf, tek vaat, sosyal kanıt, 3 slayt göstergesi, atla |
 | `tasarim/giris.html` | **Mobil · 02 Giriş** — iki alan, passkey, "beni hatırla", kayıt ve misafir yolu |
-| `tasarim/kayit.html` | **Mobil · 03 Kayıt** — Apple/Google önce, e-posta alternatif, şifre gücü, KVKK onayı |
-| `tasarim/dogrulama.html` | **Mobil · 04 Doğrulama** — 6 haneli kod, imleç, geri sayım, hata/ipucu metni |
-| `tasarim/kesif.html` | **Mobil · 05 Keşif** — arama, kategoriler, harita pinleri, keşif kartı, alt çubuk |
-| `tasarim/izler.html` | **Mobil · 06 İzler** — hikâye şeridi, akış filtresi, gönderi kartı, sabit yazma alanı |
-| `tasarim/yer.html` | **Mobil · 07 Yer detayı** — hero görsel, künye, sesli rehber, yakındaki izler |
-| `tasarim/atlas-ai.html` | **Mobil · 08 Atlas AI** — sohbet, gerekçeli rota kartı, onay düğmeleri |
-| `tasarim/masaustu-on-giris.html` | **Masaüstü · 09 Giriş** — bölünmüş ekran, rota kartı, passkey, "hesap açmadan keşfet" |
-| `tasarim/masaustu-kayit.html` | **Masaüstü · 10 Kayıt** — adım çubuğu, aşamalı açılım, ilgi alanları önizlemesi |
-| `tasarim/masaustu-kesif.html` | **Masaüstü · 11 Keşif** — sol liste, sağ kontrol sütunu, tek alt keşif paneli |
-| `tasarim/rota.html` | **Masaüstü · 12 Rota planlayıcı** — durak listesi, harita çizgisi, yükseklik profili |
-| `tasarim/profil.html` | **Masaüstü · 13 Profil & ayarlar** — istatistik, tema, konum izni, hesap |
+| `tasarim/sifre-sifirla.html` | **Mobil · 03 Şifre sıfırlama** — tek alan, 30 dk tek kullanımlık bağlantı, hesap sızdırmayan nötr yanıt |
+| `tasarim/kayit.html` | **Mobil · 04 Kayıt** — Apple/Google önce, e-posta alternatif, şifre gücü, KVKK onayı |
+| `tasarim/dogrulama.html` | **Mobil · 05 Doğrulama** — 6 haneli kod, imleç, geri sayım, hata/ipucu metni |
+| `tasarim/ilgi-alanlari.html` | **Mobil · 06 İlgi alanları** — 8 seçenek, canlı seçim sayacı, önizleme kartı, atlama yolu |
+| `tasarim/kesif.html` | **Mobil · 07 Keşif** — arama, kategoriler, harita pinleri, keşif kartı, alt çubuk |
+| `tasarim/izler.html` | **Mobil · 08 İzler** — hikâye şeridi, akış filtresi, gönderi kartı, sabit yazma alanı |
+| `tasarim/yer.html` | **Mobil · 09 Yer detayı** — hero görsel, künye, sesli rehber, yakındaki izler |
+| `tasarim/atlas-ai.html` | **Mobil · 10 Atlas AI** — sohbet, gerekçeli rota kartı, onay düğmeleri |
+| `tasarim/masaustu-on-giris.html` | **Masaüstü · 11 Giriş** — bölünmüş ekran, rota kartı, passkey, "hesap açmadan keşfet" |
+| `tasarim/masaustu-kayit.html` | **Masaüstü · 12 Kayıt** — adım çubuğu, aşamalı açılım, ilgi alanları önizlemesi |
+| `tasarim/masaustu-ilgi.html` | **Masaüstü · 13 İlgi alanları** — aynı bölünmüş iskelet, 8 seçenek, canlı önizleme |
+| `tasarim/masaustu-kesif.html` | **Masaüstü · 14 Keşif** — sol liste, sağ kontrol sütunu, tek alt keşif paneli |
+| `tasarim/rota.html` | **Masaüstü · 15 Rota planlayıcı** — durak listesi, harita çizgisi, yükseklik profili |
+| `tasarim/profil.html` | **Masaüstü · 16 Profil & ayarlar** — istatistik, tema, konum izni, hesap |
 | `tasarim/css/base.css` | Token'lar (renk, tipografi, yüzey, gölge), cihaz çerçeveleri, harita dili, temel bileşenler, sunum çubuğu |
 | `tasarim/css/screens.css` | Ekran bazlı stiller ve iki temanın karşılıkları |
 | `tasarim/css/auth.css` | Giriş akışı bileşenleri: alan, şifre ölçer, onay kutusu, sosyal giriş, kod hücresi, bölünmüş ekran |
@@ -77,6 +80,18 @@ Derleme adımı yoktur; `index.html` dosyasını doğrudan açmak da yeterlidir.
   `current-password`, `new-password`), 52 px alan yüksekliği, 44 px hedef, `:focus-visible` halkası,
   `aria-current` yalnız aktif ekranda, `prefers-reduced-motion` desteği, tüm görsellere `alt`.
 
+### İkinci tur: akışı kapatan üç ekran
+
+- **Şifre sıfırlama.** Tek alan, tek eylem. "Hesap var mı yok mu" sorusunu cevaplamayan nötr yanıt
+  metni (hesap numaralandırmasını engeller), 30 dakika + tek kullanım notu, sosyal hesapla girenler
+  için "şifren yok, doğrudan o düğmeyi kullan" satırı, e-postaya erişemeyenler için destek bağlantısı.
+- **Mobil ilgi alanları (kaydın 2. adımı).** Sekiz seçenek, canlı seçim sayacı ("3 alan seçildi ·
+  en az 2 gerekli"), seçime göre şekillenen önizleme kartı ("Akışında ilk bunlar çıkar") ve
+  zorunluluk hissettirmeyen "Şimdilik geç, sonra tamamla" yolu.
+- **Masaüstü ilgi alanları.** Aynı bölünmüş iskelet: solda tamamlanmış adım (yeşil tik) + aktif adım
+  + sıradaki adım ve topluluk kanıtı; sağda seçim ızgarası. Mobil ve masaüstü aynı bileşenleri
+  (`.pick`, `.preview-card`, `.picks__meta`) paylaşır.
+
 ## Neyden örnek alındı
 
 - Sosyal girişin e-posta/şifreye göre 2–3 kat dönüştürdüğü, izin istemenin değerden sonraya
@@ -102,14 +117,14 @@ Derleme adımı yoktur; `index.html` dosyasını doğrudan açmak da yeterlidir.
 
 Ek olarak tasarım kiti için headless Chromium ile yapılan kontroller:
 
-- **14 sayfa × 2 tema** (koyu/açık): 0 JS hatası, 0 konsol hatası, 0 başarısız istek,
+- **17 sayfa × 2 tema** (koyu/açık): 0 JS hatası, 0 konsol hatası, 0 başarısız istek,
   0 eksik ikon, 0 kırık görsel, 0 eksik `alt`, yatay taşma yok.
 - Ekran görüntüleri: mobil 390×844, masaüstü 1440×900, vitrin 1440 px ve 430×932 doğrulandı.
 - Ekran görüntüleri `onizleme/` altında: `atlasia-ui-kiti-koyu-tema.jpg`, `atlasia-ui-kiti-acik-tema.jpg`
-  (tek sayfalık kontakt sayfası) ve `onizleme/koyu|acik/01–13.jpg` (tek tek ekranlar). Bu klasör
+  (tek sayfalık kontakt sayfası) ve `onizleme/koyu|acik/01–16.jpg` (tek tek ekranlar). Bu klasör
   bilerek git'e eklenmedi; üretilmiş önizleme çıktısıdır.
   Galeri kartlarındaki telefon çerçeveleri 390:844 oranında; alt çubuk ve home indicator kırpılmıyor.
-- Sunum çubuğu 13 ekranla 1440 px'te tam sığıyor (tüm etiketler kesilmeden); 1366 ve 1280'de
+- Sunum çubuğu 16 ekranla 1440 px'te tam sığıyor (tüm etiketler kesilmeden); 1366 ve 1280'de
   sayfa taşmıyor, yalnız şerit kendi içinde yatay kayıyor ve aktif ekran otomatik görünür oluyor.
 
 ## Bilinen riskler / notlar

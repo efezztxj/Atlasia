@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#02120f" />
+    <title>Atlasia UI · Şifre sıfırlama</title>
+    <link rel="stylesheet" href="css/base.css" />
+    <link rel="stylesheet" href="css/screens.css" />
+    <link rel="stylesheet" href="css/auth.css" />
+  </head>
+  <body class="showcase" data-screen="sifre-sifirla">
+    <main class="showcase__stage">
+      <div class="showcase__inner">
+        <div class="caption">
+          <div>
+            <p class="caption__kicker">Mobil · 03 Şifre sıfırlama</p>
+            <h1>Kilitli kalan kimse geride kalmaz.</h1>
+            <p>
+              Tek alan, tek eylem. Hesabın olup olmadığını söylemeyen nötr yanıt: aynı adrese her durumda
+              aynı cevap gider, kimse hesap avına çıkamaz. Bağlantının ömrü ve tek kullanımlık olduğu
+              butonun hemen altında yazıyor.
+            </p>
+          </div>
+          <div class="caption__meta">
+            <span><svg class="i" data-icon="smartphone"></svg>390 × 844</span>
+            <span><svg class="i" data-icon="timer"></svg>30 dk · tek kullanım</span>
+            <span><svg class="i" data-icon="moon"></svg>Koyu tema</span>
+          </div>
+        </div>
+
+        <div class="device">
+          <div class="device__screen">
+            <section class="screen mauth" aria-label="Mobil şifre sıfırlama ekranı">
+              <header class="statusbar" data-statusbar></header>
+
+              <div class="mauth__head">
+                <button class="icon-btn icon-btn--outline" type="button" aria-label="Girişe dön">
+                  <svg class="i" data-icon="arrow-left"></svg>
+                </button>
+                <a class="mauth__step" style="margin-left: auto; color: var(--gold)" href="giris.html">Giriş</a>
+              </div>
+
+              <div class="mauth__body">
+                <span class="otp__badge" aria-hidden="true">
+                  <svg class="i" data-icon="key-round"></svg>
+                </span>
+
+                <h1 class="mauth__title otp__title">Şifreni sıfırla.</h1>
+                <p class="otp__lead">
+                  Hesabına bağlı e-postayı yaz; tek kullanımlık bir sıfırlama bağlantısı gönderelim.
+                </p>
+
+                <div class="fld" style="margin-top: 22px">
+                  <label class="fld__label" for="reset-email">E-posta</label>
+                  <div class="fld__box">
+                    <svg class="i" data-icon="mail"></svg>
+                    <input
+                      id="reset-email"
+                      name="email"
+                      type="email"
+                      inputmode="email"
+                      autocomplete="email"
+                      spellcheck="false"
+                      value="elif@atlasia.app"
+                    />
+                  </div>
+                </div>
+
+                <button class="auth-submit" type="button" style="margin-top: 16px">
+                  Bağlantı gönder
+                  <svg class="i" data-icon="arrow-right"></svg>
+                </button>
+
+                <div class="reset-note">
+                  <svg class="i" data-icon="timer"></svg>
+                  <span>
+                    Bağlantı <strong style="color: var(--text); font-weight: 650">30 dakika</strong> geçerli
+                    ve yalnızca bir kez kullanılabilir. Yeni bağlantı istemek öncekini geçersiz kılar.
+                  </span>
+                </div>
+
+                <div class="reset-note">
+                  <svg class="i" data-icon="shield-check"></svg>
+                  <span>
+                    Güvenlik için her istekte aynı yanıtı veririz; bu adresin kayıtlı olup olmadığını
+                    dışarıya söylemeyiz.
+                  </span>
+                </div>
+
+                <div class="auth-divider" style="margin: 22px 0 0">veya</div>
+
+                <div class="auth-social" style="margin-top: 16px">
+                  <button class="auth-social__btn" type="button">
+                    <svg class="brand-i" data-icon="apple"></svg>
+                    Apple
+                  </button>
+                  <button class="auth-social__btn" type="button">
+                    <svg class="brand-i brand-i--google" data-icon="google"></svg>
+                    Google
+                  </button>
+                </div>
+
+                <p class="reset-help" style="margin-top: 12px; padding-top: 0">
+                  Apple veya Google ile giriş yaptıysan hesabının şifresi yok; doğrudan o düğmeyi kullan.
+                </p>
+
+                <p class="reset-help">
+                  E-postana erişemiyor musun?
+                  <a href="#">Destek ekibine yaz</a>
+                </p>
+
+                <p class="mauth__foot">
+                  <svg class="i" data-icon="lock"></svg>
+                  Bağlantı yalnızca atlasia.app üzerinden açılır
+                </p>
+              </div>
+
+              <span class="home-indicator" aria-hidden="true"></span>
+            </section>
+          </div>
+        </div>
+      </div>
+    </main>
+    <script src="js/ui.js"></script>
+  </body>
+</html>

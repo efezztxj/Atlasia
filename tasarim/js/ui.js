@@ -11,6 +11,7 @@
 
   /* ek ikonlar: auth & onboarding */
   const EXTRA_ICONS = {
+    "trees":"<path d=\"M10 10v.2A3 3 0 0 1 8.9 16H5a3 3 0 0 1-1-5.8V10a3 3 0 0 1 6 0Z\" /><path d=\"M7 16v6\" /><path d=\"M13 19v3\" /><path d=\"M12 19h8.3a1 1 0 0 0 .7-1.7L18 14h.3a1 1 0 0 0 .7-1.7L16 9h.2a1 1 0 0 0 .8-1.7L13 3l-1.4 1.5\" />",
     "eye": "<path d=\"M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0\" /><circle cx=\"12\" cy=\"12\" r=\"3\" />",
     "eye-off": "<path d=\"M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49\" /><path d=\"M14.084 14.158a3 3 0 0 1-4.242-4.242\" /><path d=\"M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143\" /><path d=\"m2 2 20 20\" />",
     "user-plus": "<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\" /><circle cx=\"9\" cy=\"7\" r=\"4\" /><line x1=\"19\" x2=\"19\" y1=\"8\" y2=\"14\" /><line x1=\"22\" x2=\"16\" y1=\"11\" y2=\"11\" />",
@@ -29,15 +30,18 @@
   const SCREENS = [
     { id: "on-giris", href: "on-giris.html", label: "Ön giriş", icon: "sparkles", kind: "mobile" },
     { id: "giris", href: "giris.html", label: "Giriş", icon: "key-round", kind: "mobile" },
+    { id: "sifre-sifirla", href: "sifre-sifirla.html", label: "Sıfırlama", icon: "refresh-cw", kind: "mobile" },
     { id: "kayit", href: "kayit.html", label: "Kayıt", icon: "user-plus", kind: "mobile" },
     { id: "dogrulama", href: "dogrulama.html", label: "Doğrulama", icon: "mail-check", kind: "mobile" },
+    { id: "ilgi-alanlari", href: "ilgi-alanlari.html", label: "İlgi", icon: "sliders-horizontal", kind: "mobile" },
     { id: "kesif", href: "kesif.html", label: "Keşif", icon: "compass", kind: "mobile" },
     { id: "izler", href: "izler.html", label: "İzler", icon: "users", kind: "mobile" },
     { id: "yer", href: "yer.html", label: "Yer", icon: "landmark", kind: "mobile" },
     { id: "atlas-ai", href: "atlas-ai.html", label: "Atlas AI", icon: "sparkles", kind: "mobile" },
     { id: "masaustu-on-giris", href: "masaustu-on-giris.html", label: "PC giriş", icon: "key-round", kind: "desktop" },
     { id: "masaustu-kayit", href: "masaustu-kayit.html", label: "PC kayıt", icon: "user-plus", kind: "desktop" },
-    { id: "masaustu-kesif", href: "masaustu-kesif.html", label: "Masaüstü", icon: "monitor", kind: "desktop" },
+    { id: "masaustu-ilgi", href: "masaustu-ilgi.html", label: "PC ilgi", icon: "sliders-horizontal", kind: "desktop" },
+    { id: "masaustu-kesif", href: "masaustu-kesif.html", label: "PC keşif", icon: "monitor", kind: "desktop" },
     { id: "rota", href: "rota.html", label: "Rota", icon: "route", kind: "desktop" },
     { id: "profil", href: "profil.html", label: "Profil", icon: "user-round", kind: "desktop" },
   ];

@@ -56,7 +56,7 @@
           </p>
           <div class="hero__stats">
             <div>
-              <strong>13</strong>
+              <strong>16</strong>
               <span>hazır ekran</span>
             </div>
             <div>
@@ -109,15 +109,16 @@
         <div class="section__head">
           <div>
             <p class="kicker">01 · Ekranlar</p>
-            <h2>On üç ekran, iki cihaz sınıfı.</h2>
+            <h2>On altı ekran, iki cihaz sınıfı.</h2>
             <p>
-              Giriş akışı üç adım: karşılama, kayıt, doğrulama; masaüstünde bölünmüş ekran ve aşamalı kayıt.
+              Giriş akışı beş adım: karşılama, giriş, şifre sıfırlama, kayıt, doğrulama ve ilgi alanları;
+              masaüstünde bölünmüş ekran ve aşamalı kayıt.
               Uygulama tarafı tek elle kullanılır — alt çubuk 58 px, birincil eylem başparmak menzilinde;
               masaüstü korunan yerleşimi sürdürür: başlık solda, arama sağda, Atlas AI sağ altta.
             </p>
           </div>
           <div class="filters" role="group" aria-label="Ekran filtresi">
-            <button class="chip is-active" type="button" data-filter="all">Tümü<span class="badge" style="margin-left: 4px">13</span></button>
+            <button class="chip is-active" type="button" data-filter="all">Tümü<span class="badge" style="margin-left: 4px">16</span></button>
             <button class="chip" type="button" data-filter="mobile"><svg class="i" data-icon="smartphone"></svg>Mobil</button>
             <button class="chip" type="button" data-filter="desktop"><svg class="i" data-icon="monitor"></svg>Masaüstü</button>
           </div>
@@ -160,6 +161,24 @@
             </div>
           </a>
 
+          <a class="scard scard--mobile" href="sifre-sifirla.html" data-kind="mobile">
+            <div class="scard__frame scard__frame--phone">
+              <div class="mini-device">
+                <div class="mini-device__screen" data-preview="mobile" data-size="390x844">
+                  <iframe src="sifre-sifirla.html?embed=1" title="Şifre sıfırlama ekranı önizlemesi" loading="lazy" data-theme-sync tabindex="-1"></iframe>
+                </div>
+              </div>
+            </div>
+            <div class="scard__meta">
+              <span class="scard__no">03</span>
+              <div>
+                <strong>Şifre sıfırlama</strong>
+                <small>Tek alan, 30 dk ömür, nötr yanıt</small>
+              </div>
+              <span class="scard__go"><svg class="i i--sm" data-icon="arrow-up-right"></svg></span>
+            </div>
+          </a>
+
           <a class="scard scard--mobile" href="kayit.html" data-kind="mobile">
             <div class="scard__frame scard__frame--phone">
               <div class="mini-device">
@@ -169,7 +188,7 @@
               </div>
             </div>
             <div class="scard__meta">
-              <span class="scard__no">03</span>
+              <span class="scard__no">04</span>
               <div>
                 <strong>Kayıt</strong>
                 <small>Sosyal giriş, şifre gücü, KVKK onayı</small>
@@ -187,10 +206,28 @@
               </div>
             </div>
             <div class="scard__meta">
-              <span class="scard__no">04</span>
+              <span class="scard__no">05</span>
               <div>
                 <strong>Doğrulama</strong>
                 <small>6 haneli kod, geri sayım, hata durumu</small>
+              </div>
+              <span class="scard__go"><svg class="i i--sm" data-icon="arrow-up-right"></svg></span>
+            </div>
+          </a>
+
+          <a class="scard scard--mobile" href="ilgi-alanlari.html" data-kind="mobile">
+            <div class="scard__frame scard__frame--phone">
+              <div class="mini-device">
+                <div class="mini-device__screen" data-preview="mobile" data-size="390x844">
+                  <iframe src="ilgi-alanlari.html?embed=1" title="İlgi alanları ekranı önizlemesi" loading="lazy" data-theme-sync tabindex="-1"></iframe>
+                </div>
+              </div>
+            </div>
+            <div class="scard__meta">
+              <span class="scard__no">06</span>
+              <div>
+                <strong>İlgi alanları</strong>
+                <small>Sekiz seçenek, canlı önizleme, atla</small>
               </div>
               <span class="scard__go"><svg class="i i--sm" data-icon="arrow-up-right"></svg></span>
             </div>
@@ -205,7 +242,7 @@
               </div>
             </div>
             <div class="scard__meta">
-              <span class="scard__no">05</span>
+              <span class="scard__no">07</span>
               <div>
                 <strong>Keşif</strong>
                 <small>Arama, kategori, pin ve keşif kartı</small>
@@ -223,7 +260,7 @@
               </div>
             </div>
             <div class="scard__meta">
-              <span class="scard__no">06</span>
+              <span class="scard__no">08</span>
               <div>
                 <strong>İzler</strong>
                 <small>Hikâyeler, akış filtresi, gönderi kartı</small>
@@ -241,10 +278,10 @@
               </div>
             </div>
             <div class="scard__meta">
-              <span class="scard__no">07</span>
+              <span class="scard__no">09</span>
               <div>
                 <strong>Yer detayı</strong>
-                <small>Görsel, künye, sesli rehber, yakın izler</small>
+                <small>Künye, sesli rehber, yakındaki izler</small>
               </div>
               <span class="scard__go"><svg class="i i--sm" data-icon="arrow-up-right"></svg></span>
             </div>
@@ -259,10 +296,10 @@
               </div>
             </div>
             <div class="scard__meta">
-              <span class="scard__no">08</span>
+              <span class="scard__no">10</span>
               <div>
                 <strong>Atlas AI</strong>
-                <small>Sohbet, gerekçeli rota kartı, onay</small>
+                <small>Sohbet, gerekçeli rota, onay adımı</small>
               </div>
               <span class="scard__go"><svg class="i i--sm" data-icon="arrow-up-right"></svg></span>
             </div>
@@ -273,7 +310,7 @@
               <iframe src="masaustu-on-giris.html?embed=1" title="Masaüstü giriş önizlemesi" loading="lazy" data-theme-sync tabindex="-1"></iframe>
             </div>
             <div class="scard__meta">
-              <span class="scard__no">09</span>
+              <span class="scard__no">11</span>
               <div>
                 <strong>Masaüstü giriş</strong>
                 <small>Bölünmüş ekran, passkey, misafir yolu</small>
@@ -287,10 +324,24 @@
               <iframe src="masaustu-kayit.html?embed=1" title="Masaüstü kayıt önizlemesi" loading="lazy" data-theme-sync tabindex="-1"></iframe>
             </div>
             <div class="scard__meta">
-              <span class="scard__no">10</span>
+              <span class="scard__no">12</span>
               <div>
                 <strong>Masaüstü kayıt</strong>
                 <small>Adım çubuğu, aşamalı açılım, KVKK</small>
+              </div>
+              <span class="scard__go"><svg class="i i--sm" data-icon="arrow-up-right"></svg></span>
+            </div>
+          </a>
+
+          <a class="scard scard--desktop" href="masaustu-ilgi.html" data-kind="desktop">
+            <div class="scard__frame scard__frame--desktop" data-preview="desktop" data-fit="contain">
+              <iframe src="masaustu-ilgi.html?embed=1" title="Masaüstü ilgi alanları önizlemesi" loading="lazy" data-theme-sync tabindex="-1"></iframe>
+            </div>
+            <div class="scard__meta">
+              <span class="scard__no">13</span>
+              <div>
+                <strong>Masaüstü ilgi alanları</strong>
+                <small>Akış, seçim, canlı önizleme</small>
               </div>
               <span class="scard__go"><svg class="i i--sm" data-icon="arrow-up-right"></svg></span>
             </div>
@@ -301,10 +352,10 @@
               <iframe src="masaustu-kesif.html?embed=1" title="Masaüstü keşif önizlemesi" loading="lazy" data-theme-sync tabindex="-1"></iframe>
             </div>
             <div class="scard__meta">
-              <span class="scard__no">11</span>
+              <span class="scard__no">14</span>
               <div>
                 <strong>Masaüstü keşif</strong>
-                <small>Sol liste, harita, tek alt panel</small>
+                <small>Sol liste, sağ kontrol, tek alt panel</small>
               </div>
               <span class="scard__go"><svg class="i i--sm" data-icon="arrow-up-right"></svg></span>
             </div>
@@ -315,10 +366,10 @@
               <iframe src="rota.html?embed=1" title="Rota planlayıcı önizlemesi" loading="lazy" data-theme-sync tabindex="-1"></iframe>
             </div>
             <div class="scard__meta">
-              <span class="scard__no">12</span>
+              <span class="scard__no">15</span>
               <div>
                 <strong>Rota planlayıcı</strong>
-                <small>Duraklar, harita çizgisi, yükseklik profili</small>
+                <small>Durak listesi, harita çizgisi, yükseklik</small>
               </div>
               <span class="scard__go"><svg class="i i--sm" data-icon="arrow-up-right"></svg></span>
             </div>
@@ -326,18 +377,18 @@
 
           <a class="scard scard--desktop" href="profil.html" data-kind="desktop">
             <div class="scard__frame scard__frame--desktop" data-preview="desktop" data-fit="contain">
-              <iframe src="profil.html?embed=1" title="Profil ekranı önizlemesi" loading="lazy" data-theme-sync tabindex="-1"></iframe>
+              <iframe src="profil.html?embed=1" title="Profil & ayarlar önizlemesi" loading="lazy" data-theme-sync tabindex="-1"></iframe>
             </div>
             <div class="scard__meta">
-              <span class="scard__no">13</span>
+              <span class="scard__no">16</span>
               <div>
-                <strong>Profil &amp; ayarlar</strong>
+                <strong>Profil & ayarlar</strong>
                 <small>İstatistik, tema, konum, hesap</small>
               </div>
               <span class="scard__go"><svg class="i i--sm" data-icon="arrow-up-right"></svg></span>
             </div>
           </a>
-        </div>
+
 
       </section>
 
@@ -647,14 +698,17 @@
           <code>index.html</code>
           <code>on-giris.html</code>
           <code>giris.html</code>
+          <code>sifre-sifirla.html</code>
           <code>kayit.html</code>
           <code>dogrulama.html</code>
+          <code>ilgi-alanlari.html</code>
           <code>kesif.html</code>
           <code>izler.html</code>
           <code>yer.html</code>
           <code>atlas-ai.html</code>
           <code>masaustu-on-giris.html</code>
           <code>masaustu-kayit.html</code>
+          <code>masaustu-ilgi.html</code>
           <code>masaustu-kesif.html</code>
           <code>rota.html</code>
           <code>profil.html</code>

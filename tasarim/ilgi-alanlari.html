@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#02120f" />
+    <title>Atlasia UI · İlgi alanları</title>
+    <link rel="stylesheet" href="css/base.css" />
+    <link rel="stylesheet" href="css/screens.css" />
+    <link rel="stylesheet" href="css/auth.css" />
+  </head>
+  <body class="showcase" data-screen="ilgi-alanlari">
+    <main class="showcase__stage">
+      <div class="showcase__inner">
+        <div class="caption">
+          <div>
+            <p class="caption__kicker">Mobil · 06 İlgi alanları</p>
+            <h1>İkinci adım bir sınav değil, bir seçim.</h1>
+            <p>
+              Kaydın ikinci yarısı: en az iki ilgi alanı. Seçim yaptıkça sekiz değil, seçtiğin kadar
+              düğme dolu görünür; altta ne kazandığını söyleyen bir önizleme kartı ve istersen geçebileceğin
+              bir "sonra" bağlantısı var.
+            </p>
+          </div>
+          <div class="caption__meta">
+            <span><svg class="i" data-icon="smartphone"></svg>390 × 844</span>
+            <span><svg class="i" data-icon="sliders-horizontal"></svg>En az 2 seçim</span>
+            <span><svg class="i" data-icon="moon"></svg>Koyu tema</span>
+          </div>
+        </div>
+
+        <div class="device">
+          <div class="device__screen">
+            <section class="screen mauth" aria-label="Mobil ilgi alanları ekranı">
+              <header class="statusbar" data-statusbar></header>
+
+              <div class="mauth__head">
+                <button class="icon-btn icon-btn--outline" type="button" aria-label="Önceki adım">
+                  <svg class="i" data-icon="arrow-left"></svg>
+                </button>
+                <div class="mauth__progress" aria-hidden="true">
+                  <span class="is-on"></span>
+                  <span class="is-on"></span>
+                </div>
+                <span class="mauth__step">2 / 2</span>
+              </div>
+
+              <div class="mauth__body scroll">
+                <h1 class="mauth__title">Neyin peşindesin?</h1>
+                <p class="mauth__lead">
+                  Seçtiklerin akışını ve Atlas AI rota önerilerini belirler. Sonradan değiştirebilirsin.
+                </p>
+
+                <div class="picks" role="group" aria-label="İlgi alanları">
+                  <button class="pick is-on" type="button" aria-pressed="true">
+                    <svg class="i" data-icon="landmark"></svg>
+                    Tarih
+                    <span class="pick__tick"><svg class="i" data-icon="check"></svg></span>
+                  </button>
+                  <button class="pick is-on" type="button" aria-pressed="true">
+                    <svg class="i" data-icon="trees"></svg>
+                    Doğa
+                    <span class="pick__tick"><svg class="i" data-icon="check"></svg></span>
+                  </button>
+                  <button class="pick" type="button" aria-pressed="false">
+                    <svg class="i" data-icon="utensils-crossed"></svg>
+                    Yeme içme
+                    <span class="pick__tick"><svg class="i" data-icon="check"></svg></span>
+                  </button>
+                  <button class="pick is-on" type="button" aria-pressed="true">
+                    <svg class="i" data-icon="camera"></svg>
+                    Fotoğraf
+                    <span class="pick__tick"><svg class="i" data-icon="check"></svg></span>
+                  </button>
+                  <button class="pick" type="button" aria-pressed="false">
+                    <svg class="i" data-icon="tent"></svg>
+                    Kamp
+                    <span class="pick__tick"><svg class="i" data-icon="check"></svg></span>
+                  </button>
+                  <button class="pick" type="button" aria-pressed="false">
+                    <svg class="i" data-icon="waves"></svg>
+                    Deniz
+                    <span class="pick__tick"><svg class="i" data-icon="check"></svg></span>
+                  </button>
+                  <button class="pick" type="button" aria-pressed="false">
+                    <svg class="i" data-icon="building-2"></svg>
+                    Şehir
+                    <span class="pick__tick"><svg class="i" data-icon="check"></svg></span>
+                  </button>
+                  <button class="pick" type="button" aria-pressed="false">
+                    <svg class="i" data-icon="mountain"></svg>
+                    Yürüyüş
+                    <span class="pick__tick"><svg class="i" data-icon="check"></svg></span>
+                  </button>
+                </div>
+
+                <p class="picks__meta">
+                  <strong>3 alan seçildi</strong>
+                  <span>· en az 2 gerekli</span>
+                  <svg class="i" data-icon="circle-check" style="color: var(--leaf)"></svg>
+                </p>
+
+                <div class="preview-card">
+                  <span class="preview-card__thumb">
+                    <img src="assets/efes.jpg" alt="" />
+                  </span>
+                  <span class="preview-card__body">
+                    <strong>Akışında ilk bunlar çıkar</strong>
+                    <span>Efes · Kapadokya · Likya Yolu</span>
+                  </span>
+                  <svg class="i" data-icon="sparkles"></svg>
+                </div>
+
+                <button class="auth-submit mauth__submit" type="button" style="margin-top: 18px">
+                  Keşfetmeye başla
+                  <svg class="i" data-icon="arrow-right"></svg>
+                </button>
+
+                <p class="auth-switch mauth__switch">
+                  <a href="kesif.html">Şimdilik geç, sonra tamamla</a>
+                </p>
+
+                <p class="mauth__foot">
+                  <svg class="i" data-icon="sparkles"></svg>
+                  Seçimlerin yalnızca önerileri iyileştirmek için kullanılır
+                </p>
+              </div>
+
+              <span class="home-indicator" aria-hidden="true"></span>
+            </section>
+          </div>
+        </div>
+      </div>
+    </main>
+    <script src="js/ui.js"></script>
+  </body>
+</html>
