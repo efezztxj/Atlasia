@@ -20,6 +20,19 @@ describe("ağır istemci modüllerinin tembel yüklenmesi", () => {
     expect(read("src/components/PlaceDetails.tsx")).toContain('lazy(() => import("./NearbyHistory"))');
   });
 
+  it("koşullu paneller (yer detayı, yürüyüş kaydı) statik import edilmez", () => {
+    const app = read("src/App.tsx");
+    // Bu iki panel yalnız kullanıcı eylemiyle açılır. Statik import, panelin
+    // bağımlılıklarını (yer tavsiyeleri, iz toplama/sadeleştirme) ilk yüke taşır.
+    expect(app).toContain('lazy(() => import("./components/PlaceDetails"))');
+    expect(app).toContain('lazy(() => import("./components/TrackRecorderPanel"))');
+    expect(app).not.toMatch(/^import PlaceDetails from "\.\/components\/PlaceDetails";/m);
+    expect(app).not.toMatch(/^import TrackRecorderPanel from "\.\/components\/TrackRecorderPanel";/m);
+    // Lazy bileşen Suspense içinde olmalı; aksi hâlde React askıya almayı işleyemez.
+    expect(app).toMatch(/<Suspense fallback=\{null\}>\s*<PlaceDetails/);
+    expect(app).toMatch(/<Suspense fallback=\{null\}>\s*<TrackRecorderPanel/);
+  });
+
   it("Firebase Auth çalışma kodunu statik başlangıç grafiğine eklemez", () => {
     const runtimeFiles = [
       "src/lib/auth.ts",
