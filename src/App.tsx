@@ -12,14 +12,12 @@ import SocialPanel from "./components/SocialPanel";
 import SettingsPanel, { type SettingsContentProps } from "./components/SettingsPanel";
 import AtlasAssistant from "./components/AtlasAssistant";
 import Onboarding from "./components/Onboarding";
-import PlaceDetails from "./components/PlaceDetails";
 import StreetPeek from "./components/StreetPeek";
 import AccountAccess, { EmailVerification, ProfileSetup } from "./components/AccountAccess";
 import MyPlacesPanel from "./components/MyPlacesPanel";
 const NearbyAudioGuide = lazy(() => import("./components/NearbyAudioGuide"));
 import LandingPage from "./components/LandingPage";
 import RecordsDock from "./components/RecordsDock";
-import TrackRecorderPanel from "./components/TrackRecorderPanel";
 import RouteEditor from "./components/RouteEditor";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { CollectionsProvider, isCloudAccount } from "./hooks/useCollections";
@@ -52,6 +50,12 @@ import { ensureFriendIndex } from "./lib/friendships";
 const MapView = lazy(() => import("./components/MapView"));
 // Profil paneli yalnız açılınca yüklenir (ilk paket bütçesi).
 const ProfilePanel = lazy(() => import("./components/ProfilePanel"));
+// Yer detayı paneli yalnız bir yer seçilince açılır; advices/panel kodu
+// başlangıç grafiğinde durmasın (bundle bütçesi marjı dar).
+const PlaceDetails = lazy(() => import("./components/PlaceDetails"));
+// Yürüyüş kaydı yalnız "Yürüyüş kaydı" düğmesine basılınca açılır;
+// iz toplama/sadeleştirme kodu (utils/track) başlangıç grafiğinde durmaz.
+const TrackRecorderPanel = lazy(() => import("./components/TrackRecorderPanel"));
 const MAP_STYLE_KEY = "atlasia.mapStyle.v1";
 
 function initialMapStyle(): BaseMapStyle {
@@ -780,20 +784,24 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         aria-label="Yürüyüş kaydını aç"
         className={`mobile-bottom-stack-control glass-panel gold-frame pressable fixed left-3 z-30 flex min-h-12 items-center gap-2.5 rounded-full py-1.5 pr-4 pl-1.5 text-[13px] font-semibold text-mint md:bottom-24 md:left-8${panelOpen ? " max-md:hidden" : ""}`}
       ><span className="btn-gold grid size-9 place-items-center rounded-full"><Activity size={16} strokeWidth={2.2} /></span>Yürüyüş kaydı</button>}
-      {trackRecorderOpen && <TrackRecorderPanel
-        uid={user!.uid}
-        cloudAccount={user!.backend === "firebase"}
-        onClose={() => setTrackRecorderOpen(false)}
-        onPreview={(coords) => mapRef.current?.drawRoute(coords, true)}
-        onFinished={(track, route) => {
-          if (routeDrawLegs(route)) drawAtlasRoute(route, false);
-          else mapRef.current?.drawRoute(decodePolyline(track.polyline), false);
-          setResumeRoute(route);
-          setTrackRecorderOpen(false);
-          setAtlasOpen(true);
-          setToast("İz gizli olarak kaydedildi. Yürüyüş taslağı hazır.");
-        }}
-      />}
+      {trackRecorderOpen && (
+        <Suspense fallback={null}>
+          <TrackRecorderPanel
+            uid={user!.uid}
+            cloudAccount={user!.backend === "firebase"}
+            onClose={() => setTrackRecorderOpen(false)}
+            onPreview={(coords) => mapRef.current?.drawRoute(coords, true)}
+            onFinished={(track, route) => {
+              if (routeDrawLegs(route)) drawAtlasRoute(route, false);
+              else mapRef.current?.drawRoute(decodePolyline(track.polyline), false);
+              setResumeRoute(route);
+              setTrackRecorderOpen(false);
+              setAtlasOpen(true);
+              setToast("İz gizli olarak kaydedildi. Yürüyüş taslağı hazır.");
+            }}
+          />
+        </Suspense>
+      )}
 
       <Suspense fallback={null}>
         <NearbyAudioGuide
@@ -1043,34 +1051,36 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
       )}
 
       {liveStoryPlace && (
-        <PlaceDetails
-          place={liveStoryPlace}
-          onClose={() => setStoryPlace(null)}
-          onStreet={() => {
-            const place = liveStoryPlace;
-            if (!place) return;
-            if (smallScreen) setStoryPlace(null);
-            setStreetPlace(place);
-          }}
-          onPlan={() => {
-            const place = liveStoryPlace;
-            if (!place) return;
-            closePanels();
-            focusPlace(place);
-            setAtlasOpen(true);
-          }}
-          canDelete={canManagePlace(liveStoryPlace)}
-          onDelete={() => handleDelete(liveStoryPlace)}
-          onOpenPlace={(next) => {
-            focusPlace(next, 16);
-            setStoryPlace(next);
-          }}
-          onVerify={(status, note) => {
-            const target = liveStoryPlace;
-            if (!target) return Promise.resolve();
-            return freshness.verify(target.id, status, note);
-          }}
-        />
+        <Suspense fallback={null}>
+          <PlaceDetails
+            place={liveStoryPlace}
+            onClose={() => setStoryPlace(null)}
+            onStreet={() => {
+              const place = liveStoryPlace;
+              if (!place) return;
+              if (smallScreen) setStoryPlace(null);
+              setStreetPlace(place);
+            }}
+            onPlan={() => {
+              const place = liveStoryPlace;
+              if (!place) return;
+              closePanels();
+              focusPlace(place);
+              setAtlasOpen(true);
+            }}
+            canDelete={canManagePlace(liveStoryPlace)}
+            onDelete={() => handleDelete(liveStoryPlace)}
+            onOpenPlace={(next) => {
+              focusPlace(next, 16);
+              setStoryPlace(next);
+            }}
+            onVerify={(status, note) => {
+              const target = liveStoryPlace;
+              if (!target) return Promise.resolve();
+              return freshness.verify(target.id, status, note);
+            }}
+          />
+        </Suspense>
       )}
       {streetPlace && !atlasOpen && (
         <StreetPeek

@@ -73,6 +73,18 @@ function dataError(code: string, message: string): Error & { code: string } {
   return Object.assign(new Error(message), { code });
 }
 
+/**
+ * Kural sözleşmesi: `validFriendRequest` içinde `stringBetween(fromName, 2, 100)`.
+ * Firebase Auth `displayName` 1 karakter olabiliyor (profil yazımı 2–40 istese de
+ * bu yol oradan geçmez). 1 karakterli ad gönderilirse kural isteği reddeder ve
+ * hata `permission-denied` olarak döner — istemci bunu "zaten istek gönderdin"
+ * diye yorumlar. Bu yüzden ad, kuralın kabul ettiği en küçük biçime çekilir.
+ */
+function requestDisplayName(raw: string): string {
+  const clean = raw.trim().slice(0, 40);
+  return clean.length >= 2 ? clean : "Gezgin";
+}
+
 export function friendshipIdFor(uidA: string, uidB: string): string {
   const a = uidA.trim();
   const b = uidB.trim();
@@ -209,7 +221,7 @@ export async function sendFriendRequest(input: { fromUid: string; fromName: stri
   const toUid = input.toUid.trim();
   if (!fromUid || !toUid) throw dataError("friend-request/uid-invalid", "Kullanici kimligi gecersiz.");
   if (fromUid === toUid) throw dataError("friend-request/self", "Kendine istek gonderemezsin.");
-  const fromName = input.fromName.trim().slice(0, 40) || "Gezgin";
+  const fromName = requestDisplayName(input.fromName);
   // Kural: başkasının istek kutusu ve var olmayan arkadaşlık belgesi okunamaz
   // (get reddedilir). Bu yüzden yalnız KENDİ belgelerimize bakılır; "zaten
   // istek gönderdin / zaten arkadaşsınız" koşullarını kural create'te zorlar.
