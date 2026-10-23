@@ -171,9 +171,9 @@ export default function ProfilePanel({ onClose, onRecords, settings, myPlacesCou
       role="dialog"
       aria-modal="false"
       aria-labelledby="profile-title"
-      className="settings-sheet gold-frame fixed top-[68px] right-0 bottom-0 z-[55] flex w-full max-w-[390px] flex-col overflow-hidden border-l bg-ink-2 md:top-[88px] md:right-4 md:bottom-4 md:max-w-[430px] md:rounded-3xl md:border"
+      className="settings-sheet gold-frame fixed inset-0 z-[55] flex w-full flex-col overflow-hidden bg-ink-2 md:inset-auto md:top-[88px] md:right-4 md:bottom-4 md:w-[min(520px,calc(100vw-2rem))] md:rounded-3xl md:border"
     >
-      <header className="flex shrink-0 items-center justify-between px-6 pt-5 pb-3">
+      <header className="flex shrink-0 items-center justify-between px-5 pt-[calc(16px+env(safe-area-inset-top))] pb-3 md:px-6 md:pt-5">
         <div>
           <h2 id="profile-title" className="font-display text-xl font-semibold">Profilim</h2>
           <p className="mt-0.5 text-[12px] text-mint/70">Hesabın, kayıtların ve tüm ayarların</p>
@@ -223,7 +223,7 @@ export default function ProfilePanel({ onClose, onRecords, settings, myPlacesCou
           </div>
         </section>
 
-        <nav aria-label="Profil bölümleri" className="no-scrollbar sticky top-0 z-10 -mx-6 mt-4 flex gap-2 overflow-x-auto border-y border-white/[0.06] bg-ink-2/95 px-6 py-2">
+        <nav aria-label="Profil bölümleri" className="sticky top-0 z-10 -mx-6 mt-4 grid grid-cols-4 gap-1.5 border-y border-white/[0.06] bg-ink-2/95 px-3 py-2 md:gap-2 md:px-6">
           {[
             { id: "profile-account", label: "Hesabım", icon: UserRound },
             { id: "profile-library", label: "Kayıtlar", icon: Bookmark },
@@ -235,9 +235,9 @@ export default function ProfilePanel({ onClose, onRecords, settings, myPlacesCou
               type="button"
               aria-pressed={activeSection === id}
               onClick={() => scrollToSection(id)}
-              className={`flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[12px] font-semibold transition ${activeSection === id ? "border-sun/55 bg-sun/12 text-sun" : "border-white/12 text-mint/75 hover:border-sun/40 hover:text-mint"}`}
+              className={`flex min-h-10 min-w-0 items-center justify-center gap-1 rounded-full border px-1.5 text-[11px] font-semibold transition min-[380px]:gap-1.5 min-[380px]:px-2 min-[380px]:text-[12px] md:px-3 ${activeSection === id ? "border-sun/55 bg-sun/12 text-sun" : "border-white/12 text-mint/75 hover:border-sun/40 hover:text-mint"}`}
             >
-              <Icon size={14} />{label}
+              <Icon size={14} className="hidden shrink-0 min-[410px]:block" /><span className="truncate">{label}</span>
             </button>
           ))}
         </nav>

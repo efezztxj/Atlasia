@@ -684,7 +684,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
 
   return (
     <div
-      className="space-bg relative h-screen w-full overflow-hidden"
+      className="space-bg relative h-dvh w-full overflow-hidden"
       style={{ "--discovery-occupied-space": `${discoverySpace}px` } as CSSProperties}
     >
       <a href="#harita" className="skip-link">
@@ -782,8 +782,9 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         type="button"
         onClick={() => setTrackRecorderOpen(true)}
         aria-label="Yürüyüş kaydını aç"
-        className={`mobile-bottom-stack-control glass-panel gold-frame pressable fixed left-3 z-30 flex min-h-12 items-center gap-2.5 rounded-full py-1.5 pr-4 pl-1.5 text-[13px] font-semibold text-mint md:bottom-24 md:left-8${panelOpen ? " max-md:hidden" : ""}`}
-      ><span className="btn-gold grid size-9 place-items-center rounded-full"><Activity size={16} strokeWidth={2.2} /></span>Yürüyüş kaydı</button>}
+        title="Yürüyüş kaydı"
+        className={`glass-panel gold-frame pressable fixed bottom-[calc(64px+env(safe-area-inset-bottom))] left-[calc(50%-78px)] z-30 grid size-[46px] place-items-center rounded-full text-[13px] font-semibold text-mint md:bottom-24 md:left-8 md:flex md:h-12 md:w-auto md:items-center md:gap-2.5 md:py-1.5 md:pr-4 md:pl-1.5${panelOpen ? " max-md:hidden" : ""}`}
+      ><span className="btn-gold grid size-9 place-items-center rounded-full"><Activity size={16} strokeWidth={2.2} /></span><span className="hidden md:inline">Yürüyüş kaydı</span></button>}
       {trackRecorderOpen && (
         <Suspense fallback={null}>
           <TrackRecorderPanel
