@@ -359,7 +359,9 @@ export default function SocialPanel({
       <section
         className={cn(
           "social-panel gold-frame animate-rise fixed z-50 flex flex-col overflow-hidden bg-[#021915]/92 md:z-40",
-          "inset-x-0 bottom-[calc(70px+env(safe-area-inset-bottom))] h-[min(74dvh,650px)] rounded-t-[28px] rounded-b-[18px] pb-0 md:bottom-0 md:h-[82dvh] md:rounded-b-none",
+          // Mobil: tam ekran (üstte 6px + safe-area, alta kadar opak). #78.
+          // Masaüstü: #78 öncesi yerleşim; lg değerleri 560f37e'deki hizalama.
+          "inset-x-0 top-[calc(6px+env(safe-area-inset-top))] bottom-0 h-auto rounded-t-[24px] rounded-b-none pb-0 max-md:bg-[#021915] md:top-auto md:bottom-0 md:h-[82dvh] md:rounded-b-none",
           "lg:inset-x-auto lg:bottom-7 lg:left-6 lg:h-[min(64vh,600px)] lg:w-[380px] lg:rounded-[26px] lg:pb-0",
         )}
         aria-label="İzler"
@@ -695,7 +697,7 @@ export default function SocialPanel({
         </div>
 
         {/* Yazma alanı */}
-        <form onSubmit={publishPost} className="shrink-0 border-t border-white/[0.07] bg-black/20 px-3 py-2.5">
+        <form onSubmit={publishPost} className="shrink-0 border-t border-white/[0.07] bg-black/20 px-3 pt-2.5 pb-[calc(10px+env(safe-area-inset-bottom))] md:pb-2.5">
           {photo && (
             <div className="relative mb-2 ml-10 w-fit">
               <img
