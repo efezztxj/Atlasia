@@ -120,3 +120,27 @@ ortada eylem), **Strava** (yürüyüş kaydı durum hapı).
 4. **Tablet düzeni (768–1023px)**: sol alt hap ve panel çakışmasını bitir.
 5. **Sekme adları**: "Kaydet" → "Kayıtlar"; boş durum metinleri.
 6. **Kayıt sırasında `wakeLock`** ve isteğe bağlı haptik geri bildirim.
+
+---
+
+## Revizyon (2026-10-23, main birleşmesi sonrası)
+
+Bu turda yazılan mobil kodun bir kısmı `main` üzerine taşınamadı: `main`e bu arada
+giren #66 ve #75 çalışmaları aynı dosyalarda (App.tsx, BottomPanel.tsx,
+MapControls.tsx, index.css) farklı çözümler getirmişti. Çakışmalarda **main'in
+sürümü korundu**, dosya içeriklerine dokunulmadı.
+
+| Madde | Durum |
+| --- | --- |
+| 1 · Üç kademeli keşif sayfası (`MobileDiscoverySheet`) | **Alınmadı** — main'in mevcut keşif kartı korundu; bileşen ve testi silindi |
+| 2 · Mobil katman menüsü | **Alınmadı** — main'de katman düğmeleri hâlâ `nth-of-type(n+5)` ile gizli; ayrı PR gerekiyor |
+| 3 · Son aramalar + otomatik klavye (`SearchBox`) | **Alındı** (main ile çakışmadı) |
+| 4 · Erişilebilirlik tercihleri (Ayarlar bölümü + hook + CSS bloğu) | **Alındı**; `index.css`e yalnız ek blok olarak yazıldı |
+| 5 · Ön taslaklar (`mockups/mobil-v2.html`) | **Alındı** (üretim paketine girmiyor) |
+| 6 · Yakınımdaki listesi, geri tuşu, tablet düzeni | Uygulanmadı (planda) |
+
+Kalan iki iş, main'in yeni mobil yığını (`--discovery-occupied-space`,
+`mobile-bottom-stack-control`) üzerine oturtulmalı; eski dal bu yüzden kapalı kaldı.
+`Hareketi azalt` anahtarı şu an CSS animasyonlarını durdurur; küre dönüşünü de
+durdurmak için `App.tsx` içinde tek satır bağlama gerekir (bilinçli olarak
+dokunulmadı).

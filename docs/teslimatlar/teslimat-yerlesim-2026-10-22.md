@@ -113,3 +113,12 @@ içeriği paylaşan Profil → Ayarlar sekmesine) **Erişilebilirlik** bölümü
 - Tercih cihaz bazlıdır (hesap senkronu yok); tema davranışıyla aynı çizgide.
 - "Büyük" yazı boyutu yoğun panellerde satırları uzatabilir; gerçek cihazda
   gözle kontrol edilmeli.
+
+---
+
+## Revizyon (2026-10-23)
+
+Bu nottaki mobil yerleşim maddeleri `main`e giren #66/#75 ile çakıştı; birleşmede
+main'in çözümü korundu, dosya içeriklerine dokunulmadı. Yalnız mobil dışı küçük
+hizalamalar (`SocialPanel` İzler hapı, `TrackRecorderPanel` panel köşesi) kaldı.
+Güncel durum için `docs/mobil-denetim-2026-10-23.md` → "Revizyon" bölümüne bakın.
