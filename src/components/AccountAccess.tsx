@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import {
   Apple, ArrowLeft, ArrowRight, Check, CheckCircle2, Circle, Compass,
   Copy, Eye, EyeOff, Globe2, Info, KeyRound, Loader2, LockKeyhole,
@@ -10,7 +10,9 @@ import { authConfigured, authErrorMessage, getAtlasAuth, requestPasswordReset, s
 import { AccountError, isValidEmail, normalizeEmail, passwordRules, validPassword } from "../lib/accountTypes";
 import { checkPwnedPassword, estimatePasswordStrength, type PasswordExposure } from "../lib/passwordSecurity";
 import { resetDevicePassword } from "../lib/deviceAccounts";
-import LegalNotice from "./LegalNotice";
+// Kullanım koşulları/gizlilik metni yalnız ilgili bağlantıya basılınca açılır;
+// ~19 KB'lik metin giriş ekranının başlangıç paketinde durmaz.
+const LegalNotice = lazy(() => import("./LegalNotice"));
 
 type Screen = "credentials" | "phone" | "code" | "reset" | "recovery";
 type Busy = "email" | "google" | "apple" | "phone" | "code" | "reset" | "recovery" | "finish";
@@ -337,7 +339,11 @@ export default function AccountAccess() {
       {success && <Message success>{success}</Message>}
       {checking && <p className="auth-status" role="status"><Loader2 size={14} className="animate-spin" />Oturumun kontrol ediliyor...</p>}
     </AuthFrame>
-    {legal && <LegalNotice type={legal} onClose={() => setLegal(null)} />}
+    {legal && (
+      <Suspense fallback={null}>
+        <LegalNotice type={legal} onClose={() => setLegal(null)} />
+      </Suspense>
+    )}
   </>;
 }
 
