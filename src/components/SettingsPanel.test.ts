@@ -44,12 +44,32 @@ describe("SettingsContent", () => {
   it("tema, harita, uygulama ve konum ayarlarının tamamını gösterir", () => {
     render(createElement(SettingsContent, makeProps()));
 
-    for (const heading of ["Görünüm", "Harita gösterimi", "Harita altlığı", "Çevrimdışı harita", "Uygulama", "Konum ve gizlilik"]) {
+    for (const heading of ["Görünüm", "Harita gösterimi", "Harita altlığı", "Erişilebilirlik", "Çevrimdışı harita", "Uygulama", "Konum ve gizlilik"]) {
       expect(screen.getByText(heading)).toBeTruthy();
     }
     expect(screen.getByRole("button", { name: /^Yer adları/ }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("button", { name: /^3B arazi/ }).getAttribute("aria-pressed")).toBe("false");
     expect(document.getElementById("location-settings")).toBeTruthy();
+    expect(document.getElementById("accessibility-title")).toBeTruthy();
+  });
+
+  it("erişilebilirlik anahtarları ve yazı boyutu seçimi çalışır", () => {
+    render(createElement(SettingsContent, makeProps()));
+
+    const motion = screen.getByRole("switch", { name: "Hareketi azalt" });
+    expect(motion.getAttribute("aria-checked")).toBe("false");
+    fireEvent.click(motion);
+    expect(motion.getAttribute("aria-checked")).toBe("true");
+    expect(document.documentElement.dataset.motion).toBe("reduced");
+
+    const contrast = screen.getByRole("switch", { name: "Yüksek kontrast" });
+    fireEvent.click(contrast);
+    expect(contrast.getAttribute("aria-checked")).toBe("true");
+    expect(document.documentElement.dataset.contrast).toBe("high");
+
+    fireEvent.click(screen.getByRole("button", { name: "Büyük" }));
+    expect(document.documentElement.dataset.textScale).toBe("large");
+    expect(screen.getByRole("button", { name: "Büyük" }).getAttribute("aria-pressed")).toBe("true");
   });
 
   it("tema, altlık ve harita anahtarlarını doğru işleyicilere bağlar", () => {
