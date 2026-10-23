@@ -3,6 +3,8 @@
 > Bu dosya, Atlasia'ya eklenecek işlerin **bağımlılık sırasıdır**; özellik listesi değil.
 > Ajanlar için yazıldı: her adımın amacı, girdisi, dosya yolları, "bitti kanıtı" komutu ve riski var.
 >
+> **23.10.2026 güncel açıklar (main `3038344` kesiti):** [Ana Yol — uygulamada açık kalanlar](docs/gorevler/ana-yol-acik-kalanlar-2026-10-23.md). Aşağıdaki v2 depo sayıları, PR durumları ve “eksik” satırlarının bir bölümü tarihsel 21–22 Ekim kesitidir; yeni görev açarken önce güncel defterdeki **kod eksiği / saha kanıtı / kullanıcı kararı / açık PR** ayrımını kontrol et. Kodun `main`de olması canlı Firebase yayını veya pilot kabulü değildir.
+>
 > - **Son güncelleme:** 2026-10-22 (açık PR triyajı; Adım 11/14/15 durumları koda göre düzeltildi; karar (d) işlendi)
 > - **Durum:** main `84d2425` (#54) + Dependabot #10. Bitti: P1–P5, P10–P20 kod işleri (P18 giriş ekranı kullanıcıda), sosyal akış (#52 gruplar/arkadaşlar/davet linkleri, #54 arkadaşlık isteği izin düzeltmesi), T1-AUTH (#33), P17 çekirdeği (#32). Kararlar: (a) alt koleksiyon, (d) XP yok / rozet+takip kalır, (e) önce web/PWA sonra Capacitor, (f) verildi; (c) uygulandı, kullanıcının iki cihaz onayı bekleniyor; (b) foto depolama ve (g) sohbet maliyeti resmî olarak açık. Açık PR'lar: #51 (kural sertleştirme, main'e taşınmayı bekliyor), #55 (başka oturumda sürüyor).
 > - **Kural:** ⛔ işaretli adımlarda insan onayı olmadan kod yazılmaz.
