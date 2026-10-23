@@ -22,6 +22,7 @@ Sütunlar: **Sahip** (uid eşleşen kullanıcı) · **Arkadaş** · **Grup üyes
 | Bildirim (`users/{uid}/notifications`) | okur, günceller (`read`), siler | — | — | — | — | yalnız `uid == auth` |
 | Arkadaş indeksi (`users/{uid}/friends`) | okur, siler | — | — | — | — | yazma: kabul akışı (C1 kuralı) |
 | Arkadaşlık (`friendships/{fid}`) | okur, siler | okur (iki taraf) | — | — | — | yalnız `users` alanındaki iki taraf |
+| Takip (`users/{uid}/following`) | okur, yazar, siler | — | — | — | — | yalnız `uid == auth`; kendini takip yok; güncelleme yok; liste ≤100 (2026-10-23 eklendi) |
 | Arkadaş isteği (`users/{uid}/friendRequests`) | okur, siler | — | — | — | — | yalnız alıcı; gönderen istek belgesini `fromUid` ile silebilir |
 | Engelleme (`blocks`, `users/{uid}/blocks`) | okur, yazar, siler | — | — | — | — | yalnız `blockerUid == auth` |
 | Rapor (`reports`) | okur, siler (raporlayan) | — | — | — | — | raporlayan dışında kimse okuyamaz |
@@ -46,6 +47,13 @@ Sütunlar: **Sahip** (uid eşleşen kullanıcı) · **Arkadaş** · **Grup üyes
 - KARAR: Konum/yer kaydı kamusal; konum geçmişi (`tracks`) yalnız sahibinde.
   GEREKÇE: Yerler harita içeriği; iz (polyline) kişisel konum geçmişi. ALTERNATİF: yerleri de
   gizlemek (harita işlevini bozar). GERİ ALMA: —.
+
+- KARAR: Takipçi listesi okuma yolu **yok** (collection-group `following` bloğu bilinçli olarak
+  açılmadı). GEREKÇE: birinin kimi takip ettiği kişisel veri; takipçi sayısı istemciye
+  açılacaksa önce `targetUid == request.auth.uid` kanıtıyla ayrı bir collection-group kuralı
+  ve indeks gerekir — kural gevşetmesi sayılır, ayrı karar ister. ALTERNATİF (uygulanmadı):
+  `match /{path=**}/following/{targetUid}` + `boundedList yok` (toplama sorgusu limit
+  göndermez). GERİ ALMA: — (bugün açık bir yüzey yok).
 
 ## Açık noktalar
 

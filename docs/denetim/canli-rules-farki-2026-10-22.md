@@ -34,3 +34,12 @@ Depodaki `firestore.rules` olduğu gibi Console → Firestore → Rules'a yapı�
 | `replies.authorUid` exemption | ✅ Eklendi: Collection Asc/Desc/Arrays açık, Collection group yalnız Ascending açık; oluşturma sürüyordu |
 
 Bu nedenle sosyal özelliklerde hâlâ "Missing or insufficient permissions" görülürse sebep artık kural farkı olmaz. Ayrı bir yetki/App Check teşhisi gerekir.
+
+## 2026-10-23 güncellemesi
+
+Bu belgedeki yayın kaydı **2026-10-22, main `2b03f2f`** ile sınırlıdır. O tarihten sonra main'e
+kural değişiklikleri girdi (doğrulama belge kimliği, `users/{uid}/following`, `userProfiles`
+güncelleme yolu, `notificationProof` + `friendDeclineProof`). Canlı ile depo arasındaki fark
+**yeniden doğrulanmadı**; yayın adımı ve sonrasındaki kontrol listesi:
+`docs/teslimatlar/kural-yayin-kontrol-listesi-2026-10-23.md` (`npm run rules:inventory` çıktısıyla).
+
