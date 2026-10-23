@@ -1,3 +1,4 @@
+import { useCallback, useLayoutEffect, useRef } from "react";
 import {
   ArrowRight,
   Bookmark,
@@ -5,6 +6,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronUp,
+  Map,
   MapPin,
   MessagesSquare,
   Sparkles,
@@ -15,7 +17,6 @@ import { formatAccuracy } from "../hooks/useGeolocation";
 import type { CategoryId, Place } from "../types";
 import { cn } from "../utils/cn";
 import PlaceImage from "./PlaceImage";
-import MobileDiscoverySheet from "./MobileDiscoverySheet";
 import { useCollections } from "../hooks/useCollections";
 
 interface Props {
@@ -39,6 +40,8 @@ interface Props {
   /** Konum izni verildiyse metre cinsinden doğruluk */
   accuracy: number | null;
   locating: boolean;
+  /** Mobilde panelin ekran altından kapladığı toplam alanı bildirir. */
+  onOccupiedSpaceChange?: (space: number) => void;
 }
 
 export function PlaceThumb({ place, className }: { place: Place; className?: string }) {
@@ -64,44 +67,58 @@ export default function BottomPanel({
   onOpenFeed,
   accuracy,
   locating,
+  onOccupiedSpaceChange,
 }: Props) {
   const { savePlace, isSaved } = useCollections();
+  const panelRef = useRef<HTMLElement | null>(null);
+  const occupiedSpaceRef = useRef(-1);
 
-  const mobileSheet = (
-    <MobileDiscoverySheet
-      open={open}
-      onToggle={onToggle}
-      category={category}
-      onCategory={onCategory}
-      current={current}
-      isActive={isActive}
-      total={total}
-      onShow={onShow}
-      onCycle={onCycle}
-      canDelete={canDelete}
-      onDelete={onDelete}
-      onAdd={onAdd}
-      locationLabel={locationLabel}
-      nearby={nearby}
-    />
-  );
+  const reportOccupiedSpace = useCallback(() => {
+    if (!onOccupiedSpaceChange) return;
+    const panel = panelRef.current;
+    const mobile = window.matchMedia("(max-width: 767px)").matches;
+    const occupied = panel && mobile
+      ? Math.max(0, Math.round(window.innerHeight - panel.getBoundingClientRect().top))
+      : 0;
+    if (occupied === occupiedSpaceRef.current) return;
+    occupiedSpaceRef.current = occupied;
+    onOccupiedSpaceChange(occupied);
+  }, [onOccupiedSpaceChange]);
 
-  // Kapatılan keşif alanı kaybolmaz: masaüstünde açık panelin yer kartını tek,
-  // ince bir satır olarak korur; mobilde peek kademesindeki alt sayfa görünür.
+  useLayoutEffect(() => {
+    reportOccupiedSpace();
+    const panel = panelRef.current;
+    if (!panel || !onOccupiedSpaceChange) return undefined;
+
+    const resizeObserver = typeof ResizeObserver === "undefined"
+      ? null
+      : new ResizeObserver(reportOccupiedSpace);
+    resizeObserver?.observe(panel);
+    window.addEventListener("resize", reportOccupiedSpace);
+    window.visualViewport?.addEventListener("resize", reportOccupiedSpace);
+
+    return () => {
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", reportOccupiedSpace);
+      window.visualViewport?.removeEventListener("resize", reportOccupiedSpace);
+    };
+  }, [onOccupiedSpaceChange, open, current?.id, reportOccupiedSpace]);
+
+  // Kapatılan keşif alanı kaybolmaz: açık panelin yer kartını tek, ince bir
+  // satır olarak korur. Kartın metin tarafına dokunmak paneli yeniden açar.
   if (!open) {
     return (
-      <>
-      {mobileSheet}
       <div
         className={cn(
-          "pointer-events-none absolute inset-x-0 bottom-[calc(70px+env(safe-area-inset-bottom))] z-20 hidden justify-center px-3 pb-3 transition-[padding] duration-500 md:bottom-0 md:flex md:pb-7",
+          "pointer-events-none absolute inset-x-0 bottom-[calc(70px+env(safe-area-inset-bottom))] z-20 flex justify-center px-3 pb-3 transition-[padding] duration-500 md:bottom-0 md:pb-7",
           shifted && "lg:pl-[420px]",
         )}
       >
         <div className="w-full max-w-[920px]">
           <section
+            ref={(node) => { panelRef.current = node; }}
             aria-label="Daraltılmış keşif önerisi"
-            className="desktop-discovery-panel gold-frame pointer-events-auto hidden rounded-[28px] bg-[#021915]/95 p-2.5 backdrop-blur-xl md:block md:p-4"
+            className="mobile-discovery-panel desktop-discovery-panel gold-frame pointer-events-auto rounded-[22px] bg-[#021915] p-2.5 max-md:fixed max-md:inset-x-3 max-md:bottom-[calc(118px+env(safe-area-inset-bottom))] max-md:z-20 md:rounded-[28px] md:p-4"
           >
             {current ? (
               <div className="flex min-w-0 items-center gap-1.5 md:gap-3">
@@ -155,27 +172,89 @@ export default function BottomPanel({
           </section>
         </div>
       </div>
-      </>
     );
   }
 
   return (
-    <>
-    {mobileSheet}
     <div
       className={cn(
-        "pointer-events-none absolute inset-x-0 bottom-[calc(70px+env(safe-area-inset-bottom))] z-20 hidden justify-center px-3 pb-3 transition-[padding] duration-500 md:bottom-0 md:flex md:pb-7",
+        "pointer-events-none absolute inset-x-0 bottom-[calc(70px+env(safe-area-inset-bottom))] z-20 flex justify-center px-3 pb-3 transition-[padding] duration-500 md:bottom-0 md:pb-7",
         shifted && "lg:pl-[420px]",
       )}
     >
       <div className="w-full max-w-[920px]">
+        <section ref={(node) => { panelRef.current = node; }} aria-label="Keşif önerileri" className="mobile-discovery-panel gold-frame pointer-events-auto rounded-[26px] bg-[#021b16] px-3.5 pb-3.5 pt-2.5 max-md:fixed max-md:inset-x-3 max-md:bottom-[calc(118px+env(safe-area-inset-bottom))] max-md:z-20 max-md:max-h-[calc(42dvh-54px)] max-md:overflow-y-auto md:hidden">
+          <span aria-hidden className="sheet-handle mb-2.5" />
+          <div className="flex items-center justify-between gap-3">
+            <p className="truncate text-[12px] text-mint/75">Yol üstündekilerden küçük ipuçları</p>
+            <button type="button" onClick={onToggle} aria-expanded={open} aria-label={open ? "Öneri panelini küçült" : "Öneri panelini genişlet"} className="flex min-h-9 shrink-0 items-center gap-1 text-[12px] font-medium text-sun">
+              <MapPin className="size-3.5" />{total} iz
+              <ChevronDown className={cn("size-3.5 transition-transform", !open && "rotate-180")} />
+            </button>
+          </div>
+
+          <h2 className="font-display mt-1.5 text-[18px] leading-tight font-semibold tracking-tight text-mint">Bir sonraki güzel tesadüfün</h2>
+          {open && (
+            <>
+              <p className="mt-0.5 text-[12px] leading-[1.35] text-mint/75">Küreyi çevir ya da bir nokta seç. Merakının götürdüğü yere.</p>
+              <div className="mobile-category-grid mt-3 grid grid-cols-5 gap-1.5">
+                {CATEGORIES.map((item) => {
+                  const Icon = item.icon;
+                  const selected = category === item.id;
+                  return (
+                    <button
+                      type="button"
+                      key={item.id}
+                      onClick={() => onCategory(selected ? null : item.id)}
+                      aria-pressed={selected}
+                      className={cn(
+                        "mobile-category-item pressable flex min-h-[46px] flex-col items-center justify-center gap-0.5 rounded-[18px] border px-0.5 py-1 text-center text-[10px] leading-[1.05] transition",
+                        selected ? "btn-gold border-transparent font-bold" : "border-leaf/35 bg-white/[0.015] text-mint/90",
+                      )}
+                    >
+                      <Icon className="size-[15px] shrink-0" strokeWidth={1.65} />
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              {current ? (
+                <>
+                  <div className="mt-3 flex items-center gap-2.5 border-t border-white/10 pt-2.5">
+                    <PlaceThumb place={current} className="size-[52px] shrink-0 rounded-xl" />
+                    <button type="button" onClick={() => onShow(current)} className="min-w-0 flex-1 text-left">
+                      <span className="block truncate text-[13px] font-semibold text-mint">{current.title} <span className="font-normal text-sun">· {current.kind === "user" ? current.author : "Atlasia rehberi"}</span></span>
+                      <span className="mt-0.5 block line-clamp-2 text-[11px] leading-[1.25] text-mint/75">{current.note}</span>
+                    </button>
+                    {canDelete(current) && (
+                      <button type="button" onClick={() => void onDelete(current)} aria-label="Bu izimi sil" className="grid size-10 shrink-0 place-items-center rounded-full border border-red-300/25 text-red-200/80 transition hover:bg-red-400/10 hover:text-red-200">
+                        <Trash2 className="size-4" />
+                      </button>
+                    )}
+                    <button type="button" onClick={() => onCycle(1)} aria-label="Sonraki keşif yerini göster" className="grid size-10 shrink-0 place-items-center rounded-full border border-leaf/35 text-mint transition hover:bg-white/5">
+                      <ChevronRight className="size-4" />
+                    </button>
+                  </div>
+                  <button type="button" onClick={() => onShow(current)} className="mt-2 flex min-h-[44px] w-full items-center justify-center gap-2 btn-gold rounded-full px-4 text-[13px] font-bold text-[#10241A] transition">
+                    <Map className="size-[17px]" strokeWidth={1.8} />Haritada gör <ArrowRight className="size-4" />
+                  </button>
+                </>
+              ) : (
+                <div className="mt-3 flex items-center justify-between gap-2 border-t border-white/10 pt-3">
+                  <p className="text-[12px] text-mint/75">Bu kategoride henüz iz yok.</p>
+                  <button type="button" onClick={onAdd} className="btn-gold min-h-10 rounded-full px-3 text-[12px] font-semibold text-ink">İz bırak</button>
+                </div>
+              )}
+            </>
+          )}
+        </section>
 
         {/* Panel üstü şerit */}
         <div className="mb-3 hidden grid-cols-[1fr_auto_1fr] items-end gap-2 px-1 text-[12px] md:grid">
           <div className="col-start-1 justify-self-start">
             <button
               onClick={onOpenFeed}
-              className="pointer-events-auto flex items-center gap-2 rounded-full border border-leaf/25 bg-ink/80 px-3 py-1.5 text-[11.5px] text-mint backdrop-blur-xl transition hover:border-leaf/60 hover:text-white lg:hidden"
+              className="pointer-events-auto flex items-center gap-2 rounded-full border border-leaf/25 bg-ink/[0.92] px-3 py-1.5 text-[11.5px] text-mint transition hover:border-leaf/60 hover:text-white lg:hidden"
             >
               <MessagesSquare className="size-3.5 text-leaf" />
                İzler
@@ -186,12 +265,12 @@ export default function BottomPanel({
           </div>
           <button
             onClick={onAdd}
-            className="pointer-events-auto col-start-2 flex items-center gap-2 rounded-full border border-leaf/25 bg-ink/80 px-3.5 py-2 text-[12px] text-mint backdrop-blur-xl transition hover:border-sun/60 hover:text-white md:col-start-2"
+            className="pointer-events-auto col-start-2 flex items-center gap-2 rounded-full border border-leaf/25 bg-ink/[0.92] px-3.5 py-2 text-[12px] text-mint transition hover:border-sun/60 hover:text-white md:col-start-2"
           >
             <Sparkles className="size-3.5 text-leaf" />
             {nearby === 0 ? "Bu noktaya ilk izi sen bırak" : "Buraya sen de iz bırak"}
           </button>
-          <span className="pointer-events-auto col-start-3 justify-self-end rounded-full border border-sun/35 bg-ink/80 px-3 py-1.5 font-semibold text-sun backdrop-blur-xl">
+          <span className="pointer-events-auto col-start-3 justify-self-end rounded-full border border-sun/35 bg-ink/[0.92] px-3 py-1.5 font-semibold text-sun">
             {total} iz
           </span>
         </div>
@@ -323,6 +402,5 @@ export default function BottomPanel({
         </section>
       </div>
     </div>
-    </>
   );
 }

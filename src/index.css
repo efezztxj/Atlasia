@@ -66,6 +66,8 @@ body,
 
 /* ---------- Uzay arka planı ---------- */
 .space-bg {
+  --discovery-occupied-space: 0px;
+  --mobile-stack-base: 118px;
   background:
     radial-gradient(1px 1px at 12% 22%, rgba(228, 245, 234, 0.55), transparent 60%),
     radial-gradient(1px 1px at 82% 14%, rgba(228, 245, 234, 0.45), transparent 60%),
@@ -287,70 +289,6 @@ body,
 .text-\[12\.5px\] {
   font-size: 13.5px;
   line-height: 1.55;
-}
-
-/* ---------- Erişilebilirlik tercihleri (Ayarlar → Erişilebilirlik) ---------- */
-/* Kullanıcı "Hareketi azalt" derse animasyon ve geçişler durur; bu, işletim
-   sistemi tercihinden (prefers-reduced-motion) bağımsız çalışır. */
-html[data-motion="reduced"] *,
-html[data-motion="reduced"] *::before,
-html[data-motion="reduced"] *::after {
-  animation-duration: 0.01ms !important;
-  animation-iteration-count: 1 !important;
-  transition-duration: 0.01ms !important;
-  scroll-behavior: auto !important;
-}
-
-/* "Yazı boyutu: Büyük" — mikro tipografi tabanı bir kademe büyür. */
-html[data-text-scale="large"] .text-\[9px\],
-html[data-text-scale="large"] .text-\[9\.5px\],
-html[data-text-scale="large"] .text-\[10px\],
-html[data-text-scale="large"] .text-\[10\.5px\],
-html[data-text-scale="large"] .text-\[11px\],
-html[data-text-scale="large"] .text-\[11\.5px\] {
-  font-size: 14px;
-  line-height: 1.5;
-}
-html[data-text-scale="large"] .text-\[12px\],
-html[data-text-scale="large"] .text-\[12\.5px\] {
-  font-size: 15px;
-  line-height: 1.6;
-}
-html[data-text-scale="large"] .text-\[13px\],
-html[data-text-scale="large"] .text-\[13\.5px\] {
-  font-size: 15.5px;
-  line-height: 1.6;
-}
-html[data-text-scale="large"] .text-\[14px\],
-html[data-text-scale="large"] .text-\[15px\] {
-  font-size: 16.5px;
-  line-height: 1.6;
-}
-
-/* "Yüksek kontrast" — soluk yeşil tonlar beyaza yaklaşır. */
-html[data-contrast="high"] .text-mint\/35,
-html[data-contrast="high"] .text-mint\/40,
-html[data-contrast="high"] .text-mint\/45,
-html[data-contrast="high"] .text-mint\/50,
-html[data-contrast="high"] .text-mint\/55,
-html[data-contrast="high"] .text-mint\/60,
-html[data-contrast="high"] .text-mint\/65,
-html[data-contrast="high"] .text-mint\/70,
-html[data-contrast="high"] .text-mint\/75,
-html[data-contrast="high"] .text-mint\/80,
-html[data-contrast="high"] .text-mint\/85 {
-  color: #ffffff;
-}
-html[data-contrast="high"] .text-mint {
-  color: #ffffff;
-}
-html[data-contrast="high"] .gold-frame,
-html[data-contrast="high"] .mobile-tab-bar {
-  border-color: rgba(243, 200, 112, 0.9) !important;
-}
-html[data-contrast="high"] :focus-visible {
-  outline-width: 4px;
-  outline-offset: 3px;
 }
 
 /* Görünür odak halkası */
@@ -675,13 +613,13 @@ html[data-contrast="high"] :focus-visible {
   }
   .mobile-home-content > div { gap: 6px; }
   .mobile-home-content h1 {
-    font-size: clamp(25px, 7vw, 31px);
+    font-size: clamp(24px, 6.6vw, 29px);
     line-height: 1;
     text-wrap: balance;
   }
   .mobile-home-content p {
     margin-top: 3px;
-    max-width: 250px;
+    max-width: 240px;
     font-size: 10.5px;
     line-height: 1.3;
   }
@@ -695,27 +633,34 @@ html[data-contrast="high"] :focus-visible {
     padding: 10px;
   }
 
+  /* İŞ 2d: daraltılmış keşif kartı bottom 118 + p-2.5 + 48 px küçük görsel
+     ≈ 186 px'lik bandı kaplar. Buradaki sabit değer kartın üst kenarına denk
+     gelen yedektir; gerçek değeri aşağıdaki ölçülen yığın kuralı belirler. */
   .mobile-map-controls {
     right: 10px;
-    /* Keşif sayfası 120px'te başlar; peek hâlinde 132px yüksekliğindedir.
-       Kontroller onun 8px üstünde durur, hiçbir düğme sayfanın altında kalmaz. */
-    bottom: calc(260px + env(safe-area-inset-bottom));
+    bottom: calc(186px + env(safe-area-inset-bottom));
     gap: 6px;
   }
-  .mobile-map-controls .map-round-btn { width: 42px; height: 42px; }
-  .mobile-map-controls .map-round-btn svg { width: 17px; height: 17px; }
 
-  /* Keşif alt sayfası: tutamaç, tam genişlik dokunma alanı, güvenli kaydırma */
-  .mobile-discovery-panel {
-    box-shadow: 0 -18px 48px rgba(0, 0, 0, .45), 0 0 0 1px rgba(243, 200, 112, .16);
-    -webkit-overflow-scrolling: touch;
+  /* Alt yığın: hap ve harita kontrolleri keşif kartının üst kenarına yaslanır.
+     Aynı özgüllükte ve .mobile-map-controls'tan sonra geldiği için ölçülen
+     --discovery-occupied-space her zaman kazanır (daraltılmış kartta ≈196 px). */
+  .mobile-bottom-stack-control {
+    bottom: max(
+      calc(var(--mobile-stack-base, 118px) + env(safe-area-inset-bottom)),
+      calc(var(--discovery-occupied-space, 0px) + 10px)
+    );
+    transition: bottom .35s cubic-bezier(.2, .8, .2, 1);
   }
-  .mobile-discovery-panel .sheet-handle { width: 44px; }
+  .mobile-map-controls .map-round-btn { width: 44px; height: 44px; }
+  .mobile-map-controls .map-round-btn svg { width: 16px; height: 16px; }
+  .mobile-map-controls > span,
+  .mobile-map-controls > div:nth-of-type(n + 5) { display: none; }
 
   .atlas-launcher {
     right: 10px;
     left: auto;
-    bottom: calc(66px + env(safe-area-inset-bottom)) !important;
+    bottom: calc(64px + env(safe-area-inset-bottom)) !important;
     width: 46px;
     min-height: 46px;
     justify-content: center;
@@ -723,7 +668,7 @@ html[data-contrast="high"] :focus-visible {
   }
   .atlas-launcher svg { width: 19px; height: 19px; }
   .atlas-launcher-label { display: none; }
-  .atlas-launcher.atlas-dock-expanded { bottom: calc(66px + env(safe-area-inset-bottom)) !important; }
+  .atlas-launcher.atlas-dock-expanded { bottom: calc(64px + env(safe-area-inset-bottom)) !important; }
 
   .mobile-add-fab {
     bottom: calc(64px + env(safe-area-inset-bottom));
@@ -732,16 +677,16 @@ html[data-contrast="high"] :focus-visible {
   }
   .mobile-add-fab svg { width: 20px; height: 20px; }
 
-  /* Alt çubuk: altın çerçeveli cam bar (Instagram / Material 3 hap göstergesi) */
+  /* Alt çubuk: nötr hairline bar (Instagram / Material 3 hap göstergesi).
+     Karar (İŞ 2a/2b): altın süs ve backdrop-filter kaldırıldı; bar zaten
+     neredeyse opaktı (.94), aynı görünüm .97 opaklıkla korunur. */
   .mobile-tab-bar {
     height: calc(58px + env(safe-area-inset-bottom));
-    background: rgba(2, 24, 19, .94);
-    backdrop-filter: blur(20px) saturate(1.4);
-    -webkit-backdrop-filter: blur(20px) saturate(1.4);
-    border-top: 1px solid rgba(234, 181, 79, .38);
+    background: rgba(2, 24, 19, .97);
+    border-top: 1px solid rgba(228, 245, 234, .14);
     box-shadow:
-      0 -12px 32px rgba(0, 0, 0, .38),
-      inset 0 1px 0 rgba(243, 200, 112, .28);
+      0 -10px 24px rgba(0, 0, 0, .26),
+      inset 0 1px 0 rgba(228, 245, 234, .06);
   }
   .mobile-tab-bar::before {
     content: "";
@@ -750,7 +695,7 @@ html[data-contrast="high"] :focus-visible {
     left: 0;
     right: 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(243, 200, 112, .9) 30%, rgba(91, 224, 166, .55) 62%, rgba(243, 200, 112, .9) 85%, transparent);
+    background: linear-gradient(90deg, transparent, rgba(228, 245, 234, .22) 30%, rgba(228, 245, 234, .12) 62%, rgba(228, 245, 234, .22) 85%, transparent);
     pointer-events: none;
   }
   .mobile-tab-item {
@@ -811,20 +756,23 @@ html[data-contrast="high"] :focus-visible {
    hap göstergesi, iOS gruplu listeler ve degrade halka. Konum/yerleşim
    kararları değişmez; bu katman yalnız yüzey dilini birleştirir. */
 
-/* Altın çerçeveli panel: degrade üst çizgi + sıcak gölge */
+/* Panel çerçevesi: sade, ince, nötr hairline.
+   Karar (İŞ 2a): altın yalnız birincil eylemde (.btn-gold, .btn-gold-round,
+   Atlas AI) ve seçili durumda (sekme hapı, .segmented aktif) kalır. Sıradan
+   paneller nötr çerçeve kullanır; sınıf adı geriye dönük uyum için korunur.
+   Önem eki kullanılmaz: çerçeve rengi bağlama göre ezilebilir kalır. */
 .gold-frame {
-  border: 1px solid rgba(234, 181, 79, .42) !important;
+  border: 1px solid rgba(228, 245, 234, .12);
   box-shadow:
-    0 0 0 1px rgba(234, 181, 79, .09),
-    0 22px 54px rgba(0, 0, 0, .52),
-    inset 0 1px 0 rgba(255, 236, 190, .16);
+    0 10px 26px rgba(0, 0, 0, .28),
+    inset 0 1px 0 rgba(255, 255, 255, .05);
 }
 
-/* Cam panel: harita üzerinde bulanık, doygun yüzey */
+/* Cam panel: harita üzerinde yüzey.
+   Karar (İŞ 2b): backdrop-filter kaldırıldı — zayıf Android'de kaydırma
+   takılmasının kaynağıydı. Aynı görünüm opaklıkla korunur. */
 .glass-panel {
-  background: linear-gradient(180deg, rgba(7, 43, 36, .93), rgba(2, 21, 18, .97));
-  backdrop-filter: blur(20px) saturate(1.35);
-  -webkit-backdrop-filter: blur(20px) saturate(1.35);
+  background: linear-gradient(180deg, rgba(7, 43, 36, .965), rgba(2, 21, 18, .985));
 }
 
 /* Birincil eylem: altın degrade düğme */
@@ -1065,10 +1013,9 @@ html[data-theme="light"] .space-bg .glass-panel {
 }
 
 html[data-theme="light"] .space-bg .gold-frame {
-  border-color: rgba(168, 109, 32, .48) !important;
+  border-color: rgba(18, 51, 43, .14);
   box-shadow:
-    0 0 0 1px rgba(168, 109, 32, .1),
-    0 18px 44px rgba(18, 51, 43, .16),
+    0 10px 26px rgba(18, 51, 43, .10),
     inset 0 1px 0 rgba(255, 255, 255, .8);
 }
 
@@ -1106,4 +1053,63 @@ html[data-theme="light"] .space-bg .btn-gold-round {
     0 0 0 1px rgba(255, 255, 255, .6),
     0 0 0 4px rgba(255, 253, 247, .9),
     inset 0 1px 0 rgba(255, 244, 214, .6);
+}
+
+/* ---------- Erişilebilirlik tercihleri (Ayarlar → Erişilebilirlik) ----------
+   Bu blok yalnız ek kural ekler; yukarıdaki mevcut kuralları değiştirmez.
+   Tercihler useAccessibilityPrefs ile <html> veri özniteliklerine yazılır. */
+html[data-motion="reduced"] *,
+html[data-motion="reduced"] *::before,
+html[data-motion="reduced"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+html[data-text-scale="large"] .text-\[9px\],
+html[data-text-scale="large"] .text-\[9\.5px\],
+html[data-text-scale="large"] .text-\[10px\],
+html[data-text-scale="large"] .text-\[10\.5px\],
+html[data-text-scale="large"] .text-\[11px\],
+html[data-text-scale="large"] .text-\[11\.5px\] {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+html[data-text-scale="large"] .text-\[12px\],
+html[data-text-scale="large"] .text-\[12\.5px\] {
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+html[data-text-scale="large"] .text-\[13px\],
+html[data-text-scale="large"] .text-\[13\.5px\] {
+  font-size: 15.5px;
+  line-height: 1.6;
+}
+
+html[data-contrast="high"] .text-mint\/35,
+html[data-contrast="high"] .text-mint\/40,
+html[data-contrast="high"] .text-mint\/45,
+html[data-contrast="high"] .text-mint\/50,
+html[data-contrast="high"] .text-mint\/55,
+html[data-contrast="high"] .text-mint\/60,
+html[data-contrast="high"] .text-mint\/65,
+html[data-contrast="high"] .text-mint\/70,
+html[data-contrast="high"] .text-mint\/75,
+html[data-contrast="high"] .text-mint\/80,
+html[data-contrast="high"] .text-mint\/85,
+html[data-contrast="high"] .text-mint {
+  color: #ffffff;
+}
+
+html[data-contrast="high"] .gold-frame,
+html[data-contrast="high"] .mobile-tab-bar {
+  border-color: rgba(243, 200, 112, 0.9) !important;
+}
+
+html[data-contrast="high"] :focus-visible {
+  outline-width: 4px;
+  outline-offset: 3px;
 }

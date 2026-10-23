@@ -6,12 +6,14 @@ import type { AtlasRoute, Place } from "../types";
 import { storageRemove } from "../utils/storage";
 
 const h = vi.hoisted(() => ({
+  // Hesap değişimi senaryosu için değiştirilebilir kullanıcı.
+  user: { uid: "u1" } as { uid: string },
   publishRoute: vi.fn(async () => undefined),
   saveRouteReference: vi.fn(async () => undefined),
 }));
 
 vi.mock("../contexts/AuthContext", () => ({
-  useAuth: () => ({ user: { uid: "u1" } }),
+  useAuth: () => ({ user: h.user }),
 }));
 vi.mock("../lib/firebase", () => ({
   firebaseConfigured: false,
@@ -59,8 +61,12 @@ const route = (id: string, routeTitle = `Rota ${id}`): AtlasRoute => ({
 });
 
 beforeEach(() => {
+  h.user = { uid: "u1" };
   storageRemove("atlasia.member.u1.places");
   storageRemove("atlasia.member.u1.routes");
+  // storage.ts bellek yedeği tutar; localStorage.clear() onu silmez.
+  storageRemove("atlasia.member.u2.places");
+  storageRemove("atlasia.member.u2.routes");
   window.localStorage.clear();
   h.publishRoute.mockClear();
   h.saveRouteReference.mockClear();
@@ -179,6 +185,44 @@ describe("useCollections (yerel mod)", () => {
     expect((failure as Error).message).toContain("ayrı bir onay ister");
     expect(h.publishRoute).not.toHaveBeenCalled();
     expect(result.current.savedRoutes).toEqual([]);
+  });
+});
+
+describe("useCollections (yerel mod) — hesap değişimi izolasyonu", () => {
+  it("yeni kullanıcının kayıtlarını okur; eski kullanıcının listesini onun anahtarına YAZMAZ", () => {
+    window.localStorage.setItem("atlasia.member.u1.places", JSON.stringify([place("a1")]));
+    window.localStorage.setItem("atlasia.member.u2.places", JSON.stringify([place("b1")]));
+
+    const { result, rerender } = renderHook(() => useCollections(), { wrapper });
+    expect(result.current.savedPlaces.map((item) => item.id)).toEqual(["a1"]);
+
+    h.user = { uid: "u2" };
+    rerender();
+
+    // Geçiş anında eski veri görünmez, yeni kullanıcının kaydı okunur.
+    expect(result.current.savedPlaces.map((item) => item.id)).toEqual(["b1"]);
+    // u2'nin kalıcı kaydı u1'in listesiyle ezilmedi.
+    expect(
+      (JSON.parse(window.localStorage.getItem("atlasia.member.u2.places") ?? "[]") as Place[]).map((item) => item.id),
+    ).toEqual(["b1"]);
+    // u1'in kaydı da bozulmadı.
+    expect(
+      (JSON.parse(window.localStorage.getItem("atlasia.member.u1.places") ?? "[]") as Place[]).map((item) => item.id),
+    ).toEqual(["a1"]);
+  });
+
+  it("geçiş anında yapılan kayıt yeni kullanıcının listesine eklenir, eski listeden kopya taşımaz", () => {
+    window.localStorage.setItem("atlasia.member.u1.places", JSON.stringify([place("a1")]));
+
+    const { result, rerender } = renderHook(() => useCollections(), { wrapper });
+    h.user = { uid: "u2" };
+    rerender();
+
+    act(() => result.current.savePlace(place("b2")));
+    expect(result.current.savedPlaces.map((item) => item.id)).toEqual(["b2"]);
+    expect(
+      (JSON.parse(window.localStorage.getItem("atlasia.member.u2.places") ?? "[]") as Place[]).map((item) => item.id),
+    ).toEqual(["b2"]);
   });
 });
 

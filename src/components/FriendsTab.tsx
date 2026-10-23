@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Link2, Loader2, Search, UserMinus, UserPlus, X } from "lucide-react";
 import {
   acceptFriendRequest,
@@ -9,6 +9,9 @@ import {
   type FriendRequest,
 } from "../lib/friendships";
 import { fetchUserProfile, searchUserProfiles, type UserProfile } from "../lib/userProfiles";
+import { PROFILE_SEARCH_MIN_CHARS, isSearchableQuery } from "../lib/profileSearch";
+import { clearRecentSearches, pushRecentSearch, readRecentSearches } from "../lib/searchHistory";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { friendlyDataError } from "../lib/firestoreValue";
 import { buildFriendInviteLink, shareOrCopy } from "../utils/inviteLink";
 
@@ -35,6 +38,7 @@ export default function FriendsTab({ currentUid, currentName, friends, requests,
   const [queryText, setQueryText] = useState("");
   const [results, setResults] = useState<UserProfile[] | null>(null);
   const [searching, setSearching] = useState(false);
+  const [recent, setRecent] = useState<string[]>(() => readRecentSearches(currentUid));
   const [sent, setSent] = useState<Record<string, true>>({});
   const [busyUid, setBusyUid] = useState<string | null>(null);
   const [inviter, setInviter] = useState<UserProfile | null>(null);
@@ -42,6 +46,10 @@ export default function FriendsTab({ currentUid, currentName, friends, requests,
   const friendSet = new Set(friends.map((friend) => friend.friendUid));
   const incoming = requests.filter((request) => !isBlocked(request.fromUid));
   const incomingSet = new Set(incoming.map((request) => request.fromUid));
+
+  useEffect(() => {
+    setRecent(readRecentSearches(currentUid));
+  }, [currentUid]);
 
   useEffect(() => {
     if (!invitedByUid || invitedByUid === currentUid) {
@@ -55,17 +63,39 @@ export default function FriendsTab({ currentUid, currentName, friends, requests,
     return () => { active = false; };
   }, [invitedByUid, currentUid, onInviteHandled]);
 
-  const search = async () => {
-    if (queryText.trim().length < 2) return;
+  const runSearch = async (term: string) => {
+    if (!isSearchableQuery(term)) return;
     setSearching(true);
     try {
-      setResults((await searchUserProfiles(queryText, currentUid)).filter((profile) => !isBlocked(profile.uid)));
+      setResults((await searchUserProfiles(term, currentUid)).filter((profile) => !isBlocked(profile.uid)));
+      // Son aramalar cihazda, kişi başına tutulur (gizlilik + kota).
+      setRecent(pushRecentSearch(currentUid, term));
     } catch (failure) {
       onError(friendlyDataError(failure, "Arama yapılamadı."));
     } finally {
       setSearching(false);
     }
   };
+
+  const search = () => runSearch(queryText.trim());
+
+  // En son `runSearch` kimliği: gecikmiş girdi değiştiğinde çağrılır, ancak
+  // prop kimlikleri her render'da değişse bile efekt yeniden tetiklenmez.
+  const runSearchRef = useRef(runSearch);
+  useEffect(() => { runSearchRef.current = runSearch; });
+
+  // Yazarken arama (350 ms): her tuş vuruşunda sorgu açılmaz.
+  const debouncedQuery = useDebouncedValue(queryText);
+  useEffect(() => {
+    const term = debouncedQuery.trim();
+    if (term.length < PROFILE_SEARCH_MIN_CHARS) {
+      // Girdi kısaldıysa eski sonuç ekranda kalmaz.
+      if (term.length === 0) setResults(null);
+      return;
+    }
+    void runSearchRef.current(term);
+    // Tetikleyici yalnız geciktirilmiş girdi; işlev en güncel hâliyle ref'ten gelir.
+  }, [debouncedQuery]);
 
   const add = async (uid: string, name: string) => {
     setBusyUid(uid);
@@ -154,9 +184,31 @@ export default function FriendsTab({ currentUid, currentName, friends, requests,
       <button type="button" onClick={() => void shareMyLink()} className="flex min-h-11 items-center justify-center gap-2 rounded-full bg-sun px-4 text-[13px] font-semibold text-ink"><Link2 size={15} />Arkadaş davet bağlantımı paylaş</button>
 
       <form onSubmit={(event) => { event.preventDefault(); void search(); }} className="flex items-center gap-2">
-        <input value={queryText} onChange={(event) => setQueryText(event.target.value)} maxLength={40} aria-label="İsimle kişi ara" placeholder="İsimle ara (en az 2 harf)" className="h-10 min-w-0 flex-1 rounded-full border border-white/10 bg-ink px-3 text-[13px] text-mint outline-none focus:border-sun/50" />
-        <button type="submit" disabled={searching || queryText.trim().length < 2} aria-label="Ara" className="grid size-10 shrink-0 place-items-center rounded-full border border-leaf/30 text-leaf disabled:opacity-50">{searching ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />}</button>
+        <input value={queryText} onChange={(event) => setQueryText(event.target.value)} maxLength={40} aria-label="İsimle kişi ara" placeholder={`İsimle ara (en az ${PROFILE_SEARCH_MIN_CHARS} harf)`} className="h-10 min-w-0 flex-1 rounded-full border border-white/10 bg-ink px-3 text-[13px] text-mint outline-none focus:border-sun/50" />
+        <button type="submit" disabled={searching || !isSearchableQuery(queryText)} aria-label="Ara" className="grid size-10 shrink-0 place-items-center rounded-full border border-leaf/30 text-leaf disabled:opacity-50">{searching ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />}</button>
       </form>
+      {recent.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] text-mint/50">Son aramalar</span>
+          {recent.map((term) => (
+            <button
+              key={term}
+              type="button"
+              onClick={() => { setQueryText(term); void runSearch(term); }}
+              className="min-h-8 rounded-full border border-white/12 px-2.5 text-[11.5px] text-mint/80 transition hover:border-sun/50 hover:text-white"
+            >
+              {term}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => setRecent(clearRecentSearches(currentUid))}
+            className="ml-auto min-h-8 px-1 text-[11px] text-mint/45 underline-offset-2 hover:underline"
+          >
+            Temizle
+          </button>
+        </div>
+      )}
       {results && (
         <ul className="space-y-1.5">
           {results.length === 0 && <li className="px-1 text-[12px] text-mint/60">Bu isimle kimse bulunamadı. Davet bağlantını göndermeyi dene.</li>}

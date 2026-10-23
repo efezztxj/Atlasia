@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Activity, Bookmark, Compass, Crosshair, MapPin, MousePointerClick, Plus, UserRound, UsersRound, X } from "lucide-react";
 import type { BaseMapStyle, MapViewHandle } from "./components/MapView";
 import Header from "./components/Header";
@@ -9,14 +9,14 @@ import BottomPanel from "./components/BottomPanel";
 import AddDiscoveryModal from "./components/AddDiscoveryModal";
 import Drawer from "./components/Drawer";
 import SocialPanel from "./components/SocialPanel";
-import type { SettingsContentProps } from "./components/SettingsPanel";
+import SettingsPanel, { type SettingsContentProps } from "./components/SettingsPanel";
 import AtlasAssistant from "./components/AtlasAssistant";
 import Onboarding from "./components/Onboarding";
 import PlaceDetails from "./components/PlaceDetails";
 import StreetPeek from "./components/StreetPeek";
 import AccountAccess, { EmailVerification, ProfileSetup } from "./components/AccountAccess";
 import MyPlacesPanel from "./components/MyPlacesPanel";
-import NearbyAudioGuide from "./components/NearbyAudioGuide";
+const NearbyAudioGuide = lazy(() => import("./components/NearbyAudioGuide"));
 import LandingPage from "./components/LandingPage";
 import RecordsDock from "./components/RecordsDock";
 import TrackRecorderPanel from "./components/TrackRecorderPanel";
@@ -24,18 +24,17 @@ import RouteEditor from "./components/RouteEditor";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { CollectionsProvider, isCloudAccount } from "./hooks/useCollections";
 import { GUIDE_PLACES } from "./data/places";
-import { EPHESUS_CENTER } from "./data/ephesusCenter";
-import { EPHESUS_TOUR } from "./data/siteTours";
+import { parseShortcutTab, stripShortcutParam } from "./utils/appShortcut";
 import { formatAccuracy, useGeolocation } from "./hooks/useGeolocation";
 import { useAtlasData } from "./hooks/useAtlasData";
 import { useFirestoreAtlasData } from "./hooks/useFirestoreAtlasData";
 import { useTheme } from "./hooks/useTheme";
 import { useInstallApp, type InstallAppController } from "./hooks/useInstallApp";
-import { useAccessibilityPrefs } from "./hooks/useAccessibilityPrefs";
 import { isCloudReady, firebaseConfigSummary } from "./lib/firebase";
 import type { PlaceViewport } from "./lib/firestoreData";
 import { ROUTE_OPEN_MESSAGES, openPublishedRoute } from "./lib/publishedRouteOpen";
 import { placeDeleteErrorMessage } from "./lib/firestoreValue";
+import { freshnessReaderUid } from "./lib/verifications";
 import { readShareTokenFromUrl } from "./utils/shareLinkUrl";
 import type { AtlasRoute, CategoryId, Place, RouteVisibility, ViewState } from "./types";
 import { haversineKm, reverseName, type SearchResult } from "./utils/geo";
@@ -53,8 +52,6 @@ import { ensureFriendIndex } from "./lib/friendships";
 const MapView = lazy(() => import("./components/MapView"));
 // Profil paneli yalnız açılınca yüklenir (ilk paket bütçesi).
 const ProfilePanel = lazy(() => import("./components/ProfilePanel"));
-// Ayarlar paneli de yalnız açılınca yüklenir (entry paket bütçesi).
-const SettingsPanel = lazy(() => import("./components/SettingsPanel"));
 const MAP_STYLE_KEY = "atlasia.mapStyle.v1";
 
 function initialMapStyle(): BaseMapStyle {
@@ -138,7 +135,8 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
     }
   }, [cloudAccount, remote.ready, remote.error]);
   const { blockedSet, isBlocked } = useBlocks(user?.uid);
-  const freshness = useFreshness(user?.uid);
+  // Tazelik okuması giriş şartlı (kural: signedIn); cihaz hesabında abone olunmaz.
+  const freshness = useFreshness(freshnessReaderUid(user));
   const rawDiscoveries = cloud.places;
   const rawPosts = cloud.posts;
   const rawStories = cloud.stories;
@@ -152,11 +150,16 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   const [addMode, setAddMode] = useState(false);
   const [draft, setDraft] = useState<{ lng: number; lat: number } | null>(null);
   const [spin, setSpin] = useState(true);
+  const [heroCompact, setHeroCompact] = useState(false);
   const [labels, setLabels] = useState(true);
   const [terrain, setTerrain] = useState(true);
   const [baseMap, setBaseMap] = useState<BaseMapStyle>(initialMapStyle);
   const [view, setView] = useState<ViewState>({ zoom: 2, lng: 30, lat: 30 });
   const [panelOpen, setPanelOpen] = useState(() => window.innerWidth >= 768);
+  const [discoverySpace, setDiscoverySpace] = useState(0);
+  const handleDiscoverySpaceChange = useCallback((space: number) => {
+    setDiscoverySpace((current) => (Math.abs(current - space) < 1 ? current : space));
+  }, []);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [feedOpen, setFeedOpen] = useState(false);
   const [atlasOpen, setAtlasOpen] = useState(false);
@@ -171,11 +174,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   const [resumeRoute, setResumeRoute] = useState<AtlasRoute | null>(null);
   const [routeEditorRoute, setRouteEditorRoute] = useState<AtlasRoute | null>(null);
   const [smallScreen, setSmallScreen] = useState(() => window.innerWidth < 768);
-  // İşletim sistemi tercihi ile Ayarlar → Erişilebilirlik anahtarı birlikte
-  // değerlendirilir; kullanıcı "Hareketi azalt" derse küre dönüşü de durur.
-  const [systemReducedMotion, setSystemReducedMotion] = useState(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-  const accessibility = useAccessibilityPrefs();
-  const reducedMotion = systemReducedMotion || accessibility.reducedMotion;
+  const [reducedMotion, setReducedMotion] = useState(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   const [storyPlace, setStoryPlace] = useState<Place | null>(null);
   const [streetPlace, setStreetPlace] = useState<Place | null>(null);
   const [locationLabel, setLocationLabel] = useState("Dünya");
@@ -191,7 +190,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
     const screen = window.matchMedia("(max-width: 767px)");
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
     const syncScreen = () => setSmallScreen(screen.matches);
-    const syncMotion = () => setSystemReducedMotion(motion.matches);
+    const syncMotion = () => setReducedMotion(motion.matches);
     screen.addEventListener("change", syncScreen);
     motion.addEventListener("change", syncMotion);
     return () => { screen.removeEventListener("change", syncScreen); motion.removeEventListener("change", syncMotion); };
@@ -199,14 +198,22 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
 
   useEffect(() => { if (user?.displayName) storageSet("atlasia.author", user.displayName); }, [user?.displayName]);
   // Arkadaş aramasında görünmek için profil dizine yazılır (ad değişmediyse yazım yok).
+  // Kapı profileSync'te: cihaz hesabı buluta yazmaz, uygun olmayan ad denenmez.
+  const profileSyncUid = user?.uid;
+  const profileSyncBackend = user?.backend;
+  const profileSyncName = user?.displayName;
+  const profileSyncPhoto = user?.photoURL;
   useEffect(() => {
-    const uid = user?.uid;
-    const name = user?.displayName?.trim();
-    if (!uid || !name || name.length < 2) return;
-    void import("./lib/userProfiles")
-      .then(({ syncUserProfile }) => syncUserProfile({ uid, displayName: name, photoURL: user?.photoURL ?? undefined }))
+    if (!profileSyncUid || profileSyncBackend !== "firebase") return;
+    void import("./lib/profileSync")
+      .then(({ syncProfileForUser }) => syncProfileForUser({
+        uid: profileSyncUid,
+        backend: profileSyncBackend,
+        displayName: profileSyncName,
+        photoURL: profileSyncPhoto,
+      }))
       .catch((failure: unknown) => console.warn("[Atlasia] Profil arama dizinine yazılamadı:", failure));
-  }, [user?.uid, user?.displayName, user?.photoURL]);
+  }, [profileSyncUid, profileSyncBackend, profileSyncName, profileSyncPhoto]);
   useEffect(() => { storageSet(MAP_STYLE_KEY, baseMap); }, [baseMap]);
 
   const handledShareLinkRef = useRef<string | null>(null);
@@ -344,12 +351,6 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         : null,
     [geo.fix, preciseLabel],
   );
-
-  const activeTour = useMemo(() => {
-    if (!precise) return null;
-    const d = haversineKm(precise.lat, precise.lng, EPHESUS_CENTER.lat, EPHESUS_CENTER.lng);
-    return d <= 5 ? EPHESUS_TOUR : null;
-  }, [precise]);
 
   // Location and storage share one panel; receiving a fix does not close it.
   useEffect(() => {
@@ -510,6 +511,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
 
   const handleReset = () => {
     setSpin(true);
+    setHeroCompact(false);
     setActiveId(null);
     setLocationLabel("Dünya");
     mapRef.current?.reset();
@@ -622,8 +624,35 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
 
   const heroHidden = view.zoom > 3.4;
   const dockVisible = !recordsOpen && !profileOpen && !myPlacesOpen && !storyPlace && !atlasOpen && !settingsOpen && !drawerOpen && !feedOpen;
-  const mobileExplore = () => { closePanels(); setPanelOpen(true); };
+  useEffect(() => {
+    if (!dockVisible) setDiscoverySpace(0);
+  }, [dockVisible]);
+  const mobileExplore = () => { closePanels(); setHeroCompact(false); setPanelOpen(true); };
   const openMyPlaces = () => { closePanels(); setMyPlacesOpen(true); };
+  // İŞ 5: manifest kısayolları (?tab=…). Yalnız var olan panelleri açar; panel
+  // kapatma mantığı closePanels ile aynı. Parametre okunduktan sonra adresten
+  // silinir, yenilemede eylem ikinci kez tetiklenmez.
+  const shortcutHandled = useRef(false);
+  useEffect(() => {
+    if (shortcutHandled.current) return;
+    const action = parseShortcutTab(window.location.search);
+    if (!action) return;
+    shortcutHandled.current = true;
+    window.history.replaceState(null, "", stripShortcutParam(window.location.href));
+    setDrawerOpen(false);
+    setFeedOpen(false);
+    setAtlasOpen(false);
+    setRecordsOpen(false);
+    setProfileOpen(false);
+    setMyPlacesOpen(false);
+    setSettingsOpen(false);
+    setStoryPlace(null);
+    setStreetPlace(null);
+    setNotificationsOpen(false);
+    if (action === "explore") setPanelOpen(true);
+    else if (action === "add") { setSpin(false); setAddMode(true); }
+    else setProfileOpen(true);
+  }, []);
   const mobileTab = myPlacesOpen ? "İzlerim" : recordsOpen ? "Kaydet" : feedOpen ? "Topluluk" : profileOpen ? "Profil" : "Keşfet";
   const settingsContentProps: SettingsContentProps = {
     theme,
@@ -650,7 +679,10 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   };
 
   return (
-    <div className="space-bg relative h-screen w-full overflow-hidden">
+    <div
+      className="space-bg relative h-screen w-full overflow-hidden"
+      style={{ "--discovery-occupied-space": `${discoverySpace}px` } as CSSProperties}
+    >
       <a href="#harita" className="skip-link">
         İçeriğe geç
       </a>
@@ -668,7 +700,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
             baseMap={baseMap}
             theme={theme}
             spin={spin && !reducedMotion && !addMode && !draft}
-            onUserInteract={() => setSpin(false)}
+            onUserInteract={() => { setSpin(false); setHeroCompact(true); }}
             onViewChange={setView}
             onViewportChange={setMapViewport}
           />
@@ -701,7 +733,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         className="mobile-home-content pointer-events-none absolute inset-x-0 top-[68px] z-30 px-3 pt-3 md:top-[72px] md:z-10 md:px-8 md:pt-12"
       >
         <div className="mx-auto flex max-w-[1340px] flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-5">
-          <Hero hidden={heroHidden} />
+          <Hero hidden={heroHidden} compact={heroCompact} />
           {/* SearchBox sadece masaüstünde */}
           <div className="hidden md:order-2 md:block">
             <SearchBox
@@ -720,7 +752,6 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
           <div className="mobile-search-sheet absolute inset-x-3 top-[calc(64px+env(safe-area-inset-top))] rounded-[24px] border border-leaf/30 bg-[#031d17] p-3 shadow-2xl">
             <SearchBox
               places={allPlaces}
-              autoFocus
               onPick={(result) => { setSearchOpen(false); handleSearchPick(result); }}
               onOpenFilters={() => { setSearchOpen(false); setDrawerOpen(true); }}
             />
@@ -740,17 +771,15 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         onToggleTerrain={() => setTerrain((v) => !v)}
         labels={labels}
         terrain={terrain}
+        hiddenOnMobile={panelOpen}
       />
 
-      {/* Sol alt eylem şeridi: mobilde "İzler" ve Atlas AI ile aynı hizada
-          duran yuvarlak düğme, masaüstünde İzler hapının üstünde aynı sol
-          hizada hap. Hiçbir panelin/kartın üstüne binmez. */}
-      {!trackRecorderOpen && !feedOpen && <button
+      {!trackRecorderOpen && <button
         type="button"
         onClick={() => setTrackRecorderOpen(true)}
         aria-label="Yürüyüş kaydını aç"
-        className="glass-panel gold-frame pressable fixed right-[64px] bottom-[calc(66px+env(safe-area-inset-bottom))] z-30 flex size-[46px] items-center justify-center gap-2.5 rounded-full p-0 text-[13px] font-semibold text-mint md:right-auto md:bottom-[84px] md:left-6 md:size-auto md:min-h-12 md:justify-start md:py-1.5 md:pr-4 md:pl-1.5"
-      ><span className="btn-gold grid size-9 place-items-center rounded-full"><Activity size={16} strokeWidth={2.2} /></span><span className="hidden md:inline">Yürüyüş kaydı</span></button>}
+        className={`mobile-bottom-stack-control glass-panel gold-frame pressable fixed left-3 z-30 flex min-h-12 items-center gap-2.5 rounded-full py-1.5 pr-4 pl-1.5 text-[13px] font-semibold text-mint md:bottom-24 md:left-8${panelOpen ? " max-md:hidden" : ""}`}
+      ><span className="btn-gold grid size-9 place-items-center rounded-full"><Activity size={16} strokeWidth={2.2} /></span>Yürüyüş kaydı</button>}
       {trackRecorderOpen && <TrackRecorderPanel
         uid={user!.uid}
         cloudAccount={user!.backend === "firebase"}
@@ -766,19 +795,20 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         }}
       />}
 
-      <NearbyAudioGuide
-        location={precise}
-        places={GUIDE_PLACES}
-        tourRoute={activeTour}
-        onOpenPlace={(place) => {
-          closePanels();
-          focusPlace(place, 15);
-          setStoryPlace(place);
-        }}
-      />
+      <Suspense fallback={null}>
+        <NearbyAudioGuide
+          location={precise}
+          places={GUIDE_PLACES}
+          onOpenPlace={(place) => {
+            closePanels();
+            focusPlace(place, 15);
+            setStoryPlace(place);
+          }}
+        />
+      </Suspense>
 
       {/* İpucu + atıf */}
-      <div className="pointer-events-none absolute right-8 bottom-[30%] z-10 hidden flex-col items-end gap-2 text-right lg:flex">
+      <div className="pointer-events-none absolute right-28 bottom-[30%] z-10 hidden flex-col items-end gap-2 text-right lg:flex">
         <p className="flex items-center gap-2 text-[10.5px] font-medium tracking-[0.16em] text-mint/70 uppercase">
           <span className="relative flex size-1.5">
             <span className="absolute inline-flex size-full animate-ping rounded-full bg-leaf opacity-70" />
@@ -789,7 +819,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         {precise && (
           <button
             onClick={handleClearLocation}
-            className="pointer-events-auto flex items-center gap-2 rounded-full border border-leaf/25 bg-ink/80 px-3 py-1.5 text-[11px] text-mint/85 backdrop-blur-xl transition hover:border-leaf/60 hover:text-white"
+            className="pointer-events-auto flex items-center gap-2 rounded-full border border-leaf/25 bg-ink/80 px-3 py-1.5 text-[11px] text-mint/85 transition hover:border-leaf/60 hover:text-white"
             title="Konum işaretini kaldır"
           >
             <Crosshair className="size-3.5 text-leaf" />
@@ -805,7 +835,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
 
       {/* Ekleme modu bandı */}
       {addMode && (
-        <div className="animate-rise absolute top-[88px] left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 rounded-full border border-leaf/40 bg-ink/90 py-2 pr-2 pl-4 text-[12.5px] text-mint shadow-xl shadow-black/50 backdrop-blur-xl">
+        <div className="animate-rise absolute top-[88px] left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 rounded-full border border-leaf/40 bg-ink/90 py-2 pr-2 pl-4 text-[12.5px] text-mint shadow-xl shadow-black/50">
           <MousePointerClick className="size-4 shrink-0 text-leaf" />
           <span>Keşfini bırakmak istediğin noktaya dokun</span>
           <button
@@ -860,6 +890,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         onOpenFeed={() => { closePanels(); setFeedOpen(true); }}
         accuracy={precise?.accuracy ?? null}
         locating={geo.status === "locating" || geo.status === "refining"}
+        onOccupiedSpaceChange={handleDiscoverySpaceChange}
       />}
 
       <AtlasAssistant
@@ -990,9 +1021,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
       )}
 
       {settingsOpen && (
-        <Suspense fallback={null}>
-          <SettingsPanel onClose={closeSettings} {...settingsContentProps} />
-        </Suspense>
+        <SettingsPanel onClose={closeSettings} {...settingsContentProps} />
       )}
 
       {onboarding && (
@@ -1076,7 +1105,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         type="button"
         onClick={startAdd}
         aria-label="Haritaya iz bırak"
-        className="mobile-add-fab btn-gold-round fixed bottom-[calc(64px+env(safe-area-inset-bottom))] left-1/2 z-30 grid size-[44px] -translate-x-1/2 place-items-center rounded-full text-[#10241A] transition active:scale-95 md:hidden"
+        className={`mobile-add-fab btn-gold-round fixed bottom-[calc(64px+env(safe-area-inset-bottom))] left-1/2 z-30 grid size-[44px] -translate-x-1/2 place-items-center rounded-full text-[#10241A] transition active:scale-95 md:hidden${panelOpen ? " hidden" : ""}`}
       >
         <Plus className="size-[22px]" strokeWidth={2.4} />
       </button>
@@ -1084,7 +1113,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
       {toast && (
         <div
           role="status"
-          className="mobile-toast gold-frame animate-rise absolute top-[88px] left-1/2 z-50 -translate-x-1/2 rounded-full bg-ink-2/95 px-5 py-2.5 text-[13px] whitespace-nowrap text-mint backdrop-blur-xl"
+          className="mobile-toast gold-frame animate-rise absolute top-[88px] left-1/2 z-50 -translate-x-1/2 rounded-full bg-ink-2/95 px-5 py-2.5 text-[13px] whitespace-nowrap text-mint"
         >
           {toast}
         </div>

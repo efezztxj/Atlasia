@@ -25,11 +25,13 @@ const h = vi.hoisted(() => {
 
   const docsFor = (
     path: string,
-    constraints: Array<{ field?: string; direction?: string; limit?: number }> = [],
+    constraints: Array<{ field?: string; direction?: string; limit?: number; op?: string; value?: unknown }> = [],
   ) => {
     let docs = [...store.entries()]
       .filter(([key]) => key.startsWith(`${path}/`))
       .filter(([key]) => key.slice(path.length + 1).split("/").length === 1)
+      .filter(([, data]) => constraints.every((item) =>
+        item.op !== "==" || item.field === undefined || data[item.field] === item.value))
       .map(([key, data]) => ({ id: key.slice(path.length + 1), data: () => data }));
     const order = constraints.find((item) => item.field === "createdAt");
     if (order) {
@@ -52,16 +54,20 @@ vi.mock("firebase/firestore", () => ({
   doc: (_db: unknown, ...segments: string[]) => ({ path: segments.join("/") }),
   query: (
     target: { path: string },
-    ...constraints: Array<{ field?: string; direction?: string; limit?: number }>
+    ...constraints: Array<{ field?: string; direction?: string; limit?: number; op?: string; value?: unknown }>
   ) => ({ path: target.path, constraints }),
   orderBy: (field: string, direction: string) => ({ field, direction }),
   limit: (value: number) => ({ limit: value }),
+  where: (field: string, op: string, value: unknown) => ({ field, op, value }),
+  getCountFromServer: async (
+    q: { path: string; constraints?: Array<{ field?: string; direction?: string; limit?: number; op?: string; value?: unknown }> },
+  ) => ({ data: () => ({ count: h.docsFor(q.path, q.constraints ?? []).length }) }),
   serverTimestamp: () => "SERVER_TS",
   setDoc: async (docRef: { path: string }, data: Record<string, unknown>) => {
     h.store.set(docRef.path, data);
   },
   onSnapshot: (
-    q: { path: string; constraints?: Array<{ field?: string; direction?: string; limit?: number }> },
+    q: { path: string; constraints?: Array<{ field?: string; direction?: string; limit?: number; op?: string; value?: unknown }> },
     onChange: (snapshot: { docs: ReturnType<typeof h.docsFor> }) => void,
   ) => {
     onChange({ docs: h.docsFor(q.path, q.constraints ?? []) });
@@ -74,8 +80,11 @@ vi.mock("firebase/firestore", () => ({
 import type { VerificationStatus } from "../utils/freshness";
 import {
   addPlaceVerification,
+  countPlaceVerifications,
+  freshnessReaderUid,
   normalizeVerification,
   subscribeRecentVerifications,
+  verificationIdFor,
   VERIFICATIONS_LIMIT,
 } from "./verifications";
 
@@ -121,7 +130,7 @@ describe("ziyaret doğrulaması IO sözleşmesi", () => {
     }).status).toBe("closed");
   });
 
-  it("ekleme kimlikleri/notu kırpar ve sunucu zamanıyla tek belge yazar", async () => {
+  it("ekleme kimlikleri/notu kırpar ve {placeId}_{uid} kimliğiyle tek belge yazar", async () => {
     const created = await addPlaceVerification({
       placeId: "  manavgat-şelalesi  ",
       uid: "  user-42  ",
@@ -129,7 +138,8 @@ describe("ziyaret doğrulaması IO sözleşmesi", () => {
       note: "  Giriş ücreti değişmiş.  ",
     });
 
-    expect(created.id).toMatch(/^vr-/);
+    expect(created.id).toBe("manavgat-şelalesi_user-42");
+    expect(verificationIdFor(" manavgat-şelalesi ", " user-42 ")).toBe("manavgat-şelalesi_user-42");
     expect(created).toMatchObject({
       placeId: "manavgat-şelalesi",
       uid: "user-42",
@@ -144,6 +154,33 @@ describe("ziyaret doğrulaması IO sözleşmesi", () => {
       note: "Giriş ücreti değişmiş.",
       createdAt: "SERVER_TS",
     });
+  });
+
+  it("aynı kişinin aynı yere ikinci doğrulaması aynı belgeyi günceller (belge birikmez)", async () => {
+    await addPlaceVerification({ placeId: "place-1", uid: "user-1", status: "still_open" });
+    const updated = await addPlaceVerification({ placeId: "place-1", uid: "user-1", status: "road_closed" });
+    expect(updated.id).toBe("place-1_user-1");
+    expect(h.store.size).toBe(1);
+    expect(h.store.get("verifications/place-1_user-1")).toMatchObject({ status: "road_closed" });
+
+    await addPlaceVerification({ placeId: "place-1", uid: "user-2", status: "still_open" });
+    expect(h.store.size).toBe(2);
+  });
+
+  it("kimliği bölecek '/' içeren yer kimliği yazılmadan reddedilir", async () => {
+    await expect(addPlaceVerification({ placeId: "a/b", uid: "u1", status: "still_open" }))
+      .rejects.toMatchObject({ code: "verification/place-invalid" });
+    expect(h.store.size).toBe(0);
+  });
+
+  it("freshnessReaderUid yalnız Firebase hesabının uid'sini verir (cihaz hesabı abone olmaz)", () => {
+    expect(freshnessReaderUid({ uid: "u1", backend: "firebase" })).toBe("u1");
+    expect(freshnessReaderUid({ uid: " u1 ", backend: "firebase" })).toBe("u1");
+    expect(freshnessReaderUid({ uid: "u1", backend: "device" })).toBeUndefined();
+    expect(freshnessReaderUid({ uid: " ", backend: "firebase" })).toBeUndefined();
+    expect(freshnessReaderUid({ backend: "firebase" })).toBeUndefined();
+    expect(freshnessReaderUid(null)).toBeUndefined();
+    expect(freshnessReaderUid(undefined)).toBeUndefined();
   });
 
   it("yalnız boşluklardan oluşan not belgeye de dönüş değerine de yazılmaz", async () => {
@@ -206,5 +243,15 @@ describe("ziyaret doğrulaması IO sözleşmesi", () => {
     expect(snapshots[0].at(-1)).toBe("v6");
     unsubscribe();
     expect(h.stats.unsubscribes).toBe(1);
+  });
+
+  it("rozet sayacı yalnız o yeri sayar, boş kimlikte istek atmaz", async () => {
+    h.store.set("verifications/efes_member", { placeId: "efes", uid: "member", status: "still_open", createdAt: 1 });
+    h.store.set("verifications/efes_other", { placeId: "efes", uid: "other", status: "closed", createdAt: 2 });
+    h.store.set("verifications/milet_member", { placeId: "milet", uid: "member", status: "still_open", createdAt: 3 });
+
+    await expect(countPlaceVerifications("efes")).resolves.toBe(2);
+    await expect(countPlaceVerifications("  ")).resolves.toBe(0);
+    await expect(countPlaceVerifications("milet")).resolves.toBe(1);
   });
 });

@@ -122,7 +122,10 @@ export async function createReport(input: ReportValidationInput, uid: string): P
       type: "report_received",
       title: "İçeriğin bildirildi",
       body: "Bir içeriğin topluluk kuralları kapsamında bildirildi. İnceleme sonrası sonuç bildirilecek.",
-      targetId: cleanTargetId,
+      // Kural kanıtı (firestore.rules → notificationProof) "reports/{targetId} var ve
+      // reporterUid == aktör" diyor; bu yüzden hedef, içeriğin değil RAPORUN kimliğidir.
+      // İçerik kimliği rapor belgesinin targetId alanında durur.
+      targetId: id,
     }).catch((error: unknown) => {
       console.warn("[Atlasia] Bildirim yazılamadı; rapor yine kaydedildi:", error);
     });
@@ -256,7 +259,9 @@ const OWNED_TOP_LEVEL: Array<{ collectionName: string; uidField: string }> = [
 ];
 
 // users/{uid}/... altında yalnız sahibin silebildiği koleksiyonlar (3a: blocks dahil).
-const OWN_SUBCOLLECTIONS = ["notifications", "savedPlaces", "friendRequests", "blocks"] as const;
+// following: takip listesi hesabın kendi verisidir, hesapla birlikte silinir
+// (kural listesi boundedList(100); DELETE_PAGE_SIZE=20 sınırın altında kalır).
+const OWN_SUBCOLLECTIONS = ["notifications", "savedPlaces", "friendRequests", "blocks", "following"] as const;
 
 /** Adım sonucu: silinen sayısı; kilit penceresi dolmadığı için bırakılanlar ayrıca raporlanır. */
 export interface AccountDeletionOutcome {
