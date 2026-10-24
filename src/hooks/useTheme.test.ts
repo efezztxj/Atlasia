@@ -54,6 +54,17 @@ describe("useTheme", () => {
     expect(window.localStorage.getItem(KEY)).toBe("dark");
   });
 
+  it("midnight kaydı gece temasını koyu renk şemasıyla açar", () => {
+    window.localStorage.setItem(KEY, "midnight");
+    const { result } = renderHook(() => useTheme());
+
+    expect(result.current.theme).toBe("midnight");
+    expect(document.documentElement.dataset.theme).toBe("midnight");
+    expect(document.documentElement.style.colorScheme).toBe("dark");
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute("content")).toBe("#071827");
+    expect(window.localStorage.getItem(KEY)).toBe("midnight");
+  });
+
   it("initTheme kayıtlı tercihi ilk React boyamasından önce uygular", () => {
     window.localStorage.setItem(KEY, "dark");
 

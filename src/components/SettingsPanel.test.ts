@@ -77,11 +77,13 @@ describe("SettingsContent", () => {
     render(createElement(SettingsContent, props));
 
     fireEvent.click(screen.getByRole("button", { name: "Açık" }));
+    fireEvent.click(screen.getByRole("button", { name: "Gece" }));
     fireEvent.click(screen.getByRole("button", { name: /Sokak/ }));
     fireEvent.click(screen.getByRole("button", { name: /^Yer adları/ }));
     fireEvent.click(screen.getByRole("button", { name: /^3B arazi/ }));
 
     expect(props.onTheme).toHaveBeenCalledWith("light");
+    expect(props.onTheme).toHaveBeenCalledWith("midnight");
     expect(props.onBaseMap).toHaveBeenCalledWith("street");
     expect(props.onToggleLabels).toHaveBeenCalledOnce();
     expect(props.onToggleTerrain).toHaveBeenCalledOnce();

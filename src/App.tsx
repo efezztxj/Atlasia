@@ -775,6 +775,10 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         onToggleTerrain={() => setTerrain((v) => !v)}
         labels={labels}
         terrain={terrain}
+        onToggleTrackRecorder={() => setTrackRecorderOpen((open) => !open)}
+        trackRecorderOpen={trackRecorderOpen}
+        onToggleAtlas={() => (atlasOpen ? setAtlasOpen(false) : openAtlas())}
+        atlasOpen={atlasOpen}
         hiddenOnMobile={panelOpen}
       />
 
@@ -783,7 +787,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         onClick={() => setTrackRecorderOpen(true)}
         aria-label="Yürüyüş kaydını aç"
         title="Yürüyüş kaydı"
-        className={`glass-panel gold-frame pressable fixed bottom-[calc(64px+env(safe-area-inset-bottom))] left-[calc(50%-78px)] z-30 grid size-[46px] place-items-center rounded-full text-[13px] font-semibold text-mint md:bottom-24 md:left-8 md:flex md:h-12 md:w-auto md:items-center md:gap-2.5 md:py-1.5 md:pr-4 md:pl-1.5${panelOpen ? " max-md:hidden" : ""}`}
+        className={`glass-panel gold-frame pressable fixed bottom-[calc(64px+env(safe-area-inset-bottom))] left-[calc(50%-78px)] z-30 grid size-[46px] place-items-center rounded-full text-[13px] font-semibold text-mint md:hidden${panelOpen ? " max-md:hidden" : ""}`}
       ><span className="btn-gold grid size-9 place-items-center rounded-full"><Activity size={16} strokeWidth={2.2} /></span><span className="hidden md:inline">Yürüyüş kaydı</span></button>}
       {trackRecorderOpen && (
         <Suspense fallback={null}>

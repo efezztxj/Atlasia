@@ -167,6 +167,18 @@ const MAP_ATMOSPHERE: Record<
       "atmosphere-blend": ["interpolate", ["linear"], ["zoom"], 0, 1, 5, 1, 8, 0],
     },
   },
+  midnight: {
+    background: "#071827",
+    sky: {
+      "sky-color": "#0d3a5d",
+      "sky-horizon-blend": 0.55,
+      "horizon-color": "#6fb3d6",
+      "horizon-fog-blend": 0.45,
+      "fog-color": "#071827",
+      "fog-ground-blend": 0.2,
+      "atmosphere-blend": ["interpolate", ["linear"], ["zoom"], 0, 1, 5, 1, 8, 0],
+    },
+  },
 };
 
 function buildStyle(
@@ -254,7 +266,7 @@ function buildStyle(
           "hillshade-exaggeration": 0.24,
           "hillshade-shadow-color": "#00120f",
           "hillshade-highlight-color": "#e5d9b2",
-          "hillshade-accent-color": "#0a7b60",
+          "hillshade-accent-color": theme === "midnight" ? "#2f7ea6" : "#0a7b60",
         },
       },
       ...openFreeMapLayers(labels, baseMap, theme),
@@ -688,6 +700,7 @@ export default function MapView({
     const atmosphere = MAP_ATMOSPHERE[theme];
     map.setPaintProperty("bg", "background-color", atmosphere.background);
     map.setSky(atmosphere.sky);
+    map.setPaintProperty("terrain-relief", "hillshade-accent-color", theme === "midnight" ? "#2f7ea6" : "#0a7b60");
     for (const layer of ["satellite", "street", "topographic"] as const) {
       map.setLayoutProperty(layer, "visibility", layer === baseMap ? "visible" : "none");
     }

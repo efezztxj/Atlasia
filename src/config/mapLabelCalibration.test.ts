@@ -129,6 +129,12 @@ describe("map label calibration", () => {
       "text-halo-width": 1.25,
       "text-halo-blur": 0.35,
     });
+    expect(mapLabelPaint("place_city", { theme: "midnight", baseMap: "dark" })).toEqual({
+      "text-color": "#f3ead3",
+      "text-halo-color": "rgba(3, 14, 26, 0.92)",
+      "text-halo-width": 1.1,
+      "text-halo-blur": 0.3,
+    });
 
     const satelliteDark = mapLabelPaint("place_country_major", {
       theme: "dark",

@@ -14,7 +14,7 @@ const DEFAULT_DIST = fileURLToPath(new URL("../dist", import.meta.url));
  * güncellenir; yalnız testi yeşil yapmak için gevşetilmez.
  */
 export const BUNDLE_BUDGET = Object.freeze({
-  totalJsGzipBytes: 886_000,
+  totalJsGzipBytes: 888_000,
   totalCssGzipBytes: 34_500,
   initialGzipBytes: 439_000,
   categoryGzipBytes: Object.freeze({
