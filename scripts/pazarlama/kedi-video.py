@@ -301,6 +301,53 @@ BOLUMLER: dict[str, list[dict]] = {
             "pan": ((0.0, 0.0), (0.0, -0.01)),
         },
     ],
+    "ters-rehber": [
+        {
+            "src": "ters-rehber/01-kurdele.jpg",
+            "dur": 2.6,
+            "kicker": "ters rehber",
+            "lines": [("Bugün buraya", MINT), ("gitme.", SUN)],
+            "sub": "Sebebini söyleyeyim.",
+            "zoom": (1.00, 1.12),
+            "pan": ((0.0, 0.02), (0.0, -0.02)),
+        },
+        {
+            "src": "ters-rehber/01-kurdele.jpg",
+            "dur": 2.6,
+            "kicker": "üçü birden",
+            "lines": [("Hava, mesafe,", MINT), ("zemin.", SUN)],
+            "sub": "Üçü birden olmuyorsa o durak listeye girmiyor.",
+            "zoom": (1.16, 1.04),
+            "pan": ((0.0, -0.02), (0.01, 0.0)),
+        },
+        {
+            "src": "ters-rehber/02-yon-levhasi.jpg",
+            "dur": 2.6,
+            "kicker": "yerine",
+            "lines": [("Yerine bunu", MINT), ("koydu.", SUN)],
+            "sub": "Aynı manzara, 900 metre yakın, kurusu.",
+            "zoom": (1.04, 1.16),
+            "pan": ((0.02, 0.0), (-0.02, 0.01)),
+        },
+        {
+            "src": None,
+            "dur": 2.4,
+            "kicker": "bazen",
+            "lines": [("Bazen", MINT), ("“gitme”", SUN), ("der.", MINT)],
+            "sub": "Sebebi her zaman yazılı. “Çünkü öyle” değil.",
+            "zoom": (1.0, 1.0),
+            "pan": ((0.0, 0.0), (0.0, 0.0)),
+        },
+        {
+            "src": "ters-rehber/01-kurdele.jpg",
+            "dur": 2.6,
+            "kicker": "son",
+            "lines": [("Ters", MINT), ("rehber.", SUN)],
+            "sub": "atlasia.pages.dev · link var, mağaza yok",
+            "zoom": (1.10, 1.22),
+            "pan": ((0.0, 0.0), (0.0, -0.01)),
+        },
+    ],
 }
 
 
