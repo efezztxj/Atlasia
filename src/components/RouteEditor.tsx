@@ -356,7 +356,7 @@ export default function RouteEditor({ route, onClose, onSaved }: Props) {
   };
 
   return <div className="fixed inset-0 z-[80] grid place-items-center bg-black/65 p-3" role="presentation">
-    <section ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="route-editor-title" className="thin-scroll max-h-[min(92dvh,900px)] w-full max-w-[620px] overflow-y-auto rounded-[26px] border border-leaf/30 bg-[#031c16] p-5 text-mint shadow-2xl md:p-7">
+    <section ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="route-editor-title" className="panel-solid thin-scroll max-h-[min(92dvh,900px)] w-full max-w-[620px] overflow-y-auto rounded-[26px] border border-leaf/30 bg-[#031c16] p-5 text-mint shadow-2xl md:p-7">
       <header className="flex items-start justify-between gap-3">
         <div><p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-sun">Önce sen karar ver</p><h2 id="route-editor-title" className="mt-1 font-display text-2xl font-semibold">Rotayı düzenle ve paylaş</h2></div>
         <button type="button" onClick={onClose} aria-label="Rota düzenleyiciyi kapat" className="grid size-11 shrink-0 place-items-center rounded-full hover:bg-white/5"><X size={18} /></button>

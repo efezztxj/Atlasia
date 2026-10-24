@@ -2,7 +2,7 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { storageRemove } from "../utils/storage";
-import { useTheme } from "./useTheme";
+import { initTheme, useTheme } from "./useTheme";
 
 const KEY = "atlasia.theme.v1";
 
@@ -19,8 +19,33 @@ afterEach(() => {
 });
 
 describe("useTheme", () => {
-  it("kayıt yoksa koyu temayla başlar ve DOM/meta/storage değerlerini senkronlar", () => {
+  it("kayıt yoksa gerçek beyaz açık temayla başlar ve DOM/meta/storage değerlerini senkronlar", () => {
     const { result } = renderHook(() => useTheme());
+
+    expect(result.current.theme).toBe("light");
+    expect(document.documentElement.dataset.theme).toBe("light");
+    expect(document.documentElement.style.colorScheme).toBe("light");
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute("content")).toBe("#ffffff");
+    expect(window.localStorage.getItem(KEY)).toBe("light");
+  });
+
+  it("kayıtlı koyu tercihi korur; bozuk değer varsayılan açık temaya düşer", () => {
+    window.localStorage.setItem(KEY, "dark");
+    const first = renderHook(() => useTheme());
+    expect(first.result.current.theme).toBe("dark");
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute("content")).toBe("#021512");
+    first.unmount();
+
+    storageRemove(KEY);
+    window.localStorage.setItem(KEY, "mavi");
+    const second = renderHook(() => useTheme());
+    expect(second.result.current.theme).toBe("light");
+  });
+
+  it("setTheme DOM, meta ve kalıcı kaydı birlikte günceller", () => {
+    const { result } = renderHook(() => useTheme());
+
+    act(() => result.current.setTheme("dark"));
 
     expect(result.current.theme).toBe("dark");
     expect(document.documentElement.dataset.theme).toBe("dark");
@@ -29,28 +54,13 @@ describe("useTheme", () => {
     expect(window.localStorage.getItem(KEY)).toBe("dark");
   });
 
-  it("yalnız açıkça light kaydı açık temayı seçer; bozuk değer koyuya düşer", () => {
-    window.localStorage.setItem(KEY, "light");
-    const first = renderHook(() => useTheme());
-    expect(first.result.current.theme).toBe("light");
-    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute("content")).toBe("#f4f1e7");
-    first.unmount();
+  it("initTheme kayıtlı tercihi ilk React boyamasından önce uygular", () => {
+    window.localStorage.setItem(KEY, "dark");
 
-    storageRemove(KEY);
-    window.localStorage.setItem(KEY, "mavi");
-    const second = renderHook(() => useTheme());
-    expect(second.result.current.theme).toBe("dark");
-  });
+    initTheme();
 
-  it("setTheme DOM, meta ve kalıcı kaydı birlikte günceller", () => {
-    const { result } = renderHook(() => useTheme());
-
-    act(() => result.current.setTheme("light"));
-
-    expect(result.current.theme).toBe("light");
-    expect(document.documentElement.dataset.theme).toBe("light");
-    expect(document.documentElement.style.colorScheme).toBe("light");
-    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute("content")).toBe("#f4f1e7");
-    expect(window.localStorage.getItem(KEY)).toBe("light");
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(document.documentElement.style.colorScheme).toBe("dark");
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute("content")).toBe("#021512");
   });
 });

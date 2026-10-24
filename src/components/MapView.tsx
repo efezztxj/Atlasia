@@ -139,17 +139,12 @@ function baseZoom(el: HTMLElement) {
   return Math.max(1.1, Math.log2((d * Math.PI) / 512));
 }
 
-function buildStyle(
-  labels: boolean,
-  terrainEnabled: boolean,
-  baseMap: BaseMapStyle,
-  theme: MapLabelTheme,
-): maplibregl.StyleSpecification {
-  return {
-    version: 8,
-    projection: { type: "globe" },
-    glyphs: openFreeMapDarkStyle.glyphs,
-    sprite: openFreeMapDarkStyle.sprite,
+const MAP_ATMOSPHERE: Record<
+  MapLabelTheme,
+  { background: string; sky: NonNullable<maplibregl.StyleSpecification["sky"]> }
+> = {
+  dark: {
+    background: "#04231d",
     sky: {
       "sky-color": "#1e7d62",
       "sky-horizon-blend": 0.55,
@@ -159,6 +154,34 @@ function buildStyle(
       "fog-ground-blend": 0.2,
       "atmosphere-blend": ["interpolate", ["linear"], ["zoom"], 0, 1, 5, 1, 8, 0],
     },
+  },
+  light: {
+    background: "#ffffff",
+    sky: {
+      "sky-color": "#e3eef3",
+      "sky-horizon-blend": 0.35,
+      "horizon-color": "#ffffff",
+      "horizon-fog-blend": 0.25,
+      "fog-color": "#f5f8f7",
+      "fog-ground-blend": 0.12,
+      "atmosphere-blend": ["interpolate", ["linear"], ["zoom"], 0, 1, 5, 1, 8, 0],
+    },
+  },
+};
+
+function buildStyle(
+  labels: boolean,
+  terrainEnabled: boolean,
+  baseMap: BaseMapStyle,
+  theme: MapLabelTheme,
+): maplibregl.StyleSpecification {
+  const atmosphere = MAP_ATMOSPHERE[theme];
+  return {
+    version: 8,
+    projection: { type: "globe" },
+    glyphs: openFreeMapDarkStyle.glyphs,
+    sprite: openFreeMapDarkStyle.sprite,
+    sky: atmosphere.sky,
     sources: {
       satellite: {
         type: "raster",
@@ -193,7 +216,7 @@ function buildStyle(
     },
     terrain: terrainEnabled ? { source: "terrain", exaggeration: 1.08 } : undefined,
     layers: [
-      { id: "bg", type: "background", paint: { "background-color": "#04231d" } },
+      { id: "bg", type: "background", paint: { "background-color": atmosphere.background } },
       {
         id: "satellite",
         type: "raster",
@@ -662,6 +685,9 @@ export default function MapView({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
+    const atmosphere = MAP_ATMOSPHERE[theme];
+    map.setPaintProperty("bg", "background-color", atmosphere.background);
+    map.setSky(atmosphere.sky);
     for (const layer of ["satellite", "street", "topographic"] as const) {
       map.setLayoutProperty(layer, "visibility", layer === baseMap ? "visible" : "none");
     }
