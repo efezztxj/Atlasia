@@ -28,6 +28,13 @@ export interface FinishedTrack {
   stats: SimplificationStats;
 }
 
+/**
+ * GPS ölçüm zaman aşımı. Denetim K-12: `watchPosition`'a timeout verilmediğinde
+ * hiç sinyal gelmeyen durumda tarayıcı hata üretmez ve kayıt sessizce bekler.
+ * 30 sn, açık gökyüzü olmayan kullanıcıya "neden ilerlemiyor" bilgisini verir.
+ */
+const GPS_TIMEOUT_MS = 30_000;
+
 function makeId() {
   return typeof crypto !== "undefined" && "randomUUID" in crypto
     ? `track-${crypto.randomUUID()}`
@@ -109,7 +116,7 @@ export function useTrackRecorder(uid: string, onPreview?: (coords: [number, numb
         clearWatch();
         setStatus("error");
       }
-    }, { enableHighAccuracy: true, maximumAge: 0 });
+    }, { enableHighAccuracy: true, maximumAge: 0, timeout: GPS_TIMEOUT_MS });
 
     timerId.current = window.setInterval(() => {
       if (generation.current !== requestId) return;

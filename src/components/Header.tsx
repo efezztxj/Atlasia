@@ -35,9 +35,11 @@ export default function Header({
   return (
     <header className="mobile-explorer-header absolute inset-x-0 top-0 z-30 flex h-[68px] items-center justify-between border-b border-sun/20 bg-ink/[0.96] px-3 shadow-[0_10px_32px_rgba(0,0,0,0.22)] md:h-[72px] md:px-6">
       <div className="flex min-w-0 items-center gap-4">
-        <a href="#" className="font-display text-[26px] leading-none font-bold tracking-tight text-mint" aria-label="Atlasia ana sayfa">
+        {/* Denetim K-09: href="#" adres çubuğuna yazıp hashchange'i tetikliyordu
+            (paylaşım jetonları da fragment'ta). Marka artık bağlantı değil. */}
+        <span className="font-display text-[26px] leading-none font-bold tracking-tight text-mint">
           Atlasia<span className="text-sun">.</span>
-        </a>
+        </span>
         <span className="hidden h-5 w-px bg-white/15 lg:block" />
         <p className="hidden truncate text-[12px] tracking-wide text-mint/65 lg:block">
           Gezginlerin gözünden, dünyanın her köşesi

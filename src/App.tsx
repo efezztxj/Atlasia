@@ -169,6 +169,13 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   const [atlasOpen, setAtlasOpen] = useState(false);
   const [recordsOpen, setRecordsOpen] = useState(false);
   const [trackRecorderOpen, setTrackRecorderOpen] = useState(false);
+  /**
+   * İz kaydının haritaya çizdiği önizleme çizgisi açık mı? Boş önizleme veya
+   * panel kapanışı bu çizgiyi kaldırmalı; aksi hâlde atılan taslak haritada
+   * "hayalet rota" olarak kalır (denetim K-01). Yalnız kayıtçının çizdiği
+   * önizlemeyi temizlemek için tutulur; Atlas rota çizimine dokunmaz.
+   */
+  const trackPreviewDrawn = useRef(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [myPlacesOpen, setMyPlacesOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -301,10 +308,15 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   const closeSettings = useCallback(() => setSettingsOpen(false), []);
 
   useEffect(() => {
-    if (!user?.uid) { setNotifications([]); return; }
-    const unsub = subscribeNotifications(user.uid, setNotifications);
+    // Denetim K-14: cihaz hesabının uid'si Firebase Auth'ta yok; bu dinleyici
+    // her açılışta reddedilen bir okuma denemesi üretiyordu. Bulut kapısı
+    // useCollections ile aynı (isCloudAccount) ve hata artık loglanıyor.
+    if (!user?.uid || !cloudAccount) { setNotifications([]); return; }
+    const unsub = subscribeNotifications(user.uid, setNotifications, (error) => {
+      console.warn("[Atlasia] Bildirimler dinlenemedi:", error);
+    });
     return () => unsub();
-  }, [user?.uid]);
+  }, [user?.uid, cloudAccount]);
   // Kabul edilen arkadaşlık isteği: karşı taraf benim listeme yazamaz (kural);
   // "friend_accepted" bildirimi gelince kendi listemi ben tamamlarım.
   const reconciledFriendsRef = useRef(new Set<string>());
@@ -794,9 +806,26 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
           <TrackRecorderPanel
             uid={user!.uid}
             cloudAccount={user!.backend === "firebase"}
-            onClose={() => setTrackRecorderOpen(false)}
-            onPreview={(coords) => mapRef.current?.drawRoute(coords, true)}
+            onClose={() => {
+              setTrackRecorderOpen(false);
+              // Panel kapanırken yarım kalan önizleme haritada kalmamalı (K-01).
+              if (trackPreviewDrawn.current) {
+                mapRef.current?.clearRoute();
+                trackPreviewDrawn.current = false;
+              }
+            }}
+            onPreview={(coords) => {
+              if (coords.length < 2) {
+                // drawRoute boş koordinatta sessizce döner; temizlik ayrı yapılır.
+                if (trackPreviewDrawn.current) mapRef.current?.clearRoute();
+                trackPreviewDrawn.current = false;
+                return;
+              }
+              mapRef.current?.drawRoute(coords, true);
+              trackPreviewDrawn.current = true;
+            }}
             onFinished={(track, route) => {
+              trackPreviewDrawn.current = false;
               if (routeDrawLegs(route)) drawAtlasRoute(route, false);
               else mapRef.current?.drawRoute(decodePolyline(track.polyline), false);
               setResumeRoute(route);

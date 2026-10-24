@@ -3,6 +3,19 @@ import { relativeTime } from "../utils/time";
 import type { AppNotification } from "../lib/notifications";
 import { usePanelAccess } from "../hooks/usePanelAccess";
 
+/** Denetim K-06: panelde ham şema anahtarı değil Türkçe etiket görünür. */
+const TYPE_LABELS: Record<AppNotification["type"], string> = {
+  report_received: "Rapor alındı",
+  report_actioned: "Rapor sonucu",
+  blocked: "Engelleme",
+  group_invite: "Grup daveti",
+  group_message: "Grup mesajı",
+  friend_request: "Arkadaşlık isteği",
+  friend_accepted: "Arkadaşlık kabulü",
+  friend_declined: "Arkadaşlık reddi",
+  system: "Sistem",
+};
+
 interface Props {
   notifications: AppNotification[];
   unreadCount: number;
@@ -31,13 +44,13 @@ export default function NotificationsPanel({ notifications, unreadCount, onClose
             <div className="p-4 text-center">
               <p className="text-[14px] font-medium">Şimdilik yeni bildirimin yok.</p>
               <p className="mt-1 text-[13px] leading-relaxed text-mint/75">Kaydettiğin yerler ve rotalar, alttaki Kaydet sekmesinde seni bekler.</p>
-              <p className="mt-3 text-[11px] text-mint/50">Moderasyon: raporların durumu burada görünecek.</p>
+              <p className="mt-3 text-[11px] text-mint/50">Rapor sonucu bildirimi bu sürümde gönderilmiyor.</p>
             </div>
           ) : notifications.map((n) => (
             <article key={n.id} className={`rounded-xl border p-3 ${n.read ? "border-white/5 bg-white/[0.02]" : "border-sun/20 bg-sun/10"}`}>
               <h3 className="text-[13px] font-semibold">{n.title}</h3>
               <p className="mt-1 text-[12px] leading-relaxed text-mint/75">{n.body}</p>
-              <p className="mt-2 text-[11px] text-mint/50">{relativeTime(n.createdAt)} · {n.type}</p>
+              <p className="mt-2 text-[11px] text-mint/50">{relativeTime(n.createdAt)} · {TYPE_LABELS[n.type] ?? "Bildirim"}</p>
               <div className="mt-2 flex items-center gap-3">
                 {!n.read && <button type="button" onClick={() => onMarkRead(n.id)} className="text-[11px] text-sun">Okundu işaretle</button>}
                 {(n.type === "group_invite" || n.type === "group_message") && n.targetId && onOpenGroup && (
