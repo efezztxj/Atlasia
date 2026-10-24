@@ -66,7 +66,7 @@ function initialMapStyle(): BaseMapStyle {
 function MapLoadingSkeleton() {
   return (
     <div
-      className="absolute inset-0 grid place-items-center bg-[#031b16]"
+      className="absolute inset-0 grid place-items-center bg-ink"
       role="status"
       aria-label="Harita yükleniyor"
     >
@@ -1148,7 +1148,7 @@ function AuthGate({ installApp }: { installApp: InstallAppController }) {
   }, [user]);
 
   if (checking) {
-    return <div className="grid h-dvh place-items-center bg-[#020f0d]"><p className="font-display text-3xl font-semibold text-mint">atlasia<span className="text-sun">.</span></p></div>;
+    return <div className="grid h-dvh place-items-center bg-ink"><p className="font-display text-3xl font-semibold text-mint">atlasia<span className="text-sun">.</span></p></div>;
   }
   if (!user) return accessOpen ? <AccountAccess /> : <LandingPage onStart={() => setAccessOpen(true)} />;
   if (user.requiresEmailVerification) return <EmailVerification />;

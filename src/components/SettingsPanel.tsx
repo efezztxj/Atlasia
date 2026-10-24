@@ -134,7 +134,7 @@ function Notice({ children }: { children: ReactNode }) {
 const THEME_OPTIONS = [
   { id: "dark", label: "Koyu", icon: Moon, activeClass: "bg-ink-3 text-sun shadow-lg" },
   { id: "light", label: "Açık", icon: Sun, activeClass: "bg-sun text-ink shadow-lg" },
-  { id: "midnight", label: "Gece", icon: Sparkles, activeClass: "bg-ink-2 text-sun-2 shadow-lg ring-1 ring-sun/50" },
+  { id: "midnight", label: "Gece", icon: Sparkles, activeClass: "bg-ink-2 text-sun-2 shadow-lg" },
 ] as const;
 
 export function SettingsContent({
@@ -193,7 +193,7 @@ export function SettingsContent({
               aria-pressed={theme === id}
               onClick={() => onTheme(id)}
               className={cn(
-                "flex min-h-12 items-center justify-center gap-1.5 rounded-xl text-[13px] font-semibold transition min-[390px]:gap-2 min-[390px]:text-[14px]",
+                "flex min-h-12 items-center justify-center gap-1.5 rounded-xl text-[13px] font-semibold transition",
                 theme === id ? activeClass : "text-mint/65 hover:bg-white/[0.05]",
               )}
             >

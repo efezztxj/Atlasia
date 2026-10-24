@@ -422,7 +422,7 @@ export default function ProfilePanel({ onClose, onRecords, settings, myPlacesCou
       )}
       {confirmDelete && (
         <div className="absolute inset-0 z-20 grid place-items-end bg-black/65 p-4 backdrop-blur-sm md:place-items-center">
-          <section role="alertdialog" aria-modal="true" aria-labelledby="delete-title" className="w-full rounded-[24px] border border-red-300/20 bg-[#1a0f0f] p-5 shadow-2xl">
+          <section role="alertdialog" aria-modal="true" aria-labelledby="delete-title" className="panel-solid w-full rounded-[24px] border border-red-300/20 bg-[#1a0f0f] p-5 shadow-2xl">
             <h3 id="delete-title" className="font-display text-lg font-semibold text-red-200">Hesabın tamamen silinsin mi?</h3>
             <p className="mt-2 text-[13px] leading-relaxed text-mint/70">İzlerin, rotaların, kayıtların, gönderilerin, hikâyelerin, arkadaşlıkların, grup üyeliklerin, bildirimlerin, raporların, engellerin ve geri bildirimlerin silinir. Bir adım başarısız olursa hesabın silinmez ve tekrar deneyebilirsin. Bu işlem geri alınamaz. Onaylıyor musun?</p>
             {user?.backend === "firebase" && (

@@ -365,7 +365,7 @@ export default function GroupsPanel({ currentUid, currentName, blockedSet, isBlo
   return (
     <div className="fixed inset-0 z-[66] flex justify-end bg-black/40">
       <button type="button" aria-label="Paneli kapat" onClick={onClose} className="absolute inset-0" />
-      <aside ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="groups-title" className="relative flex h-dvh w-full max-w-[430px] flex-col border-l border-leaf/20 bg-[#041c16] shadow-2xl">
+      <aside ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="groups-title" className="panel-solid relative flex h-dvh w-full max-w-[430px] flex-col border-l border-leaf/20 bg-[#041c16] shadow-2xl">
         <header className="flex shrink-0 items-center gap-2 border-b border-white/10 px-4 py-3">
           {openGroup ? (
             <button type="button" onClick={() => { setOpenGroup(null); setMessages([]); setAddPeopleOpen(false); }} className="grid size-10 place-items-center rounded-full hover:bg-white/5" aria-label="Listeye dön"><ArrowLeft size={18} /></button>

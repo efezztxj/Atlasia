@@ -139,22 +139,47 @@ function baseZoom(el: HTMLElement) {
   return Math.max(1.1, Math.log2((d * Math.PI) / 512));
 }
 
-function skyForTheme(theme: MapLabelTheme): maplibregl.SkySpecification {
-  const midnight = theme === "midnight";
-  return {
-    "sky-color": midnight ? "#0d3a5d" : "#1e7d62",
-    "sky-horizon-blend": 0.55,
-    "horizon-color": midnight ? "#6fb3d6" : "#4fd3a0",
-    "horizon-fog-blend": 0.45,
-    "fog-color": midnight ? "#071827" : "#0a3d33",
-    "fog-ground-blend": 0.2,
-    "atmosphere-blend": ["interpolate", ["linear"], ["zoom"], 0, 1, 5, 1, 8, 0],
-  };
-}
-
-function backgroundForTheme(theme: MapLabelTheme) {
-  return theme === "midnight" ? "#071827" : "#04231d";
-}
+const MAP_ATMOSPHERE: Record<
+  MapLabelTheme,
+  { background: string; sky: NonNullable<maplibregl.StyleSpecification["sky"]> }
+> = {
+  dark: {
+    background: "#04231d",
+    sky: {
+      "sky-color": "#1e7d62",
+      "sky-horizon-blend": 0.55,
+      "horizon-color": "#4fd3a0",
+      "horizon-fog-blend": 0.45,
+      "fog-color": "#0a3d33",
+      "fog-ground-blend": 0.2,
+      "atmosphere-blend": ["interpolate", ["linear"], ["zoom"], 0, 1, 5, 1, 8, 0],
+    },
+  },
+  light: {
+    background: "#ffffff",
+    sky: {
+      "sky-color": "#e3eef3",
+      "sky-horizon-blend": 0.35,
+      "horizon-color": "#ffffff",
+      "horizon-fog-blend": 0.25,
+      "fog-color": "#f5f8f7",
+      "fog-ground-blend": 0.12,
+      "atmosphere-blend": ["interpolate", ["linear"], ["zoom"], 0, 1, 5, 1, 8, 0],
+    },
+  },
+  midnight: {
+    background: "#071827",
+    sky: {
+      "sky-color": "#0d3a5d",
+      "sky-horizon-blend": 0.55,
+      "horizon-color": "#6fb3d6",
+      "horizon-fog-blend": 0.45,
+      "fog-color": "#071827",
+      "fog-ground-blend": 0.2,
+      "atmosphere-blend": ["interpolate", ["linear"], ["zoom"], 0, 1, 5, 1, 8, 0],
+    },
+  },
+};
 
 function buildStyle(
   labels: boolean,
@@ -162,12 +187,13 @@ function buildStyle(
   baseMap: BaseMapStyle,
   theme: MapLabelTheme,
 ): maplibregl.StyleSpecification {
+  const atmosphere = MAP_ATMOSPHERE[theme];
   return {
     version: 8,
     projection: { type: "globe" },
     glyphs: openFreeMapDarkStyle.glyphs,
     sprite: openFreeMapDarkStyle.sprite,
-    sky: skyForTheme(theme),
+    sky: atmosphere.sky,
     sources: {
       satellite: {
         type: "raster",
@@ -202,7 +228,7 @@ function buildStyle(
     },
     terrain: terrainEnabled ? { source: "terrain", exaggeration: 1.08 } : undefined,
     layers: [
-      { id: "bg", type: "background", paint: { "background-color": backgroundForTheme(theme) } },
+      { id: "bg", type: "background", paint: { "background-color": atmosphere.background } },
       {
         id: "satellite",
         type: "raster",
@@ -671,8 +697,9 @@ export default function MapView({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
-    map.setSky(skyForTheme(theme));
-    map.setPaintProperty("bg", "background-color", backgroundForTheme(theme));
+    const atmosphere = MAP_ATMOSPHERE[theme];
+    map.setPaintProperty("bg", "background-color", atmosphere.background);
+    map.setSky(atmosphere.sky);
     map.setPaintProperty("terrain-relief", "hillshade-accent-color", theme === "midnight" ? "#2f7ea6" : "#0a7b60");
     for (const layer of ["satellite", "street", "topographic"] as const) {
       map.setLayoutProperty(layer, "visibility", layer === baseMap ? "visible" : "none");

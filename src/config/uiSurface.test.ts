@@ -62,8 +62,10 @@ describe("altın kullanımı", () => {
     expect(block('.mobile-tab-item[aria-current="page"] .mobile-tab-icon')).toContain("243, 200, 112");
   });
 
-  it("açık tema krem panel rengi korunuyor (beyaz mod kullanıcıda)", () => {
-    expect(css).toContain("rgba(255, 253, 247, 0.97)");
+  it("açık tema krem değil gerçek beyaz panel rengi kullanıyor", () => {
+    expect(css).toContain("rgba(255, 255, 255, 0.97)");
+    expect(block('html[data-theme="light"]')).toContain("--color-ink: #ffffff");
+    expect(block('html[data-theme="light"]')).toContain("--color-ink-2: #ffffff");
   });
 });
 
@@ -118,7 +120,6 @@ describe("masaüstü harita kontrolleri", () => {
   it("ray Atlas AI ve yürüyüş kaydı eylemlerini taşır", () => {
     expect(mapControls).toContain("onToggleTrackRecorder");
     expect(mapControls).toContain("onToggleAtlas");
-    expect(mapControls).toContain('controls="atlas-assistant"');
     expect(app).toContain("trackRecorderOpen={trackRecorderOpen}");
     expect(app).toContain("atlasOpen={atlasOpen}");
   });

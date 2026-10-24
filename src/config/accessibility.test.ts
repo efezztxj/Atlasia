@@ -40,14 +40,14 @@ describe("P18 kontrast hesabı (WCAG 2.2)", () => {
     }
   });
 
-  it("/70 ve üstü üç temada da AA; AA eşiği açık temada /65–/70 civarında", () => {
+  it("/70 ve üstü üç temada da AA; beyaz açık temada AA eşiği /65", () => {
     for (const theme of Object.values(THEMES)) {
       expect(alphaTextContrast(theme.mint, theme.panel, 70)).toBeGreaterThanOrEqual(WCAG_AA_NORMAL);
       expect(alphaTextContrast(theme.mint, theme.page, 70)).toBeGreaterThanOrEqual(WCAG_AA_NORMAL);
     }
     expect(minimumAaOpacity(THEMES.dark.mint, THEMES.dark.panel)).toBe(50);
     expect(minimumAaOpacity(THEMES.light.mint, THEMES.light.panel)).toBe(65);
-    expect(minimumAaOpacity(THEMES.light.mint, THEMES.light.page)).toBe(70);
+    expect(minimumAaOpacity(THEMES.light.mint, THEMES.light.page)).toBe(65);
   });
 });
 
