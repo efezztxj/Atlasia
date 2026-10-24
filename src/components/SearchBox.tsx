@@ -182,7 +182,7 @@ export default function SearchBox({ places, onPick, onOpenFilters, autoFocus = f
         </div>
 
         {showRecents && (
-          <div className="animate-fade panel-solid absolute top-14 right-0 left-0 z-20 overflow-hidden rounded-2xl border border-leaf/20 p-1.5 shadow-2xl shadow-black/50">
+          <div className="animate-fade thin-scroll panel-solid absolute top-14 right-0 left-0 z-20 max-h-[min(56dvh,380px)] overflow-y-auto rounded-2xl border border-leaf/20 p-1.5 shadow-2xl shadow-black/50">
             <div className="flex items-center justify-between px-2 pt-1 pb-1.5">
               <p className="text-[11px] font-bold tracking-[0.14em] text-sun uppercase">Son aramalar</p>
               <button type="button" onClick={clearRecents} className="min-h-8 rounded-full px-2 text-[11px] text-mint/65 transition hover:text-mint">

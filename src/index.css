@@ -626,11 +626,14 @@ body,
   /* Only the mobile visual plane shifts; map sources and events stay intact. */
   .maplibregl-map { transform: translateY(4px); }
 
+  /* Arama paneli yalnızca arama kutusunu taşır; sonuç/son aramalar listesi
+     kutunun altına açılan katmanda yaşar. Panelin kendi kaydırması bu katmanı
+     kırptığı için taşma görünür kalmalı, liste kendi içinde kaydırılır. */
   .mobile-search-sheet {
     max-height: 68dvh;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    padding: 10px;
+    overflow: visible;
+    /* Alt boşluk 8 px: sonuç/son arama katmanı tam panel kenarından başlar. */
+    padding: 10px 10px 8px;
   }
 
   /* İŞ 2d: daraltılmış keşif kartı bottom 118 + p-2.5 + 48 px küçük görsel
