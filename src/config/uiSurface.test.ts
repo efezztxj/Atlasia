@@ -109,8 +109,9 @@ describe("küçük ekran yerleşimi (≈360×640)", () => {
 });
 
 describe("masaüstü harita kontrolleri", () => {
-  it("kapsül sağ kenarda dikey ortada durur, alt köşeye geri dönmez", () => {
-    expect(mapControls).toContain("md:top-1/2 md:right-5 md:bottom-auto md:-translate-y-1/2");
+  it("kapsül sağ kenara yaslı dikey ray içinde durur, alt köşeye geri dönmez", () => {
+    expect(mapControls).toContain("md:top-[196px] md:right-0 md:bottom-[96px]");
+    expect(mapControls).toContain("md:rounded-l-[30px] md:rounded-r-none");
     expect(mapControls).not.toContain("md:bottom-24");
   });
 });
