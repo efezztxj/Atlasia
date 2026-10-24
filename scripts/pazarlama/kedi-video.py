@@ -30,6 +30,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parents[2]
 KEY = ROOT / "docs/pazarlama/kreatifler/ai-video-keyframe"
+KREATIF = ROOT / "docs/pazarlama/kreatifler"
 
 W, H, FPS = 720, 1280, 24
 INK = (2, 21, 18)
@@ -143,7 +144,7 @@ def frame(scene: dict, t: float, total: float) -> Image.Image:
     if scene["src"] is None:
         base = brand_card()
     else:
-        src = Image.open(KEY / scene["src"]).convert("RGB")
+        src = Image.open(KREATIF / scene["src"]).convert("RGB")
         p = ease(min(1.0, t / max(0.001, total)))
         z = scene["zoom"][0] + (scene["zoom"][1] - scene["zoom"][0]) * p
         (x0, y0), (x1, y1) = scene["pan"]
@@ -161,7 +162,7 @@ def frame(scene: dict, t: float, total: float) -> Image.Image:
 BOLUMLER: dict[str, list[dict]] = {
     "01": [
         {
-            "src": "01-kedi-kure.jpg",
+            "src": "ai-video-keyframe/01-kedi-kure.jpg",
             "dur": 2.6,
             "kicker": "atlasia",
             "lines": [("Dünyayı bir kedi", MINT), ("döndürüyor.", SUN)],
@@ -170,7 +171,7 @@ BOLUMLER: dict[str, list[dict]] = {
             "pan": ((0.0, 0.0), (0.03, -0.02)),
         },
         {
-            "src": "02-pati-kure.jpg",
+            "src": "ai-video-keyframe/02-pati-kure.jpg",
             "dur": 2.6,
             "kicker": "01 / 06",
             "lines": [("Sen haritaya", MINT), ("bakıyorsun.", MINT)],
@@ -179,7 +180,7 @@ BOLUMLER: dict[str, list[dict]] = {
             "pan": ((0.04, 0.02), (-0.02, 0.0)),
         },
         {
-            "src": "03-kedi-harita.jpg",
+            "src": "ai-video-keyframe/03-kedi-harita.jpg",
             "dur": 3.0,
             "kicker": "02 / 06",
             "lines": [("3 saat. 11 durak.", SUN), ("Sıra belli.", MINT)],
@@ -197,7 +198,7 @@ BOLUMLER: dict[str, list[dict]] = {
             "pan": ((0.0, 0.0), (0.0, 0.0)),
         },
         {
-            "src": "01-kedi-kure.jpg",
+            "src": "ai-video-keyframe/01-kedi-kure.jpg",
             "dur": 2.4,
             "kicker": "son",
             "lines": [("Uygulama yok.", MINT), ("Mağaza yok.", MINT), ("Link var.", SUN)],
@@ -208,7 +209,7 @@ BOLUMLER: dict[str, list[dict]] = {
     ],
     "02": [
         {
-            "src": "bolum-02-01-pati-efes.jpg",
+            "src": "ai-video-keyframe/bolum-02-01-pati-efes.jpg",
             "dur": 2.4,
             "kicker": "bölüm 02 / 06",
             "lines": [("Pati haritaya", MINT), ("bastı.", SUN)],
@@ -217,7 +218,7 @@ BOLUMLER: dict[str, list[dict]] = {
             "pan": ((0.0, 0.02), (0.02, -0.02)),
         },
         {
-            "src": "03-kedi-harita.jpg",
+            "src": "ai-video-keyframe/03-kedi-harita.jpg",
             "dur": 2.6,
             "kicker": "11 durak",
             "lines": [("Sonra iz", MINT), ("çıktı.", SUN)],
@@ -226,7 +227,7 @@ BOLUMLER: dict[str, list[dict]] = {
             "pan": ((0.0, -0.02), (0.0, 0.03)),
         },
         {
-            "src": "bolum-02-02-kedi-bakiyor.jpg",
+            "src": "ai-video-keyframe/bolum-02-02-kedi-bakiyor.jpg",
             "dur": 2.4,
             "kicker": "sıra sende",
             "lines": [("Şehir", MINT), ("aşağıda.", SUN)],
@@ -244,13 +245,60 @@ BOLUMLER: dict[str, list[dict]] = {
             "pan": ((0.0, 0.0), (0.0, 0.0)),
         },
         {
-            "src": "bolum-02-02-kedi-bakiyor.jpg",
+            "src": "ai-video-keyframe/bolum-02-02-kedi-bakiyor.jpg",
             "dur": 2.8,
             "kicker": "son",
             "lines": [("Sen de", MINT), ("iz bırak.", SUN)],
             "sub": "atlasia.pages.dev · link var, mağaza yok",
             "zoom": (1.04, 1.16),
             "pan": ((0.0, 0.0), (0.02, -0.02)),
+        },
+    ],
+    "kor-rota": [
+        {
+            "src": "kor-rota/01-kapali-zarf.jpg",
+            "dur": 2.6,
+            "kicker": "kör rota",
+            "lines": [("Nereye", MINT), ("gittiğini", MINT), ("söylemiyorum.", SUN)],
+            "sub": "Sana yalnız bir rota veriyorum. Mühürlü.",
+            "zoom": (1.06, 1.18),
+            "pan": ((0.0, 0.0), (0.0, 0.02)),
+        },
+        {
+            "src": "kor-rota/02-yol-gizem.jpg",
+            "dur": 2.6,
+            "kicker": "1. durak · 900 m",
+            "lines": [("Sadece", MINT), ("yürü.", SUN)],
+            "sub": "İlk durak açılmadan adı görünmüyor.",
+            "zoom": (1.00, 1.12),
+            "pan": ((0.0, 0.02), (0.0, -0.02)),
+        },
+        {
+            "src": "kor-rota/01-kapali-zarf.jpg",
+            "dur": 2.6,
+            "kicker": "mühür",
+            "lines": [("Vardığında", MINT), ("açılıyor.", SUN)],
+            "sub": "Adı, hikâyesi, sesi — hepsi orada. 40 metre kalınca.",
+            "zoom": (1.18, 1.04),
+            "pan": ((0.01, 0.02), (0.0, 0.0)),
+        },
+        {
+            "src": None,
+            "dur": 2.4,
+            "kicker": "nasıl",
+            "lines": [("Atlas AI'a", MINT), ("“beni şaşırt”", SUN), ("yaz.", MINT)],
+            "sub": "2 saatlik yürüyüş. Gizli yerler, fotoğraf.",
+            "zoom": (1.0, 1.0),
+            "pan": ((0.0, 0.0), (0.0, 0.0)),
+        },
+        {
+            "src": "kor-rota/02-yol-gizem.jpg",
+            "dur": 2.6,
+            "kicker": "sonra",
+            "lines": [("Geri dönünce", MINT), ("anlatırsın.", SUN)],
+            "sub": "atlasia.pages.dev · link var, mağaza yok",
+            "zoom": (1.10, 1.22),
+            "pan": ((0.0, 0.0), (0.0, -0.01)),
         },
     ],
 }
