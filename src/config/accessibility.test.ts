@@ -19,6 +19,8 @@ function token(block: string, name: string): string {
 const themeBlock = css.slice(css.indexOf("@theme {"), css.indexOf("}", css.indexOf("--color-sun-2")));
 const lightStart = css.indexOf('html[data-theme="light"] {');
 const lightBlock = css.slice(lightStart, css.indexOf("}", lightStart));
+const lightCanvas = /--light-canvas:\s*(#[0-9a-fA-F]{6})/.exec(lightBlock)?.[1];
+if (!lightCanvas) throw new Error("açık tema kanvas token'ı yok: --light-canvas");
 const THEMES = {
   dark: { mint: token(themeBlock, "mint"), panel: token(themeBlock, "ink-2"), page: token(themeBlock, "ink") },
   light: { mint: token(lightBlock, "mint"), panel: token(lightBlock, "ink-2"), page: token(lightBlock, "ink") },
@@ -42,6 +44,7 @@ describe("P18 kontrast hesabı (WCAG 2.2)", () => {
       expect(alphaTextContrast(theme.mint, theme.panel, 70)).toBeGreaterThanOrEqual(WCAG_AA_NORMAL);
       expect(alphaTextContrast(theme.mint, theme.page, 70)).toBeGreaterThanOrEqual(WCAG_AA_NORMAL);
     }
+    expect(alphaTextContrast(THEMES.light.mint, lightCanvas, 70)).toBeGreaterThanOrEqual(WCAG_AA_NORMAL);
     expect(minimumAaOpacity(THEMES.dark.mint, THEMES.dark.panel)).toBe(50);
     expect(minimumAaOpacity(THEMES.light.mint, THEMES.light.panel)).toBe(65);
     expect(minimumAaOpacity(THEMES.light.mint, THEMES.light.page)).toBe(65);
@@ -73,7 +76,7 @@ describe("P18 regresyon kilidi", () => {
       }
     }
     expect(used.size).toBeGreaterThan(0);
-    const lightTints = [THEMES.light.panel, THEMES.light.page];
+    const lightTints = [THEMES.light.panel, THEMES.light.page, lightCanvas];
     for (const cls of used) {
       const opacity = covered.get(cls);
       expect(opacity, `${cls} açık tema katmanında yok`).toBeDefined();

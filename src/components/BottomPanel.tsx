@@ -259,7 +259,7 @@ export default function BottomPanel({
               <MessagesSquare className="size-3.5 text-leaf" />
                İzler
             </button>
-            <span className="pointer-events-auto hidden font-medium text-mint drop-shadow-[0_1px_6px_rgba(0,0,0,0.9)] lg:block">
+            <span className="explorer-map-hint pointer-events-auto hidden font-medium text-mint drop-shadow-[0_1px_6px_rgba(0,0,0,0.9)] lg:block">
               Yol üstündekilerden küçük ipuçları
             </span>
           </div>

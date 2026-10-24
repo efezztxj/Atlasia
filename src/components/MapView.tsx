@@ -156,13 +156,13 @@ const MAP_ATMOSPHERE: Record<
     },
   },
   light: {
-    background: "#ffffff",
+    background: "#edf2f4",
     sky: {
-      "sky-color": "#e3eef3",
+      "sky-color": "#c6dce8",
       "sky-horizon-blend": 0.35,
-      "horizon-color": "#ffffff",
+      "horizon-color": "#f4f7f8",
       "horizon-fog-blend": 0.25,
-      "fog-color": "#f5f8f7",
+      "fog-color": "#e2ebef",
       "fog-ground-blend": 0.12,
       "atmosphere-blend": ["interpolate", ["linear"], ["zoom"], 0, 1, 5, 1, 8, 0],
     },
