@@ -4,6 +4,11 @@ name: Atlasia Instagram yayını
 #   social/queue/*.json içindeki kayıtları okur, zamanı gelenleri Instagram'a
 #   (Graph API container akışıyla) yayınlar ve dosyayı social/published/ altına taşır.
 #
+# Arşiv neden ayrı dalda:
+#   main korumalı (inceleme zorunlu) → GITHUB_TOKEN doğrudan push edemez.
+#   Bu yüzden arşiv `social-archive` dalında tutulur; iş her çalıştığında
+#   o dalı main ile birleştirip üstüne yayın kaydını ekler.
+#
 # Kurulum: docs/instagram-otomasyon.md
 #
 # Not: `schedule` yalnızca varsayılan dalda (main) çalışır. Elle tetikleme
@@ -25,7 +30,7 @@ on:
     # 15 dakikada bir. GitHub cron'u yoğun saatlerde birkaç dakika gecikebilir.
     - cron: "*/15 * * * *"
 
-# Varsayılan en az yetki: okuma. Yazma yalnız arşiv adımında, iş (job) düzeyinde açılır.
+# Varsayılan en az yetki: okuma. Yazma yalnız arşiv işinde, iş düzeyinde açılır.
 permissions:
   contents: read
 
@@ -34,12 +39,15 @@ concurrency:
   group: atlasia-instagram-publish
   cancel-in-progress: false
 
+env:
+  ARCHIVE_BRANCH: social-archive
+
 jobs:
   publish:
     name: Instagram yayını
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    # Arşiv commit'i geri gönderileceği için yalnız bu iş yazma yetkisi alır.
+    # Arşiv dalına commit gönderileceği için yalnız bu iş yazma yetkisi alır.
     permissions:
       contents: write
 
@@ -47,8 +55,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
-          # Arşiv commit'i geri gönderilecek.
           persist-credentials: true
+          fetch-depth: 0
 
       - name: Use Node.js 22
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -77,6 +85,28 @@ jobs:
 
       - name: Betik testleri (kimlik bilgisi gerektirmez)
         run: npm run test:social
+
+      - name: Arşiv dalını hazırla
+        run: |
+          set -euo pipefail
+          git config user.name "atlasia-bot"
+          git config user.email "atlasia-bot@users.noreply.github.com"
+
+          if git ls-remote --exit-code --heads origin "$ARCHIVE_BRANCH" >/dev/null 2>&1; then
+            git fetch origin "$ARCHIVE_BRANCH"
+            git checkout --no-track -B "$ARCHIVE_BRANCH" "origin/$ARCHIVE_BRANCH"
+            # Arşiv dalı main'in gerisinde kalmasın: yeni kuyruk kayıtları buradan gelir.
+            #
+            # directoryRenames=false ŞART: yayınlanan dosya queue/ → published/ taşındığı
+            # için git bunu "klasör adı değişti" sanıp main'den gelen yeni kuyruk
+            # kaydını çakışma olarak işaretliyor. Kapatınca temiz birleşiyor.
+            git -c merge.directoryRenames=false merge --no-edit \
+              -m "chore(social): arsiv dalini main ile birlestir" origin/main
+            echo "Arşiv dalı main ile birleştirildi."
+          else
+            git checkout --no-track -B "$ARCHIVE_BRANCH" origin/main
+            echo "Arşiv dalı ilk kez oluşturulacak."
+          fi
 
       - name: Kuyruğu yayınla
         id: publish
@@ -117,13 +147,20 @@ jobs:
       - name: Yayınlananları arşivle
         if: always()
         run: |
-          if [ -z "$(git status --porcelain social)" ]; then
-            echo "Arşivlenecek değişiklik yok."
+          # Arşiv dalı hazırlanmadıysa (ör. sırlar eksik) burada yapılacak bir şey yok.
+          if ! git rev-parse --verify --quiet "refs/heads/$ARCHIVE_BRANCH" >/dev/null; then
+            echo "Arşiv dalı hazırlanmamış; atlanıyor."
             exit 0
           fi
-          git config user.name "atlasia-bot"
-          git config user.email "atlasia-bot@users.noreply.github.com"
-          git add social
-          git commit -m "chore(social): yayinlanan gonderileri arsivle [skip ci]"
-          git push
-          echo "Arşiv commit'i gönderildi."
+
+          if [ -n "$(git status --porcelain social)" ]; then
+            git add social
+            git commit -m "chore(social): yayinlanan gonderileri arsivle [skip ci]"
+          else
+            echo "Yeni yayın kaydı yok."
+          fi
+
+          # Birleştirme commit'i yayın olmasa da gönderilmeli; aksi hâlde her
+          # çalıştırmada aynı birleştirme yeniden yapılır.
+          git push origin "$ARCHIVE_BRANCH"
+          echo "Arşiv '$ARCHIVE_BRANCH' dalı güncel."

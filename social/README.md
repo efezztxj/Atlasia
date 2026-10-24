@@ -7,6 +7,15 @@ social/queue/        yayın bekleyen gönderiler (JSON)
 social/published/    yayınlanmış gönderilerin arşivi (otomatik taşınır)
 ```
 
+> Arşiv `main`'e değil **`social-archive`** dalına yazılır: `main` korumalı
+> olduğu için `GITHUB_TOKEN` oraya doğrudan push edemiyor. İş her çalıştığında
+> `social-archive`'ı `main` ile birleştirir, yayın kaydını ekler.
+>
+> ```bash
+> git fetch origin social-archive
+> git log --oneline origin/social-archive
+> ```
+
 ## Bir gönderi eklemek
 
 `social/queue/2026-10-27-kyoto.json` gibi bir dosya oluştur:

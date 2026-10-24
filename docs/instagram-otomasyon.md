@@ -6,8 +6,13 @@ yayınlıyor. Elle hiçbir şey yapmıyorsun.
 ```
 social/queue/2026-10-27-kyoto.json   →   Actions (15 dk'da bir)   →   Instagram Reels
                                               ↓
-                                    social/published/…json (arşiv, commit'lenir)
+                         social-archive dalı → social/published/…json
 ```
+
+**Arşiv neden `social-archive` dalında?** `main` korumalı (inceleme zorunlu), bu
+yüzden `GITHUB_TOKEN` oraya doğrudan push edemez. Arşiv ayrı bir dalda tutulur;
+iş her çalıştığında o dalı `main` ile birleştirir, yayın kaydını üstüne ekler ve
+geri gönderir. Senin bir şey yapman gerekmiyor.
 
 ---
 
@@ -37,7 +42,7 @@ social/queue/2026-10-27-kyoto.json   →   Actions (15 dk'da bir)   →   Instag
 | Variable *(opsiyonel)* | `IG_API_VERSION` | `v26.0` (varsayılan) |
 
 **Settings → Actions → General → Workflow permissions** → *Read and write permissions*
-(arşiv commit'i geri gönderileceği için gerekli).
+(arşiv dalına commit gönderileceği için gerekli).
 
 Jetonları **asla** repoya, koda ya da sohbete yazma. 60 günde bir yenile;
 yenilemezsen yayın `hata kodu 190` ile durur ve iş akışı bunu Türkçe söyler.
@@ -146,11 +151,21 @@ aralık 15 dakika seçildi.
 | `Medya indirilemedi` | `mediaUrl` herkese açık değil / Drive linki | Gizli sekmede test et |
 | `Desteklenmeyen video formatı` | Kodek / oran / süre | 9:16, H.264, 5–90 sn |
 | `24 saatte 100 API yayın sınırı` | Kota | Ertesi gün devam |
-| Arşiv commit'i reddedildi | Dal korumalı / izin yok | Settings → Actions → Read and write |
+| Arşiv commit'i reddedildi | İzin yok | Settings → Actions → Read and write |
+| `arşiv dalı main ile birleştirilemedi` | `social/` altında elle yapılmış bir değişiklik çakışıyor | `git diff main social-archive -- social` ile bak |
 
-Çift yayın koruması: aynı `id` `social/published/` altında varsa betik onu atlar.
-Yayın başarılı olup arşiv commit'i düşerse, tekrar çalıştırmadan önce
-`git status social` ile bak — aksi hâlde aynı gönderi iki kez gidebilir.
+Çift yayın koruması: aynı `id` arşivde (`social-archive` → `social/published/`)
+varsa betik onu atlar. Yayın başarılı olup arşiv push'u düşerse, aynı gönderi
+tekrar gidebilir — bu yüzden "Yayınlananları arşivle" adımı `if: always()` ile
+çalışır.
+
+Arşivi görmek için:
+
+```bash
+git fetch origin social-archive
+git log --oneline origin/social-archive
+git show origin/social-archive:social/published
+```
 
 ---
 
@@ -162,4 +177,4 @@ Yayın başarılı olup arşiv commit'i düşerse, tekrar çalıştırmadan önc
 | `scripts/publish-instagram.mjs` | Graph API container akışı, kuyruk, arşiv |
 | `scripts/publish-instagram.node-test.mjs` | 19 test, kimlik bilgisi gerektirmez |
 | `social/queue/` | Yayın bekleyen kayıtlar |
-| `social/published/` | Yayınlanmış kayıtların arşivi |
+| `social/published/` | Yayınlanmış kayıtların arşivi (workflow `social-archive` dalında tutar) |
