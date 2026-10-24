@@ -87,7 +87,7 @@ export default function MapControls({
       aria-label="Görünüm kontrolleri"
       aria-orientation="vertical"
       className={cn(
-        "mobile-map-controls mobile-bottom-stack-control glass-panel gold-frame pointer-events-auto fixed right-3 z-20 flex flex-col items-center gap-1 rounded-full p-1.5 md:right-8 md:bottom-24 md:gap-1.5",
+        "mobile-map-controls mobile-bottom-stack-control glass-panel gold-frame pointer-events-auto fixed right-3 z-20 flex flex-col items-center gap-1 rounded-full p-1.5 md:top-1/2 md:right-5 md:bottom-auto md:-translate-y-1/2 md:gap-1.5",
         hiddenOnMobile && "max-md:hidden",
       )}
     >

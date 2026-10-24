@@ -108,6 +108,13 @@ describe("küçük ekran yerleşimi (≈360×640)", () => {
   });
 });
 
+describe("masaüstü harita kontrolleri", () => {
+  it("kapsül sağ kenarda dikey ortada durur, alt köşeye geri dönmez", () => {
+    expect(mapControls).toContain("md:top-1/2 md:right-5 md:bottom-auto md:-translate-y-1/2");
+    expect(mapControls).not.toContain("md:bottom-24");
+  });
+});
+
 describe("teslimat notu docs/ altında", () => {
   it("kök kopya kaldı, docs/teslimatlar kopyası var", () => {
     expect(exists("teslimat-ui-yenileme-2026-10-22.md")).toBe(false);
