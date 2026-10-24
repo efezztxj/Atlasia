@@ -58,18 +58,36 @@ jobs:
           persist-credentials: true
           fetch-depth: 0
 
-      # Kuyruk boşsa hiçbir şey yapmadan çık: 15 dakikada bir boş koşu
-      # dönmesin, sırlar eksikken de gereksiz hata üretmesin.
-      - name: Kuyrukta kayıt var mı
+      # Zamanı gelmiş kayıt yoksa hiçbir şey yapmadan çık: 15 dakikada bir boş
+      # koşu dönmesin, sırlar eksikken de gereksiz hata üretmesin.
+      # Betiğin kendi loadQueue/isDue mantığı kullanılır; kural tek yerde kalsın.
+      - name: Zamanı gelen kayıt var mı
         id: queue
+        env:
+          POST_ID: ${{ inputs.post_id }}
         run: |
-          count=$(find social/queue -maxdepth 1 -type f -name '*.json' \
-            ! -name '*.example.json' | wc -l)
+          if [ -n "${POST_ID}" ]; then
+            echo "count=1" >> "$GITHUB_OUTPUT"
+            echo "Belirli kayıt istendi: ${POST_ID}"
+            exit 0
+          fi
+          count=$(node --input-type=module -e '
+            import { loadQueue, isDue } from "./scripts/publish-instagram.mjs";
+            const { entries } = await loadQueue("social/queue");
+            console.log(entries.filter((p) => isDue(p, new Date())).length);
+          ' 2>/dev/null) || count=""
+
+          # Ölçüm başarısız olursa işi durdurmak yerine devam et (fail-open):
+          # kaçırılan bir yayın, gereksiz bir koşudan daha kötü.
+          if ! [ "$count" -ge 0 ] 2>/dev/null; then
+            echo "::warning::Kuyruk okunamadı; yayın adımı yine de çalışacak."
+            count=1
+          fi
           echo "count=$count" >> "$GITHUB_OUTPUT"
           if [ "$count" -eq 0 ]; then
-            echo "Kuyruk boş; yapılacak iş yok."
+            echo "Zamanı gelen kayıt yok; yapılacak iş yok."
           else
-            echo "Kuyrukta $count kayıt var."
+            echo "Zamanı gelen $count kayıt var."
           fi
 
       - name: Use Node.js 22
