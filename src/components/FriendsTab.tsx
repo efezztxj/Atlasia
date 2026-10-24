@@ -11,7 +11,7 @@ import {
 import { fetchUserProfile, searchUserProfiles, type UserProfile } from "../lib/userProfiles";
 import { PROFILE_SEARCH_MIN_CHARS, isSearchableQuery, normalizeProfileQuery } from "../lib/profileSearch";
 import { clearRecentSearches, pushRecentSearch, readRecentSearches } from "../lib/searchHistory";
-import { useDebouncedValue } from "../hooks/useDebouncedValue";
+import { SEARCH_DEBOUNCE_MS } from "../hooks/useDebouncedValue";
 import { friendlyDataError } from "../lib/firestoreValue";
 import { buildFriendInviteLink, shareOrCopy } from "../utils/inviteLink";
 
@@ -132,8 +132,12 @@ export default function FriendsTab({ currentUid, currentName, friends, requests,
         onError(friendlyDataError(failure, "Arama yapılamadı."));
       }
     } finally {
-      if (activeTermRef.current === term) activeTermRef.current = null;
-      if (seq === searchSeqRef.current && mountedRef.current) setSearching(false);
+      // Aynı terim yeni bir nesilde yeniden aranmış olabilir: eski isteğin
+      // bitişi yenisinin aktif kilidini kaldırmamalı.
+      if (seq === searchSeqRef.current) {
+        if (activeTermRef.current === term) activeTermRef.current = null;
+        if (mountedRef.current) setSearching(false);
+      }
     }
   };
 
@@ -144,15 +148,19 @@ export default function FriendsTab({ currentUid, currentName, friends, requests,
   const runSearchRef = useRef(runSearch);
   useEffect(() => { runSearchRef.current = runSearch; });
 
-  // Yazarken arama (350 ms): her tuş vuruşunda sorgu açılmaz.
-  const debouncedQuery = useDebouncedValue(queryText);
+  // Girdi değişimine bağlı zamanlayıcı: al → ali → al dönüşünde çıktı yine
+  // "al" olsa da yeni niyet 350 ms sonra aranır. Eşit değer döndüren bir
+  // debounce hook'unun efekti bu durumda yeniden çalışmazdı.
   useEffect(() => {
-    const term = normalizeProfileQuery(debouncedQuery);
-    // Ham girdi daha yeni olabilir; eski debounce değeri artık bir arama niyeti değildir.
-    if (!isSearchableQuery(term) || term !== queryRef.current) return;
-    if (activeTermRef.current === term || requestedTermRef.current === term) return;
-    void runSearchRef.current(term);
-  }, [debouncedQuery]);
+    const term = normalizeProfileQuery(queryText);
+    if (!isSearchableQuery(term)) return;
+    const timer = setTimeout(() => {
+      if (term !== queryRef.current || uidRef.current !== currentUid) return;
+      if (activeTermRef.current === term || requestedTermRef.current === term) return;
+      void runSearchRef.current(term);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [queryText, currentUid]);
 
   const add = async (uid: string, name: string) => {
     setBusyUid(uid);

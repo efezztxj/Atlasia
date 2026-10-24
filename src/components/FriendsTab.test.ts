@@ -271,6 +271,26 @@ describe("FriendsTab canlı arama yarışı (#76)", () => {
     expect(searchUserProfiles).toHaveBeenCalledTimes(2);
   });
 
+  it("al → ali → al dönüşünde eski isteğin finally bloğu yeni arama kilidini açmaz", async () => {
+    renderTab();
+    await typeAndDebounce("al");
+    fireEvent.change(input(), { target: { value: "ali" } });
+    fireEvent.change(input(), { target: { value: "al" } });
+    await act(async () => { vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS); });
+    expect(h.pending.map((item) => item.term)).toEqual(["al", "al"]);
+
+    await settle(h.pending[0], [profile("u-eski", "Al Eski")]);
+    const form = input().closest("form");
+    expect(form).toBeTruthy();
+    fireEvent.submit(form as HTMLFormElement);
+    expect(searchUserProfiles).toHaveBeenCalledTimes(2);
+
+    await settle(h.pending[1], [profile("u-yeni", "Al Yeni")]);
+    expect(screen.getByText("Al Yeni")).toBeTruthy();
+    expect(screen.queryByText("Al Eski")).toBeNull();
+    expect(pushRecentSearch).toHaveBeenCalledTimes(1);
+  });
+
   it("panel söküldükten sonra bekleyen arama sonuç veya kişisel geçmiş yazmaz", async () => {
     const { unmount } = renderTab();
     await typeAndDebounce("ali");
