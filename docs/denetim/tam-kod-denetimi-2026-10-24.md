@@ -53,7 +53,7 @@ Kısaca: **otomatik kapılar yeşil.** Aşağıdaki bulguların hiçbiri tip/lin
 | --- | --- | --- |
 | K-01 hayalet rota çizgisi | O | **Düzeltildi** (§9.1) |
 | K-02 hikâye duraklatma sıfırlaması | O | **Düzeltildi** + test |
-| K-03 mobilde katman düğmeleri erişilemez | O | **Açık** — ürün kararı |
+| K-03 mobilde hava katmanı erişilemez | O | **Açık** — ürün kararı (yer adları/3B arazi Ayarlar+Drawer'da var) |
 | K-04 onaysız gönderi/hikâye silme | D | **Düzeltildi** |
 | K-05 sessiz paylaşım hatası | D | **Düzeltildi** |
 | K-06 bildirimde ham enum | D | **Düzeltildi** + test |
@@ -81,11 +81,14 @@ Kısaca: **otomatik kapılar yeşil.** Aşağıdaki bulguların hiçbiri tip/lin
 - **Tetikleyici:** `StoryViewer.tsx:106-110` → `onMouseDown`/`onTouchStart` `setPaused(true)`.
 - **Etki:** Hikâyeyi okumak için basılı tutan kullanıcı çubuğun sıfıra döndüğünü görür; bıraktığında süre baştan işler (hikâye beklenenden çok daha uzun açık kalır). Dokunmatik cihazda en sık kullanılan etkileşim olduğu için görünür bir kusur.
 
-### K-03 · O · Mobilde "Yer adları / 3B arazi / Hava katmanı" düğmeleri erişilemez
+### K-03 · O · Mobilde harita katmanı denetimleri: biri tamamen erişilemez, ikisi gömülü
 
-- **Kanıt:** `src/index.css:650` → `.mobile-map-controls > div:nth-of-type(n + 5) { display: none; }`. `MapControls.tsx:118-134` sırasıyla Konum, Yer adları, 3B arazi, Hava katmanı, İz kaydı, Atlas düğmelerini üretiyor; 5. `div`'den sonrası mobilde tamamen gizleniyor.
-- **Ek kanıt:** Gönderi/rota/iz için mobil bir alternatif giriş yok: iz kaydının kendi FAB'ı var (`App.tsx:785-790`), Atlas'ın kendi başlatıcısı var (`.atlas-launcher`), ancak **yer adları, 3B arazi ve hava katmanı** için başka giriş yok (`grep "Katman"` → hiç sonuç).
-- **Durum notu:** Bu, `docs/mobil-denetim-2026-10-23.md:37-38, 136`'da zaten "mobil katman menüsü alınmadı" olarak kayıtlı **açık** kalem. Denetim onu doğruluyor: `8f0bec9`'da hâlâ aynı. Yeni bulgu değil, **kapanmamış** bulgu.
+> **Düzeltme (2026-10-25):** Bu maddenin ilk hâli "üç düğmenin hepsi erişilemez" diyordu. Yeniden denetimde bu fazla genişti; aşağıdaki ayrım geçerlidir.
+
+- **Kanıt:** `src/index.css:650` → `.mobile-map-controls > div:nth-of-type(n + 5) { display: none; }`. `MapControls.tsx:118-134` sırasıyla Konum, Yer adları, 3B arazi, Hava katmanı, İz kaydı, Atlas düğmelerini üretiyor; 5. `div`'den sonrası mobilde gizleniyor.
+- **Hava katmanı — gerçekten erişilemez:** Tek denetim `MapControls.tsx:129`'daki düğme ve mobilde gizli. `SettingsPanel` ve `Drawer` içinde hava anahtarı yok (`grep -n "weather" SettingsPanel.tsx` → boş). Telefonda hava katmanını açmanın hiçbir yolu yok.
+- **Yer adları / 3B arazi — erişilebilir ama gömülü:** Aynı anahtarlar `SettingsPanel.tsx:241,253` ("Görünüm" bölümü) ve `Drawer.tsx:17-20` (`showLabels`, `terrainEnabled`) içinde var. Mobilde Ayarlar'a `handleLocate` / `Drawer.onOpenLocation` üzerinden ulaşılıyor (`App.tsx:536,1043`).
+- **Durum notu:** `docs/mobil-denetim-2026-10-23.md:37-38, 136` bu kalemi "mobil katman menüsü alınmadı" diye açık tutuyor; `8f0bec9`'da CSS kuralı hâlâ aynı.
 
 ### K-04 · D · Silme onayı tutarsız: yer silmede onay var, gönderi/hikâye silmede yok
 
@@ -265,7 +268,7 @@ K-01 için bileşen testi yazılmadı: `MapView` MapLibre/WebGL gerektiriyor, bu
 
 ### 9.3 Bilinçli olarak açık bırakılanlar
 
-1. **K-03 (mobil katman menüsü).** Yerleşim/ürün kararı; AGENTS.md "kullanıcı istemeden yerleşim değişikliği yapma" kuralı gereği dokunulmadı. Açık kalem: `docs/mobil-denetim-2026-10-23.md`.
+1. **K-03 (mobil katman menüsü).** Yerleşim/ürün kararı; AGENTS.md "kullanıcı istemeden yerleşim değişikliği yapma" kuralı gereği dokunulmadı. Asıl açık, **hava katmanı anahtarının telefonda hiç bulunmaması**; `mockups/mobil-v2.html:325`'teki tam "Katmanlar" sayfası bir tasarım kararı, oysa mevcut `Drawer` anahtar satırı desenine bir hava anahtarı eklemek çok daha küçük bir iş. Açık kalem: `docs/mobil-denetim-2026-10-23.md`.
 2. **K-07'nin işlevi.** Rapor sonucu bildirimi sunucu/yönetici yazımı gerektiriyor; AY-03 kararı olmadan kod eklenmez. Yalnız yanıltıcı metin düzeltildi.
 3. **K-10 (bütçe).** Düzeltmeler JS'i 886.088 → **886.659 B gzip** yaptı; pay **1.341 B**. Bütçeyi büyütmek ya da chunk bölmek bir karar; bu turda yapılmadı.
 4. **K-11'nin kalanı.** 45 dosyadan 3'ü artık testli (42 açık). UI katmanının tamamını kapsamak ayrı bir iş.
