@@ -21,7 +21,8 @@
     "test:content": "node --test scripts/content/harvest.node-test.mjs",
     "test:sw": "node --test scripts/sw.node-test.mjs",
     "test:rules-inventory": "node --test scripts/rules-inventory.node-test.mjs",
-    "test:scripts": "npm run test:owner-index && npm run test:bundle-budget && npm run test:verify-env && npm run test:content && npm run test:sw && npm run test:rules-inventory",
+    "test:social": "node --test scripts/publish-instagram.node-test.mjs",
+    "test:scripts": "npm run test:owner-index && npm run test:bundle-budget && npm run test:verify-env && npm run test:content && npm run test:sw && npm run test:rules-inventory && npm run test:social",
     "rules:inventory": "node scripts/rules-inventory.mjs",
     "ensure:owner-places-index": "node scripts/ensure-owner-places-index.mjs",
     "check": "npm run typecheck && npm run lint && npm run test:run && npm run test:scripts && npm run test:rules:emulator && npm run build && npm run verify:social-metadata && npm run audit:check",
@@ -29,7 +30,8 @@
     "audit:prod": "npm audit --omit=dev",
     "audit:check": "node scripts/audit-baseline.mjs",
     "test:rules": "vitest run --config vitest.rules.config.ts",
-    "test:rules:emulator": "node scripts/run-firestore-rules-tests.mjs"
+    "test:rules:emulator": "node scripts/run-firestore-rules-tests.mjs",
+    "social:publish": "node scripts/publish-instagram.mjs"
   },
   "dependencies": {
     "@types/tz-lookup": "^6.1.2",
