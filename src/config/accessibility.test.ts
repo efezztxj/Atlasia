@@ -21,9 +21,12 @@ const lightStart = css.indexOf('html[data-theme="light"] {');
 const lightBlock = css.slice(lightStart, css.indexOf("}", lightStart));
 const lightCanvas = /--light-canvas:\s*(#[0-9a-fA-F]{6})/.exec(lightBlock)?.[1];
 if (!lightCanvas) throw new Error("açık tema kanvas token'ı yok: --light-canvas");
+const midnightStart = css.indexOf('html[data-theme="midnight"] {');
+const midnightBlock = css.slice(midnightStart, css.indexOf("}", midnightStart));
 const THEMES = {
   dark: { mint: token(themeBlock, "mint"), panel: token(themeBlock, "ink-2"), page: token(themeBlock, "ink") },
   light: { mint: token(lightBlock, "mint"), panel: token(lightBlock, "ink-2"), page: token(lightBlock, "ink") },
+  midnight: { mint: token(midnightBlock, "mint"), panel: token(midnightBlock, "ink-2"), page: token(midnightBlock, "ink") },
 };
 
 describe("P18 kontrast hesabı (WCAG 2.2)", () => {
@@ -32,14 +35,14 @@ describe("P18 kontrast hesabı (WCAG 2.2)", () => {
     expect(contrastRatio(parseHex("#777"), parseHex("#fff"))).toBeCloseTo(4.48, 2);
   });
 
-  it("tam opak ana metin iki temada da AA'yı rahat geçer", () => {
+  it("tam opak ana metin üç temada da AA'yı rahat geçer", () => {
     for (const theme of Object.values(THEMES)) {
       expect(alphaTextContrast(theme.mint, theme.panel, 100)).toBeGreaterThan(12);
       expect(alphaTextContrast(theme.mint, theme.page, 100)).toBeGreaterThan(12);
     }
   });
 
-  it("/70 ve üstü iki temada da AA; beyaz açık temada AA eşiği /65", () => {
+  it("/70 ve üstü üç temada da AA; beyaz açık temada AA eşiği /65", () => {
     for (const theme of Object.values(THEMES)) {
       expect(alphaTextContrast(theme.mint, theme.panel, 70)).toBeGreaterThanOrEqual(WCAG_AA_NORMAL);
       expect(alphaTextContrast(theme.mint, theme.page, 70)).toBeGreaterThanOrEqual(WCAG_AA_NORMAL);
