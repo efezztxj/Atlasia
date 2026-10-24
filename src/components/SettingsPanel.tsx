@@ -16,6 +16,7 @@ import {
   Mountain,
   ShieldCheck,
   Smartphone,
+  Sparkles,
   Sun,
   Tags,
   Type,
@@ -130,6 +131,12 @@ function Notice({ children }: { children: ReactNode }) {
   );
 }
 
+const THEME_OPTIONS = [
+  { id: "dark", label: "Koyu", icon: Moon, activeClass: "bg-ink-3 text-sun shadow-lg" },
+  { id: "light", label: "Açık", icon: Sun, activeClass: "bg-sun text-ink shadow-lg" },
+  { id: "midnight", label: "Gece", icon: Sparkles, activeClass: "bg-ink-2 text-sun-2 shadow-lg ring-1 ring-sun/50" },
+] as const;
+
 export function SettingsContent({
   theme,
   onTheme,
@@ -178,23 +185,21 @@ export function SettingsContent({
     <>
       <section aria-labelledby="appearance-title">
         <p id="appearance-title" className="text-[12px] font-bold tracking-[0.16em] text-mint/55 uppercase">Görünüm</p>
-        <div className="mt-3 grid grid-cols-2 gap-2 rounded-2xl border border-leaf/20 bg-white/[0.04] p-1.5">
-          <button
-            type="button"
-            aria-pressed={theme === "dark"}
-            onClick={() => onTheme("dark")}
-            className={cn("flex min-h-12 items-center justify-center gap-2 rounded-xl text-[14px] font-semibold transition", theme === "dark" ? "bg-ink-3 text-sun shadow-lg" : "text-mint/65 hover:bg-white/[0.05]")}
-          >
-            <Moon className="size-4" />Koyu
-          </button>
-          <button
-            type="button"
-            aria-pressed={theme === "light"}
-            onClick={() => onTheme("light")}
-            className={cn("flex min-h-12 items-center justify-center gap-2 rounded-xl text-[14px] font-semibold transition", theme === "light" ? "bg-sun text-ink shadow-lg" : "text-mint/65 hover:bg-white/[0.05]")}
-          >
-            <Sun className="size-4" />Açık
-          </button>
+        <div className="mt-3 grid grid-cols-3 gap-2 rounded-2xl border border-leaf/20 bg-white/[0.04] p-1.5">
+          {THEME_OPTIONS.map(({ id, label, icon: Icon, activeClass }) => (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={theme === id}
+              onClick={() => onTheme(id)}
+              className={cn(
+                "flex min-h-12 items-center justify-center gap-1.5 rounded-xl text-[13px] font-semibold transition min-[390px]:gap-2 min-[390px]:text-[14px]",
+                theme === id ? activeClass : "text-mint/65 hover:bg-white/[0.05]",
+              )}
+            >
+              <Icon className="size-4 shrink-0" />{label}
+            </button>
+          ))}
         </div>
         <p className="mt-2 text-[12px] leading-relaxed text-mint/50">Renk seçimin bu cihazda saklanır.</p>
 

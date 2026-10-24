@@ -1,4 +1,4 @@
-import { CloudSun, Globe2, Locate, RotateCcw, Tags, ZoomIn, ZoomOut } from "lucide-react";
+import { Activity, CloudSun, Globe2, Locate, RotateCcw, Sparkles, Tags, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "../utils/cn";
 
@@ -11,6 +11,10 @@ interface Props {
   onToggleTerrain: () => void;
   labels: boolean;
   terrain: boolean;
+  onToggleTrackRecorder: () => void;
+  trackRecorderOpen: boolean;
+  onToggleAtlas: () => void;
+  atlasOpen: boolean;
   /**
    * İŞ 2d: mobilde açık keşif paneli harita düğmelerinin üstüne biniyor
    * (panel 64–332 px, düğme yığını 196–366 px). Panel açıkken düğmeler
@@ -25,12 +29,16 @@ function RoundBtn({
   onClick,
   active,
   pressed,
+  expanded,
+  controls,
 }: {
   children: React.ReactNode;
   label: string;
   onClick: () => void;
   active?: boolean;
   pressed?: boolean;
+  expanded?: boolean;
+  controls?: string;
 }) {
   return (
     <div className="group relative">
@@ -39,6 +47,8 @@ function RoundBtn({
         onClick={onClick}
         aria-label={label}
         {...(pressed !== undefined ? { "aria-pressed": pressed } : {})}
+        {...(expanded !== undefined ? { "aria-expanded": expanded } : {})}
+        {...(controls ? { "aria-controls": controls } : {})}
         className={cn(
           "map-round-btn grid size-11 place-items-center rounded-full border transition active:scale-90",
           active
@@ -67,6 +77,10 @@ export default function MapControls({
   onToggleTerrain,
   labels,
   terrain,
+  onToggleTrackRecorder,
+  trackRecorderOpen,
+  onToggleAtlas,
+  atlasOpen,
   hiddenOnMobile,
 }: Props) {
   const [weather, setWeather] = useState(false);
@@ -87,7 +101,7 @@ export default function MapControls({
       aria-label="Görünüm kontrolleri"
       aria-orientation="vertical"
       className={cn(
-        "mobile-map-controls mobile-bottom-stack-control glass-panel gold-frame pointer-events-auto fixed right-3 z-20 flex flex-col items-center gap-1 rounded-full p-1.5 md:top-[196px] md:right-0 md:bottom-[96px] md:z-[5] md:justify-center md:gap-1.5 [@media(min-width:768px)_and_(min-height:850px)]:gap-6 md:rounded-l-[30px] md:rounded-r-none md:py-3",
+        "mobile-map-controls mobile-bottom-stack-control glass-panel gold-frame pointer-events-auto fixed right-3 z-20 flex flex-col items-center gap-1 rounded-full p-1.5 md:top-[196px] md:right-0 md:bottom-[96px] md:z-[5] md:justify-center md:gap-1.5 [@media(min-width:768px)_and_(min-height:850px)]:gap-3 md:rounded-l-[30px] md:rounded-r-none",
         hiddenOnMobile && "max-md:hidden",
       )}
     >
@@ -112,6 +126,25 @@ export default function MapControls({
       </RoundBtn>
       <RoundBtn label="Hava katmanı" onClick={toggleWeather} active={weather} pressed={weather}>
         <CloudSun className="size-[18px]" />
+      </RoundBtn>
+      <span aria-hidden className="mx-auto my-0.5 h-px w-5 bg-white/15" />
+      <RoundBtn
+        label={trackRecorderOpen ? "Yürüyüş kaydını kapat" : "Yürüyüş kaydını aç"}
+        onClick={onToggleTrackRecorder}
+        active={trackRecorderOpen}
+        pressed={trackRecorderOpen}
+      >
+        <Activity className="size-[18px]" />
+      </RoundBtn>
+      <RoundBtn
+        label={atlasOpen ? "Atlas AI'yi kapat" : "Atlas AI keşif asistanını aç"}
+        onClick={onToggleAtlas}
+        active={atlasOpen}
+        pressed={atlasOpen}
+        expanded={atlasOpen}
+        controls="atlas-assistant"
+      >
+        <Sparkles className="size-[18px]" />
       </RoundBtn>
     </div>
   );

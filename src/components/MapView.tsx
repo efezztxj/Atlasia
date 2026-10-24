@@ -139,6 +139,23 @@ function baseZoom(el: HTMLElement) {
   return Math.max(1.1, Math.log2((d * Math.PI) / 512));
 }
 
+function skyForTheme(theme: MapLabelTheme): maplibregl.SkySpecification {
+  const midnight = theme === "midnight";
+  return {
+    "sky-color": midnight ? "#0d3a5d" : "#1e7d62",
+    "sky-horizon-blend": 0.55,
+    "horizon-color": midnight ? "#6fb3d6" : "#4fd3a0",
+    "horizon-fog-blend": 0.45,
+    "fog-color": midnight ? "#071827" : "#0a3d33",
+    "fog-ground-blend": 0.2,
+    "atmosphere-blend": ["interpolate", ["linear"], ["zoom"], 0, 1, 5, 1, 8, 0],
+  };
+}
+
+function backgroundForTheme(theme: MapLabelTheme) {
+  return theme === "midnight" ? "#071827" : "#04231d";
+}
+
 function buildStyle(
   labels: boolean,
   terrainEnabled: boolean,
@@ -150,15 +167,7 @@ function buildStyle(
     projection: { type: "globe" },
     glyphs: openFreeMapDarkStyle.glyphs,
     sprite: openFreeMapDarkStyle.sprite,
-    sky: {
-      "sky-color": "#1e7d62",
-      "sky-horizon-blend": 0.55,
-      "horizon-color": "#4fd3a0",
-      "horizon-fog-blend": 0.45,
-      "fog-color": "#0a3d33",
-      "fog-ground-blend": 0.2,
-      "atmosphere-blend": ["interpolate", ["linear"], ["zoom"], 0, 1, 5, 1, 8, 0],
-    },
+    sky: skyForTheme(theme),
     sources: {
       satellite: {
         type: "raster",
@@ -193,7 +202,7 @@ function buildStyle(
     },
     terrain: terrainEnabled ? { source: "terrain", exaggeration: 1.08 } : undefined,
     layers: [
-      { id: "bg", type: "background", paint: { "background-color": "#04231d" } },
+      { id: "bg", type: "background", paint: { "background-color": backgroundForTheme(theme) } },
       {
         id: "satellite",
         type: "raster",
@@ -231,7 +240,7 @@ function buildStyle(
           "hillshade-exaggeration": 0.24,
           "hillshade-shadow-color": "#00120f",
           "hillshade-highlight-color": "#e5d9b2",
-          "hillshade-accent-color": "#0a7b60",
+          "hillshade-accent-color": theme === "midnight" ? "#2f7ea6" : "#0a7b60",
         },
       },
       ...openFreeMapLayers(labels, baseMap, theme),
@@ -662,6 +671,9 @@ export default function MapView({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
+    map.setSky(skyForTheme(theme));
+    map.setPaintProperty("bg", "background-color", backgroundForTheme(theme));
+    map.setPaintProperty("terrain-relief", "hillshade-accent-color", theme === "midnight" ? "#2f7ea6" : "#0a7b60");
     for (const layer of ["satellite", "street", "topographic"] as const) {
       map.setLayoutProperty(layer, "visibility", layer === baseMap ? "visible" : "none");
     }

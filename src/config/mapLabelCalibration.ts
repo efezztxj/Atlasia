@@ -1,4 +1,4 @@
-export type MapLabelTheme = "dark" | "light";
+export type MapLabelTheme = "dark" | "light" | "midnight";
 export type MapLabelBaseMap = "satellite" | "dark" | "street" | "topographic";
 
 export interface MapStyleLayer {
@@ -80,6 +80,14 @@ const LABEL_PALETTES = {
     regularHaloWidth: 1.25,
     countryHaloWidth: 1.5,
     haloBlur: 0.35,
+  },
+  midnight: {
+    text: "#f3ead3",
+    water: "#a9dce5",
+    halo: "rgba(3, 14, 26, 0.92)",
+    regularHaloWidth: 1.1,
+    countryHaloWidth: 1.45,
+    haloBlur: 0.3,
   },
   // TASK-020's satellite overlay contract remains byte-for-value equivalent.
   satellite: {

@@ -114,6 +114,14 @@ describe("masaüstü harita kontrolleri", () => {
     expect(mapControls).toContain("md:rounded-l-[30px] md:rounded-r-none");
     expect(mapControls).not.toContain("md:bottom-24");
   });
+
+  it("ray Atlas AI ve yürüyüş kaydı eylemlerini taşır", () => {
+    expect(mapControls).toContain("onToggleTrackRecorder");
+    expect(mapControls).toContain("onToggleAtlas");
+    expect(mapControls).toContain('controls="atlas-assistant"');
+    expect(app).toContain("trackRecorderOpen={trackRecorderOpen}");
+    expect(app).toContain("atlasOpen={atlasOpen}");
+  });
 });
 
 describe("teslimat notu docs/ altında", () => {
