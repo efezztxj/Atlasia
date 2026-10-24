@@ -120,6 +120,7 @@ describe("masaüstü harita kontrolleri", () => {
   it("ray Atlas AI ve yürüyüş kaydı eylemlerini taşır", () => {
     expect(mapControls).toContain("onToggleTrackRecorder");
     expect(mapControls).toContain("onToggleAtlas");
+    expect(mapControls).toContain('controls="atlas-assistant"');
     expect(app).toContain("trackRecorderOpen={trackRecorderOpen}");
     expect(app).toContain("atlasOpen={atlasOpen}");
   });

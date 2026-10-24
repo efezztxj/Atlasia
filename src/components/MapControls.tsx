@@ -29,12 +29,16 @@ function RoundBtn({
   onClick,
   active,
   pressed,
+  expanded,
+  controls,
 }: {
   children: React.ReactNode;
   label: string;
   onClick: () => void;
   active?: boolean;
   pressed?: boolean;
+  expanded?: boolean;
+  controls?: string;
 }) {
   return (
     <div className="group relative">
@@ -43,6 +47,8 @@ function RoundBtn({
         onClick={onClick}
         aria-label={label}
         {...(pressed !== undefined ? { "aria-pressed": pressed } : {})}
+        {...(expanded !== undefined ? { "aria-expanded": expanded } : {})}
+        {...(controls ? { "aria-controls": controls } : {})}
         className={cn(
           "map-round-btn grid size-11 place-items-center rounded-full border transition active:scale-90",
           active
@@ -121,6 +127,7 @@ export default function MapControls({
       <RoundBtn label="Hava katmanı" onClick={toggleWeather} active={weather} pressed={weather}>
         <CloudSun className="size-[18px]" />
       </RoundBtn>
+      <span aria-hidden className="mx-auto my-0.5 h-px w-5 bg-white/15" />
       <RoundBtn
         label={trackRecorderOpen ? "Yürüyüş kaydını kapat" : "Yürüyüş kaydını aç"}
         onClick={onToggleTrackRecorder}
@@ -130,10 +137,12 @@ export default function MapControls({
         <Activity className="size-[18px]" />
       </RoundBtn>
       <RoundBtn
-        label={atlasOpen ? "Atlas AI'yi kapat" : "Atlas AI'yi aç"}
+        label={atlasOpen ? "Atlas AI'yi kapat" : "Atlas AI keşif asistanını aç"}
         onClick={onToggleAtlas}
         active={atlasOpen}
         pressed={atlasOpen}
+        expanded={atlasOpen}
+        controls="atlas-assistant"
       >
         <Sparkles className="size-[18px]" />
       </RoundBtn>

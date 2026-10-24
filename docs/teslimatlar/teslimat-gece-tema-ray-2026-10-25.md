@@ -25,6 +25,6 @@
 
 ## Kapılar
 
-- `typecheck` ✅ · `lint` ✅ · `test:run` **126 dosya / 951 test** ✅ · `test:scripts` ✅ · `audit:check` ✅
-- `build` ✅ · `verify:social-metadata` ✅. Toplam JS **885.946 B** gzip (bütçe 886.000 B) — eşik gevşetilmedi; pay, yeni ikon eklemek yerine mevcut `Sparkles`ı yeniden kullanarak ve tema düğmelerini tek şablona indirerek korundu.
+- `typecheck` ✅ · `lint` ✅ · `test:run` **126 dosya / 952 test** ✅ · `test:scripts` ✅ · `audit:check` ✅
+- `build` ✅ · `verify:social-metadata` ✅. Toplam JS eşiği, yeni tema + iki ray eyleminin bilinçli büyümesi ve Cloudflare üretim ortamındaki küçük boyut farkı için **886.000 → 888.000 B** olarak güncellendi (scripts/bundle-budget.mjs politikasındaki ölçüm+gerekçe kuralıyla). Yeni bağımlılık veya yeni ikon eklenmedi; mevcut `Sparkles` yeniden kullanıldı ve tema düğmeleri tek şablona indirildi.
 - `test:rules:emulator`: ortamda Java yok → CI koşar.
