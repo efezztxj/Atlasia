@@ -225,7 +225,7 @@ animasyon.
 
 ## 9. Erişilebilirlik (pazarlık dışı)
 
-- Metin kontrastı ≥ 4.5:1; altın üstüne **siyah** metin (beyaz değil — altında 2.9:1 kalıyor).
+- Metin kontrastı ≥ 4.5:1; altın üstüne **siyah** metin (beyaz değil — altında 1.61:1 kalıyor, okunamaz).
 - Haritanın **liste alternatifi**: "Haritadaki 12 yer" düğmesi her zaman erişilebilir.
 - Pin'ler `aria-label` ile "Efes Antik Kenti, İzmir, 4.8 puan".
 - 200% metin büyütmede hiçbir kart kırpılmaz (bu yüzden `truncate` yerine 2 satır + "…"

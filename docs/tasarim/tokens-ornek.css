@@ -1,0 +1,167 @@
+/*
+ * Atlasia tasarım token'ları — ÖNERİ (v1)
+ * ---------------------------------------
+ * Bu dosya henüz hiçbir yere import edilmiyor; `src/index.css` davranışı değişmedi.
+ * S1 adımında `@import "./styles/tokens.css"` ile devreye alınır.
+ *
+ * Kural: bileşenler yalnız ANLAMSAL token kullanır. Primitif hex bileşende görünmez.
+ * Mevcut değerler korunmuştur; bu dosya yeni bir görsel dil icat etmiyor,
+ * var olanı adlandırıyor.
+ */
+
+:root {
+  /* ---------- PRİMİTİF ---------- */
+  --ink-900: #021512;
+  --ink-800: #04201b;
+  --ink-700: #072b24;
+  --mint-100: #e4f5ea;
+  --leaf-400: #5be0a6;
+  --gold-400: #f2c666;
+  --gold-500: #eab54f;
+  --gold-600: #d99a33;
+  --gold-ink: #10241a;
+  --danger-400: #ff6b5e;
+  --warn-400: #efcf77;
+
+  /* ---------- ANLAMSAL: yüzey ---------- */
+  --surface-base: var(--ink-900);
+  --surface-panel: var(--ink-800);
+  --surface-raised: var(--ink-700);
+  --surface-scrim: rgb(2 21 18 / 0.56);
+
+  /* ---------- ANLAMSAL: metin ---------- */
+  --text-primary: var(--mint-100);
+  --text-secondary: rgb(228 245 234 / 0.72);
+  --text-tertiary: rgb(228 245 234 / 0.52); /* yalnız dekoratif, ≥12px */
+  --text-inverse: var(--ink-900);
+
+  /* ---------- ANLAMSAL: çizgi ---------- */
+  --line-subtle: rgb(228 245 234 / 0.12);
+  --line-strong: rgb(228 245 234 / 0.24);
+
+  /* ---------- ANLAMSAL: eylem ---------- */
+  --action-primary: linear-gradient(135deg, #f3c870 0%, #eab54f 55%, #d99a33 100%);
+  --action-primary-flat: var(--gold-500);
+  --action-on-primary: var(--gold-ink); /* #10241a — altın üstünde ASLA beyaz (1.61:1) */
+
+  /* ---------- ANLAMSAL: durum ---------- */
+  --status-live: var(--leaf-400);
+  --status-danger: var(--danger-400);
+  --status-warn: var(--warn-400);
+
+  /* ---------- BOŞLUK (4 taban) ---------- */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-12: 48px;
+  --sp-edge: 16px; /* ekran kenarı; ≥768px'te 24px */
+
+  /* ---------- YARIÇAP (3) ---------- */
+  --r-sm: 12px; /* çip, etiket */
+  --r-md: 20px; /* kart, girdi */
+  --r-lg: 28px; /* sheet, modal */
+
+  /* ---------- YÜKSEKLİK (3) ---------- */
+  --el-2: 0 10px 26px rgb(0 0 0 / 0.28), inset 0 1px 0 rgb(255 255 255 / 0.05);
+  --el-3: 0 18px 44px rgb(0 0 0 / 0.42);
+
+  /* ---------- HAREKET (3 süre, 3 eğri) ---------- */
+  --dur-tap: 120ms;
+  --dur-sheet: 260ms;
+  --dur-camera: 520ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-inout: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-cam: cubic-bezier(0.22, 0.61, 0.36, 1);
+
+  /* ---------- KATMAN (8 sabit) ---------- */
+  --z-map: 0;
+  --z-pin: 10;
+  --z-mapui: 20;
+  --z-sheet: 30;
+  --z-nav: 40;
+  --z-overlay: 50;
+  --z-popover: 60;
+  --z-toast: 70;
+
+  /* ---------- TİPOGRAFİ (4 rol + eyebrow) ----------
+   * Ölçek tek yerden çarpılır; 20 satırlık `html[data-text-scale]` override bloğu
+   * (index.css:1070+) böylece silinir.
+   */
+  --fs-scale: 1;
+  --fs-display: calc(30px * var(--fs-scale));
+  --fs-title: calc(18px * var(--fs-scale));
+  --fs-body: calc(15px * var(--fs-scale));
+  --fs-meta: calc(12px * var(--fs-scale));
+  --fs-eyebrow: calc(11px * var(--fs-scale));
+
+  --lh-display: 1.03;
+  --lh-title: 1.2;
+  --lh-body: 1.45;
+  --lh-meta: 1.3;
+
+  --ls-display: -0.03em;
+  --ls-title: -0.01em;
+  --ls-meta: 0.02em;
+  --ls-eyebrow: 0.21em;
+}
+
+/* Büyük metin: TEK kural. Punto listesi tutulmaz. */
+html[data-text-scale="large"] {
+  --fs-scale: 1.15;
+}
+
+/* Geniş ekran yalnız iki rolü büyütür (mobil ölçek bozulmaz). */
+@media (min-width: 768px) {
+  :root {
+    --sp-edge: 24px;
+    --fs-display: calc(44px * var(--fs-scale));
+    --fs-title: calc(20px * var(--fs-scale));
+    --fs-meta: calc(12.5px * var(--fs-scale));
+  }
+}
+
+/* ---------- Yardımcı sınıflar (bileşenler bunları kullanır) ---------- */
+.t-display {
+  font-size: var(--fs-display);
+  line-height: var(--lh-display);
+  letter-spacing: var(--ls-display);
+  font-weight: 700;
+}
+.t-title {
+  font-size: var(--fs-title);
+  line-height: var(--lh-title);
+  letter-spacing: var(--ls-title);
+  font-weight: 600;
+}
+.t-body {
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+}
+.t-meta {
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
+  letter-spacing: var(--ls-meta);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.t-eyebrow {
+  font-size: var(--fs-eyebrow);
+  line-height: 1.2;
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--gold-500);
+}
+
+/* ---------- Hareket kısıtı tek yerde ---------- */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-tap: 0ms;
+    --dur-sheet: 0ms;
+    --dur-camera: 0ms;
+  }
+}
