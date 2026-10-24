@@ -58,12 +58,28 @@ jobs:
           persist-credentials: true
           fetch-depth: 0
 
+      # Kuyruk boşsa hiçbir şey yapmadan çık: 15 dakikada bir boş koşu
+      # dönmesin, sırlar eksikken de gereksiz hata üretmesin.
+      - name: Kuyrukta kayıt var mı
+        id: queue
+        run: |
+          count=$(find social/queue -maxdepth 1 -type f -name '*.json' \
+            ! -name '*.example.json' | wc -l)
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          if [ "$count" -eq 0 ]; then
+            echo "Kuyruk boş; yapılacak iş yok."
+          else
+            echo "Kuyrukta $count kayıt var."
+          fi
+
       - name: Use Node.js 22
+        if: steps.queue.outputs.count != '0'
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
 
       - name: Sırların varlığını denetle
+        if: steps.queue.outputs.count != '0'
         env:
           IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
@@ -84,9 +100,11 @@ jobs:
           echo "Sırlar yerinde."
 
       - name: Betik testleri (kimlik bilgisi gerektirmez)
+        if: steps.queue.outputs.count != '0'
         run: npm run test:social
 
       - name: Arşiv dalını hazırla
+        if: steps.queue.outputs.count != '0'
         run: |
           set -euo pipefail
           git config user.name "atlasia-bot"
@@ -110,6 +128,7 @@ jobs:
 
       - name: Kuyruğu yayınla
         id: publish
+        if: steps.queue.outputs.count != '0'
         env:
           IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
@@ -133,7 +152,7 @@ jobs:
           exit "${PIPESTATUS[0]}"
 
       - name: Özeti yaz
-        if: always()
+        if: always() && steps.queue.outputs.count != '0'
         run: |
           {
             echo ""
@@ -145,7 +164,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Yayınlananları arşivle
-        if: always()
+        if: always() && steps.queue.outputs.count != '0'
         run: |
           # Arşiv dalı hazırlanmadıysa (ör. sırlar eksik) burada yapılacak bir şey yok.
           if ! git rev-parse --verify --quiet "refs/heads/$ARCHIVE_BRANCH" >/dev/null; then

@@ -141,6 +141,10 @@ gerekir. `workflow_dispatch` (elle tetikleme) her dalda çalışır.
 Ayrıca GitHub cron'u yoğun saatlerde birkaç dakika geciktirebilir; bu yüzden
 aralık 15 dakika seçildi.
 
+**Kuyruk boşken iş hemen çıkar.** İlk adım `social/queue/` içinde gerçek kayıt
+arıyor (`*.example.json` sayılmaz). Yoksa geri kalan adımlar atlanır; boş koşu
+~10 saniye sürer, sırlar eksikken de hata üretmez.
+
 ---
 
 ## Sorun giderme
