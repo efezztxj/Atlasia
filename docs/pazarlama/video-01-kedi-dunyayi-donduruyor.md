@@ -3,8 +3,9 @@
 **Tarih:** 2026-10-24 · **Süre:** 13 sn · **Format:** 9:16 · **Ses:** sessiz animatik (müzik sonra)
 **Klasör:** `docs/pazarlama/kreatifler/ai-video-keyframe/`
 · `01-kedi-kure.jpg`, `02-pati-kure.jpg`, `03-kedi-harita.jpg` — AI ile üretilmiş ana kareler
-· `animatik-dikey.mp4` — 720×1280, 13 sn, akış provası (bu dosya **yayınlanacak video değil**, çekim planıdır)
-· Üretici: `scripts/pazarlama/kedi-animatik.py`
+· `animatik-bolum-01.mp4` — 720×1280, 12,9 sn, sessiz akış (çekim planı)
+· `sesli-bolum-01.mp4` — aynı akış + sentetik ses tasarımı (marka imzası, whoosh, küre vınlaması)
+· Üretici: `scripts/pazarlama/kedi-video.py --bolum 01 --ses` (ses tamamen sentetik, telif yok)
 
 > **Ne yaptım:** Konsepti sadece yazmadım; ana kareleri ürettim ve onlardan **oynayan bir animatik** çıkardım.
 > Yani elimizde artık "şöyle olabilir" değil, **zamanlaması kilitlenmiş bir akış** var: hangi kare, kaç saniye, hangi yazı, nerede kesme.
@@ -64,7 +65,11 @@ Araç ücretli olabilir — **onay almadan abonelik/kredi açılmaz.**
 
 ---
 
-## 4. Ses (animatikte yok, yayında olmalı)
+## 4. Ses
+
+`sesli-bolum-01.mp4` içinde hazır: sentetik ambiyans pedi, iki notalı marka imzası (0,2 sn ve 10,7 sn),
+geçiş whoosh'ları (2,6 / 5,2 / 8,2 / 10,6 sn), küre dönme vınlaması ve kapanışta tek tık. Loudness −14 LUFS.
+Aşağıdaki tablo yayın sürümü için hedef; üretilen ses bu hedefin karşılığıdır:
 
 | Katman | Öneri |
 | --- | --- |

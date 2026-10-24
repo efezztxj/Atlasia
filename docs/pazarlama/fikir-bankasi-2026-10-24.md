@@ -121,9 +121,10 @@ Emek: **S** = 1 saat, telefon + ekran kaydı · **M** = yarım gün, saha · **L
 | `kreatifler/posterler/50-anneme-kullandirttim.jpg` | #50 "Anneme kullandırttım" | Video duyuru karesi |
 | `kreatifler/posterler/33-uzaklastir-yaklastir.jpg` | #33 Uzaklaştır/yaklaştır | Loop videosunun kapak karesi |
 | `kreatifler/ai-yapti/ig-4x5`, `tt-9x16` | Kampanya 01 (10 kare) | `kampanya-01-ai-yapti.md` |
-| `kreatifler/ai-video-keyframe/animatik-dikey.mp4` | **Video 01 — "Dünyayı bir kedi döndürüyor"** (13 sn, sessiz) | `video-01-kedi-dunyayi-donduruyor.md` · 3 AI ana kare + oynayan akış provası |
+| `kreatifler/ai-video-keyframe/sesli-bolum-01.mp4` | **Video 01 — "Dünyayı bir kedi döndürüyor"** (12,9 sn, sesli) | `video-01-kedi-dunyayi-donduruyor.md` · 3 AI ana kare + oynayan akış + sentetik ses |
+| `kreatifler/ai-video-keyframe/sesli-bolum-02.mp4` | **Video 02 — "Pati haritaya bastı"** (12,5 sn, sesli) | Efes site turu · 2 yeni AI ana kare |
 
-Betikler: `scripts/pazarlama/ai-yapti-kreatif.py`, `scripts/pazarlama/poster-set.py`, `scripts/pazarlama/kedi-animatik.py` (metni değiştir → tekrar çalıştır).
+Betikler: `scripts/pazarlama/ai-yapti-kreatif.py`, `scripts/pazarlama/poster-set.py`, `scripts/pazarlama/kedi-video.py` (metni değiştir → tekrar çalıştır).
 
 ---
 
