@@ -17,6 +17,7 @@ const css = read("src/index.css");
 const app = read("src/App.tsx");
 const mapControls = read("src/components/MapControls.tsx");
 const bottomPanel = read("src/components/BottomPanel.tsx");
+const hero = read("src/components/Hero.tsx");
 
 /** Bir CSS bloğunu seçiciden itibaren süslü parantez dengesiyle çıkarır. */
 function block(selector: string): string {
@@ -66,6 +67,24 @@ describe("altın kullanımı", () => {
     expect(css).toContain("rgba(255, 255, 255, 0.97)");
     expect(block('html[data-theme="light"]')).toContain("--color-ink: #ffffff");
     expect(block('html[data-theme="light"]')).toContain("--color-ink-2: #ffffff");
+  });
+});
+
+describe("açık tema katmanları", () => {
+  it("beyaz kartları nötr kanvas ve harita zemininden ayırır", () => {
+    const tokens = block('html[data-theme="light"]');
+    const canvas = block('html[data-theme="light"] .space-bg');
+    expect(tokens).toContain("--light-canvas: #f3f5f7");
+    expect(tokens).toContain("--light-shadow:");
+    expect(canvas).toContain("#e9eef2");
+    expect(canvas).not.toContain("radial-gradient(1px 1px");
+  });
+
+  it("koyu harita için gereken ağır metin gölgelerini açık temada kaldırır", () => {
+    const rule = block('html[data-theme="light"] .space-bg :is(.explorer-hero-title, .explorer-map-hint)');
+    expect(rule).toContain("filter: none");
+    expect(hero).toContain("explorer-hero-title");
+    expect(bottomPanel).toContain("explorer-map-hint");
   });
 });
 

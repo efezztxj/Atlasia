@@ -20,7 +20,7 @@ export default function Hero({ hidden, compact = false }: Props) {
         <span className="h-px w-6 bg-sun" />
         Atlasia keşif haritası
       </div>
-      <h1 className="font-display text-[clamp(32px,8.8vw,42px)] leading-[0.99] font-bold tracking-[-0.045em] drop-shadow-[0_2px_18px_rgba(2,21,18,0.9)] md:text-[60px] md:leading-[0.98] md:tracking-[-0.03em]">
+      <h1 className="explorer-hero-title font-display text-[clamp(32px,8.8vw,42px)] leading-[0.99] font-bold tracking-[-0.045em] drop-shadow-[0_2px_18px_rgba(2,21,18,0.9)] md:text-[60px] md:leading-[0.98] md:tracking-[-0.03em]">
         <span className="block text-mint">Dünyayı</span>
         <span className="block text-sun">merakınla</span>
         <span className="block text-white">keşfet.</span>
