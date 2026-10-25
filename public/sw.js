@@ -1,3 +1,7 @@
+// Bu satır build sırasında `scripts/stamp-sw.mjs` tarafından `dist/sw.js`
+// içinde `atlasia-shell-<build-id>` olarak yeniden yazılır. Kaynak burada sabit
+// kalır; tarayıcı yeni service worker'ı ancak yayınlanan dosyanın baytları
+// değişince görür. Elle sürüm artırmak gerekmez.
 const CACHE = "atlasia-shell-v7";
 const TILE_CACHE = "atlasia-tiles-v1";
 const TILE_META_CACHE = "atlasia-tile-meta-v1";
