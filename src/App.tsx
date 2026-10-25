@@ -965,7 +965,8 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         selectedPlace={activePlace}
         hasLocation={!!precise}
         resumeRoute={resumeRoute}
-        dockExpanded={panelOpen && dockVisible}
+        dockExpanded={false}
+        hiddenOnMobile={panelOpen}
         onOpenRouteEditor={(route) => setRouteEditorRoute(route)}
         origin={{
           lat: precise?.lat ?? view.lat,

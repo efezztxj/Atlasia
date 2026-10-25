@@ -117,34 +117,38 @@ Yüksekliği 500 px altındaki yatay ekranlarda başlık geri çekiliyor, arama
 sayfası ve keşif kartı kalan yüksekliğe göre kaydırılıyor, Atlas AI başlatıcısı
 alt çubuğun üstüne sabitleniyor. Dikey yığın haritayı yutmuyor.
 
-### 3.5 Alt bölge: tek birincil eylem + sade çubuk
+### 3.5 Alt bölge: çubuk → bilgi kartı → eylemler
 
 Telefon ekranında alt bölge kalabalıktı: yürüyüş kaydı, ekle ve Atlas AI
-daireleri farklı boy ve hizalarda yüzüyor, üçü birden altın renkteydi; "Kaydet"
+daireleri farklı boy ve hizalarda yüzüyordu, üçü birden altındı; "Kaydet"
 sekmesi de beş sekmeli çubuğu sıkıştırıyordu.
 
-Yeni düzen (yalnız mobil; masaüstü değişmedi):
+Yeni düzen (yalnız mobil; masaüstü değişmedi) — **yukarıdan aşağıya**:
 
-| Öğe | Yer | Boy | Yüzey |
+| Sıra | Öğe | Taban (güvenli alan hariç) | Boy / yüzey |
 |---|---|---|---|
-| **Ekle (+)** | alt çubuğun ortasında, çubuğun 20 px üstüne taşar | 54 px | altın — **tek birincil eylem** |
-| Keşfet · Topluluk · Profil · İzlerim | alt çubuk (4 sekme) | 54 px hedef | nötr; seçili sekme altın hap |
-| Yürüyüş kaydı | kartın altında, sol 12 px | 46 px | nötr cam |
-| Atlas AI | kartın altında, sağ 12 px | 46 px | altın (marka kararı, korunuyor) |
+| 1 (en üst) | Harita kontrol kapsülü | 224 px | dikey ray |
+| 2 | Yürüyüş kaydı (sol) · Atlas AI (sağ) | 168 px | 46 px daire; yürüyüş nötr cam, Atlas AI altın (marka) |
+| 3 | **Keşif bilgi kartı** | 88 px | 70 px kart, çubuğa yaslanır |
+| 4 | Alt sekme çubuğu + ortadaki **+** | 0 | 58 px çubuk; + 54 px, 20 px taşar |
+| — | Keşfet · Topluluk · Profil · İzlerim | çubuk | 4 sekme, seçili hap altın |
 
 - **"Kaydet" sekmesi kaldırıldı**; kayıtlara sağ üstteki üç çizgi menüsünden
-  (çekmece → *Kayıtlarım*) girilir. Çubuk beş eşit sekmeye sıkışmıyor,
-  dokunma hedefleri rahat, ortada birincil eylem için yer açıldı.
-- Yürüyüş kaydı ile Atlas AI **tek taban çizgisinde** (`--mobile-fab-bottom`
-  = 58 + 12 px) ve kartın 12 px altında; arada 16 px nefes var.
-- Altın artık yalnız birincil eylemde (ekle), Atlas AI markasında ve seçili
-  sekme hapında. Tasarım sisteminin kendi kuralı geri sağlandı.
-- Atlas AI paneli (mobil) eylem çiftinin üstünde açılır (126 px).
-- Ölçüler tek yerden yönetilir: `index.css` → `--mobile-fab-bottom`,
-  `--mobile-fab-gap`, `.mobile-tab-add`, `.mobile-walk-fab`, `.atlas-launcher`.
-- Kilit testleri güncellendi: `src/config/uiSurface.test.ts` → "ekle ayrı yüzen
-  düğme değil", "dört sekme / Kaydet yok", "kayıtlar menüden açılıyor",
-  "eylem çifti çubukla kart arasında".
+  (çekmece → *Kayıtlarım*) girilir.
+- Bilgi kartı çubuğa iner (88 px): çubuktan taşan + dairesinin üst kenarı
+  78 px'te bittiği için kart onu örtmez, arada 10 px nefes kalır.
+- Eylem çifti kartın **üstüne** çıkar (168 px = kart 88 + yükseklik 70 + 10).
+  Kart genişletilince ikisi de gizlenir (`max-md:hidden`), böylece içerik
+  örtülmez; harita kapsülü de aynı kurala uyar.
+- Atlas AI paneli eylem çiftinin üstünde açılır (222 px).
+- Altın yalnız birincil eylemde (+), Atlas AI markasında ve seçili sekme
+  hapında. Tasarım sisteminin kendi kuralı geri sağlandı.
+- Ölçüler tek yerden: `index.css` → `--mobile-card-bottom`,
+  `--mobile-fab-bottom`, `--mobile-fab-gap`, `.mobile-tab-add`,
+  `.mobile-walk-fab`, `.atlas-launcher`.
+- Kilit testleri: `src/config/uiSurface.test.ts` → "ekle ayrı yüzen düğme
+  değil", "dört sekme / Kaydet yok", "kayıtlar menüden açılıyor",
+  **"alt yığın sırası: çubuk → keşif kartı → eylem çifti"**.
 
 ---
 

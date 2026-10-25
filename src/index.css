@@ -67,7 +67,7 @@ body,
 /* ---------- Uzay arka planı ---------- */
 .space-bg {
   --discovery-occupied-space: 0px;
-  --mobile-stack-base: 132px;
+  --mobile-stack-base: 88px;
   background:
     radial-gradient(1px 1px at 12% 22%, rgba(228, 245, 234, 0.55), transparent 60%),
     radial-gradient(1px 1px at 82% 14%, rgba(228, 245, 234, 0.45), transparent 60%),
@@ -214,8 +214,8 @@ body,
 }
 .atlas-launcher { bottom: 28px; }
 @media (max-width: 767px) {
-  .atlas-launcher { bottom: calc(188px + env(safe-area-inset-bottom)); }
-  .atlas-launcher.atlas-dock-expanded { bottom: calc(375px + env(safe-area-inset-bottom)); }
+  .atlas-launcher { bottom: calc(168px + env(safe-area-inset-bottom)); }
+  .atlas-launcher.atlas-dock-expanded { bottom: calc(168px + env(safe-area-inset-bottom)); }
 }
 @keyframes atlas-sheet-in {
   from { transform: translateY(28px); opacity: 0; }
@@ -584,10 +584,16 @@ html[data-theme="dark"] .text-leaf\/80 {
 @media (max-width: 767px) {
   #root { height: 100dvh; min-height: 100dvh; }
 
-  /* Alt eylem satırının tek taban çizgisi. Sekme çubuğu 58 px; satır 70 px'te
-     başlar, yani arada 12 px nefes kalır. Boy/hiza kararları aşağıda. */
+  /* Alt yığın sırası (kullanıcı isteği 2026-10-25): sekme çubuğu → keşif
+     kartı → eylem çifti. Kart çubuğa, eylemler kartın üstüne yaslanır.
+       58 px  sekme çubuğu
+       88 px  keşif kartı (çubuğun 30 px üstü; çubuktan taşan + dairesini
+              de hesaba katar, + üst kenarı 78 px'te biter)
+      168 px  eylem çifti (kartın 70 px yüksekliği + 10 px nefes)
+      222 px  Atlas AI paneli ve harita kontrolleri */
   :root {
-    --mobile-fab-bottom: calc(70px + env(safe-area-inset-bottom));
+    --mobile-card-bottom: calc(88px + env(safe-area-inset-bottom));
+    --mobile-fab-bottom: calc(168px + env(safe-area-inset-bottom));
     --mobile-fab-gap: 12px;
   }
 
@@ -632,12 +638,12 @@ html[data-theme="dark"] .text-leaf\/80 {
     padding: 10px;
   }
 
-  /* İŞ 2d: daraltılmış keşif kartı (bottom 132) + p-2.5 + 48 px küçük görsel
-     ≈ 200 px'lik bandı kaplar. Buradaki sabit değer kartın üst kenarına denk
-     gelen yedektir; gerçek değeri aşağıdaki ölçülen yığın kuralı belirler. */
+  /* Kart (88) + kart yüksekliği (~70) + eylem çifti (46) + 10 px nefes
+     ≈ 224 px. Buradaki sabit değer yalnız yedektir; gerçek değeri aşağıdaki
+     ölçülen yığın kuralı belirler. */
   .mobile-map-controls {
     right: 10px;
-    bottom: calc(200px + env(safe-area-inset-bottom));
+    bottom: calc(224px + env(safe-area-inset-bottom));
     gap: 6px;
   }
 
@@ -656,14 +662,11 @@ html[data-theme="dark"] .text-leaf\/80 {
   .mobile-map-controls > span,
   .mobile-map-controls > div:nth-of-type(n + 5) { display: none; }
 
-  /* Harita üstü eylem çifti (kullanıcı geri bildirimi 2026-10-25).
-     Önce üç daire farklı boy ve hizalarda yüzüyordu ve "ekle" de bunların
-     arasında duruyordu; ardından "ekle" alt çubuğun ortasına taşındı
-     (.mobile-tab-add). Kalan ikisi tek taban çizgisine oturur:
+  /* Harita üstü eylem çifti.
        · sol: yürüyüş kaydı (nötr cam), sağ: Atlas AI — aynı boy, aynı çizgi,
+       · çizgi keşif kartının 10 px üstünde (--mobile-fab-bottom),
        · --mobile-fab-gap = 12 px, kartın inset-x-3'ü ile aynı hizada,
-       · kart bu satırın üstünde durur (132 px), arada 16 px nefes kalır,
-       · sekme çubuğu ile çizgi arasında 12 px boşluk var (58 → 70 px). */
+       · "ekle" artık alt çubuğun ortasında (.mobile-tab-add). */
   .mobile-walk-fab {
     position: fixed;
     left: var(--mobile-fab-gap);

@@ -134,10 +134,13 @@ describe("küçük ekran yerleşimi (≈360×640)", () => {
     expect(drawer).toContain("Kayıtlarım");
   });
 
-  it("harita üstü eylem çifti çubukla kart arasında, çubuktan 12 px yukarıda", () => {
-    expect(fabLine).toBe(barHeight + 12);
-    // 46 px daire; kartın alt kenarı yine üstünde kalır.
-    expect(fabLine + 46).toBeLessThan(collapsedBottom);
+  it("alt yığın sırası: çubuk → keşif kartı → eylem çifti", () => {
+    // Kart çubuğun üstünde ama çubuktan taşan + dairesini (20 px) örtmüyor.
+    expect(collapsedBottom).toBeGreaterThan(barHeight + 20);
+    // Eylem çifti kartın üstünde: kart yüksekliği (~70 px) + 10 px nefes.
+    expect(fabLine).toBeGreaterThanOrEqual(collapsedBottom + 70 + 10);
+    // Harita kontrolleri eylem çiftinin de üstünde başlar.
+    expect(controlsBottom).toBeGreaterThanOrEqual(fabLine + 46);
   });
 
   it("harita düğmeleri daraltılmış kartın üstünde başlıyor", () => {

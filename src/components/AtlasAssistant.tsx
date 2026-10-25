@@ -38,10 +38,12 @@ interface Props {
   dockExpanded?: boolean;
   onOpenRouteEditor: (route: AtlasRoute) => void;
   onPulse: (lng: number, lat: number) => void; onFit: (coords: [number, number][]) => void;
+  /** Keşif kartı genişlediğinde başlatıcı gizlenir (eylem çifti kartın üstünde). */
+  hiddenOnMobile?: boolean;
 }
 const coordinates = (route: AtlasRoute) => route.days.flatMap((day) => decodePolyline(day.polyline));
 
-export default function AtlasAssistant({ open, onOpen, onClose, places, view, origin, selectedPlace, hasLocation, resumeRoute, dockExpanded, onOpenRouteEditor, onPreview, onDraw, onPulse, onFit }: Props) {
+export default function AtlasAssistant({ open, onOpen, onClose, places, view, origin, selectedPlace, hasLocation, resumeRoute, dockExpanded, onOpenRouteEditor, onPreview, onDraw, onPulse, onFit, hiddenOnMobile }: Props) {
   const { saveRoute, savedRoutes } = useCollections();
   const panelRef = usePanelAccess(open, onClose);
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -243,8 +245,8 @@ export default function AtlasAssistant({ open, onOpen, onClose, places, view, or
   };
 
   return <>
-    <button type="button" onClick={open ? onClose : onOpen} aria-label="Atlas AI keşif asistanını aç" aria-expanded={open} aria-controls="atlas-assistant" className={cn("atlas-fab atlas-launcher absolute right-3 z-30 flex min-h-12 items-center gap-2 btn-gold-round rounded-full px-4 font-semibold text-[#10241a] md:hidden", intro && "is-intro", dockExpanded && "atlas-dock-expanded", open && "invisible")}><Sparkles size={17} /><span className="atlas-launcher-label">Atlas AI</span></button>
-    {open && <aside ref={panelRef} id="atlas-assistant" aria-labelledby="atlas-title" className="atlas-sheet gold-frame glass-panel fixed bottom-[calc(126px+env(safe-area-inset-bottom))] right-3 z-[50] flex max-h-[min(78dvh,710px)] w-[calc(100%-24px)] max-w-[450px] flex-col overflow-hidden rounded-[28px] md:bottom-6 md:right-24">
+    <button type="button" onClick={open ? onClose : onOpen} aria-label="Atlas AI keşif asistanını aç" aria-expanded={open} aria-controls="atlas-assistant" className={cn("atlas-fab atlas-launcher absolute right-3 z-30 flex min-h-12 items-center gap-2 btn-gold-round rounded-full px-4 font-semibold text-[#10241a] md:hidden", intro && "is-intro", dockExpanded && "atlas-dock-expanded", open && "invisible", hiddenOnMobile && "max-md:hidden")}><Sparkles size={17} /><span className="atlas-launcher-label">Atlas AI</span></button>
+    {open && <aside ref={panelRef} id="atlas-assistant" aria-labelledby="atlas-title" className="atlas-sheet gold-frame glass-panel fixed bottom-[calc(222px+env(safe-area-inset-bottom))] right-3 z-[50] flex max-h-[min(78dvh,710px)] w-[calc(100%-24px)] max-w-[450px] flex-col overflow-hidden rounded-[28px] md:bottom-6 md:right-24">
       <span aria-hidden className="sheet-handle mt-2.5 shrink-0 md:hidden" /><header className="flex shrink-0 items-start justify-between gap-3 px-5 pb-3 pt-3.5"><div className="flex min-w-0 items-start gap-3"><span aria-hidden className="avatar-gold-ring size-11 shrink-0"><span className="btn-gold grid size-full place-items-center"><Sparkles size={18} /></span></span><div className="min-w-0"><h2 id="atlas-title" className="font-display text-lg font-semibold text-white">Atlas AI</h2><p className="mt-0.5 text-[13px] leading-relaxed text-mint/75">Yakındaki izlerle önerir. Güncel bilgileri gitmeden doğrula.</p></div></div><button type="button" onClick={onClose} aria-label="Atlas AI'yi kapat" className="grid size-11 shrink-0 place-items-center rounded-full bg-white/[0.05] ring-1 ring-white/10 transition hover:bg-white/10"><ChevronDown size={18} /></button></header>
       <div className="shrink-0 px-5 pb-1"><p className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-sun/10 px-2.5 py-1 text-[12px] text-sun ring-1 ring-sun/25"><MapPin size={12} className="shrink-0" /><span className="truncate">Referans: {selectedPlace?.title ?? origin.label}</span></p></div>
       <div className="no-scrollbar fade-x flex shrink-0 gap-2 overflow-x-auto px-4 py-3">{QUICK.map((prompt) => <button key={prompt} type="button" disabled={!!loading} onClick={() => void respond(prompt)} className="min-h-10 shrink-0 rounded-full border border-white/15 bg-white/[0.03] px-3.5 text-[13px] text-mint transition hover:border-sun/60 hover:text-sun active:scale-95 disabled:opacity-40">{prompt}</button>)}</div>
