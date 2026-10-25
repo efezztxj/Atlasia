@@ -81,3 +81,51 @@ Süre dolar / ban kaldırılır   →  expiresAt geçmişe çekilir (belge silin
 2. Console → Firestore → `moderators` koleksiyonu → belge kimliği = kendi uid'in, alan: `createdAt`.
 3. `npm run test:rules:emulator` CI'da yeşil olmalı (bu makinede Java 21 yok).
 4. Panelde "Kuyruk" sekmesini görüyorsan kurulum tamam.
+
+---
+
+## 7. Genişletme (2026-10-25) — kademeli yaptırım ve ayrıcalıklı panel
+
+Maintainer kararı: kapsam **tam**; içerik kaldırma **kalıcı silme**.
+
+### 7.1 Kademeli yaptırım
+
+| Basamak | Koşul (kural) | Etki |
+| --- | --- | --- |
+| Uyarı (`/warnings`) | Rapor `reviewed` ya da `actioned`, inceleyen = yazar moderatör | Kullanıcıya tam ekran uyarı; "Anladım" ile `read=true` (kayıt silinmez) |
+| İçerik kaldırma | Moderatör `delete` (posts/stories/places/replies) | Belge kalıcı silinir; gönderiyse yanıtlar da temizlenir; rapor `actioned` kapanır |
+| Askıya alma (`/bans`) | Rapor `actioned` (önceki bölüm) | Yazma engeli + askı ekranı + itiraz hakkı |
+
+### 7.2 Yeni koleksiyonlar
+
+| Koleksiyon | Yazma | Okuma | Silme |
+| --- | --- | --- | --- |
+| `/warnings/{id}` | moderatör (`validWarning`: kanıtlı rapor, gerekçe 10–500) | sahibi veya moderatör | yok; sahibi yalnız `read` işaretler |
+| `/appeals/{id}` | askıdaki kullanıcı (kendi adına, 10–500) | sahibi veya moderatör | yok; moderatör `seen/accepted/rejected` yazar |
+| `/modActions/{id}` | moderatör (`validModAction`) | moderatör | yok (değiştirilemez günlük) |
+| `/announcements/{id}` | moderatör (`validAnnouncement`) | giriş yapmış herkes | moderatör |
+
+İtiraz kabulü banı otomatik kaldırmaz: panelde ayrıca "Banı kaldır" yazılır (iki ayrı
+işlem, günlükte ayrı satır).
+
+### 7.3 Rapor sonucu bildirimi
+
+Rapor `actioned` olunca raporlayana `report_actioned` bildirimi gider.
+Kural kanıtı: `reports/{targetId}.reviewerUid == actorUid`,
+`reporterUid == recipientUid`, durum `reviewed|actioned`. Başkası adına
+sonuç bildirimi yazılamaz.
+
+### 7.4 Panel görünümleri
+
+`Raporlarım · Kuyruk (durum süzgeci + arama + hedef geçmişi) · İtirazlar ·
+Kayıtlar · Duyurular`. Hedef geçmişi: aleyhteki rapor sayısı, uyarı sayısı,
+ban kaydı — karar öncesi karttan açılır.
+
+### 7.5 Dağıtım notu (bu tur için)
+
+1. `firestore.rules` yeniden yayınlanmalı (Console → Rules ya da CLI).
+2. İndeksler: `reports (reporterUid ↑, createdAt ↓)` ve
+   `blocks (blockerUid ↑, createdAt ↓)` bileşik indeksleri gerekli;
+   `firestore.indexes.json` kaynağa eklendi. Console'da elle oluşturma da olur.
+3. Kurallar yayınlanana kadar yeni yetkiler fail-closed: panel sekmeleri
+   görünse bile yazımlar reddedilir.

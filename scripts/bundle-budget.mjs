@@ -27,9 +27,17 @@ const DEFAULT_DIST = fileURLToPath(new URL("../dist", import.meta.url));
  *   +2,4 kB  components/SuspensionNotice.tsx (askı ekranı) ve ReportsPanel
  *            içindeki ban bölümü; +0,4 kB kurallar/ağ kodunda.
  * Eşik 902.000'e çekildi; gerekçe aynı: yeni ağır bağımlılık yok.
+ *
+ * 2026-10-25 (üçüncü ölçüm, kapsamlı moderasyon turu): JS 903.778 B,
+ * CSS 34.713 B gzip. Artış maintainer'ın seçtiği "tam ayrıcalıklı panel"
+ * kapsamından: kademeli yaptırım (uyarı/içerik kaldırma), itiraz akışı,
+ * duyuru ve işlem kaydı görünümleri ReportsPanel içinde (lazy parça),
+ * ModerationNotices bileşenleri ve moderation.ts ekleri. Yeni ağır
+ * bağımlılık yok. JS eşiği ölçüme ~%0,46 payla 908.000'e çekildi;
+ * CSS eşiği değişmedi (34.713 / 34.800, pay dar — izlenecek).
  */
 export const BUNDLE_BUDGET = Object.freeze({
-  totalJsGzipBytes: 902_000,
+  totalJsGzipBytes: 908_000,
   totalCssGzipBytes: 34_800,
   initialGzipBytes: 439_000,
   categoryGzipBytes: Object.freeze({

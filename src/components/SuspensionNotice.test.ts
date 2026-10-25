@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { createElement } from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import SuspensionNotice from "./SuspensionNotice";
 
@@ -37,5 +37,30 @@ describe("SuspensionNotice", () => {
     render(createElement(SuspensionNotice, { ban: ban(), onSignOut }));
     fireEvent.click(screen.getByRole("button", { name: /Çıkış yap/ }));
     expect(onSignOut).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("SuspensionNotice · itiraz", () => {
+  afterEach(() => cleanup());
+
+  it("itiraz metni yeterliyse gönderir", async () => {
+    const onAppeal = vi.fn(async () => {});
+    render(createElement(SuspensionNotice, { ban: ban(), onAppeal, onSignOut: () => {} }));
+    const send = screen.getByRole("button", { name: /İtirazı gönder/ }) as HTMLButtonElement;
+    expect(send.disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText(/İtirazın/), { target: { value: "Hesap bana ait değil." } });
+    fireEvent.click(send);
+    await waitFor(() => expect(onAppeal).toHaveBeenCalledWith("Hesap bana ait değil."));
+  });
+
+  it("bekleyen itirazda form yerine alındı bilgisi gösterir", () => {
+    render(createElement(SuspensionNotice, {
+      ban: ban(),
+      appeal: { id: "a1", uid: "spammer", message: "İtiraz metni", createdAt: Date.now(), status: "seen" },
+      onAppeal: vi.fn(async () => {}),
+      onSignOut: () => {},
+    }));
+    expect(screen.getByText(/İtirazın alındı/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /İtirazı gönder/ })).toBeNull();
   });
 });
