@@ -117,30 +117,34 @@ Yüksekliği 500 px altındaki yatay ekranlarda başlık geri çekiliyor, arama
 sayfası ve keşif kartı kalan yüksekliğe göre kaydırılıyor, Atlas AI başlatıcısı
 alt çubuğun üstüne sabitleniyor. Dikey yığın haritayı yutmuyor.
 
-### 3.5 Alt eylem satırı: dağınık üç daire → tek taban çizgisi
+### 3.5 Alt bölge: tek birincil eylem + sade çubuk
 
-Telefon ekranında yürüyüş kaydı, ekle ve Atlas AI daireleri farklı boy ve
-hizalarda yüzüyordu (yürüyüş kaydı merkezin 78 px solunda, ekle 44 px ortada,
-Atlas AI sağda) ve **üçü birden altındı**; keşif kartı ile sekme çubuğu
-arasındaki bölge kalabalık görünüyordu.
+Telefon ekranında alt bölge kalabalıktı: yürüyüş kaydı, ekle ve Atlas AI
+daireleri farklı boy ve hizalarda yüzüyor, üçü birden altın renkteydi; "Kaydet"
+sekmesi de beş sekmeli çubuğu sıkıştırıyordu.
 
 Yeni düzen (yalnız mobil; masaüstü değişmedi):
 
-| Öğe | Konum | Boy | Yüzey |
+| Öğe | Yer | Boy | Yüzey |
 |---|---|---|---|
-| Yürüyüş kaydı | sol 12 px | 46 px | nötr cam (mint ikon) |
-| Ekle | orta | 50 px | altın — **tek birincil eylem** |
-| Atlas AI | sağ 12 px | 46 px | altın (marka kararı, korunuyor) |
+| **Ekle (+)** | alt çubuğun ortasında, çubuğun 20 px üstüne taşar | 54 px | altın — **tek birincil eylem** |
+| Keşfet · Topluluk · Profil · İzlerim | alt çubuk (4 sekme) | 54 px hedef | nötr; seçili sekme altın hap |
+| Yürüyüş kaydı | kartın altında, sol 12 px | 46 px | nötr cam |
+| Atlas AI | kartın altında, sağ 12 px | 46 px | altın (marka kararı, korunuyor) |
 
-- Üçü de tek taban çizgisinde: `--mobile-fab-bottom` = 70 px + güvenli alan.
-  Sekme çubuğu 58 px olduğu için araya 12 px nefes giriyor (önceden 6 px'ti).
-- Keşif kartı bu satırın 12 px üstünde durur (132 px); harita kontrol
-  kapsülünün yedeği 200 px.
-- Gerekçe tasarım sisteminin kendi kuralı: *altın yalnız birincil eylemde ve
-  seçili durumda*. Üç altın daire bu kuralı bozuyordu.
-- Atlas AI paneli (mobil) artık eylem satırının üstünde açılıyor (126 px).
+- **"Kaydet" sekmesi kaldırıldı**; kayıtlara sağ üstteki üç çizgi menüsünden
+  (çekmece → *Kayıtlarım*) girilir. Çubuk beş eşit sekmeye sıkışmıyor,
+  dokunma hedefleri rahat, ortada birincil eylem için yer açıldı.
+- Yürüyüş kaydı ile Atlas AI **tek taban çizgisinde** (`--mobile-fab-bottom`
+  = 58 + 12 px) ve kartın 12 px altında; arada 16 px nefes var.
+- Altın artık yalnız birincil eylemde (ekle), Atlas AI markasında ve seçili
+  sekme hapında. Tasarım sisteminin kendi kuralı geri sağlandı.
+- Atlas AI paneli (mobil) eylem çiftinin üstünde açılır (126 px).
 - Ölçüler tek yerden yönetilir: `index.css` → `--mobile-fab-bottom`,
-  `--mobile-fab-gap`, `.mobile-walk-fab`, `.mobile-add-fab`, `.atlas-launcher`.
+  `--mobile-fab-gap`, `.mobile-tab-add`, `.mobile-walk-fab`, `.atlas-launcher`.
+- Kilit testleri güncellendi: `src/config/uiSurface.test.ts` → "ekle ayrı yüzen
+  düğme değil", "dört sekme / Kaydet yok", "kayıtlar menüden açılıyor",
+  "eylem çifti çubukla kart arasında".
 
 ---
 

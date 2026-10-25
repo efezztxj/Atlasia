@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { Activity, Bookmark, Compass, Crosshair, MapPin, MousePointerClick, Plus, UserRound, UsersRound, X } from "lucide-react";
+import { Activity, Compass, Crosshair, MapPin, MousePointerClick, Plus, UserRound, UsersRound, X } from "lucide-react";
 import type { BaseMapStyle, MapViewHandle } from "./components/MapView";
 import Header from "./components/Header";
 import Hero from "./components/Hero";
@@ -829,9 +829,9 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         hiddenOnMobile={panelOpen}
       />
 
-      {/* Alt eylem satırı — sol: yürüyüş kaydı (nötr cam), orta: ekle (altın
-          birincil), sağ: Atlas AI. Üçü tek taban çizgisinde; ölçüler
-          index.css → .mobile-walk-fab / .mobile-add-fab / .atlas-launcher. */}
+      {/* Harita üstü eylem çifti — sol: yürüyüş kaydı (nötr cam), sağ: Atlas AI.
+          Ekle artık alt çubuğun ortasında; ölçüler index.css →
+          .mobile-walk-fab / .mobile-tab-add / .atlas-launcher. */}
       {!trackRecorderOpen && <button
         type="button"
         onClick={() => setTrackRecorderOpen(true)}
@@ -1068,6 +1068,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         onCategory={handleCategory}
         onPick={handleDrawerPick}
         isMine={canManagePlace}
+        onRecords={openRecords}
       />
 
       {notificationsOpen && (
@@ -1145,11 +1146,40 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         />
       )}
 
+      {/* Mobil ana menü (2026-10-25 düzeni):
+          4 sekme + ortada çubuğun üstüne taşan tek birincil eylem (ekle).
+          "Kaydet" sekmesi kaldırıldı; kayıtlara sağ üstteki üç çizgi menüsünden
+          girilir, böylece çubuk beş eşit sekmeye sıkışmıyor. */}
       <nav aria-label="Mobil ana menü" className="mobile-tab-bar fixed inset-x-0 bottom-0 z-40 flex h-[calc(58px+env(safe-area-inset-bottom))] items-start justify-around border-t border-leaf/20 bg-[#041d17] pb-[env(safe-area-inset-bottom)] md:hidden">
         {[
           { label: "Keşfet", icon: Compass, action: mobileExplore },
-          { label: "Kaydet", icon: Bookmark, action: openRecords },
           { label: "Topluluk", icon: UsersRound, action: () => { closePanels(); setFeedOpen(true); } },
+        ].map(({ label, icon: Icon, action }) => {
+          const isActive = mobileTab === label;
+          return (
+            <button key={label} type="button" onClick={action} aria-current={isActive ? "page" : undefined} className="mobile-tab-item flex min-h-[54px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 text-[10px] text-mint">
+              <span className="mobile-tab-icon">
+                <Icon size={19} strokeWidth={isActive ? 2.3 : 1.8} />
+              </span>
+              {label}
+            </button>
+          );
+        })}
+
+        <button
+          type="button"
+          onClick={startAdd}
+          aria-label={addMode ? "Ekleme modundan çık" : "Haritaya yeni keşif ekle"}
+          aria-pressed={addMode}
+          title={addMode ? "Ekleme modundan çık" : "Yeni keşif"}
+          className="mobile-tab-add"
+        >
+          <span className="btn-gold-round">
+            <Plus className="size-[24px]" strokeWidth={2.4} />
+          </span>
+        </button>
+
+        {[
           { label: "Profil", icon: UserRound, action: openProfile },
           { label: "İzlerim", icon: MapPin, action: openMyPlaces },
         ].map(({ label, icon: Icon, action }) => {
@@ -1157,23 +1187,13 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
           return (
             <button key={label} type="button" onClick={action} aria-current={isActive ? "page" : undefined} className="mobile-tab-item flex min-h-[54px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 text-[10px] text-mint">
               <span className="mobile-tab-icon">
-                <Icon size={19} strokeWidth={isActive ? 2.3 : 1.8} fill={isActive && (label === "Kaydet" || label === "İzlerim") ? "currentColor" : "none"} />
+                <Icon size={19} strokeWidth={isActive ? 2.3 : 1.8} fill={isActive && label === "İzlerim" ? "currentColor" : "none"} />
               </span>
               {label}
             </button>
           );
         })}
       </nav>
-
-      {/* Ortadaki artı: pin bırak */}
-      <button
-        type="button"
-        onClick={startAdd}
-        aria-label="Haritaya iz bırak"
-        className={`mobile-add-fab btn-gold-round fixed bottom-[calc(70px+env(safe-area-inset-bottom))] left-1/2 z-30 grid size-[50px] -translate-x-1/2 place-items-center rounded-full text-[#10241A] transition active:scale-95 md:hidden${panelOpen ? " hidden" : ""}`}
-      >
-        <Plus className="size-[22px]" strokeWidth={2.4} />
-      </button>
 
       {toast && (
         <div

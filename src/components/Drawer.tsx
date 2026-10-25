@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Crosshair, Globe2, MapPin, Plus, Tags, X } from "lucide-react";
+import { Bookmark, Crosshair, Globe2, MapPin, Plus, Tags, X } from "lucide-react";
 import { CATEGORIES, CATEGORY_MAP } from "../data/categories";
 import type { CategoryId, Place } from "../types";
 import { cn } from "../utils/cn";
@@ -20,9 +20,11 @@ interface Props {
   onToggleTerrain: () => void;
   onOpenLocation: () => void;
   locationReady: boolean;
+  /** Kayıtlar (yerler, rotalar, yürüyüşler): alt sekmeden buraya taşındı. */
+  onRecords: () => void;
 }
 
-export default function Drawer({ open, onClose, places, category, onCategory, onPick, isMine, onAdd, showLabels, terrainEnabled, onToggleLabels, onToggleTerrain, onOpenLocation, locationReady }: Props) {
+export default function Drawer({ open, onClose, places, category, onCategory, onPick, isMine, onAdd, showLabels, terrainEnabled, onToggleLabels, onToggleTerrain, onOpenLocation, locationReady, onRecords }: Props) {
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -71,8 +73,17 @@ export default function Drawer({ open, onClose, places, category, onCategory, on
           </button>
         </div>
 
-        <button type="button" onClick={onAdd} className="btn-gold mx-6 mb-4 flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full text-[13px] font-bold text-ink md:hidden">
+        <button type="button" onClick={onAdd} className="btn-gold mx-6 mb-2 flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full text-[13px] font-bold text-ink md:hidden">
           <Plus className="size-4" />İz bırak
+        </button>
+
+        <button
+          type="button"
+          onClick={onRecords}
+          className="mx-6 mb-2 flex min-h-11 shrink-0 items-center justify-between gap-2 rounded-2xl border border-white/12 bg-white/[0.04] px-3.5 text-left text-[13px] font-semibold text-mint transition hover:border-sun/50 hover:text-sun md:hidden"
+        >
+          <span className="flex items-center gap-2"><Bookmark className="size-4 text-sun" />Kayıtlarım</span>
+          <span className="text-[11px] font-normal text-mint/60">Yer · rota · yürüyüş</span>
         </button>
 
         <button

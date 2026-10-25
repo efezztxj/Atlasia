@@ -656,17 +656,14 @@ html[data-theme="dark"] .text-leaf\/80 {
   .mobile-map-controls > span,
   .mobile-map-controls > div:nth-of-type(n + 5) { display: none; }
 
-  /* Alt eylem satırı (kullanıcı geri bildirimi 2026-10-25).
-     Önce üç daire farklı boy ve hizalarda yüzüyordu (yürüyüş kaydı merkezin
-     78 px solunda, ekle ortada, Atlas AI sağda) ve üçü de altındı; bölge
-     dağınık görünüyordu. Karar:
-       · üçü tek taban çizgisine (--mobile-fab-bottom) oturur,
-       · sol/orta/sağ 12 px ızgarasına yayılır (kartın inset-x-3'ü ile aynı),
-       · altın yalnız birincil eylemde (ekle) ve Atlas AI markasında kalır,
-         yürüyüş kaydı nötr cam daire olur (design system: "altın yalnız
-         birincil eylemde ve seçili durumda"),
-       · ekle 50 px ile ortada bir kademe daha belirgindir,
-       · kart bu satırın 12 px üstünde durur (132 px). */
+  /* Harita üstü eylem çifti (kullanıcı geri bildirimi 2026-10-25).
+     Önce üç daire farklı boy ve hizalarda yüzüyordu ve "ekle" de bunların
+     arasında duruyordu; ardından "ekle" alt çubuğun ortasına taşındı
+     (.mobile-tab-add). Kalan ikisi tek taban çizgisine oturur:
+       · sol: yürüyüş kaydı (nötr cam), sağ: Atlas AI — aynı boy, aynı çizgi,
+       · --mobile-fab-gap = 12 px, kartın inset-x-3'ü ile aynı hizada,
+       · kart bu satırın üstünde durur (132 px), arada 16 px nefes kalır,
+       · sekme çubuğu ile çizgi arasında 12 px boşluk var (58 → 70 px). */
   .mobile-walk-fab {
     position: fixed;
     left: var(--mobile-fab-gap);
@@ -692,12 +689,39 @@ html[data-theme="dark"] .text-leaf\/80 {
   .atlas-launcher-label { display: none; }
   .atlas-launcher.atlas-dock-expanded { bottom: var(--mobile-fab-bottom) !important; }
 
-  .mobile-add-fab {
-    bottom: var(--mobile-fab-bottom);
-    width: 50px;
-    height: 50px;
+  /* Çubuğun ortasındaki tek birincil eylem: 54 px altın daire çubuğun üst
+     kenarından 20 px taşar (Material 3 / Instagram deseni). Sekme sayısı
+     4'e indiği için dokunma hedefleri rahat; çubuk yüksekliği değişmedi. */
+  .mobile-tab-add {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    flex: 0 0 auto;
+    width: 66px;
+    min-height: 54px;
+    margin-top: -20px;
+    padding: 0;
+    border: 0;
+    background: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
-  .mobile-add-fab svg { width: 22px; height: 22px; }
+  .mobile-tab-add > span {
+    display: grid;
+    place-items: center;
+    width: 54px;
+    height: 54px;
+    border-radius: 9999px;
+    color: #10241a;
+    transition: transform .16s ease;
+  }
+  .mobile-tab-add:active > span { transform: scale(.94); }
+  .mobile-tab-add[aria-pressed="true"] > span {
+    box-shadow:
+      0 0 0 2px rgba(255, 244, 214, .9),
+      0 10px 26px rgba(234, 181, 79, .45);
+  }
 
   /* Alt çubuk: nötr hairline bar (Instagram / Material 3 hap göstergesi).
      Karar (İŞ 2a/2b): altın süs ve backdrop-filter kaldırıldı; bar zaten
@@ -803,7 +827,6 @@ html[data-theme="dark"] .text-leaf\/80 {
   }
   .atlas-launcher,
   .atlas-launcher.atlas-dock-expanded,
-  .mobile-add-fab,
   .mobile-walk-fab {
     bottom: var(--mobile-fab-bottom);
   }
