@@ -156,6 +156,29 @@ describe("küçük ekran yerleşimi (≈360×640)", () => {
   });
 });
 
+describe("keşif kartı kalıcılığı", () => {
+  const dockLine = /const dockVisible = ([^;]+);/.exec(app)?.[1] ?? "";
+
+  it("profil, izlerim ve topluluk açıkken keşif kartı gizlenmiyor", () => {
+    // Kullanıcı isteği 2026-10-25: sekmeye basınca kart kaybolmasın.
+    for (const flag of ["profileOpen", "myPlacesOpen", "feedOpen"]) {
+      expect(dockLine).not.toContain(flag);
+    }
+  });
+
+  it("yalnız ekranı bütünüyle kaplayan katmanlar kartı gizliyor", () => {
+    for (const flag of ["recordsOpen", "storyPlace", "atlasOpen", "settingsOpen", "drawerOpen"]) {
+      expect(dockLine).toContain(flag);
+    }
+  });
+
+  it("masaüstünde sağdan açılan profil paneli kartı örtmüyor", () => {
+    expect(app).toContain("shiftedLeft={profileOpen}");
+    expect(bottomPanel).toContain("shiftedLeft");
+    expect(bottomPanel).toContain("lg:pr-[540px]");
+  });
+});
+
 describe("masaüstü harita kontrolleri", () => {
   it("kapsül sağ kenara yaslı dikey ray içinde durur, alt köşeye geri dönmez", () => {
     expect(mapControls).toContain("md:top-[196px] md:right-0 md:bottom-[96px]");

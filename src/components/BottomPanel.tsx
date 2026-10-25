@@ -35,6 +35,9 @@ interface Props {
   onDelete: (p: Place) => void | Promise<boolean>;
   onAdd: () => void;
   /** Sol alttaki akış penceresi açıkken panel sağa kayar */
+  /** Sağdan açılan panel (profil) kartı örtmesin: kart sola kayar. */
+  shiftedLeft?: boolean;
+  /** Soldan açılan panel (topluluk, lg) kartı örtmesin: kart sağa kayar. */
   shifted: boolean;
   onOpenFeed: () => void;
   /** Konum izni verildiyse metre cinsinden doğruluk */
@@ -63,6 +66,7 @@ export default function BottomPanel({
   canDelete,
   onDelete,
   onAdd,
+  shiftedLeft,
   shifted,
   onOpenFeed,
   accuracy,
@@ -112,6 +116,7 @@ export default function BottomPanel({
         className={cn(
           "pointer-events-none absolute inset-x-0 bottom-[calc(70px+env(safe-area-inset-bottom))] z-20 flex justify-center px-3 pb-3 transition-[padding] duration-500 md:bottom-0 md:pb-7",
           shifted && "lg:pl-[420px]",
+          shiftedLeft && "lg:pr-[540px]",
         )}
       >
         <div className="w-full max-w-[920px]">
@@ -180,6 +185,7 @@ export default function BottomPanel({
       className={cn(
         "pointer-events-none absolute inset-x-0 bottom-[calc(70px+env(safe-area-inset-bottom))] z-20 flex justify-center px-3 pb-3 transition-[padding] duration-500 md:bottom-0 md:pb-7",
         shifted && "lg:pl-[420px]",
+        shiftedLeft && "lg:pr-[540px]",
       )}
     >
       <div className="w-full max-w-[920px]">

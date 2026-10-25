@@ -674,7 +674,12 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   }, []);
 
   const heroHidden = view.zoom > 3.4;
-  const dockVisible = !recordsOpen && !profileOpen && !myPlacesOpen && !storyPlace && !atlasOpen && !settingsOpen && !drawerOpen && !feedOpen;
+  // Keşif kartı yalnız ekranı bütünüyle kaplayan katmanlarda gizlenir.
+  // Profil / İzlerim / Topluluk açıldığında kart yerinde kalır (kullanıcı
+  // isteği 2026-10-25): panel kapanınca "kart nerede?" boşluğu oluşmuyor,
+  // kartın genişleme durumu ve sırada bekleyen öneri korunuyor. Masaüstünde
+  // sağdan açılan panel kartı örtmesin diye kart sola kaydırılır (shifted).
+  const dockVisible = !recordsOpen && !storyPlace && !atlasOpen && !settingsOpen && !drawerOpen;
   useEffect(() => {
     if (!dockVisible) setDiscoverySpace(0);
   }, [dockVisible]);
@@ -950,6 +955,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         onDelete={handleDelete}
         onAdd={startAdd}
         shifted={feedOpen}
+        shiftedLeft={profileOpen}
         onOpenFeed={() => { closePanels(); setFeedOpen(true); }}
         accuracy={precise?.accuracy ?? null}
         locating={geo.status === "locating" || geo.status === "refining"}

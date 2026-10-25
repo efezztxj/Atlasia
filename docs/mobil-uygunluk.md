@@ -150,6 +150,20 @@ Yeni düzen (yalnız mobil; masaüstü değişmedi) — **yukarıdan aşağıya*
   değil", "dört sekme / Kaydet yok", "kayıtlar menüden açılıyor",
   **"alt yığın sırası: çubuk → keşif kartı → eylem çifti"**.
 
+### 3.6 Keşif kartı sekmeye basınca kaybolmuyor
+
+Profil, İzlerim veya Topluluk açıldığında keşif kartı tamamen kaldırılıyordu;
+panel kapanınca alt bölgede boşluk kalıyor, kartın genişleme durumu ve sırada
+bekleyen öneri sıfırlanıyordu.
+
+- `dockVisible` artık yalnız **ekranı bütünüyle kaplayan** katmanlarda false:
+  kayıtlar, hikâye, Atlas AI, ayarlar, çekmece. Profil / İzlerim / Topluluk
+  kartı gizlemiyor.
+- Masaüstünde sağdan açılan profil paneli kartı örtmesin diye kart sola kayar
+  (`shiftedLeft` → `lg:pr-[540px]`); topluluk paneli solda olduğu için kart
+  sağa kayar (`shifted` → `lg:pl-[420px]`).
+- Kilit testi: `uiSurface.test.ts` → "keşif kartı kalıcılığı" (üç test).
+
 ---
 
 ## 4. Değişmeyen kararlar
