@@ -592,7 +592,8 @@ export default function MapView({
     });
     mapRef.current = map;
 
-    // Hava katmanı ayrı parçada; yalnız ilk açılışta yüklenir (mapView bütçesi).
+    // Hava katmanı (Windy benzeri rüzgâr akışı) ayrı parçada; yalnız ilk
+    // açılışta yüklenir (mapView bütçesi). Pinler tuvalin üstünde kalır.
     let weatherWanted = false;
     let weatherDisposed = false;
     let weatherLayer: WeatherLayerHandle | null = null;
@@ -602,7 +603,7 @@ export default function MapView({
       if (!weatherWanted) return;
       void import("../utils/mapWeather").then(({ createWeatherLayer }) => {
         if (weatherDisposed) return;
-        weatherLayer ??= createWeatherLayer(map, maplibregl.Marker);
+        weatherLayer ??= createWeatherLayer(map);
         weatherLayer.setEnabled(weatherWanted);
       }, () => window.dispatchEvent(new CustomEvent("atlasia:weather-unavailable")));
     };

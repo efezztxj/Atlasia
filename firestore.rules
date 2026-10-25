@@ -11,6 +11,18 @@ service cloud.firestore {
       return request.query.limit != null && request.query.limit <= maxItems;
     }
 
+    /**
+     * Moderatör erişimi. `moderators/{uid}` belgesi istemci tarafından
+     * YAZILAMAZ (aşağıdaki blok: create/update/delete = false); yalnız
+     * Firebase Console'da elle oluşturulur. `exists()` kural değerlendirmesinde
+     * okuma iznine tabi değildir, bu yüzden moderatör listesi istemciye
+     * açılmadan kontrol edilebilir.
+     */
+    function isModerator() {
+      return signedIn()
+             && exists(/databases/$(database)/documents/moderators/$(request.auth.uid));
+    }
+
     function stringBetween(value, minSize, maxSize) {
       return value is string
              && value.size() >= minSize
@@ -291,6 +303,21 @@ service cloud.firestore {
              && data.reason in ['spam', 'harassment', 'hate', 'misinfo', 'privacy', 'other']
              && (!('details' in data) || stringBetween(data.details, 1, 1000))
              && data.createdAt == request.time;
+    }
+
+    /**
+     * Moderatörün rapor üzerinde değiştirebileceği tek yüzey: durum, not ve
+     * inceleme izleri. İçerik alanları (reporterUid, targetId, targetType,
+     * reason, details) DEĞİŞTİRİLEMEZ; silme moderatöre kapalıdır.
+     */
+    function moderatorReportUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['status', 'resolution', 'reviewedAt', 'reviewerUid'])
+             && request.resource.data.status in ['open', 'reviewed', 'actioned']
+             && request.resource.data.reviewedAt == request.time
+             && request.resource.data.reviewerUid == request.auth.uid
+             && (!('resolution' in request.resource.data)
+                 || stringBetween(request.resource.data.resolution, 1, 500));
     }
 
     function validBlock(data) {
@@ -748,12 +775,25 @@ service cloud.firestore {
     }
 
     match /reports/{reportId} {
-      allow get: if signedIn() && resource.data.reporterUid == request.auth.uid;
+      // Raporlayan kendi raporunu görür; moderatör kuyruğu okur.
+      allow get: if signedIn()
+                    && (resource.data.reporterUid == request.auth.uid || isModerator());
       allow list: if signedIn() && boundedList(50)
-                    && resource.data.reporterUid == request.auth.uid;
+                    && (resource.data.reporterUid == request.auth.uid || isModerator());
       allow create: if signedIn() && validReport(request.resource.data);
-      allow update: if false;
+      // İnceleme sonucu YALNIZ moderatör tarafından ve sınırlı alanlarla yazılır.
+      allow update: if isModerator() && moderatorReportUpdate();
       allow delete: if signedIn() && resource.data.reporterUid == request.auth.uid;
+    }
+
+    /**
+     * Moderatör listesi. İstemci yalnız KENDİ kaydını okuyabilir (arayüz
+     * "moderatör müyüm?" sorusunu sorar); liste ve yazma tamamen kapalıdır.
+     * Belge oluşturma Firebase Console'da elle yapılır.
+     */
+    match /moderators/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow list, create, update, delete: if false;
     }
 
     match /blocks/{blockId} {

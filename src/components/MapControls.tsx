@@ -1,5 +1,4 @@
-import { Activity, CloudSun, Globe2, Locate, RotateCcw, Sparkles, Tags, ZoomIn, ZoomOut } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Activity, CloudSun, Globe2, Layers, Locate, RotateCcw, Sparkles, Tags, ZoomIn, ZoomOut } from "lucide-react";
 import { cn } from "../utils/cn";
 
 interface Props {
@@ -11,8 +10,13 @@ interface Props {
   onToggleTerrain: () => void;
   labels: boolean;
   terrain: boolean;
+  weather: boolean;
+  onToggleWeather: () => void;
   onToggleTrackRecorder: () => void;
   trackRecorderOpen: boolean;
+  /** Mobilde tek "Katmanlar" düğmesi: yer adları, 3B arazi ve hava katmanı orada. */
+  onOpenLayers: () => void;
+  layersOpen: boolean;
   onToggleAtlas: () => void;
   atlasOpen: boolean;
   /**
@@ -31,6 +35,7 @@ function RoundBtn({
   pressed,
   expanded,
   controls,
+  className,
 }: {
   children: React.ReactNode;
   label: string;
@@ -39,9 +44,11 @@ function RoundBtn({
   pressed?: boolean;
   expanded?: boolean;
   controls?: string;
+  /** Görünürlük sınıfları (ör. yalnız mobil). */
+  className?: string;
 }) {
   return (
-    <div className="group relative">
+    <div className={cn("group relative", className)}>
       <button
         type="button"
         onClick={onClick}
@@ -77,24 +84,17 @@ export default function MapControls({
   onToggleTerrain,
   labels,
   terrain,
+  weather,
+  onToggleWeather,
   onToggleTrackRecorder,
   trackRecorderOpen,
+  onOpenLayers,
+  layersOpen,
   onToggleAtlas,
   atlasOpen,
   hiddenOnMobile,
 }: Props) {
-  const [weather, setWeather] = useState(false);
-  useEffect(() => {
-    // Hava katmanı parçası yüklenemezse (ağ kopuk) düğme kapalıya döner.
-    const unavailable = () => setWeather(false);
-    window.addEventListener("atlasia:weather-unavailable", unavailable);
-    return () => window.removeEventListener("atlasia:weather-unavailable", unavailable);
-  }, []);
-  const toggleWeather = () => {
-    const next = !weather;
-    setWeather(next);
-    window.dispatchEvent(new CustomEvent("atlasia:weather-toggle", { detail: next }));
-  };
+  // Hava katmanı durumu App'te tutulur (Katmanlar sayfası ile tek kaynak).
   return (
     <div
       role="toolbar"
@@ -118,21 +118,34 @@ export default function MapControls({
       <RoundBtn label="Konumuma git" onClick={onLocate}>
         <Locate className="size-[18px]" />
       </RoundBtn>
-      <RoundBtn label="Yer adları" onClick={onToggleLabels} active={labels} pressed={labels}>
+      {/* Mobil: tek Katmanlar düğmesi (yer adları, 3B arazi, hava katmanı). */}
+      <RoundBtn
+        label={layersOpen ? "Katmanlar sayfasını kapat" : "Katmanlar sayfasını aç"}
+        onClick={onOpenLayers}
+        active={layersOpen}
+        pressed={layersOpen}
+        expanded={layersOpen}
+        controls="map-layers"
+        className="md:hidden"
+      >
+        <Layers className="size-[18px]" />
+      </RoundBtn>
+      <RoundBtn label="Yer adları" onClick={onToggleLabels} active={labels} pressed={labels} className="max-md:hidden">
         <Tags className="size-[18px]" />
       </RoundBtn>
-      <RoundBtn label="3B arazi" onClick={onToggleTerrain} active={terrain} pressed={terrain}>
+      <RoundBtn label="3B arazi" onClick={onToggleTerrain} active={terrain} pressed={terrain} className="max-md:hidden">
         <Globe2 className="size-[18px]" />
       </RoundBtn>
-      <RoundBtn label="Hava katmanı" onClick={toggleWeather} active={weather} pressed={weather}>
+      <RoundBtn label="Hava katmanı" onClick={onToggleWeather} active={weather} pressed={weather} className="max-md:hidden">
         <CloudSun className="size-[18px]" />
       </RoundBtn>
-      <span aria-hidden className="mx-auto my-0.5 h-px w-5 bg-white/15" />
+      <span aria-hidden className="mx-auto my-0.5 h-px w-5 bg-white/15 max-md:hidden" />
       <RoundBtn
         label={trackRecorderOpen ? "Yürüyüş kaydını kapat" : "Yürüyüş kaydını aç"}
         onClick={onToggleTrackRecorder}
         active={trackRecorderOpen}
         pressed={trackRecorderOpen}
+        className="max-md:hidden"
       >
         <Activity className="size-[18px]" />
       </RoundBtn>
@@ -143,6 +156,7 @@ export default function MapControls({
         pressed={atlasOpen}
         expanded={atlasOpen}
         controls="atlas-assistant"
+        className="max-md:hidden"
       >
         <Sparkles className="size-[18px]" />
       </RoundBtn>

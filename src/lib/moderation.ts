@@ -39,6 +39,13 @@ export interface ReportInput {
   details?: string;
 }
 
+/**
+ * Rapor durumu. Yeni raporlar `open` yazılır; `status` alanı olmayan eski
+ * belgeler de açık sayılır (geriye dönük uyum, `normalizeReport`).
+ */
+export const REPORT_STATUSES = ["open", "reviewed", "actioned"] as const;
+export type ReportStatus = (typeof REPORT_STATUSES)[number];
+
 export interface Report {
   id: string;
   reporterUid: string;
@@ -48,6 +55,11 @@ export interface Report {
   reason: ReportReason;
   details?: string;
   createdAt: number;
+  /** Moderatör incelemesi; alan yoksa "open". */
+  status: ReportStatus;
+  /** Moderatör notu (yalnız kuyrukta görünür). */
+  resolution?: string;
+  reviewedAt?: number;
 }
 
 const REPORT_LIMIT = 50;
@@ -134,6 +146,9 @@ export async function createReport(input: ReportValidationInput, uid: string): P
 }
 
 export function normalizeReport(id: string, raw: Record<string, unknown>): Report {
+  const status = typeof raw.status === "string" && (REPORT_STATUSES as readonly string[]).includes(raw.status)
+    ? (raw.status as ReportStatus)
+    : "open";
   return {
     id,
     reporterUid: typeof raw.reporterUid === "string" ? raw.reporterUid : "",
@@ -143,6 +158,9 @@ export function normalizeReport(id: string, raw: Record<string, unknown>): Repor
     reason: (raw.reason as ReportReason) ?? "other",
     details: typeof raw.details === "string" ? raw.details : undefined,
     createdAt: toMillis(raw.createdAt),
+    status,
+    resolution: typeof raw.resolution === "string" ? raw.resolution : undefined,
+    reviewedAt: raw.reviewedAt === undefined ? undefined : toMillis(raw.reviewedAt),
   };
 }
 
@@ -163,6 +181,62 @@ export function subscribeMyReports(
     (snap) => onChange(snap.docs.map((d) => normalizeReport(d.id, d.data()))),
     onError,
   );
+}
+
+/**
+ * Moderatör erişimi.
+ *
+ * Kural: `moderators/{uid}` belgesini yalnız kullanıcı **kendisi** okuyabilir
+ * (`request.auth.uid == uid`), yazma tamamen kapalıdır; belge Firebase
+ * Console'da elle oluşturulur. Kural dağıtılmamışsa okuma reddedilir ve bu
+ * fonksiyon `false` döner (fail-closed): kuyruk arayüzü görünmez.
+ */
+export async function fetchModeratorAccess(uid: string): Promise<boolean> {
+  if (!db || !uid.trim()) return false;
+  try {
+    const snap = await getDoc(doc(db, "moderators", uid.trim()));
+    return snap.exists();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Moderatör kuyruğu: en yeni 50 rapor. Durum süzgeci bilinçli olarak
+ * istemcide uygulanır; `status` alanı olmayan eski belgeler de açık sayılır
+ * (sunucu tarafı `where("status","==","open")` onları dışarıda bırakırdı).
+ */
+export function subscribeModerationQueue(
+  onChange: (reports: Report[]) => void,
+  onError?: (error: Error) => void,
+): () => void {
+  if (!db) return () => {};
+  const q = query(collection(db, "reports"), orderBy("createdAt", "desc"), limit(REPORT_LIMIT));
+  return onSnapshot(q, (snap) => onChange(snap.docs.map((d) => normalizeReport(d.id, d.data()))), onError);
+}
+
+/** İnceleme sonucunu yazar. Kural yalnız bu dört alanı ve `open|reviewed|actioned` kabul eder. */
+export async function setReportStatus(
+  reportId: string,
+  status: ReportStatus,
+  reviewerUid: string,
+  resolution?: string,
+): Promise<void> {
+  if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
+  if (!(REPORT_STATUSES as readonly string[]).includes(status)) {
+    throw dataError("report/status-invalid", "Rapor durumu geçersiz.");
+  }
+  const cleanId = reportId.trim();
+  const cleanReviewer = reviewerUid.trim();
+  if (!cleanId || !cleanReviewer) throw dataError("report/id-invalid", "Rapor kimliği geçersiz.");
+  const payload: Record<string, unknown> = {
+    status,
+    reviewedAt: serverTimestamp(),
+    reviewerUid: cleanReviewer,
+  };
+  const note = resolution?.trim();
+  if (note) payload.resolution = note.slice(0, 500);
+  await updateDoc(doc(db, "reports", cleanId), payload);
 }
 
 /* ─────────────── Engelleme ─────────────── */

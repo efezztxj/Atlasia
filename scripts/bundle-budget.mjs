@@ -12,10 +12,21 @@ const DEFAULT_DIST = fileURLToPath(new URL("../dist", import.meta.url));
  * başlangıç grafiğine sessizce giren yeni ağır bağımlılıkları yakalamaktır.
  * Bilinçli bir büyümede eşik, yeni ölçüm ve gerekçe teslimata yazılarak
  * güncellenir; yalnız testi yeşil yapmak için gevşetilmez.
+ *
+ * 2026-10-25 güncellemesi (K-10 kararı, maintainer onayı "gerekeni yap"):
+ * ölçülen değerler JS 894.809 B, CSS 34.546 B gzip. Artış bilinçli iki
+ * özellikten geliyor ve hiçbiri yeni ağır bağımlılık değil:
+ *   +2.223 B  utils/mapWeather.ts  Windy tarzı renk alanı + parçacık akışı
+ *   +1.699 B  components/MapLayersSheet.tsx  "Katmanlar" sayfası
+ *   +2.696 B  components/ReportsPanel.tsx  raporlarım + moderatör kuyruğu
+ *   +1.284 B  App.tsx bağlantıları (durum, olaylar, panel açma)
+ * Eşikler, eski payla aynı oranda (~%0,35) boşluk bırakacak şekilde
+ * yükseltildi: 888.000 → 898.000 ve 34.500 → 34.800. Yeni bir ağır
+ * bağımlılık eklendiğinde bu kapı yine kırmızıya döner.
  */
 export const BUNDLE_BUDGET = Object.freeze({
-  totalJsGzipBytes: 888_000,
-  totalCssGzipBytes: 34_500,
+  totalJsGzipBytes: 898_000,
+  totalCssGzipBytes: 34_800,
   initialGzipBytes: 439_000,
   categoryGzipBytes: Object.freeze({
     entry: 174_000,

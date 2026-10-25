@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   REPORT_REASONS,
+  REPORT_STATUSES,
   REPORT_TARGET_TYPES,
   blockIdFor,
+  normalizeReport,
   validateReportInput,
 } from "./moderation";
 
@@ -39,5 +41,40 @@ describe("moderasyon sözleşmesi", () => {
     expect(blockIdFor("member-a", "member-b")).toBe("member-a_member-b");
     expect(blockIdFor(" member-a ", "member-b")).toBe(blockIdFor("member-a", "member-b"));
     expect(blockIdFor("member-a", "member-a")).toBe("member-a_member-a");
+  });
+});
+
+describe("moderatör kuyruğu sözleşmesi", () => {
+  it("durum alanı olmayan eski rapor 'open' sayılır", () => {
+    const legacy = normalizeReport("r1", {
+      reporterUid: "member",
+      targetType: "post",
+      targetId: "post-1",
+      reason: "spam",
+      createdAt: 1_700_000_000_000,
+    });
+    expect(legacy.status).toBe("open");
+    expect(legacy.resolution).toBeUndefined();
+  });
+
+  it("bilinmeyen durum değeri açık kabul edilir (fail-closed)", () => {
+    const odd = normalizeReport("r2", { reporterUid: "m", status: "approved" });
+    expect(odd.status).toBe("open");
+  });
+
+  it("geçerli durum, not ve inceleme zamanı okunur", () => {
+    const report = normalizeReport("r3", {
+      reporterUid: "m",
+      status: "actioned",
+      resolution: "İçerik kaldırıldı.",
+      reviewedAt: 1_700_000_000_000,
+    });
+    expect(report.status).toBe("actioned");
+    expect(report.resolution).toBe("İçerik kaldırıldı.");
+    expect(report.reviewedAt).toBe(1_700_000_000_000);
+  });
+
+  it("durum listesi kapalı ve üç değerden oluşur", () => {
+    expect(REPORT_STATUSES).toEqual(["open", "reviewed", "actioned"]);
   });
 });

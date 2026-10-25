@@ -53,15 +53,15 @@ Kısaca: **otomatik kapılar yeşil.** Aşağıdaki bulguların hiçbiri tip/lin
 | --- | --- | --- |
 | K-01 hayalet rota çizgisi | O | **Düzeltildi** (§9.1) |
 | K-02 hikâye duraklatma sıfırlaması | O | **Düzeltildi** + test |
-| K-03 mobilde hava katmanı erişilemez | O | **Açık** — ürün kararı (yer adları/3B arazi Ayarlar+Drawer'da var) |
+| K-03 mobilde hava katmanı erişilemez | O | **Düzeltildi** (2026-10-25) — "Katmanlar" sayfası (§10.1) |
 | K-04 onaysız gönderi/hikâye silme | D | **Düzeltildi** |
 | K-05 sessiz paylaşım hatası | D | **Düzeltildi** |
 | K-06 bildirimde ham enum | D | **Düzeltildi** + test |
-| K-07 tutulamayacak moderasyon sözü | D | **Kısmen** — metin düzeltildi, işlev AY-03'te açık |
+| K-07 tutulamayacak moderasyon sözü | D | **Kısmen** — metin düzeltildi; inceleme durumu artık görünür (§10.2), sunucu yazımı yok |
 | K-08 temizlenmeyen zamanlayıcı | D | **Düzeltildi** + test |
 | K-09 logo `href="#"` | D | **Düzeltildi** |
-| K-10 bütçe payı | O | **Açık** — karar gerekiyor (düzeltmeler sonrası pay 1.343 B) |
-| K-11 UI katmanı test açığı | O | **Kısmen** — 3 bulgu testle kilitlendi, 42 dosya açık |
+| K-10 bütçe payı | O | **Karar verildi** (2026-10-25) — eşik ölçümle birlikte yükseltildi (§10.4) |
+| K-11 UI katmanı test açığı | O | **Kısmen** — 7 bulgu testle kilitlendi, 42 dosya açık (§10.5) |
 | K-12 GPS `timeout` yok | D | **Düzeltildi** + mevcut test güncellendi |
 | K-13 yalnız `navigator.onLine` | D | **Düzeltildi** |
 | K-14 cihaz hesabında bulut dinleyicisi | D | **Düzeltildi** |
@@ -289,3 +289,67 @@ K-01 için bileşen testi yazılmadı: `MapView` MapLibre/WebGL gerektiriyor, bu
 | `npm run test:rules:emulator` | **Çalıştırılamadı** — Java 21 yok (CI'ya bağlı) |
 
 Kurallar (`firestore.rules`), indeksler, CSP (`public/_headers`) ve service worker (`public/sw.js`) bu turda **değişmedi**; değişiklikler yalnız istemci davranışı ve iki bileşen metni düzeyinde.
+
+---
+
+## 10. Ek · 2026-10-25 — hava katmanı + moderasyon arayüzü
+
+Ürün talebi: (a) hava katmanı Windy gibi **dolu renk alanı + akan parçacık** olarak çizilsin ve telefonda bir **"Katmanlar" sayfası** içinde yaşasın; (b) raporlar için **moderasyon arayüzü** olsun. İkisi birlikte teslim edildi.
+
+### 10.1 Hava katmanı (K-03 kapandı)
+
+- `src/utils/geoGrid.ts` — harita görünümünden örnekleme ızgarası (`bounds → rows/columns → lat/lng`), saf fonksiyon.
+- `src/utils/windField.ts` — Open-Meteo çok noktalı rüzgâr alanı: 4×6 ızgara, 10 dakikalık önbellek, 24 girdilik tekilleştirme, hata/boş ayrımı. Ağ hedefi değişmedi (`api.open-meteo.com`, CSP'de zaten var).
+- `src/utils/mapWeather.ts` — Windy tarzı çizim: sıcaklık için **dolu renk alanı** (düşük çözünürlüklü tuval, harita üzerine ölçeklenir), rüzgâr için **akan parçacıklar** (hız → piksel/sn), `prefers-reduced-motion` açıkken statik oklar, veri yokken **uydurma vektör yok**.
+- `src/components/MapLayersSheet.tsx` — "Katmanlar" sayfası: yer adları, 3B arazi, hava katmanı anahtarları + km/sa renk ölçeği + "Görünümü sıfırla". Telefonda `MapControls` içinden açılır; masaüstü yerleşimi (unvan solda, arama sağda, Atlas AI sağ altta) **değişmedi**.
+- Sözleşme: `createWeatherLayer(map) → { setEnabled, destroy }`; katman kendi durumunu `atlasia:weather-status` (`loading|ready|empty|error`) ile bildirir, `App` `atlasia:weather-toggle` yayınlar.
+- `src/index.css`: mobilde denetimleri gizleyen `nth-of-type` kuralı **kaldırıldı** (artık gizleme `max-md:hidden` ile bileşen düzeyinde); pinlerin tuval altında kalmaması için `.maplibregl-marker { z-index: 3 }`.
+
+### 10.2 Moderasyon arayüzü (K-07 kısmen)
+
+- `src/components/ReportsPanel.tsx` — iki sekme: **Raporlarım** (herkes; kendi raporları + durum) ve **Kuyruk · N** (yalnız moderatör). Durumlar `İnceleniyor / İncelendi / İşlem yapıldı`; moderatör `İncelendi`, `İşlem yapıldı` ve ≤500 karakter **not** yazabilir.
+- `src/lib/moderation.ts` — `fetchModeratorAccess`, `subscribeModerationQueue` (en yeni 50 kayıt), `setReportStatus` (yalnız `status/reviewedAt/reviewerUid/resolution` yazar).
+- `src/components/SettingsPanel.tsx` — "Moderasyon" bölümü, `Raporlarım ve inceleme durumu` girişi (yalnız bulut hesabında görünür).
+- **Kural değişikliği (onay konusu):** `firestore.rules` içine `isModerator()` (yalnız `moderators/{uid}` belgesinin varlığına bakar), `moderatorReportUpdate()` (değişebilen alanlar `status/resolution/reviewedAt/reviewerUid` ile sınırlı, `reviewedAt == request.time`, `reviewerUid == request.auth.uid`) ve `/moderators/{uid}` bloğu (yalnız kendi kaydını **okur**; list/create/update/delete kapalı — belge Firebase Console'da elle oluşturulur) eklendi. `/reports` listesi moderatöre açıldı ama `boundedList(50)` sınırı korundu; raporlayanın kendi raporunu silme hakkı aynı kaldı.
+- **Fail-closed:** kurallar dağıtılmadıysa moderatör okuması reddedilir; arayüz kuyruk sekmesini göstermez ve hata metnini dürüstçe yazar. Yani özellik, kurallar yayınlanmadan hiçbir kullanıcıya yetki vermez.
+
+### 10.3 Eklenen testler
+
+| Dosya | Test | Kilitlediği |
+| --- | --- | --- |
+| `src/components/MapLayersSheet.test.ts` | 5 | K-03: üç anahtar, sıfırla, veri yokken dürüst mesaj |
+| `src/components/ReportsPanel.test.ts` | 5 | K-07: sekme kapısı, durum yazımı, not, hata gösterimi |
+| `src/lib/moderation.test.ts` (güncellendi) | +4 | eski/bilinmeyen durum `open` sayılır (fail-closed) |
+| `tests/firestore.rules.test.ts` (güncellendi) | +2 | moderatör belgesi istemciden yazılamaz; kuyruk yalnız moderatöre açık, yazım alanları sınırlı |
+| `src/utils/geoGrid.test.ts`, `windField.test.ts`, `mapWeather.test.ts` | 6+10+8 | ızgara, önbellek/tekilleştirme, renk ölçeği, parçacık ilerlemesi |
+
+### 10.4 K-10 kararı (bütçe)
+
+Maintainer kararı: **"gerekeni yap"** → eşik bir kez, ölçüm ve gerekçeyle yükseltildi. `scripts/bundle-budget.mjs` yorumuna da yazıldı.
+
+| Ölçüm | Önce (HEAD) | Şimdi | Yeni eşik |
+| --- | --- | --- | --- |
+| Toplam JS (gzip) | 886.659 | **894.809** | 898.000 |
+| Toplam CSS (gzip) | 34.451 | **34.546** | 34.800 |
+| İlk HTML seti (gzip) | 400.992 | 402.559 | 439.000 (değişmedi) |
+
+Artışın tamamı iki talep edilen özelliğin kodu; pakete yeni ağır bağımlılık girmedi (tarama: paket içinde atıl dosya yok). Marj eskisiyle aynı oranda (~%0,35) bırakıldı.
+
+### 10.5 K-11 durumu
+
+Bugüne kadar testle kilitlenen bulgular: K-02, K-06, K-07, K-08, K-12 + yeni K-03/K-07 arayüzleri. Testsiz kaynak dosya sayısı **45 → 42**; kalanların çoğu MapLibre/WebGL gerektiren harita bileşenleri ve veri fixture'ları. Tam kapsama hâlâ ayrı bir iş.
+
+### 10.6 Kapılar (2026-10-25, yerel)
+
+| Kapı | Sonuç |
+| --- | --- |
+| `npm run typecheck` | PASS (0 hata) |
+| `npm run lint` | PASS (0 uyarı) |
+| `npm run test:run` | PASS — **132 dosya, 985 test** |
+| `npm run build` (postbuild bütçe + SW kabuğu) | PASS — JS 894.809/898.000, CSS 34.546/34.800, SW 30/30 |
+| `npm run test:scripts` | PASS — 8/0 |
+| `npm run test:rules-inventory` | PASS — 8/0 (30 blok, 4 iç içe) |
+| `npm run rules:inventory` | Çalıştı; `/moderators/{uid}` kapalı, `/reports` güncel |
+| `npm run test:rules:emulator` | **Çalıştırılamadı** — Java 21 yok; yeni kural testleri CI'da koşacak |
+
+Açık riskler: (1) kurallar **dağıtılmadan** moderasyon çalışmaz — yayın adımı ayrı bir onay; (2) MapLibre çizimi bu ortamda görsel olarak doğrulanamıyor, cihazda bakılmalı; (3) kuyruk sorgusu istemci tarafında durum filtresiyle çalışır, 50 kayıttan eski bildirimler görünmez.

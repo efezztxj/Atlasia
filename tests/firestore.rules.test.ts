@@ -909,6 +909,85 @@ describe("Firestore güvenlik kuralları", () => {
     await assertSucceeds(deleteDoc(doc(memberDb, "reports/report-1")));
   });
 
+  /**
+   * Moderatör kuyruğu (denetim K-07 / AY-03).
+   * `moderators/{uid}` belgesi yalnız Console'da oluşturulur; istemci onu
+   * yazamaz, yalnız kendi kaydını okuyabilir. Rapor üzerinde yalnız durum,
+   * not ve inceleme izleri değişebilir.
+   */
+  it("moderatör belgesi istemciden yazılamaz; yalnız kendi kaydı okunur", async () => {
+    const memberDb = testEnv.authenticatedContext("member").firestore();
+
+    await assertFails(setDoc(doc(memberDb, "moderators/member"), { createdAt: Timestamp.now() }));
+    await assertFails(setDoc(doc(memberDb, "moderators/other"), { createdAt: Timestamp.now() }));
+
+    await seed("moderators/mod-1", { createdAt: Timestamp.now() });
+    await assertFails(getDoc(doc(memberDb, "moderators/mod-1")));
+    await assertFails(getDocs(query(collection(memberDb, "moderators"), limit(50))));
+    await assertSucceeds(getDoc(doc(testEnv.authenticatedContext("mod-1").firestore(), "moderators/mod-1")));
+    // Kendi kaydını silemez.
+    await assertFails(deleteDoc(doc(testEnv.authenticatedContext("mod-1").firestore(), "moderators/mod-1")));
+  });
+
+  it("rapor kuyruğunu yalnız moderatör okur, yalnız durum/not alanlarını yazar", async () => {
+    await seed("reports/queue-1", {
+      reporterUid: "member",
+      targetType: "post",
+      targetId: "post-1",
+      reason: "spam",
+      createdAt: Timestamp.now(),
+    });
+    await seed("moderators/mod-2", { createdAt: Timestamp.now() });
+
+    const moderatorDb = testEnv.authenticatedContext("mod-2").firestore();
+    const memberDb = testEnv.authenticatedContext("member").firestore();
+    const otherDb = testEnv.authenticatedContext("other").firestore();
+
+    // Kuyruk: moderatör sınırsız liste okuyabilir, diğerleri okuyamaz.
+    await assertFails(getDocs(query(collection(otherDb, "reports"), limit(50))));
+    await assertSucceeds(getDocs(query(collection(moderatorDb, "reports"), limit(50))));
+    // Sınırsız liste yine kapalı.
+    await assertFails(getDocs(collection(moderatorDb, "reports")));
+
+    // Durum yazımı: doğru alanlar geçer, içerik alanları ve ekstra alan geçmez.
+    await assertSucceeds(updateDoc(doc(moderatorDb, "reports/queue-1"), {
+      status: "reviewed",
+      reviewedAt: serverTimestamp(),
+      reviewerUid: "mod-2",
+    }));
+    await assertSucceeds(updateDoc(doc(moderatorDb, "reports/queue-1"), {
+      status: "actioned",
+      resolution: "İçerik kaldırıldı.",
+      reviewedAt: serverTimestamp(),
+      reviewerUid: "mod-2",
+    }));
+    await assertFails(updateDoc(doc(moderatorDb, "reports/queue-1"), {
+      status: "actioned",
+      resolution: "x",
+      reviewedAt: serverTimestamp(),
+      reviewerUid: "mod-2",
+      targetId: "post-2",
+    }));
+    await assertFails(updateDoc(doc(moderatorDb, "reports/queue-1"), {
+      status: "approved",
+      reviewedAt: serverTimestamp(),
+      reviewerUid: "mod-2",
+    }));
+    await assertFails(updateDoc(doc(moderatorDb, "reports/queue-1"), {
+      status: "reviewed",
+      reviewedAt: serverTimestamp(),
+      reviewerUid: "member",
+    }));
+    // Raporlayan kendi raporunun durumunu değiştiremez.
+    await assertFails(updateDoc(doc(memberDb, "reports/queue-1"), {
+      status: "actioned",
+      reviewedAt: serverTimestamp(),
+      reviewerUid: "member",
+    }));
+    // Moderatör raporu silemez.
+    await assertFails(deleteDoc(doc(moderatorDb, "reports/queue-1")));
+  });
+
   it("engellemeyi yalnız kendi adına, kendini engellemeden yazar", async () => {
     const memberDb = testEnv.authenticatedContext("member").firestore();
     const otherDb = testEnv.authenticatedContext("other").firestore();
