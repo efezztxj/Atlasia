@@ -33,6 +33,12 @@ import { cn } from "../utils/cn";
 import { formatCoords } from "../utils/geo";
 import type { BBox } from "../utils/offlineCache";
 import { useAccessibilityPrefs, type TextScale } from "../hooks/useAccessibilityPrefs";
+import {
+  COOKIE_CONSENT_EVENT,
+  formatConsentDate,
+  openCookiePreferences,
+  readCookieConsent,
+} from "../lib/cookieConsent";
 
 // P15: indirme kodu yalnız kullanıcı bölümü açınca yüklenir (entry bütçesi).
 const OfflinePackage = lazy(() => import("./OfflinePackage"));
@@ -159,9 +165,16 @@ export function SettingsContent({
 }: SettingsContentProps) {
   const [installNotice, setInstallNotice] = useState<string | null>(null);
   const [offlineOpen, setOfflineOpen] = useState(false);
+  const [cookieConsent, setCookieConsent] = useState(() => readCookieConsent());
   // P18: erişilebilirlik tercihleri cihazda saklanır (Ayarlar ve Profil aynı
   // içeriği paylaşır; iki görünümde de aynı anahtarlar görünür).
   const a11y = useAccessibilityPrefs();
+
+  useEffect(() => {
+    const syncConsent = () => setCookieConsent(readCookieConsent());
+    window.addEventListener(COOKIE_CONSENT_EVENT, syncConsent);
+    return () => window.removeEventListener(COOKIE_CONSENT_EVENT, syncConsent);
+  }, []);
 
   const requestInstall = async () => {
     try {
@@ -441,6 +454,24 @@ export function SettingsContent({
       <p className="mt-4 text-[13px] leading-relaxed text-mint/45">
         İlk kullanımda tarayıcın ayrıca izin ister. Yer adını bulmak için koordinatlar OSM verisini kullanan Photon hizmetine gönderilir.
       </p>
+
+      <div className="mt-5 flex items-start justify-between gap-3 rounded-2xl border border-leaf/20 bg-white/[0.04] p-4">
+        <div className="min-w-0 flex-1">
+          <p className="text-[15px] font-semibold text-mint">Çerez ve depolama</p>
+          <p className="mt-1 text-[13px] leading-relaxed text-mint/65">
+            {cookieConsent
+              ? `Yalnız zorunlu · Kaydedildi: ${formatConsentDate(cookieConsent.updatedAt)}`
+              : "Henüz seçim kaydedilmedi · Yalnız zorunlu depolama aktif"}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={openCookiePreferences}
+          className="min-h-11 shrink-0 rounded-full border border-leaf/35 px-4 text-[13px] font-semibold text-leaf transition hover:bg-leaf/10"
+        >
+          Tercihleri aç
+        </button>
+      </div>
       </section>
     </>
   );
