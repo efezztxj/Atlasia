@@ -25,9 +25,11 @@
  *   bilinmeyen alanlar taşınmaz, bozuk/değiştirilmiş bağlantı sessizce
  *   yutulmaz — nedeni kullanıcıya söylenir.
  *
- * `fflate` dinamik import edilir: sıkıştırma kodu ilk yük paketine girmez,
- * yalnız bağlantı üretilirken/açılırken yüklenir.
+ * `shareLink.ts` yalnız dinamik `import("./utils/shareLink")` ile yüklenir:
+ * `fflate` isimlendirilmiş ESM import ile ağaç-budamaya (tree-shaking) girer
+ * ve ilk yük paketine taşınmaz; yalnız bağlantı üretilirken/açılırken iner.
  */
+import { strFromU8, strToU8, Unzlib, zlibSync } from "fflate";
 import type { AtlasRoute, LegMode, RouteDay, RouteLeg, RouteStop, StopType, TransportMode } from "../types";
 import { decodePolyline, encodePolyline } from "./polyline";
 import { resolveTrackShare, routeLeaksRawTrack } from "./trackPrivacy";
@@ -344,7 +346,6 @@ export async function createRouteShareLink(route: AtlasRoute, request: ShareLink
   if (!parseShareRoute(wire)) return { ok: false, message: SHARE_LINK_MESSAGES.notShareable };
 
   const payload: SharePayloadV1 = { v: SHARE_VERSION, route: wire };
-  const { strToU8, zlibSync } = await import("fflate");
   const compressed = zlibSync(strToU8(JSON.stringify(payload)), { level: 9 });
   const token = `v${SHARE_VERSION}.${bytesToBase64Url(compressed)}`;
   if (token.length > SHARE_LINK_MAX_CHARS) return { ok: false, message: SHARE_LINK_MESSAGES.tooLarge };
@@ -360,7 +361,7 @@ export async function createRouteShareLink(route: AtlasRoute, request: ShareLink
 /** Akışlı açma girdisi parçası: 1 KB sıkıştırılmış veri en fazla ~1 MB açılır. */
 const INFLATE_CHUNK_BYTES = 1024;
 
-type UnzlibCtor = typeof import("fflate").Unzlib;
+type UnzlibCtor = typeof Unzlib;
 
 /**
  * Sıkıştırma bombasına karşı sınırlı açma: veri parça parça açılır ve açılmış
@@ -409,7 +410,6 @@ export async function parseRouteShareLink(token: string): Promise<ShareDecodeRes
 
   let raw: unknown;
   try {
-    const { strFromU8, Unzlib } = await import("fflate");
     const inflated = inflateBounded(bytes, Unzlib);
     if (!inflated) {
       return { ok: false, reason: "too-large", message: SHARE_LINK_MESSAGES.tooLarge };

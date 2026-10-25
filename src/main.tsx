@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App";
 import AppErrorBoundary from "./components/AppErrorBoundary";
+import CookieConsent from "./components/CookieConsent";
 import NetworkStatus from "./components/NetworkStatus";
 import UpdateNotice from "./components/UpdateNotice";
 import { captureInviteFromLocation } from "./utils/inviteLink";
@@ -20,6 +21,7 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <AppErrorBoundary>
       <App />
+      <CookieConsent />
       <NetworkStatus />
       {/* Çevrimdışı kabuk güncellemesi: sessizce zorlanmaz, kullanıcıya sorulur. */}
       <UpdateNotice />

@@ -105,9 +105,11 @@ describe("useTrackRecorder", () => {
     act(() => result.current.start());
     act(() => result.current.start());
     expect(watchPosition).toHaveBeenCalledTimes(1);
+    // K-12: timeout zorunlu; sinyal hiç gelmezse tarayıcı TIMEOUT hatası üretmeli.
     expect(watchPosition).toHaveBeenCalledWith(expect.any(Function), expect.any(Function), {
       enableHighAccuracy: true,
       maximumAge: 0,
+      timeout: 30_000,
     });
     expect(result.current.status).toBe("recording");
 

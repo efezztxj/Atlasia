@@ -21,6 +21,7 @@ import RecordsDock from "./components/RecordsDock";
 import RouteEditor from "./components/RouteEditor";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { CollectionsProvider, isCloudAccount } from "./hooks/useCollections";
+import type { WeatherStatus } from "./utils/mapWeather";
 import { GUIDE_PLACES } from "./data/places";
 import { parseShortcutTab, stripShortcutParam } from "./utils/appShortcut";
 import { formatAccuracy, useGeolocation } from "./hooks/useGeolocation";
@@ -42,6 +43,20 @@ import { routeDrawLegs } from "./utils/routeLegs";
 import { useBlocks } from "./hooks/useBlocks";
 import { useFreshness } from "./hooks/useFreshness";
 import { subscribeNotifications, markNotificationRead, markAllRead, type AppNotification } from "./lib/notifications";
+import {
+  banUser,
+  fetchModeratorAccess,
+  liftBan,
+  setReportStatus,
+  subscribeActiveBans,
+  subscribeModerationQueue,
+  subscribeMyBan,
+  subscribeMyReports,
+  type Ban,
+  type BanDuration,
+  type Report,
+  type ReportStatus,
+} from "./lib/moderation";
 import NotificationsPanel from "./components/NotificationsPanel";
 import { takePendingInvite, type SocialTarget } from "./utils/inviteLink";
 import { useMobileBackClose } from "./hooks/useMobileBackClose";
@@ -57,6 +72,10 @@ const PlaceDetails = lazy(() => import("./components/PlaceDetails"));
 // Yürüyüş kaydı yalnız "Yürüyüş kaydı" düğmesine basılınca açılır;
 // iz toplama/sadeleştirme kodu (utils/track) başlangıç grafiğinde durmaz.
 const TrackRecorderPanel = lazy(() => import("./components/TrackRecorderPanel"));
+const MapLayersSheet = lazy(() => import("./components/MapLayersSheet"));
+// Raporlar/moderasyon paneli ayrı parça: kuyruk yalnız ihtiyaç anında yüklenir.
+const ReportsPanel = lazy(() => import("./components/ReportsPanel"));
+const SuspensionNotice = lazy(() => import("./components/SuspensionNotice"));
 const MAP_STYLE_KEY = "atlasia.mapStyle.v1";
 
 function initialMapStyle(): BaseMapStyle {
@@ -92,7 +111,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
     const coords = route.days.flatMap((day) => decodePolyline(day.polyline));
     if (coords.length > 1) mapRef.current?.drawRoute(coords, preview);
   };
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { theme, setTheme } = useTheme();
 
   const [mapViewport, setMapViewport] = useState<PlaceViewport | null>(null);
@@ -158,6 +177,10 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   const [heroCompact, setHeroCompact] = useState(false);
   const [labels, setLabels] = useState(true);
   const [terrain, setTerrain] = useState(true);
+  // Hava katmanı tek kaynaktan yönetilir: Katmanlar sayfası + sağ ray düğmesi.
+  const [weather, setWeather] = useState(false);
+  const [weatherStatus, setWeatherStatus] = useState<WeatherStatus>("empty");
+  const [layersOpen, setLayersOpen] = useState(false);
   const [baseMap, setBaseMap] = useState<BaseMapStyle>(initialMapStyle);
   const [view, setView] = useState<ViewState>({ zoom: 2, lng: 30, lat: 30 });
   const [panelOpen, setPanelOpen] = useState(() => window.innerWidth >= 768);
@@ -170,9 +193,25 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   const [atlasOpen, setAtlasOpen] = useState(false);
   const [recordsOpen, setRecordsOpen] = useState(false);
   const [trackRecorderOpen, setTrackRecorderOpen] = useState(false);
+  /**
+   * İz kaydının haritaya çizdiği önizleme çizgisi açık mı? Boş önizleme veya
+   * panel kapanışı bu çizgiyi kaldırmalı; aksi hâlde atılan taslak haritada
+   * "hayalet rota" olarak kalır (denetim K-01). Yalnız kayıtçının çizdiği
+   * önizlemeyi temizlemek için tutulur; Atlas rota çizimine dokunmaz.
+   */
+  const trackPreviewDrawn = useRef(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [myPlacesOpen, setMyPlacesOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [reportsOpen, setReportsOpen] = useState(false);
+  const [moderator, setModerator] = useState(false);
+  const [myReports, setMyReports] = useState<Report[]>([]);
+  const [myReportsError, setMyReportsError] = useState<string | null>(null);
+  const [queue, setQueue] = useState<Report[]>([]);
+  const [queueLoading, setQueueLoading] = useState(false);
+  const [queueError, setQueueError] = useState<string | null>(null);
+  const [bans, setBans] = useState<Ban[]>([]);
+  const [myBan, setMyBan] = useState<Ban | null>(null);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [socialTarget, setSocialTarget] = useState<SocialTarget | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -331,6 +370,31 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
 
   const openRecords = () => { closePanels(); setRecordsOpen(true); };
   const openProfile = () => { closePanels(); setProfileOpen(true); };
+  // Hava katmanı: parça yüklenemezse anahtar kapanır; veri durumu Katmanlar
+  // sayfasında dürüstçe gösterilir (Windy benzeri katman, utils/mapWeather.ts).
+  useEffect(() => {
+    const unavailable = () => setWeather(false);
+    const status = (event: Event) => {
+      const detail = (event as CustomEvent<WeatherStatus>).detail;
+      if (detail) setWeatherStatus(detail);
+    };
+    window.addEventListener("atlasia:weather-unavailable", unavailable);
+    window.addEventListener("atlasia:weather-status", status);
+    return () => {
+      window.removeEventListener("atlasia:weather-unavailable", unavailable);
+      window.removeEventListener("atlasia:weather-status", status);
+    };
+  }, []);
+
+  const toggleWeather = useCallback(() => {
+    setWeather((current) => {
+      const next = !current;
+      setWeatherStatus(next ? "loading" : "empty");
+      window.dispatchEvent(new CustomEvent("atlasia:weather-toggle", { detail: next }));
+      return next;
+    });
+  }, []);
+
   const openAtlas = () => { closePanels(); setResumeRoute(null); setSpin(false); setAtlasOpen(true); };
 
   const openSettings = useCallback(() => {
@@ -343,15 +407,103 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
     setStoryPlace(null);
     setStreetPlace(null);
     setNotificationsOpen(false);
+    setLayersOpen(false);
+    setReportsOpen(false);
     setSettingsOpen(true);
   }, []);
   const closeSettings = useCallback(() => setSettingsOpen(false), []);
 
   useEffect(() => {
-    if (!user?.uid) { setNotifications([]); return; }
-    const unsub = subscribeNotifications(user.uid, setNotifications);
+    // Denetim K-14: cihaz hesabının uid'si Firebase Auth'ta yok; bu dinleyici
+    // her açılışta reddedilen bir okuma denemesi üretiyordu. Bulut kapısı
+    // useCollections ile aynı (isCloudAccount) ve hata artık loglanıyor.
+    if (!user?.uid || !cloudAccount) { setNotifications([]); return; }
+    const unsub = subscribeNotifications(user.uid, setNotifications, (error) => {
+      console.warn("[Atlasia] Bildirimler dinlenemedi:", error);
+    });
     return () => unsub();
+  }, [user?.uid, cloudAccount]);
+  /**
+   * Raporlar / moderasyon (denetim K-07, AY-03).
+   * - Raporlarım: kural gereği herkes yalnız kendi raporlarını okur.
+   * - Kuyruk: yalnız `moderators/{uid}` belgesi olan hesapta; belge istemciden
+   *   yazılamaz (Console'da elle). Kural dağıtılmamışsa sorgu `false` döner ve
+   *   sekme görünmez (fail-closed).
+   */
+  useEffect(() => {
+    if (!reportsOpen || !cloudAccount || !user?.uid) return;
+    let active = true;
+    setMyReportsError(null);
+    const unsub = subscribeMyReports(user.uid, (items) => {
+      if (active) setMyReports(items);
+    }, (error) => {
+      if (active) setMyReportsError(error.message);
+    });
+    void fetchModeratorAccess(user.uid).then((allowed) => {
+      if (active) setModerator(allowed);
+    });
+    return () => {
+      active = false;
+      unsub();
+    };
+  }, [reportsOpen, cloudAccount, user?.uid]);
+
+  useEffect(() => {
+    if (!reportsOpen || !moderator || !cloudAccount) return;
+    let active = true;
+    setQueueLoading(true);
+    setQueueError(null);
+    const unsub = subscribeModerationQueue((items) => {
+      if (!active) return;
+      setQueue(items);
+      setQueueLoading(false);
+    }, (error) => {
+      if (!active) return;
+      setQueueError(error.message);
+      setQueueLoading(false);
+    });
+    return () => {
+      active = false;
+      unsub();
+    };
+  }, [reportsOpen, moderator, cloudAccount]);
+
+  // Etkin askıya almalar: yalnız moderatörde dinlenir (kural listeyi ona açar).
+  useEffect(() => {
+    if (!moderator || !cloudAccount) { setBans([]); return; }
+    const unsub = subscribeActiveBans(setBans, (error) => {
+      console.warn("[Atlasia] Askıya alma listesi okunamadı:", error);
+    });
+    return () => unsub();
+  }, [moderator, cloudAccount]);
+
+  /**
+   * Kendi askı durumum. Kural kullanıcıya yalnız kendi `bans/{uid}` belgesini
+   * açar; süresi dolan ban istemcide de etkisiz sayılır (sunucu da öyle).
+   */
+  useEffect(() => {
+    if (!user?.uid || !cloudAccount) { setMyBan(null); return; }
+    const unsub = subscribeMyBan(user.uid, setMyBan, (error) => {
+      console.warn("[Atlasia] Askı durumu okunamadı:", error);
+    });
+    return () => unsub();
+  }, [user?.uid, cloudAccount]);
+
+  const handleReportStatus = useCallback(async (reportId: string, status: ReportStatus, note?: string) => {
+    if (!user?.uid) throw new Error("Oturum bulunamadı.");
+    await setReportStatus(reportId, status, user.uid, note);
   }, [user?.uid]);
+
+  const handleBan = useCallback(async (report: Report, days: BanDuration, reason: string) => {
+    const target = report.targetOwnerUid ?? (report.targetType === "user" ? report.targetId : undefined);
+    if (!target) throw new Error("Bu raporun sahibi belirlenemedi; ban atılamaz.");
+    await banUser({ uid: target, reason, reportId: report.id, days });
+  }, []);
+
+  const handleLiftBan = useCallback(async (uid: string) => {
+    await liftBan(uid);
+  }, []);
+
   // Kabul edilen arkadaşlık isteği: karşı taraf benim listeme yazamaz (kural);
   // "friend_accepted" bildirimi gelince kendi listemi ben tamamlarım.
   const reconciledFriendsRef = useRef(new Set<string>());
@@ -732,6 +884,10 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
     onToggleLabels: () => setLabels((value) => !value),
     terrainEnabled: terrain,
     onToggleTerrain: () => setTerrain((value) => !value),
+    // Raporlar yalnız bulut hesabında anlamlı (cihaz hesabı Firestore'a yazmaz).
+    onOpenReports: cloudAccount
+      ? () => { closePanels(); setReportsOpen(true); }
+      : undefined,
   };
 
   return (
@@ -827,6 +983,14 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         onToggleTerrain={() => setTerrain((v) => !v)}
         labels={labels}
         terrain={terrain}
+        weather={weather}
+        onToggleWeather={toggleWeather}
+        onOpenLayers={() => {
+          const next = !layersOpen;
+          closePanels();
+          setLayersOpen(next);
+        }}
+        layersOpen={layersOpen}
         onToggleTrackRecorder={() => setTrackRecorderOpen((open) => !open)}
         trackRecorderOpen={trackRecorderOpen}
         onToggleAtlas={() => (atlasOpen ? setAtlasOpen(false) : openAtlas())}
@@ -842,16 +1006,52 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         onClick={() => setTrackRecorderOpen(true)}
         aria-label="Yürüyüş kaydını aç"
         title="Yürüyüş kaydı"
+
         className={`mobile-walk-fab glass-panel gold-frame pressable grid place-items-center rounded-full md:hidden${panelOpen ? " max-md:hidden" : ""}`}
       ><Activity size={19} strokeWidth={2} /></button>}
+      {layersOpen && (
+        <Suspense fallback={null}>
+          <MapLayersSheet
+            open={layersOpen}
+            onClose={() => setLayersOpen(false)}
+            labels={labels}
+            onToggleLabels={() => setLabels((v) => !v)}
+            terrain={terrain}
+            onToggleTerrain={() => setTerrain((v) => !v)}
+            weather={weather}
+            onToggleWeather={toggleWeather}
+            weatherStatus={weatherStatus}
+            onReset={handleReset}
+          />
+        </Suspense>
+      )}
+
+
       {trackRecorderOpen && (
         <Suspense fallback={null}>
           <TrackRecorderPanel
             uid={user!.uid}
             cloudAccount={user!.backend === "firebase"}
-            onClose={() => setTrackRecorderOpen(false)}
-            onPreview={(coords) => mapRef.current?.drawRoute(coords, true)}
+            onClose={() => {
+              setTrackRecorderOpen(false);
+              // Panel kapanırken yarım kalan önizleme haritada kalmamalı (K-01).
+              if (trackPreviewDrawn.current) {
+                mapRef.current?.clearRoute();
+                trackPreviewDrawn.current = false;
+              }
+            }}
+            onPreview={(coords) => {
+              if (coords.length < 2) {
+                // drawRoute boş koordinatta sessizce döner; temizlik ayrı yapılır.
+                if (trackPreviewDrawn.current) mapRef.current?.clearRoute();
+                trackPreviewDrawn.current = false;
+                return;
+              }
+              mapRef.current?.drawRoute(coords, true);
+              trackPreviewDrawn.current = true;
+            }}
             onFinished={(track, route) => {
+              trackPreviewDrawn.current = false;
               if (routeDrawLegs(route)) drawAtlasRoute(route, false);
               else mapRef.current?.drawRoute(decodePolyline(track.polyline), false);
               setResumeRoute(route);
@@ -1078,6 +1278,26 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         onRecords={openRecords}
       />
 
+      {reportsOpen && (
+        <Suspense fallback={null}>
+          <ReportsPanel
+            open={reportsOpen}
+            onClose={() => setReportsOpen(false)}
+            uid={user!.uid}
+            moderator={moderator}
+            myReports={myReports}
+            myReportsError={myReportsError}
+            queue={queue}
+            queueLoading={queueLoading}
+            queueError={queueError}
+            onStatus={handleReportStatus}
+            bans={bans}
+            onBan={handleBan}
+            onLiftBan={handleLiftBan}
+          />
+        </Suspense>
+      )}
+
       {notificationsOpen && (
         <NotificationsPanel notifications={visibleNotifications} unreadCount={unreadCount} onClose={() => setNotificationsOpen(false)} onMarkAllRead={handleMarkAllRead} onMarkRead={handleNotificationRead} onOpenGroup={openGroupFromNotification} onOpenFriends={openFriendsFromNotification} />
       )}
@@ -1201,6 +1421,13 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
           );
         })}
       </nav>
+
+      {myBan && (
+        <Suspense fallback={null}>
+          <SuspensionNotice ban={myBan} onSignOut={logout} />
+        </Suspense>
+      )}
+
 
       {toast && (
         <div

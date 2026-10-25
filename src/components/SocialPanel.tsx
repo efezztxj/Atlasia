@@ -527,10 +527,15 @@ export default function SocialPanel({
                       </span>
                       {p.kind === "user" && p.authorUid === currentUid && (
                         <button
-                          onClick={() => void runCloudAction(
-                            () => onRemovePost(p.id),
-                            "Gönderi silinemedi. Bağlantını kontrol edip tekrar dene.",
-                          )}
+                          onClick={() => {
+                            // Denetim K-04: geri alınamaz silme, engelleme kadar
+                            // korunmalı; tek dokunuşla silinmez.
+                            if (!confirm("Gönderiyi kalıcı olarak silmek istiyor musun?")) return;
+                            void runCloudAction(
+                              () => onRemovePost(p.id),
+                              "Gönderi silinemedi. Bağlantını kontrol edip tekrar dene.",
+                            );
+                          }}
                           aria-label="Gönderiyi sil"
                           className="ml-auto shrink-0 text-mint/50 opacity-70 transition hover:text-red-300 md:opacity-0 md:group-hover:opacity-100"
                         >

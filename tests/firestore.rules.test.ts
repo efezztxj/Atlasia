@@ -909,6 +909,193 @@ describe("Firestore güvenlik kuralları", () => {
     await assertSucceeds(deleteDoc(doc(memberDb, "reports/report-1")));
   });
 
+  /**
+   * Moderatör kuyruğu (denetim K-07 / AY-03).
+   * `moderators/{uid}` belgesi yalnız Console'da oluşturulur; istemci onu
+   * yazamaz, yalnız kendi kaydını okuyabilir. Rapor üzerinde yalnız durum,
+   * not ve inceleme izleri değişebilir.
+   */
+  it("moderatör belgesi istemciden yazılamaz; yalnız kendi kaydı okunur", async () => {
+    const memberDb = testEnv.authenticatedContext("member").firestore();
+
+    await assertFails(setDoc(doc(memberDb, "moderators/member"), { createdAt: Timestamp.now() }));
+    await assertFails(setDoc(doc(memberDb, "moderators/other"), { createdAt: Timestamp.now() }));
+
+    await seed("moderators/mod-1", { createdAt: Timestamp.now() });
+    await assertFails(getDoc(doc(memberDb, "moderators/mod-1")));
+    await assertFails(getDocs(query(collection(memberDb, "moderators"), limit(50))));
+    await assertSucceeds(getDoc(doc(testEnv.authenticatedContext("mod-1").firestore(), "moderators/mod-1")));
+    // Kendi kaydını silemez.
+    await assertFails(deleteDoc(doc(testEnv.authenticatedContext("mod-1").firestore(), "moderators/mod-1")));
+  });
+
+  it("rapor kuyruğunu yalnız moderatör okur, yalnız durum/not alanlarını yazar", async () => {
+    await seed("reports/queue-1", {
+      reporterUid: "member",
+      targetType: "post",
+      targetId: "post-1",
+      reason: "spam",
+      createdAt: Timestamp.now(),
+    });
+    await seed("moderators/mod-2", { createdAt: Timestamp.now() });
+
+    const moderatorDb = testEnv.authenticatedContext("mod-2").firestore();
+    const memberDb = testEnv.authenticatedContext("member").firestore();
+    const otherDb = testEnv.authenticatedContext("other").firestore();
+
+    // Kuyruk: moderatör sınırsız liste okuyabilir, diğerleri okuyamaz.
+    await assertFails(getDocs(query(collection(otherDb, "reports"), limit(50))));
+    await assertSucceeds(getDocs(query(collection(moderatorDb, "reports"), limit(50))));
+    // Sınırsız liste yine kapalı.
+    await assertFails(getDocs(collection(moderatorDb, "reports")));
+
+    // Durum yazımı: doğru alanlar geçer, içerik alanları ve ekstra alan geçmez.
+    await assertSucceeds(updateDoc(doc(moderatorDb, "reports/queue-1"), {
+      status: "reviewed",
+      reviewedAt: serverTimestamp(),
+      reviewerUid: "mod-2",
+    }));
+    await assertSucceeds(updateDoc(doc(moderatorDb, "reports/queue-1"), {
+      status: "actioned",
+      resolution: "İçerik kaldırıldı.",
+      reviewedAt: serverTimestamp(),
+      reviewerUid: "mod-2",
+    }));
+    await assertFails(updateDoc(doc(moderatorDb, "reports/queue-1"), {
+      status: "actioned",
+      resolution: "x",
+      reviewedAt: serverTimestamp(),
+      reviewerUid: "mod-2",
+      targetId: "post-2",
+    }));
+    await assertFails(updateDoc(doc(moderatorDb, "reports/queue-1"), {
+      status: "approved",
+      reviewedAt: serverTimestamp(),
+      reviewerUid: "mod-2",
+    }));
+    await assertFails(updateDoc(doc(moderatorDb, "reports/queue-1"), {
+      status: "reviewed",
+      reviewedAt: serverTimestamp(),
+      reviewerUid: "member",
+    }));
+    // Raporlayan kendi raporunun durumunu değiştiremez.
+    await assertFails(updateDoc(doc(memberDb, "reports/queue-1"), {
+      status: "actioned",
+      reviewedAt: serverTimestamp(),
+      reviewerUid: "member",
+    }));
+    // Moderatör raporu silemez.
+    await assertFails(deleteDoc(doc(moderatorDb, "reports/queue-1")));
+  });
+
+  /**
+   * Askıya alma ("kısasa kısas"): yaptırım sunucuda.
+   * Ban yalnız aynı moderatörün "işlem yapıldı" dediği rapora dayanır,
+   * istemciden silinemez ve askıdaki hesap yeni içerik yazamaz.
+   */
+  it("ban yalnız kanıtlı raporla, yalnız moderatör tarafından yazılır", async () => {
+    await seed("reports/ban-proof", {
+      reporterUid: "member",
+      targetType: "post",
+      targetId: "post-1",
+      targetOwnerUid: "spammer",
+      reason: "spam",
+      createdAt: Timestamp.now(),
+      status: "actioned",
+      reviewedAt: Timestamp.now(),
+      reviewerUid: "mod-9",
+    });
+    await seed("reports/not-actioned", {
+      reporterUid: "member",
+      targetType: "post",
+      targetId: "post-1",
+      targetOwnerUid: "spammer",
+      reason: "spam",
+      createdAt: Timestamp.now(),
+      status: "reviewed",
+      reviewedAt: Timestamp.now(),
+      reviewerUid: "mod-9",
+    });
+    await seed("moderators/mod-9", { createdAt: Timestamp.now() });
+    await seed("moderators/mod-10", { createdAt: Timestamp.now() });
+
+    const modDb = testEnv.authenticatedContext("mod-9").firestore();
+    const otherModDb = testEnv.authenticatedContext("mod-10").firestore();
+    const memberDb = testEnv.authenticatedContext("member").firestore();
+
+    const validBan = {
+      uid: "spammer",
+      reason: "Tekrarlanan spam ve hakaret.",
+      reportId: "ban-proof",
+      createdAt: serverTimestamp(),
+      createdBy: "mod-9",
+    };
+
+    // Üye ban atamaz; başka moderatör başkasının incelemesine dayanamaz.
+    await assertFails(setDoc(doc(memberDb, "bans/spammer"), validBan));
+    await assertFails(setDoc(doc(otherModDb, "bans/spammer"), { ...validBan, createdBy: "mod-10" }));
+    // Kanıt yok: işlem yapılmamış rapor, olmayan rapor, kendini askıya alma.
+    await assertFails(setDoc(doc(modDb, "bans/spammer"), { ...validBan, reportId: "not-actioned" }));
+    await assertFails(setDoc(doc(modDb, "bans/spammer"), { ...validBan, reportId: "yok-boyle-rapor" }));
+    await assertFails(setDoc(doc(modDb, "bans/mod-9"), { ...validBan, uid: "mod-9" }));
+    // İçerik alanları değiştirilemez, gerekçe zorunlu, süresi geçmiş ban yazılamaz.
+    await assertFails(setDoc(doc(modDb, "bans/spammer"), { ...validBan, reason: "spam" }));
+    await assertFails(setDoc(doc(modDb, "bans/spammer"), { ...validBan, extra: true }));
+    await assertFails(setDoc(doc(modDb, "bans/spammer"), { ...validBan, expiresAt: Timestamp.fromMillis(Date.now() - 1000) }));
+
+    // Doğru ban geçer; sonra kullanıcı okuyabilir, başkası okuyamaz.
+    await assertSucceeds(setDoc(doc(modDb, "bans/spammer"), { ...validBan, expiresAt: Timestamp.fromMillis(Date.now() + 86_400_000) }));
+    await assertSucceeds(getDoc(doc(testEnv.authenticatedContext("spammer").firestore(), "bans/spammer")));
+    await assertFails(getDoc(doc(memberDb, "bans/spammer")));
+
+    // Kaldırma yalnız `expiresAt` alanını geçmişe çeker; silme kapalı.
+    await assertFails(updateDoc(doc(modDb, "bans/spammer"), { reason: "Değişti." }));
+    await assertSucceeds(updateDoc(doc(modDb, "bans/spammer"), { expiresAt: serverTimestamp() }));
+    await assertFails(deleteDoc(doc(modDb, "bans/spammer")));
+  });
+
+  it("askıdaki hesap yeni gönderi/hikâye/yanıt yazamaz, okumaya devam eder", async () => {
+    await seed("bans/spammer", {
+      uid: "spammer",
+      reason: "Tekrarlanan spam ve hakaret.",
+      reportId: "ban-proof",
+      createdAt: Timestamp.now(),
+      createdBy: "mod-9",
+      expiresAt: Timestamp.fromMillis(Date.now() + 86_400_000),
+    });
+
+    const bannedDb = testEnv.authenticatedContext("spammer").firestore();
+    await assertFails(setDoc(doc(bannedDb, "posts/blocked-1"), {
+      ...validPost("spammer"),
+      createdAt: serverTimestamp(),
+    }));
+    await assertFails(setDoc(doc(bannedDb, "stories/blocked-2"), {
+      author: "Gezgin",
+      authorUid: "spammer",
+      text: "Askıdayken hikâye.",
+      createdAt: serverTimestamp(),
+    }));
+    // Mevcut akışı okumaya devam eder (ceza içerik üretimini keser, okumayı değil).
+    await assertSucceeds(getDocs(query(collection(bannedDb, "posts"), limit(50))));
+
+    // Süresi geçmiş ban içerik yazımını engellemez.
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "bans/expired"), {
+        uid: "expired",
+        reason: "Süresi dolmuş kayıt.",
+        reportId: "ban-proof",
+        createdAt: Timestamp.fromMillis(Date.now() - 10_000),
+        createdBy: "mod-9",
+        expiresAt: Timestamp.fromMillis(Date.now() - 5_000),
+      });
+    });
+    const expiredDb = testEnv.authenticatedContext("expired").firestore();
+    await assertSucceeds(setDoc(doc(expiredDb, "posts/allowed-1"), {
+      ...validPost("expired"),
+      createdAt: serverTimestamp(),
+    }));
+  });
+
   it("engellemeyi yalnız kendi adına, kendini engellemeden yazar", async () => {
     const memberDb = testEnv.authenticatedContext("member").firestore();
     const otherDb = testEnv.authenticatedContext("other").firestore();

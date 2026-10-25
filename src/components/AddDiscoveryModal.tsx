@@ -38,11 +38,19 @@ export default function AddDiscoveryModal({ draft, uploadPhoto, onClose, onSave 
   useEffect(() => {
     const ctrl = new AbortController();
     setLoadingName(true);
-    reverseName(draft.lat, draft.lng, ctrl.signal).then((name) => {
-      if (ctrl.signal.aborted) return;
-      setRegion(name);
-      setLoadingName(false);
-    });
+    // Denetim K-16: `.catch` yoktu; `geo.reverseName` bir gün hata fırlatırsa
+    // modal "ad getiriliyor" durumunda kilitlenirdi.
+    reverseName(draft.lat, draft.lng, ctrl.signal)
+      .then((name) => {
+        if (ctrl.signal.aborted) return;
+        setRegion(name);
+        setLoadingName(false);
+      })
+      .catch(() => {
+        if (ctrl.signal.aborted) return;
+        setRegion(null);
+        setLoadingName(false);
+      });
     return () => ctrl.abort();
   }, [draft.lat, draft.lng]);
 

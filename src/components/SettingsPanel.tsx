@@ -7,6 +7,7 @@ import {
   Crosshair,
   Download,
   Eye,
+  Flag,
   Globe2,
   HardDriveDownload,
   Loader2,
@@ -32,6 +33,12 @@ import { cn } from "../utils/cn";
 import { formatCoords } from "../utils/geo";
 import type { BBox } from "../utils/offlineCache";
 import { useAccessibilityPrefs, type TextScale } from "../hooks/useAccessibilityPrefs";
+import {
+  COOKIE_CONSENT_EVENT,
+  formatConsentDate,
+  openCookiePreferences,
+  readCookieConsent,
+} from "../lib/cookieConsent";
 
 // P15: indirme kodu yalnız kullanıcı bölümü açınca yüklenir (entry bütçesi).
 const OfflinePackage = lazy(() => import("./OfflinePackage"));
@@ -61,6 +68,8 @@ export interface SettingsContentProps {
   onToggleTerrain: () => void;
   /** Haritanın görünen alanı; çevrimdışı paket bu alanı indirir. */
   mapBounds?: BBox | null;
+  /** Raporlar panelini açar (yalnız bulut hesabında verilir). */
+  onOpenReports?: () => void;
 }
 
 interface Props extends SettingsContentProps {
@@ -152,12 +161,20 @@ export function SettingsContent({
   terrainEnabled,
   onToggleTerrain,
   mapBounds = null,
+  onOpenReports,
 }: SettingsContentProps) {
   const [installNotice, setInstallNotice] = useState<string | null>(null);
   const [offlineOpen, setOfflineOpen] = useState(false);
+  const [cookieConsent, setCookieConsent] = useState(() => readCookieConsent());
   // P18: erişilebilirlik tercihleri cihazda saklanır (Ayarlar ve Profil aynı
   // içeriği paylaşır; iki görünümde de aynı anahtarlar görünür).
   const a11y = useAccessibilityPrefs();
+
+  useEffect(() => {
+    const syncConsent = () => setCookieConsent(readCookieConsent());
+    window.addEventListener(COOKIE_CONSENT_EVENT, syncConsent);
+    return () => window.removeEventListener(COOKIE_CONSENT_EVENT, syncConsent);
+  }, []);
 
   const requestInstall = async () => {
     try {
@@ -307,6 +324,25 @@ export function SettingsContent({
         <p className="mt-2 text-[12px] leading-relaxed text-mint/60">Bu seçimler yalnız bu cihazda saklanır. Klavye ile gezinme, “İçeriğe geç” bağlantısı, görünür odak halkası ve en az 44px dokunma hedefi her zaman açıktır.</p>
       </section>
 
+      {onOpenReports && (
+        <>
+          <div className="my-6 h-px bg-leaf/15" />
+          <section aria-labelledby="reports-title">
+            <p id="reports-title" className="text-[12px] font-bold tracking-[0.16em] text-mint/55 uppercase">Moderasyon</p>
+            <button
+              type="button"
+              onClick={onOpenReports}
+              className="mt-3 flex min-h-11 w-full items-center gap-2 rounded-2xl border border-leaf/20 bg-white/[0.04] px-4 text-left text-[14px] font-semibold text-mint transition hover:border-leaf/45"
+            >
+              <Flag className="size-4 text-sun" />Raporlarım ve inceleme durumu
+            </button>
+            <p className="mt-2 text-[12px] leading-relaxed text-mint/55">
+              Bildirdiğin içeriklerin durumunu buradan izleyebilirsin. Moderatör hesabında inceleme kuyruğu da açılır.
+            </p>
+          </section>
+        </>
+      )}
+
       <div className="my-6 h-px bg-leaf/15" />
       <section aria-labelledby="offline-title">
         <p id="offline-title" className="text-[12px] font-bold tracking-[0.16em] text-mint/55 uppercase">Çevrimdışı harita</p>
@@ -418,6 +454,24 @@ export function SettingsContent({
       <p className="mt-4 text-[13px] leading-relaxed text-mint/45">
         İlk kullanımda tarayıcın ayrıca izin ister. Yer adını bulmak için koordinatlar OSM verisini kullanan Photon hizmetine gönderilir.
       </p>
+
+      <div className="mt-5 flex items-start justify-between gap-3 rounded-2xl border border-leaf/20 bg-white/[0.04] p-4">
+        <div className="min-w-0 flex-1">
+          <p className="text-[15px] font-semibold text-mint">Çerez ve depolama</p>
+          <p className="mt-1 text-[13px] leading-relaxed text-mint/65">
+            {cookieConsent
+              ? `Yalnız zorunlu · Kaydedildi: ${formatConsentDate(cookieConsent.updatedAt)}`
+              : "Henüz seçim kaydedilmedi · Yalnız zorunlu depolama aktif"}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={openCookiePreferences}
+          className="min-h-11 shrink-0 rounded-full border border-leaf/35 px-4 text-[13px] font-semibold text-leaf transition hover:bg-leaf/10"
+        >
+          Tercihleri aç
+        </button>
+      </div>
       </section>
     </>
   );

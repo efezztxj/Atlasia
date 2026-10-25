@@ -281,7 +281,9 @@ function RouteResult({ route, approved, saved, onConfirm, onStop, onReorder, onS
   const [dayIndex, setDay] = useState(0);
   const [drag, setDrag] = useState<number | null>(null);
   const [shared, setShared] = useState(false);
-  useEffect(() => { setDay(0); setShared(false); }, [route.id]);
+  // Denetim K-05: paylaşım başarısız olursa kullanıcı sessiz bırakılmasın.
+  const [shareError, setShareError] = useState<string | null>(null);
+  useEffect(() => { setDay(0); setShared(false); setShareError(null); }, [route.id]);
   const day = route.days[Math.min(dayIndex, route.days.length - 1)];
   const stops = route.days.flatMap((item) => item.stops);
   const routePoints = [...(route.origin ? [route.origin] : []), ...stops];
@@ -308,13 +310,24 @@ function RouteResult({ route, approved, saved, onConfirm, onStop, onReorder, onS
       ...(yandex ? [`Yandex: ${yandex}`] : []),
     ].join("\n");
     const text = `${route.routeTitle}\n${stops.map((stop) => `${stop.order}. ${stop.name}: ${stop.startTime}`).join("\n")}${externalLinks ? `\n${externalLinks}` : ""}`;
-    try { if (navigator.share) await navigator.share({ title: route.routeTitle, text }); else await navigator.clipboard.writeText(text); setShared(true); } catch { /* Sharing can be cancelled by the user. */ }
+    setShareError(null);
+    try {
+      if (navigator.share) await navigator.share({ title: route.routeTitle, text });
+      else if (navigator.clipboard) await navigator.clipboard.writeText(text);
+      else throw new Error("clipboard-yok");
+      setShared(true);
+    } catch (failure) {
+      // Kullanıcının kendi iptali hata değildir.
+      if ((failure as { name?: string })?.name === "AbortError") return;
+      setShareError("Paylaşılamadı. Aşağıdaki harita bağlantılarını tek tek açıp kopyalayabilirsin.");
+    }
   };
   return <section className="rounded-2xl border border-sun/20 p-4"><p className="text-[12px] font-semibold text-sun">{approved ? "Haritada gösteriliyor" : "Soluk rota önizlemesi"}</p><h3 className="font-display mt-2 text-lg font-semibold">{route.routeTitle}</h3><p className="mt-1 flex items-center gap-1.5 text-[13px] text-mint/75"><Clock3 size={14} />≈{route.totalDurationHours} saat · ≈{route.totalDistanceKm} km</p><p className="mt-2 text-[12px] leading-relaxed text-mint/65">{route.routeSummary}</p>{route.days.length > 1 && <nav className="mt-3 flex gap-2" aria-label="Rota günleri">{route.days.map((item, i) => <button key={item.dayNumber} type="button" onClick={() => setDay(i)} className={cn("min-h-10 rounded-full border px-3 text-[13px]", i === dayIndex ? "btn-gold border-transparent font-semibold" : "border-white/15")}>{item.dayNumber}. gün</button>)}</nav>}
     <ol className="mt-4 space-y-2">{day.stops.map((stop, i) => <li key={`${stop.pinId}-${i}`} draggable onDragStart={() => setDrag(i)} onDragOver={(event) => event.preventDefault()} onDrop={() => { if (drag !== null) onReorder(dayIndex, drag, i); setDrag(null); }} className="rounded-xl border border-white/10 p-3"><button type="button" onClick={() => onStop(stop)} className="w-full text-left"><p className="text-[14px] font-semibold">{i + 1}. {stop.name}</p><p className="mt-1 text-[12px] text-sun">{stop.startTime} - {stop.endTime} · {stop.source === "openstreetmap" ? "Açık harita noktası" : stop.isCommunityPin ? "Topluluk izi" : "Atlasia rehberi"}</p>
                       {stop.weather && <p className={cn("mt-1 text-[12px]", stop.weather.risk === "rainy" ? "text-red-300" : stop.weather.risk === "possible" ? "text-sun" : "text-leaf")}>Varışta: {Math.round(stop.weather.temperature)}° · {stop.weather.label} · %{Math.round(stop.weather.precipitationProbability)} yağış olasılığı</p>}<p className="mt-2 text-[13px] leading-relaxed text-mint/80">{stop.aiReason}</p><p className="mt-1.5 line-clamp-2 text-[12px] leading-relaxed text-mint/60">{stop.description}</p></button><div className="mt-2 flex justify-end"><button type="button" disabled={i === 0} onClick={() => onReorder(dayIndex, i, i - 1)} aria-label={`${stop.name} durağını yukarı taşı`} className="grid size-9 place-items-center disabled:opacity-30"><ArrowUp size={14} /></button><button type="button" disabled={i === day.stops.length - 1} onClick={() => onReorder(dayIndex, i, i + 1)} aria-label={`${stop.name} durağını aşağı taşı`} className="grid size-9 place-items-center disabled:opacity-30"><ArrowDown size={14} /></button></div></li>)}</ol>
     {route.weatherNote && <p className="mt-3 border-l-2 border-leaf/35 pl-3 text-[12px] leading-relaxed text-mint/75">{route.weatherNote}</p>}
     <div className="mt-4 flex flex-wrap gap-2">{!approved && <button type="button" onClick={onConfirm} className="btn-gold min-h-11 rounded-full px-4 text-[13px] font-semibold text-ink">Haritada göster</button>}<button type="button" onClick={onEdit} className="min-h-11 rounded-full border border-white/20 px-4 text-[13px]">Düzenle</button><button type="button" onClick={onOpenRouteEditor} className="min-h-11 rounded-full border border-leaf/35 px-4 text-[13px] text-leaf">Yayınla / bağlantı</button><button type="button" onClick={onSave} className="flex min-h-11 items-center gap-1.5 rounded-full border border-white/20 px-4 text-[13px] text-sun">{saved ? <Check size={14} /> : <Bookmark size={14} />}{saved ? "Kaydedildi" : "Kaydet"}</button><button type="button" onClick={() => void share()} className="min-h-11 rounded-full border border-white/20 px-4 text-[13px]">{shared ? "Paylaşıldı" : "Paylaş"}</button></div>
+    {shareError && <p role="alert" className="mt-2 text-[12px] leading-relaxed text-red-300">{shareError}</p>}
     <div className="mt-3 flex flex-wrap gap-2">{route.alternatives.map((alternative) => <button key={alternative.label} type="button" onClick={() => onAlternative(alternative.prompt)} className="min-h-10 rounded-full border border-white/15 px-3 text-[12px] text-mint/80">{alternative.label}</button>)}</div>
     {route.dataSources?.includes("OpenStreetMap contributors") && <p className="mt-3 text-[11px] leading-relaxed text-mint/55">Açık harita durakları © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="underline underline-offset-2">OpenStreetMap katkıcıları</a>. Liste eksik veya güncelliğini yitirmiş olabilir.</p>}
     {route.dataSources?.includes("Open-Meteo") && <p className="mt-1 text-[11px] leading-relaxed text-mint/55">Saatlik hava tahmini: <a href="https://open-meteo.com/" target="_blank" rel="noreferrer" className="underline underline-offset-2">Open-Meteo</a> (anahtarsız). Tahminler kesin değildir; varış saatleri gecikebilir.</p>}

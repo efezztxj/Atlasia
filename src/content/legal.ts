@@ -49,7 +49,8 @@ export const privacyDocument: LegalDocument = {
     {
       title: "3. YEREL DEPOLAMA VE ÇEREZ BENZERİ TEKNOLOJİLER",
       paragraphs: [
-        "Tarayıcında şu amaçlarla yerel depolama kullanılır: oturumun açık kalması (Firebase Authentication belirteçleri), tema ve tercihlerin (örn. karanlık/açık), servis çalışanının çevrimdışı önbelleği (uygulama dosyaları; kişisel içerik değildir) ve cihaz modu kayıtların. Reklam/analitik çerezi bu sürümde yoktur. Tarayıcından yerel depolamayı silersen oturumun kapanır ve cihaz modu verilerin silinir.",
+        "Atlasia, çerez ve yerel depolama bilgilendirmesini gördüğünü ve tercih sürümünü hatırlamak için `atlasia_consent` adlı zorunlu birinci taraf HTTP çerezini 12 ay süreyle (`Path=/`, `SameSite=Lax`, HTTPS bağlantıda `Secure`) kullanır; tarayıcın çerezleri engellerse aynı kayıt cihazında `atlasia.cookieConsent.v1` yerel yedeğinde tutulur. Reklam, pazarlama veya analitik çerezi bu sürümde yoktur.",
+        "Tarayıcında ayrıca oturumun açık kalması (Firebase Authentication belirteçleri), tema/harita/erişilebilirlik tercihleri, servis çalışanının çevrimdışı uygulama ve harita önbelleği (Cache Storage) ile cihaz modu kayıtların (IndexedDB/localStorage) için yerel depolama kullanılır; Google App Check (reCAPTCHA) da kötüye kullanımı önlemek için kendi güvenlik mekanizmalarını kullanabilir. Bilgilendirme kartını dilediğinde Ayarlar > Konum ve gizlilik > Çerez ve depolama bölümünden yeniden açabilirsin; tarayıcı verilerini silersen oturumun kapanır, çerez tercihin sıfırlanır ve cihaz modu verilerin silinir.",
       ],
     },
     {

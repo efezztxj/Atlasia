@@ -52,6 +52,17 @@ describe("TASK-021 A yasal metin paketi", () => {
     expect(unresolvedLegalPlaceholders(termsDocument)).toEqual(["[TARİH]", "[E-POSTA]", "[ŞEHİR]"]);
     expect(LEGAL_REVIEW_NOTICE).toBe("Taslak · Künye ve avukat onayı bekleniyor");
   });
+
+  it("Gizlilik bölüm 3 zorunlu atlasia_consent çerezini, 12 ay süresini ve Ayarlar erişimini açıklar", () => {
+    const section3 = privacyDocument.sections[2];
+    expect(section3.title).toContain("3. YEREL DEPOLAMA VE ÇEREZ");
+    const text = section3.paragraphs.join(" ");
+    expect(text).toContain("atlasia_consent");
+    expect(text).toContain("12 ay");
+    expect(text).toContain("atlasia.cookieConsent.v1");
+    expect(text).toContain("Ayarlar > Konum ve gizlilik > Çerez ve depolama");
+    expect(text).toContain("Reklam, pazarlama veya analitik çerezi bu sürümde yoktur");
+  });
 });
 
 describe("TASK KVKK aydınlatma akışı (Tur 4)", () => {

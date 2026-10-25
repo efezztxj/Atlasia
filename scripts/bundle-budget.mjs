@@ -13,13 +13,32 @@ const DEFAULT_DIST = fileURLToPath(new URL("../dist", import.meta.url));
  * Bilinçli bir büyümede eşik, yeni ölçüm ve gerekçe teslimata yazılarak
  * güncellenir; yalnız testi yeşil yapmak için gevşetilmez.
  *
- * 2026-10-25 — CSS 34.500 -> 35.500 B: telefon sertleştirme katmanı
- * (16px alan yazı tabanı, overscroll/touch-action, yatay kısa ekran kuralları)
- * ölçülen gzip değerini 34.597 B'ye çıkardı; JS bütçeleri değişmedi.
+ * 2026-10-25 — mobil tur: telefon sertleştirme katmanı (16px alan yazı tabanı,
+ * overscroll/touch-action, yatay kısa ekran kuralları) ve alt yığın düzeni
+ * ölçülen CSS gzip değerini yükseltti. `main` ile birleşince (hava katmanı +
+ * moderasyon turu) ölçüm CSS 34.903 B / JS 893.504 B oldu; CSS eşiği
+ * 34.800 -> 35.100'e çekildi (aynı ~%0,6 pay), JS eşiği 902.000'de kaldı.
+ * Ayrıntı: docs/mobil-uygunluk.md.
+ *
+ * 2026-10-25 güncellemesi (K-10 kararı, maintainer onayı "gerekeni yap"):
+ * ölçülen değerler JS 894.809 B, CSS 34.546 B gzip. Artış bilinçli iki
+ * özellikten geliyor ve hiçbiri yeni ağır bağımlılık değil:
+ *   +2.223 B  utils/mapWeather.ts  Windy tarzı renk alanı + parçacık akışı
+ *   +1.699 B  components/MapLayersSheet.tsx  "Katmanlar" sayfası
+ *   +2.696 B  components/ReportsPanel.tsx  raporlarım + moderatör kuyruğu
+ *   +1.284 B  App.tsx bağlantıları (durum, olaylar, panel açma)
+ * Eşikler, eski payla aynı oranda (~%0,4) boşluk bırakacak şekilde
+ * yükseltildi: 888.000 → 902.000 ve 34.500 → 34.800.
+ *
+ * 2026-10-25 (ikinci ölçüm, askıya alma/ban turu): JS 897.644 B. Ek: 
+ *   +2,4 kB  components/SuspensionNotice.tsx (askı ekranı) ve ReportsPanel
+ *            içindeki ban bölümü; +0,4 kB kurallar/ağ kodunda.
+ * Eşik 902.000'e çekildi; gerekçe aynı: yeni ağır bağımlılık yok.
  */
 export const BUNDLE_BUDGET = Object.freeze({
-  totalJsGzipBytes: 888_000,
-  totalCssGzipBytes: 35_500,
+  totalJsGzipBytes: 902_000,
+  totalCssGzipBytes: 35_100,
+
   initialGzipBytes: 439_000,
   categoryGzipBytes: Object.freeze({
     entry: 174_000,
