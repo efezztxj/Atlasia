@@ -100,3 +100,4 @@ GitHub Actions her pull request, `main` ve `arena/**` branch güncellemesinde ü
 
 - [Kimlik doğrulama kurulumu](AUTH_SETUP.md)
 - [Sürüm değişiklik günlüğü](CHANGELOG.md)
+- [Güncelleme mimarisi](docs/guncelleme-mimarisi.md)
