@@ -11,7 +11,7 @@ sözleşmesi ve giriş belgeleri kalır: `README.md`, `AGENTS.md`, `CONTRIBUTING
 | `docs/teslimatlar/` | Tur teslim kayıtları (`teslimat-*.md`): ne yapıldı, hangi kapılar koştu, bilinen riskler |
 | `docs/gorevler/` | Görev tanımları ve kabul kriterleri |
 | `docs/denetim/` | Denetim raporları |
-| `docs/*.md` | Süreç belgeleri: yayın runbook'u, Firebase kontrol listesi, DDOS/Cloudflare, bağımlılık matrisi |
+| `docs/*.md` | Süreç belgeleri: yayın runbook'u, Firebase kontrol listesi, DDOS/Cloudflare, bağımlılık matrisi, [telefon uygunluğu](mobil-uygunluk.md) |
 | `reports/` | **Arşiv** — eski aşama raporları (stage-0…6). İçlerindeki yol/checksum ifadeleri yazıldığı güne aittir |
 | `patches/` | **Arşiv** — geçmiş yamalar. `patches/OKU-KODCU.md` nasıl uygulanacağını anlatır |
 | `mockups/` | Ön taslak HTML'leri (üretim paketine girmez, `python3 -m http.server` ile açılır) |

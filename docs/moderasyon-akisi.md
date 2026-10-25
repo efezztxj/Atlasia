@@ -77,7 +77,7 @@ Süre dolar / ban kaldırılır   →  expiresAt geçmişe çekilir (belge silin
 
 ## 6. Yayına alma adımları (tek seferlik)
 
-1. `firestore.rules` dağıt: `firebase deploy --only firestore:rules` (CI hattı GitHub → Cloudflare; kural dağıtımı ayrı onay).
+1. `firestore.rules` dağıt: `firebase deploy --only firestore:rules --project <onayli-proje-id>` (`.firebaserc` varsayılanı `atlasia-dev` olduğu için `--project` her zaman açık yazılır; CI hattı GitHub → Cloudflare, kural dağıtımı ayrı onay).
 2. Console → Firestore → `moderators` koleksiyonu → belge kimliği = kendi uid'in, alan: `createdAt`.
 3. `npm run test:rules:emulator` CI'da yeşil olmalı (bu makinede Java 21 yok).
 4. Panelde "Kuyruk" sekmesini görüyorsan kurulum tamam.

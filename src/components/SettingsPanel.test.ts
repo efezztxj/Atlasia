@@ -1,10 +1,27 @@
 // @vitest-environment jsdom
 import { createElement } from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  COOKIE_CONSENT_NAME,
+  COOKIE_CONSENT_STORAGE_KEY,
+  COOKIE_PREFERENCES_EVENT,
+  expireCookie,
+  saveEssentialCookieConsent,
+} from "../lib/cookieConsent";
+import { storageRemove } from "../utils/storage";
 import { SettingsContent, type SettingsContentProps } from "./SettingsPanel";
 
-afterEach(cleanup);
+function resetConsent() {
+  expireCookie(COOKIE_CONSENT_NAME, false);
+  storageRemove(COOKIE_CONSENT_STORAGE_KEY);
+}
+
+beforeEach(resetConsent);
+afterEach(() => {
+  cleanup();
+  resetConsent();
+});
 
 function makeProps(overrides: Partial<SettingsContentProps> = {}): SettingsContentProps {
   return {
@@ -87,5 +104,24 @@ describe("SettingsContent", () => {
     expect(props.onBaseMap).toHaveBeenCalledWith("street");
     expect(props.onToggleLabels).toHaveBeenCalledOnce();
     expect(props.onToggleTerrain).toHaveBeenCalledOnce();
+  });
+
+  it("Çerez ve depolama satırı durumu gösterir, tercih olayını gönderir ve kayıt sonrası güncellenir", () => {
+    render(createElement(SettingsContent, makeProps()));
+
+    expect(screen.getByText("Çerez ve depolama")).toBeTruthy();
+    expect(screen.getByText(/Henüz seçim kaydedilmedi/)).toBeTruthy();
+
+    const onOpenPreferences = vi.fn();
+    window.addEventListener(COOKIE_PREFERENCES_EVENT, onOpenPreferences);
+    fireEvent.click(screen.getByRole("button", { name: "Tercihleri aç" }));
+    window.removeEventListener(COOKIE_PREFERENCES_EVENT, onOpenPreferences);
+    expect(onOpenPreferences).toHaveBeenCalledOnce();
+
+    act(() => {
+      saveEssentialCookieConsent(new Date("2026-10-25T10:00:00.000Z"));
+    });
+    expect(screen.getByText(/Yalnız zorunlu · Kaydedildi:/)).toBeTruthy();
+    expect(screen.getByText(/2026/)).toBeTruthy();
   });
 });
