@@ -267,16 +267,26 @@
           return;
         }
 
+        const explorerHeader = doc.querySelector(".mobile-explorer-header");
         const mobileShell = !!doc.querySelector(".mobile-tab-bar");
         const narrow = win.innerWidth < 768;
 
-        push(
-          "Telefon kabuğu",
-          mobileShell === narrow ? "ok" : "fail",
-          mobileShell
-            ? `Mobil kabuk etkin: alt sekme çubuğu ve alt yığın ölçüleri aktif (${win.innerWidth}px).`
-            : `Masaüstü kabuk etkin. Genişlik ${win.innerWidth}px; 768px altında mobil kabuk beklenir.`,
-        );
+        if (!explorerHeader) {
+          push(
+            "Telefon kabuğu",
+            "warn",
+            "Şu an karşılama/giriş ekranı ölçülüyor. Uygulama kabuğunu ölçmek için çerçevede " +
+              "“Dünyayı keşfet” → bu cihaza özel hesap ile giriş yapın, sonra “Yeniden ölç”e basın.",
+          );
+        } else {
+          push(
+            "Telefon kabuğu",
+            mobileShell === narrow ? "ok" : "fail",
+            mobileShell
+              ? `Mobil kabuk etkin: alt sekme çubuğu ve alt yığın ölçüleri aktif (${win.innerWidth}px).`
+              : `Masaüstü kabuk etkin. Genişlik ${win.innerWidth}px; 768px altında mobil kabuk beklenir.`,
+          );
+        }
 
         const overflow = doc.documentElement.scrollWidth - win.innerWidth;
         push(
