@@ -44,10 +44,16 @@ import { useBlocks } from "./hooks/useBlocks";
 import { useFreshness } from "./hooks/useFreshness";
 import { subscribeNotifications, markNotificationRead, markAllRead, type AppNotification } from "./lib/notifications";
 import {
+  banUser,
   fetchModeratorAccess,
+  liftBan,
   setReportStatus,
+  subscribeActiveBans,
   subscribeModerationQueue,
+  subscribeMyBan,
   subscribeMyReports,
+  type Ban,
+  type BanDuration,
   type Report,
   type ReportStatus,
 } from "./lib/moderation";
@@ -68,6 +74,7 @@ const TrackRecorderPanel = lazy(() => import("./components/TrackRecorderPanel"))
 const MapLayersSheet = lazy(() => import("./components/MapLayersSheet"));
 // Raporlar/moderasyon paneli ayrı parça: kuyruk yalnız ihtiyaç anında yüklenir.
 const ReportsPanel = lazy(() => import("./components/ReportsPanel"));
+const SuspensionNotice = lazy(() => import("./components/SuspensionNotice"));
 const MAP_STYLE_KEY = "atlasia.mapStyle.v1";
 
 function initialMapStyle(): BaseMapStyle {
@@ -103,7 +110,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
     const coords = route.days.flatMap((day) => decodePolyline(day.polyline));
     if (coords.length > 1) mapRef.current?.drawRoute(coords, preview);
   };
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { theme, setTheme } = useTheme();
 
   const [mapViewport, setMapViewport] = useState<PlaceViewport | null>(null);
@@ -202,6 +209,8 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   const [queue, setQueue] = useState<Report[]>([]);
   const [queueLoading, setQueueLoading] = useState(false);
   const [queueError, setQueueError] = useState<string | null>(null);
+  const [bans, setBans] = useState<Ban[]>([]);
+  const [myBan, setMyBan] = useState<Ban | null>(null);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [socialTarget, setSocialTarget] = useState<SocialTarget | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -412,10 +421,41 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
     };
   }, [reportsOpen, moderator, cloudAccount]);
 
+  // Etkin askıya almalar: yalnız moderatörde dinlenir (kural listeyi ona açar).
+  useEffect(() => {
+    if (!moderator || !cloudAccount) { setBans([]); return; }
+    const unsub = subscribeActiveBans(setBans, (error) => {
+      console.warn("[Atlasia] Askıya alma listesi okunamadı:", error);
+    });
+    return () => unsub();
+  }, [moderator, cloudAccount]);
+
+  /**
+   * Kendi askı durumum. Kural kullanıcıya yalnız kendi `bans/{uid}` belgesini
+   * açar; süresi dolan ban istemcide de etkisiz sayılır (sunucu da öyle).
+   */
+  useEffect(() => {
+    if (!user?.uid || !cloudAccount) { setMyBan(null); return; }
+    const unsub = subscribeMyBan(user.uid, setMyBan, (error) => {
+      console.warn("[Atlasia] Askı durumu okunamadı:", error);
+    });
+    return () => unsub();
+  }, [user?.uid, cloudAccount]);
+
   const handleReportStatus = useCallback(async (reportId: string, status: ReportStatus, note?: string) => {
     if (!user?.uid) throw new Error("Oturum bulunamadı.");
     await setReportStatus(reportId, status, user.uid, note);
   }, [user?.uid]);
+
+  const handleBan = useCallback(async (report: Report, days: BanDuration, reason: string) => {
+    const target = report.targetOwnerUid ?? (report.targetType === "user" ? report.targetId : undefined);
+    if (!target) throw new Error("Bu raporun sahibi belirlenemedi; ban atılamaz.");
+    await banUser({ uid: target, reason, reportId: report.id, days });
+  }, []);
+
+  const handleLiftBan = useCallback(async (uid: string) => {
+    await liftBan(uid);
+  }, []);
 
   // Kabul edilen arkadaşlık isteği: karşı taraf benim listeme yazamaz (kural);
   // "friend_accepted" bildirimi gelince kendi listemi ben tamamlarım.
@@ -1191,6 +1231,9 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
             queueLoading={queueLoading}
             queueError={queueError}
             onStatus={handleReportStatus}
+            bans={bans}
+            onBan={handleBan}
+            onLiftBan={handleLiftBan}
           />
         </Suspense>
       )}
@@ -1299,6 +1342,12 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
       >
         <Plus className="size-[22px]" strokeWidth={2.4} />
       </button>
+
+      {myBan && (
+        <Suspense fallback={null}>
+          <SuspensionNotice ban={myBan} onSignOut={logout} />
+        </Suspense>
+      )}
 
       {toast && (
         <div

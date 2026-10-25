@@ -3,7 +3,7 @@ import { AlertTriangle, Check, CheckCheck, Flag, Loader2, ShieldCheck, X } from 
 import { usePanelAccess } from "../hooks/usePanelAccess";
 import { cn } from "../utils/cn";
 import { relativeTime } from "../utils/time";
-import type { Report, ReportStatus } from "../lib/moderation";
+import { BAN_DURATIONS, BAN_REASON_MAX, BAN_REASON_MIN, type Ban, type BanDuration, type Report, type ReportStatus } from "../lib/moderation";
 
 /**
  * Raporlar paneli (denetim K-07 / AY-03'ün istemci yüzü).
@@ -37,6 +37,19 @@ const REASON_LABEL: Record<string, string> = {
   other: "Diğer",
 };
 
+const DURATION_LABEL: Record<BanDuration, string> = {
+  7: "7 gün",
+  30: "30 gün",
+  90: "90 gün",
+  0: "Kalıcı",
+};
+
+/** Raporun sahibi: içerik raporlarında `targetOwnerUid`, kullanıcı raporunda hedef kimliği. */
+function targetOwnerOf(report: Report): string | undefined {
+  if (report.targetOwnerUid) return report.targetOwnerUid;
+  return report.targetType === "user" ? report.targetId : undefined;
+}
+
 const TARGET_LABEL: Record<string, string> = {
   place: "İz",
   post: "Gönderi",
@@ -64,6 +77,10 @@ interface Props {
   queueLoading: boolean;
   queueError: string | null;
   onStatus: (reportId: string, status: ReportStatus, note?: string) => Promise<void>;
+  /** Etkin askıya alma kayıtları (yalnız moderatörde dolu). */
+  bans: Ban[];
+  onBan: (report: Report, days: BanDuration, reason: string) => Promise<void>;
+  onLiftBan: (uid: string) => Promise<void>;
 }
 
 export default function ReportsPanel({
@@ -77,6 +94,9 @@ export default function ReportsPanel({
   queueLoading,
   queueError,
   onStatus,
+  bans,
+  onBan,
+  onLiftBan,
 }: Props) {
   const panelRef = usePanelAccess(open, onClose, true);
   const [tab, setTab] = useState<"mine" | "queue">("mine");
@@ -84,6 +104,9 @@ export default function ReportsPanel({
   const [actionError, setActionError] = useState<string | null>(null);
   const [noteFor, setNoteFor] = useState<string | null>(null);
   const [note, setNote] = useState("");
+  const [banFor, setBanFor] = useState<string | null>(null);
+  const [banDays, setBanDays] = useState<BanDuration>(30);
+  const [banReason, setBanReason] = useState("");
 
   useEffect(() => {
     if (!moderator) setTab("mine");
@@ -101,6 +124,32 @@ export default function ReportsPanel({
       setNote("");
     } catch (error) {
       setActionError((error as Error)?.message || "Rapor güncellenemedi.");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const actBan = async (report: Report, days: BanDuration) => {
+    setBusyId(report.id);
+    setActionError(null);
+    try {
+      await onBan(report, days, banReason);
+      setBanFor(null);
+      setBanReason("");
+    } catch (error) {
+      setActionError((error as Error)?.message || "Askıya alma kaydedilemedi.");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const lift = async (report: Report, uid: string) => {
+    setBusyId(report.id);
+    setActionError(null);
+    try {
+      await onLiftBan(uid);
+    } catch (error) {
+      setActionError((error as Error)?.message || "Askı kaldırılamadı.");
     } finally {
       setBusyId(null);
     }
@@ -215,6 +264,83 @@ export default function ReportsPanel({
                   </div>
                 )}
 
+                {tab === "queue" && (() => {
+                  const ownerUid = targetOwnerOf(report);
+                  if (!ownerUid || ownerUid === uid) return null;
+                  const activeBan = bans.find((ban) => ban.uid === ownerUid);
+                  // Kural, banı yalnız "işlem yapıldı" işaretli rapora dayandırır.
+                  const eligible = report.status === "actioned";
+                  return (
+                    <div className="mt-3 rounded-xl border border-red-300/20 bg-red-400/[0.06] p-2.5">
+                      {activeBan ? (
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-[11.5px] leading-relaxed text-red-200">
+                            Askıda: {activeBan.expiresAt ? new Date(activeBan.expiresAt).toLocaleDateString("tr-TR") : "kalıcı"} · {activeBan.reason}
+                          </p>
+                          <button
+                            type="button"
+                            disabled={busyId === report.id}
+                            onClick={() => void lift(report, ownerUid)}
+                            className="min-h-9 rounded-full border border-white/15 px-3 text-[11.5px] text-mint/85 disabled:opacity-40"
+                          >
+                            Banı kaldır
+                          </button>
+                        </div>
+                      ) : eligible ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => { setBanFor(banFor === report.id ? null : report.id); setBanReason(""); }}
+                            className="text-[11.5px] font-semibold text-red-200"
+                          >
+                            {banFor === report.id ? "Vazgeç" : "Hesabı askıya al"}
+                          </button>
+                          {banFor === report.id && (
+                            <div className="mt-2 space-y-2">
+                              <label className="block text-[11px] font-semibold text-mint/60" htmlFor={`dur-${report.id}`}>
+                                Süre
+                              </label>
+                              <select
+                                id={`dur-${report.id}`}
+                                value={banDays}
+                                onChange={(event) => setBanDays(Number(event.target.value) as BanDuration)}
+                                className="min-h-9 w-full rounded-xl border border-white/12 bg-ink px-2 text-[12px] text-mint"
+                              >
+                                {BAN_DURATIONS.map((days) => (
+                                  <option key={days} value={days}>{DURATION_LABEL[days]}</option>
+                                ))}
+                              </select>
+                              <label className="block text-[11px] font-semibold text-mint/60" htmlFor={`ban-${report.id}`}>
+                                Gerekçe ({BAN_REASON_MIN}–{BAN_REASON_MAX} karakter, kullanıcıya gösterilir)
+                              </label>
+                              <textarea
+                                id={`ban-${report.id}`}
+                                value={banReason}
+                                maxLength={BAN_REASON_MAX}
+                                rows={2}
+                                onChange={(event) => setBanReason(event.target.value)}
+                                className="w-full rounded-xl border border-white/12 bg-ink px-3 py-2 text-[12.5px] text-mint outline-none focus:border-red-300/50"
+                              />
+                              <button
+                                type="button"
+                                disabled={busyId === report.id || banReason.trim().length < BAN_REASON_MIN}
+                                onClick={() => void actBan(report, banDays)}
+                                className="min-h-9 w-full rounded-full bg-red-300/90 px-4 text-[12px] font-semibold text-ink disabled:opacity-40"
+                              >
+                                {busyId === report.id ? "Kaydediliyor…" : "Askıya al"}
+                              </button>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-[11px] leading-relaxed text-mint/50">
+                          Askıya alma için önce raporu “İşlem yapıldı” olarak işaretle. Kural, banı bu işarete bağlar.
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 {tab === "queue" && noteFor === report.id && (
                   <form
                     className="mt-2"
@@ -252,7 +378,7 @@ export default function ReportsPanel({
         </div>
 
         <footer className="border-t border-white/10 px-4 py-3 text-[11px] leading-relaxed text-mint/45">
-          Bildirimler inceleme sonrası moderasyon ekibine iletilir. Rapor durumu değişince raporlayan kendi listesinde görür.
+          Rapor durumu değişince raporlayan kendi listesinde görür. Askıya alma hesabı kapatır ve yeni içerik yazımını sunucuda engeller; süre dolunca kendiliğinden kalkar.
           {!moderator && <> Moderatör erişimi Firebase Console'da <span className="font-mono">moderators/{uid.slice(0, 8)}…</span> belgesiyle verilir.</>}
         </footer>
       </aside>

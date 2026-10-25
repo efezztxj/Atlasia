@@ -20,12 +20,16 @@ const DEFAULT_DIST = fileURLToPath(new URL("../dist", import.meta.url));
  *   +1.699 B  components/MapLayersSheet.tsx  "Katmanlar" sayfası
  *   +2.696 B  components/ReportsPanel.tsx  raporlarım + moderatör kuyruğu
  *   +1.284 B  App.tsx bağlantıları (durum, olaylar, panel açma)
- * Eşikler, eski payla aynı oranda (~%0,35) boşluk bırakacak şekilde
- * yükseltildi: 888.000 → 898.000 ve 34.500 → 34.800. Yeni bir ağır
- * bağımlılık eklendiğinde bu kapı yine kırmızıya döner.
+ * Eşikler, eski payla aynı oranda (~%0,4) boşluk bırakacak şekilde
+ * yükseltildi: 888.000 → 902.000 ve 34.500 → 34.800.
+ *
+ * 2026-10-25 (ikinci ölçüm, askıya alma/ban turu): JS 897.644 B. Ek: 
+ *   +2,4 kB  components/SuspensionNotice.tsx (askı ekranı) ve ReportsPanel
+ *            içindeki ban bölümü; +0,4 kB kurallar/ağ kodunda.
+ * Eşik 902.000'e çekildi; gerekçe aynı: yeni ağır bağımlılık yok.
  */
 export const BUNDLE_BUDGET = Object.freeze({
-  totalJsGzipBytes: 898_000,
+  totalJsGzipBytes: 902_000,
   totalCssGzipBytes: 34_800,
   initialGzipBytes: 439_000,
   categoryGzipBytes: Object.freeze({

@@ -353,3 +353,52 @@ Bugüne kadar testle kilitlenen bulgular: K-02, K-06, K-07, K-08, K-12 + yeni K-
 | `npm run test:rules:emulator` | **Çalıştırılamadı** — Java 21 yok; yeni kural testleri CI'da koşacak |
 
 Açık riskler: (1) kurallar **dağıtılmadan** moderasyon çalışmaz — yayın adımı ayrı bir onay; (2) MapLibre çizimi bu ortamda görsel olarak doğrulanamıyor, cihazda bakılmalı; (3) kuyruk sorgusu istemci tarafında durum filtresiyle çalışır, 50 kayıttan eski bildirimler görünmez.
+
+---
+
+## 11. Ek · 2026-10-25 (ikinci tur) — askıya alma / ban
+
+Ürün kararı: "kısasa kısas" — moderatör, raporlanan içeriğin sahibini askıya alır. Ayrıntılı akış: `docs/moderasyon-akisi.md`.
+
+### 11.1 Ne eklendi
+
+- `src/lib/moderation.ts`: `BAN_DURATIONS` (7/30/90/kalıcı), `Ban`, `normalizeBan`, `isBanActive`, `validateBanInput`, `subscribeMyBan`, `subscribeActiveBans`, `banUser`, `liftBan`.
+- `src/components/SuspensionNotice.tsx`: askı ekranı (gerekçe, bitiş, çıkış). `usePanelAccess` ile odak tuzağı — P18 erişilebilirlik kapısı yeşil kalır.
+- `src/components/ReportsPanel.tsx`: kuyruk kartında "Hesabı askıya al" (yalnız `actioned` raporda), süre seçimi, gerekçe alanı, "Banı kaldır".
+- `src/App.tsx`: `subscribeMyBan` (kendi durumu) + `subscribeActiveBans` (moderatör listesi), `handleBan` / `handleLiftBan`, askı ekranı.
+
+### 11.2 Kural değişikliği (dağıtım onayı gerekiyor)
+
+| Blok | Kural |
+| --- | --- |
+| `/bans/{uid}` | `get`: kendi kaydı veya moderatör · `list`: moderatör, ≤50 · `create`: moderatör + `validBan` · `update`: yalnız `expiresAt` ve geçmişe · `delete`: false |
+| `validBan` | `uid == uid`, `uid != request.auth.uid`, gerekçe 10–500, `createdAt == request.time`, `createdBy == request.auth.uid`, (varsa) `expiresAt > request.time`, **ve** `banHasProof` |
+| `banHasProof` | Rapor var, `status == 'actioned'`, `reviewerUid == request.auth.uid`, hedefi ya `targetOwnerUid == uid` ya da `targetType == 'user' && targetId == uid` |
+| `posts` / `replies` / `stories` / `places` create | `&& !banned()` |
+
+`banned()` yalnız `exists()`/`get()` ile `bans/{request.auth.uid}` bakar; süresi dolmuş kayıt etkisizdir. Okuma kuralları değişmedi.
+
+### 11.3 Testler
+
+| Dosya | Test | Kilitlediği |
+| --- | --- | --- |
+| `src/lib/moderation.test.ts` | +6 | ban doğrulaması, kendini askıya alma, süre sınırı, süre dolması |
+| `src/components/ReportsPanel.test.ts` | +5 | ban kapısı ("işlem yapıldı" şartı), süre+gerekçe, kısa gerekçe, ban kaldırma, kendini banlamama |
+| `src/components/SuspensionNotice.test.ts` | 3 | gerekçe/bitiş gösterimi, çıkış |
+| `tests/firestore.rules.test.ts` | +2 | ban kanıtı, silinemezlik, askıdaki hesabın yazma reddi, süresi geçmiş banın etkisizliği |
+
+### 11.4 K-10 ikinci ölçüm
+
+JS **897.644 / 902.000** B gzip (önce 894.809/898.000), CSS **34.602 / 34.800**, ilk HTML 403.695 / 439.000. Artış askı ekranı + kuyruk ban bölümünden (~2,8 kB); yeni ağır bağımlılık yok.
+
+### 11.5 Kapılar
+
+typecheck 0 hata · lint 0 uyarı · **133 dosya / 999 test** · build bütçe içinde + SW 31/31 · `test:scripts` 8/0 · `test:rules-inventory` 8/0 (31 blok) · emülatör testleri CI'da.
+
+### 11.6 Açık riskler
+
+1. Kurallar dağıtılmadıkça kuyruk/ban çalışmaz (fail-closed) — dağıtım ayrı onay.
+2. İçerik kaldırma yok; yaptırım hesap düzeyinde (bilinçli karar, ayrı iş).
+3. Raporlayana itme bildirimi yok; durum panelde görünür.
+4. Kuyruk 50 kayıt, sayfalama yok; rapor hız sınırı yok.
+5. `banned()` yazma başına bir belge okuması getirir (küçük maliyet, kota açısından ihmal edilebilir).

@@ -4,7 +4,10 @@ import {
   REPORT_STATUSES,
   REPORT_TARGET_TYPES,
   blockIdFor,
+  isBanActive,
+  normalizeBan,
   normalizeReport,
+  validateBanInput,
   validateReportInput,
 } from "./moderation";
 
@@ -78,3 +81,53 @@ describe("moderatör kuyruğu sözleşmesi", () => {
     expect(REPORT_STATUSES).toEqual(["open", "reviewed", "actioned"]);
   });
 });
+
+describe("askıya alma (ban) sözleşmesi", () => {
+  const input = { uid: "spammer", reason: "Tekrarlanan spam ve hakaret.", reportId: "report-9", days: 30 as const };
+
+  it("geçerli banı kabul eder", () => {
+    expect(validateBanInput(input, "mod-1")).toBeNull();
+    expect(validateBanInput({ ...input, days: 0 }, "mod-1")).toBeNull();
+  });
+
+  it("oturumsuz, kendini askıya alma ve boş kullanıcıyı reddeder", () => {
+    expect(validateBanInput(input, "   ")).toBe("auth/required");
+    expect(validateBanInput({ ...input, uid: "mod-1" }, "mod-1")).toBe("ban/self");
+    expect(validateBanInput({ ...input, uid: "  " }, "mod-1")).toBe("ban/user-invalid");
+  });
+
+  it("gerekçe sınırlarını ve raporsuz banı reddeder", () => {
+    expect(validateBanInput({ ...input, reason: "spam" }, "mod-1")).toBe("ban/reason-too-short");
+    expect(validateBanInput({ ...input, reason: "x".repeat(501) }, "mod-1")).toBe("ban/reason-too-long");
+    expect(validateBanInput({ ...input, reportId: "  " }, "mod-1")).toBe("ban/report-invalid");
+  });
+
+  it("bilinmeyen süreyi reddeder", () => {
+    expect(validateBanInput({ ...input, days: 5 as never }, "mod-1")).toBe("ban/duration-invalid");
+  });
+
+  it("süresi dolmuş ban etkin sayılmaz, alan yoksa kalıcıdır", () => {
+    const now = 1_700_000_000_000;
+    expect(isBanActive({ ...baseBan(), expiresAt: now - 1 }, now)).toBe(false);
+    expect(isBanActive({ ...baseBan(), expiresAt: now + 1 }, now)).toBe(true);
+    expect(isBanActive(baseBan(), now)).toBe(true);
+  });
+
+  it("ban belgesi eksik alanlarla da güvenle normalleşir", () => {
+    const ban = normalizeBan("u1", { reason: "Sebep", createdAt: 5 });
+    expect(ban.uid).toBe("u1");
+    expect(ban.reportId).toBe("");
+    expect(ban.expiresAt).toBeUndefined();
+    expect(ban.createdAt).toBe(5);
+  });
+});
+
+function baseBan() {
+  return {
+    uid: "spammer",
+    reason: "Tekrarlanan spam.",
+    reportId: "report-9",
+    createdAt: 1_700_000_000_000,
+    createdBy: "mod-1",
+  };
+}

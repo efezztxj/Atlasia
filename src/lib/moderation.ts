@@ -16,6 +16,7 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  Timestamp,
   updateDoc,
   where,
   writeBatch,
@@ -213,6 +214,153 @@ export function subscribeModerationQueue(
   if (!db) return () => {};
   const q = query(collection(db, "reports"), orderBy("createdAt", "desc"), limit(REPORT_LIMIT));
   return onSnapshot(q, (snap) => onChange(snap.docs.map((d) => normalizeReport(d.id, d.data()))), onError);
+}
+
+/**
+ * Askıya alma (ban) — "kısasa kısas" katı yaptırım.
+ *
+ * Karar: moderatör, raporladığı içeriğin **sahibini** askıya alır. Belge
+ * `bans/{uid}` yolunda tekildir ve istemciden YALNIZ moderatör yazabilir;
+ * yazım kuralı şunları zorunlu kılar:
+ *   - gerekçe 10–500 karakter,
+ *   - `reportId` gerçekten var olan ve hedef sahibi bu kullanıcı olan bir rapor,
+ *   - o raporu **aynı** moderatör incelemiş olmalı (`reviewerUid`),
+ *   - `createdAt == request.time`, `createdBy == request.auth.uid`.
+ * Yani raporsuz, dayanaksız ya da başkasının incelemesine dayanan ban atılamaz.
+ * Ban kaldırma yalnız `expiresAt` alanını geçmişe çeker (iz kalır, belge silinmez).
+ */
+export const BAN_REASON_MIN = 10;
+export const BAN_REASON_MAX = 500;
+/** Gün cinsinden süreler; 0 = kalıcı. */
+export const BAN_DURATIONS = [7, 30, 90, 0] as const;
+export type BanDuration = (typeof BAN_DURATIONS)[number];
+
+export interface Ban {
+  uid: string;
+  reason: string;
+  reportId: string;
+  createdAt: number;
+  createdBy: string;
+  expiresAt?: number;
+}
+
+export interface BanInput {
+  uid: string;
+  reason: string;
+  reportId: string;
+  days: BanDuration;
+}
+
+export function normalizeBan(uid: string, raw: Record<string, unknown>): Ban {
+  return {
+    uid: typeof raw.uid === "string" ? raw.uid : uid,
+    reason: typeof raw.reason === "string" ? raw.reason : "",
+    reportId: typeof raw.reportId === "string" ? raw.reportId : "",
+    createdAt: toMillis(raw.createdAt),
+    createdBy: typeof raw.createdBy === "string" ? raw.createdBy : "",
+    expiresAt: raw.expiresAt === undefined || raw.expiresAt === null ? undefined : toMillis(raw.expiresAt),
+  };
+}
+
+/** Süresi dolmuş ban etkin sayılmaz; alan yoksa kalıcıdır. */
+export function isBanActive(ban: Ban, now = Date.now()): boolean {
+  if (!ban.uid) return false;
+  return ban.expiresAt === undefined || ban.expiresAt > now;
+}
+
+/** İstemci doğrulaması: kuralın aynısı, kullanıcıya dönük hata koduyla. */
+export function validateBanInput(input: BanInput, reviewerUid: string): string | null {
+  const reviewer = reviewerUid.trim();
+  if (!reviewer) return "auth/required";
+  const uid = input.uid.trim();
+  if (!uid) return "ban/user-invalid";
+  if (uid === reviewer) return "ban/self";
+  const reason = input.reason.trim();
+  if (reason.length < BAN_REASON_MIN) return "ban/reason-too-short";
+  if (reason.length > BAN_REASON_MAX) return "ban/reason-too-long";
+  if (!input.reportId.trim()) return "ban/report-invalid";
+  if (!(BAN_DURATIONS as readonly number[]).includes(input.days)) return "ban/duration-invalid";
+  return null;
+}
+
+/** Kendi askıya alma kaydım; yoksa `null`. Ban kalkmışsa da `null` döner. */
+export function subscribeMyBan(
+  uid: string,
+  onChange: (ban: Ban | null) => void,
+  onError?: (error: Error) => void,
+): () => void {
+  if (!db || !uid.trim()) return () => {};
+  return onSnapshot(
+    doc(db, "bans", uid.trim()),
+    (snap) => {
+      const ban = snap.exists() ? normalizeBan(uid.trim(), snap.data()) : null;
+      onChange(ban && isBanActive(ban) ? ban : null);
+    },
+    onError,
+  );
+}
+
+/**
+ * Kullanıcıyı askıya alır. `days === 0` kalıcıdır; diğer sürelerde `expiresAt`
+ * yazılır. Kural, çağıranın o raporu incelemiş moderatör olmasını şart koşar.
+ */
+export async function banUser(input: BanInput): Promise<void> {
+  if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
+  const auth = await getAtlasAuth();
+  const reviewer = auth.currentUser?.uid;
+  if (!reviewer) throw dataError("auth/required", "Oturum bulunamadı.");
+  const problem = validateBanInput(input, reviewer);
+  if (problem) throw dataError(problem, banErrorMessage(problem));
+
+  const payload: Record<string, unknown> = {
+    uid: input.uid.trim(),
+    reason: input.reason.trim(),
+    reportId: input.reportId.trim(),
+    createdAt: serverTimestamp(),
+    createdBy: reviewer,
+  };
+  if (input.days > 0) {
+    payload.expiresAt = Timestamp.fromMillis(Date.now() + input.days * 24 * 60 * 60 * 1000);
+  }
+  await setDoc(doc(db, "bans", input.uid.trim()), payload);
+}
+
+/** Banı kaldırır: belge silinmez, `expiresAt` şimdiye çekilir (iz kalır). */
+export async function liftBan(uid: string): Promise<void> {
+  if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
+  const clean = uid.trim();
+  if (!clean) throw dataError("ban/user-invalid", "Kullanıcı kimliği geçersiz.");
+  await updateDoc(doc(db, "bans", clean), { expiresAt: serverTimestamp() });
+}
+
+function banErrorMessage(code: string): string {
+  switch (code) {
+    case "ban/self": return "Kendini askıya alamazsın.";
+    case "ban/reason-too-short": return `Gerekçe en az ${BAN_REASON_MIN} karakter olmalı.`;
+    case "ban/reason-too-long": return `Gerekçe en fazla ${BAN_REASON_MAX} karakter olabilir.`;
+    case "ban/report-invalid": return "Ban bir rapora dayanmak zorunda.";
+    case "ban/duration-invalid": return "Süre geçersiz.";
+    case "ban/user-invalid": return "Kullanıcı kimliği geçersiz.";
+    default: return "Askıya alma kaydedilemedi.";
+  }
+}
+
+/**
+ * Moderatör için etkin askıya alma listesi (en fazla 50 kayıt).
+ * Süresi dolmuş banlar istemcide ayıklanır; böylece "banı kaldır" düğmesi
+ * yalnız gerçekten etkin kayıtlarda görünür.
+ */
+export function subscribeActiveBans(
+  onChange: (bans: Ban[]) => void,
+  onError?: (error: Error) => void,
+): () => void {
+  if (!db) return () => {};
+  const q = query(collection(db, "bans"), limit(50));
+  return onSnapshot(
+    q,
+    (snap) => onChange(snap.docs.map((d) => normalizeBan(d.id, d.data())).filter((ban) => isBanActive(ban))),
+    onError,
+  );
 }
 
 /** İnceleme sonucunu yazar. Kural yalnız bu dört alanı ve `open|reviewed|actioned` kabul eder. */

@@ -36,6 +36,9 @@ const baseProps: PanelProps = {
   queueLoading: false,
   queueError: null,
   onStatus: vi.fn(async () => {}),
+  bans: [],
+  onBan: vi.fn(async () => {}),
+  onLiftBan: vi.fn(async () => {}),
 };
 
 const renderPanel = (overrides: Partial<PanelProps> = {}) =>
@@ -86,5 +89,61 @@ describe("ReportsPanel", () => {
     renderPanel({ moderator: true, queue: [], queueError: "Kurallar dağıtılmadı." });
     fireEvent.click(screen.getByRole("button", { name: /Kuyruk/ }));
     expect(screen.getByRole("alert").textContent).toContain("Kurallar dağıtılmadı.");
+  });
+});
+
+describe("ReportsPanel · askıya alma akışı", () => {
+  afterEach(() => cleanup());
+
+  const actioned = () => report({ status: "actioned", targetOwnerUid: "spammer" });
+
+  it("ban ancak 'İşlem yapıldı' işaretli raporda önerilir (kural kapısı)", () => {
+    renderPanel({ moderator: true, queue: [report({ targetOwnerUid: "spammer" })] });
+    fireEvent.click(screen.getByRole("button", { name: /Kuyruk/ }));
+    expect(screen.queryByRole("button", { name: /Hesabı askıya al/ })).toBeNull();
+    expect(screen.getByText(/önce raporu “İşlem yapıldı” olarak işaretle/)).toBeTruthy();
+  });
+
+  it("süre ve gerekçeyle askıya alır", async () => {
+    const onBan = vi.fn(async () => {});
+    renderPanel({ moderator: true, queue: [actioned()], onBan });
+
+    fireEvent.click(screen.getByRole("button", { name: /Kuyruk/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Hesabı askıya al/ }));
+    expect((screen.getByRole("button", { name: "Askıya al" }) as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.change(screen.getByLabelText(/Süre/), { target: { value: "7" } });
+    fireEvent.change(screen.getByLabelText(/Gerekçe/), { target: { value: "Tekrarlanan spam ve hakaret." } });
+    fireEvent.click(screen.getByRole("button", { name: "Askıya al" }));
+
+    await waitFor(() => expect(onBan).toHaveBeenCalledWith(expect.objectContaining({ id: "report-1" }), 7, "Tekrarlanan spam ve hakaret."));
+  });
+
+  it("kısa gerekçede göndermez", () => {
+    renderPanel({ moderator: true, queue: [actioned()], onBan: vi.fn(async () => {}) });
+    fireEvent.click(screen.getByRole("button", { name: /Kuyruk/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Hesabı askıya al/ }));
+    fireEvent.change(screen.getByLabelText(/Gerekçe/), { target: { value: "spam" } });
+    expect((screen.getByRole("button", { name: "Askıya al" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("etkin banı gösterir ve kaldırır", async () => {
+    const onLiftBan = vi.fn(async () => {});
+    renderPanel({
+      moderator: true,
+      queue: [actioned()],
+      onLiftBan,
+      bans: [{ uid: "spammer", reason: "Spam", reportId: "r", createdAt: Date.now(), createdBy: "mod-1" }],
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Kuyruk/ }));
+    expect(screen.getByText(/Askıda: kalıcı/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Banı kaldır/ }));
+    await waitFor(() => expect(onLiftBan).toHaveBeenCalledWith("spammer"));
+  });
+
+  it("kendi hesabı için askıya alma düğmesi göstermez", () => {
+    renderPanel({ moderator: true, uid: "spammer", queue: [actioned()] });
+    fireEvent.click(screen.getByRole("button", { name: /Kuyruk/ }));
+    expect(screen.queryByRole("button", { name: /Hesabı askıya al/ })).toBeNull();
   });
 });
