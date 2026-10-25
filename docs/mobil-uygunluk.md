@@ -39,8 +39,8 @@ Teknik inceleme yalnız kod okumasıyla kalmıyor; uygulama gerçek cihaz
 ölçülerinde çalıştırılıp canlı DOM üzerinden ölçülüyor.
 
 ```bash
-npm run dev                        # 1. terminal (uygulama, 5173)
-node scripts/mobil-onizleme.mjs    # 2. terminal (önizleme, 5180)
+npm run dev             # 1. terminal (uygulama, 5173)
+npm run mobil:onizleme  # 2. terminal (önizleme, 5180)
 # tarayıcıda: http://localhost:5180/
 ```
 
@@ -57,8 +57,11 @@ Araç ne yapar:
   görseller, toplam kaynak yükü.
 - Cihaz çerçevesi değiştiğinde uygulamayı yeniden yükler (ilk açılışta okunan
   `window.innerWidth` kararları da doğru ölçülsün diye).
-- Sayfa telefon genişliğinde açılırsa doğrudan uygulamaya (`/uygulama/`) geçer;
-  aynı adres telefonda uygulamayı, masaüstünde denetim masasını açar.
+- Sayfa **gerçek telefonda** (üst pencerede ve dar ekranda) açılırsa doğrudan
+  uygulamaya (`/uygulama/`) geçer; masaüstü önizleme panelinde daraltılmış olsa
+  bile cihaz çerçeveleri gösterilir.
+- Araç, sayfa yenilemesi ve kapanan sekme kaynaklı soket sıfırlamalarında
+  (`ECONNRESET`) düşmez; hata yakalanır ve önizleme ayakta kalır.
 
 Notlar:
 

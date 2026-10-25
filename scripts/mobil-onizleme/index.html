@@ -172,7 +172,10 @@
     </div>
 
     <script>
-      const isPhone = window.matchMedia("(max-width: 600px)").matches;
+      // Yalnız gerçek telefonda (üst pencerede ve dar ekranda) uygulamaya geç.
+      // Önizleme paneli bir iframe içinde açıldığı için daraltılmış olsa bile
+      // cihaz çerçeveleri gösterilmeye devam eder.
+      const isPhone = window.self === window.top && window.matchMedia("(max-width: 600px)").matches;
       if (isPhone) location.replace("/uygulama/");
 
       const devices = [

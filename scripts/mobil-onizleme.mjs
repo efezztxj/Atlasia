@@ -29,12 +29,25 @@ const PORT = Number(process.env.PORT ?? 5180);
 const APP_URL = new URL(process.env.ATLASIA_APP_URL ?? "http://127.0.0.1:5173");
 const APP_PREFIX = "/uygulama";
 
+/**
+ * Soket hatalarını yutar. Vite sayfayı yenilediğinde (HMR) tarayıcı bağlantıyı
+ * sıfırlar; yakalanmayan ECONNRESET tüm önizlemeyi düşürüyordu.
+ */
+function ignoreBrokenSocket(stream) {
+  stream.on("error", () => {
+    if (!stream.destroyed) stream.destroy();
+  });
+}
+
 /** Uygulama sunucusuna istek aktarır; Host başlığı Vite'ın kendi adına çevrilir. */
 function proxy(req, res) {
   const incoming = req.url ?? "/";
   const targetPath = incoming.startsWith(APP_PREFIX)
     ? incoming.slice(APP_PREFIX.length) || "/"
     : incoming;
+
+  ignoreBrokenSocket(req);
+  ignoreBrokenSocket(res);
 
   const upstream = httpRequest(
     {
@@ -46,12 +59,17 @@ function proxy(req, res) {
       headers: { ...req.headers, host: APP_URL.host },
     },
     (upstreamRes) => {
+      ignoreBrokenSocket(upstreamRes);
       res.writeHead(upstreamRes.statusCode ?? 502, upstreamRes.headers);
       upstreamRes.pipe(res);
     },
   );
 
   upstream.on("error", (error) => {
+    if (res.headersSent || res.destroyed) {
+      res.destroy();
+      return;
+    }
     res.writeHead(502, { "content-type": "text/plain; charset=utf-8" });
     res.end(
       `Uygulama sunucusuna ulaşılamadı (${APP_URL.origin}).\n` +
@@ -83,6 +101,7 @@ const server = createServer(async (req, res) => {
 
 // Vite HMR websocket'i de aktarılır; aksi hâlde konsolda bağlantı hatası görünür.
 server.on("upgrade", (req, socket, head) => {
+  ignoreBrokenSocket(socket);
   const upstream = httpRequest({
     hostname: APP_URL.hostname,
     port: APP_URL.port,
@@ -90,6 +109,7 @@ server.on("upgrade", (req, socket, head) => {
     headers: { ...req.headers, host: APP_URL.host },
   });
   upstream.on("upgrade", (upstreamRes, upstreamSocket, upstreamHead) => {
+    ignoreBrokenSocket(upstreamSocket);
     socket.write(
       `HTTP/1.1 101 Switching Protocols\r\n${Object.entries(upstreamRes.headers)
         .map(([key, value]) => `${key}: ${value}`)
@@ -102,6 +122,18 @@ server.on("upgrade", (req, socket, head) => {
   });
   upstream.on("error", () => socket.destroy());
   upstream.end();
+});
+
+// Bozuk istemci bağlantısı (sayfa yenileme, iframe kapanması) sunucuyu düşürmesin.
+server.on("clientError", (_error, socket) => {
+  if (socket.writable) socket.end("HTTP/1.1 400 Bad Request\r\n\r\n");
+  else socket.destroy();
+});
+process.on("uncaughtException", (error) => {
+  console.warn("[mobil-onizleme] beklenmeyen hata atlandı:", error.message);
+});
+process.on("unhandledRejection", (reason) => {
+  console.warn("[mobil-onizleme] işlenmeyen ret atlandı:", String(reason));
 });
 
 server.listen(PORT, "0.0.0.0", () => {
