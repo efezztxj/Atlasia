@@ -35,3 +35,6 @@ satellite-map-web-application*
 
 # CI: emülatör adımının yakalanan logu (yalnız CI çalışma alanında oluşur)
 rules-emulator.log
+
+# Local Firestore backups (never commit user or production data)
+backups/

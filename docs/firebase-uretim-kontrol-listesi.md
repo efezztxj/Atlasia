@@ -62,16 +62,21 @@ firebase deploy --only firestore:rules,firestore:indexes --project <onayli-proje
 
 ## 6. Üretim build kapısı
 
-- `scripts/verify-env.mjs` yalnızca `CF_PAGES === "1" && CF_PAGES_BRANCH === "main"` iken üç zorunlu Firebase değişkeninden biri eksik/boşluksa build'i kırar (hata mesajı yalnız değişken adını yazar).
-- Yerel `npm run build`, GitHub Actions ve preview branch'lerde kapı **devreye girmez**.
+- `scripts/verify-env.mjs` şunları otomatik zorlar (hata mesajı yalnız değişken adını yazar, gizli değeri asla yazmaz):
+  - **Tüm Cloudflare Pages build'lerinde (`CF_PAGES === "1"` — hem `main` hem `preview`):** `VITE_APPCHECK_DEBUG_TOKEN` doluysa build kırılır.
+  - **Yalnız üretim build'inde (`CF_PAGES === "1" && CF_PAGES_BRANCH === "main"`):**
+    - Üç zorunlu Firebase değişkeninden biri eksik/boşluksa build kırılır.
+    - `VITE_FIREBASE_PROJECT_ID` değeri `atlasia-dev` ise build kırılır.
+    - `VITE_PHONE_AUTH_ENABLED === "true"` ise build kırılır.
+- Yerel `npm run build` ve GitHub Actions üzerinde kapı **devreye girmez**.
 - Test: `npm run test:scripts` (veya `node --test scripts/verify-env.node-test.mjs`)
 
 ## 7. Uygulanacak doğrulama adımları (kullanıcı)
 
 1. Firebase Console → Authentication → Sign-in method → Phone **kapalı** olduğunu gör.
 2. Authorized domains → `atlasia.pages.dev` olduğunu gör.
-3. App Check → enforce durumunu not et (bu repo enforce'u zorunlu tutmaz).
+3. App Check → Token TTL `7 days` ve enforce izleme durumunu not et (bu repo enforce'u zorunlu tutmaz).
 4. Cloudflare Dashboard → Pages → Settings → Variables and secrets → Production/Preview ayrımını kontrol et.
-5. Gerekirse `firebase deploy --only firestore:rules` çalıştır.
+5. Gerekirse `firebase deploy --only firestore:rules,firestore:indexes --project <onayli-proje-id>` çalıştır (`--project` her zaman açık yazılır).
 
 > Bu belge hiçbir maddeyi "doğrulandı" olarak işaretlemez; Console erişimi olan kullanıcı her maddeyi elle teyit eder.
