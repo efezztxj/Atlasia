@@ -18,6 +18,7 @@ const app = read("src/App.tsx");
 const mapControls = read("src/components/MapControls.tsx");
 const bottomPanel = read("src/components/BottomPanel.tsx");
 const hero = read("src/components/Hero.tsx");
+const drawer = read("src/components/Drawer.tsx");
 
 /** Bir CSS bloğunu seçiciden itibaren süslü parantez dengesiyle çıkarır. */
 function block(selector: string): string {
@@ -103,7 +104,7 @@ describe("harita üstünde blur", () => {
 
 describe("küçük ekran yerleşimi (≈360×640)", () => {
   const barHeight = px(css, /\.mobile-tab-bar \{\s*\n\s*height: calc\((\d+)px/);
-  const fabBottom = px(app, /mobile-add-fab[^"]*bottom-\[calc\((\d+)px/);
+  const fabLine = px(css, /--mobile-fab-bottom: calc\((\d+)px/);
   const collapsedBottom = px(bottomPanel, /max-md:bottom-\[calc\((\d+)px/);
   const controlsBottom = px(css, /\.mobile-map-controls \{\s*\n(?:\s*\/\*[\s\S]*?\*\/\s*\n)?\s*right: 10px;\s*\n\s*bottom: calc\((\d+)px/);
 
@@ -111,9 +112,35 @@ describe("küçük ekran yerleşimi (≈360×640)", () => {
     expect(barHeight).toBe(58);
   });
 
-  it("+ düğmesi daraltılmış keşif kartının altında kalıyor", () => {
-    // Düğme 44 px; kartın alt kenarı collapsedBottom. Arada en az 4 px boşluk.
-    expect(fabBottom + 44).toBeLessThanOrEqual(collapsedBottom);
+  it("ekle ayrı yüzen düğme değil, çubuğun ortasındaki birincil eylem", () => {
+    // 2026-10-25: ayrı + FAB'ı kaldırıldı; tek altın eylem çubuğun ortasında.
+    expect(app).not.toContain("mobile-add-fab");
+    expect(app).toContain("mobile-tab-add");
+    expect(css).toContain(".mobile-tab-add > span");
+    // Çubuk yüksekliği değişmedi; daire çubuğun üstüne taşar.
+    expect(barHeight).toBe(58);
+  });
+
+  it("alt çubuk dört sekme taşır; Kaydet sekmesi çubuktan kaldırıldı", () => {
+    for (const label of ["Keşfet", "Topluluk", "Profil", "İzlerim"]) {
+      expect(app).toContain(`label: "${label}"`);
+    }
+    expect(app).not.toContain('label: "Kaydet"');
+  });
+
+  it("kayıtlar sağ üstteki üç çizgi menüsünden açılıyor", () => {
+    expect(app).toContain("onRecords={openRecords}");
+    expect(drawer).toContain("onRecords");
+    expect(drawer).toContain("Kayıtlarım");
+  });
+
+  it("alt yığın sırası: çubuk → keşif kartı → eylem çifti", () => {
+    // Kart çubuğun üstünde ama çubuktan taşan + dairesini (20 px) örtmüyor.
+    expect(collapsedBottom).toBeGreaterThan(barHeight + 20);
+    // Eylem çifti kartın üstünde: kart yüksekliği (~70 px) + 10 px nefes.
+    expect(fabLine).toBeGreaterThanOrEqual(collapsedBottom + 70 + 10);
+    // Harita kontrolleri eylem çiftinin de üstünde başlar.
+    expect(controlsBottom).toBeGreaterThanOrEqual(fabLine + 46);
   });
 
   it("harita düğmeleri daraltılmış kartın üstünde başlıyor", () => {
@@ -125,7 +152,30 @@ describe("küçük ekran yerleşimi (≈360×640)", () => {
   it("açık panelde çakışan mobil katmanlar gizleniyor", () => {
     expect(app).toContain("hiddenOnMobile={panelOpen}");
     expect(mapControls).toContain('hiddenOnMobile && "max-md:hidden"');
-    expect(app).toMatch(/mobile-add-fab[\s\S]{0,600}panelOpen \? " hidden"/);
+    expect(app).toMatch(/mobile-walk-fab[\s\S]{0,400}panelOpen \? " max-md:hidden"/);
+  });
+});
+
+describe("keşif kartı kalıcılığı", () => {
+  const dockLine = /const dockVisible = ([^;]+);/.exec(app)?.[1] ?? "";
+
+  it("profil, izlerim ve topluluk açıkken keşif kartı gizlenmiyor", () => {
+    // Kullanıcı isteği 2026-10-25: sekmeye basınca kart kaybolmasın.
+    for (const flag of ["profileOpen", "myPlacesOpen", "feedOpen"]) {
+      expect(dockLine).not.toContain(flag);
+    }
+  });
+
+  it("yalnız ekranı bütünüyle kaplayan katmanlar kartı gizliyor", () => {
+    for (const flag of ["recordsOpen", "storyPlace", "atlasOpen", "settingsOpen", "drawerOpen"]) {
+      expect(dockLine).toContain(flag);
+    }
+  });
+
+  it("masaüstünde sağdan açılan profil paneli kartı örtmüyor", () => {
+    expect(app).toContain("shiftedLeft={profileOpen}");
+    expect(bottomPanel).toContain("shiftedLeft");
+    expect(bottomPanel).toContain("lg:pr-[540px]");
   });
 });
 

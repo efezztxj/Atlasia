@@ -13,6 +13,13 @@ const DEFAULT_DIST = fileURLToPath(new URL("../dist", import.meta.url));
  * Bilinçli bir büyümede eşik, yeni ölçüm ve gerekçe teslimata yazılarak
  * güncellenir; yalnız testi yeşil yapmak için gevşetilmez.
  *
+ * 2026-10-25 — mobil tur: telefon sertleştirme katmanı (16px alan yazı tabanı,
+ * overscroll/touch-action, yatay kısa ekran kuralları) ve alt yığın düzeni
+ * ölçülen CSS gzip değerini yükseltti. `main` ile birleşince (hava katmanı +
+ * moderasyon turu) ölçüm CSS 34.903 B / JS 893.504 B oldu; CSS eşiği
+ * 34.800 -> 35.100'e çekildi (aynı ~%0,6 pay), JS eşiği 902.000'de kaldı.
+ * Ayrıntı: docs/mobil-uygunluk.md.
+ *
  * 2026-10-25 güncellemesi (K-10 kararı, maintainer onayı "gerekeni yap"):
  * ölçülen değerler JS 894.809 B, CSS 34.546 B gzip. Artış bilinçli iki
  * özellikten geliyor ve hiçbiri yeni ağır bağımlılık değil:
@@ -30,7 +37,8 @@ const DEFAULT_DIST = fileURLToPath(new URL("../dist", import.meta.url));
  */
 export const BUNDLE_BUDGET = Object.freeze({
   totalJsGzipBytes: 902_000,
-  totalCssGzipBytes: 34_800,
+  totalCssGzipBytes: 35_100,
+
   initialGzipBytes: 439_000,
   categoryGzipBytes: Object.freeze({
     entry: 174_000,

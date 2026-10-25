@@ -35,6 +35,9 @@ interface Props {
   onDelete: (p: Place) => void | Promise<boolean>;
   onAdd: () => void;
   /** Sol alttaki akış penceresi açıkken panel sağa kayar */
+  /** Sağdan açılan panel (profil) kartı örtmesin: kart sola kayar. */
+  shiftedLeft?: boolean;
+  /** Soldan açılan panel (topluluk, lg) kartı örtmesin: kart sağa kayar. */
   shifted: boolean;
   onOpenFeed: () => void;
   /** Konum izni verildiyse metre cinsinden doğruluk */
@@ -63,6 +66,7 @@ export default function BottomPanel({
   canDelete,
   onDelete,
   onAdd,
+  shiftedLeft,
   shifted,
   onOpenFeed,
   accuracy,
@@ -112,13 +116,14 @@ export default function BottomPanel({
         className={cn(
           "pointer-events-none absolute inset-x-0 bottom-[calc(70px+env(safe-area-inset-bottom))] z-20 flex justify-center px-3 pb-3 transition-[padding] duration-500 md:bottom-0 md:pb-7",
           shifted && "lg:pl-[420px]",
+          shiftedLeft && "lg:pr-[540px]",
         )}
       >
         <div className="w-full max-w-[920px]">
           <section
             ref={(node) => { panelRef.current = node; }}
             aria-label="Daraltılmış keşif önerisi"
-            className="mobile-discovery-panel desktop-discovery-panel gold-frame pointer-events-auto rounded-[22px] bg-[#021915] p-2.5 max-md:fixed max-md:inset-x-3 max-md:bottom-[calc(118px+env(safe-area-inset-bottom))] max-md:z-20 md:rounded-[28px] md:p-4"
+            className="mobile-discovery-panel desktop-discovery-panel gold-frame pointer-events-auto rounded-[22px] bg-[#021915] p-2.5 max-md:fixed max-md:inset-x-3 max-md:bottom-[calc(88px+env(safe-area-inset-bottom))] max-md:z-20 md:rounded-[28px] md:p-4"
           >
             {current ? (
               <div className="flex min-w-0 items-center gap-1.5 md:gap-3">
@@ -180,10 +185,11 @@ export default function BottomPanel({
       className={cn(
         "pointer-events-none absolute inset-x-0 bottom-[calc(70px+env(safe-area-inset-bottom))] z-20 flex justify-center px-3 pb-3 transition-[padding] duration-500 md:bottom-0 md:pb-7",
         shifted && "lg:pl-[420px]",
+        shiftedLeft && "lg:pr-[540px]",
       )}
     >
       <div className="w-full max-w-[920px]">
-        <section ref={(node) => { panelRef.current = node; }} aria-label="Keşif önerileri" className="mobile-discovery-panel gold-frame pointer-events-auto rounded-[26px] bg-[#021b16] px-3.5 pb-3.5 pt-2.5 max-md:fixed max-md:inset-x-3 max-md:bottom-[calc(118px+env(safe-area-inset-bottom))] max-md:z-20 max-md:max-h-[calc(42dvh-54px)] max-md:overflow-y-auto md:hidden">
+        <section ref={(node) => { panelRef.current = node; }} aria-label="Keşif önerileri" className="mobile-discovery-panel gold-frame pointer-events-auto rounded-[26px] bg-[#021b16] px-3.5 pb-3.5 pt-2.5 max-md:fixed max-md:inset-x-3 max-md:bottom-[calc(88px+env(safe-area-inset-bottom))] max-md:z-20 max-md:max-h-[calc(42dvh-54px)] max-md:overflow-y-auto md:hidden">
           <span aria-hidden className="sheet-handle mb-2.5" />
           <div className="flex items-center justify-between gap-3">
             <p className="truncate text-[12px] text-mint/75">Yol üstündekilerden küçük ipuçları</p>
