@@ -184,9 +184,11 @@ export default function ProfilePanel({ onClose, onRecords, settings, myPlacesCou
       </header>
 
       <div className="thin-scroll min-h-0 flex-1 overflow-y-auto px-6 pb-5">
-        <section aria-label="Hesap özeti" className="mt-2 overflow-hidden rounded-[24px] border border-sun/25 bg-gradient-to-br from-sun/[0.13] via-leaf/[0.07] to-transparent p-4">
+        {/* Kimlik bloğu: kart/çerçeve yok (kullanıcı isteği 2026-10-25 —
+            Instagram'daki gibi sade; ekranı kutular değil hiyerarşi taşır). */}
+        <section aria-label="Hesap özeti" className="mt-1">
           <div className="flex items-center gap-4">
-            <span className="avatar-gold-ring size-[74px] shrink-0">
+            <span className="avatar-gold-ring size-[68px] shrink-0">
               <span className="grid size-full place-items-center bg-ink-2 font-display text-[26px] font-bold text-sun">
                 {user?.displayName?.[0]?.toLocaleUpperCase("tr") ?? <UserRound size={25} />}
               </span>
@@ -207,7 +209,7 @@ export default function ProfilePanel({ onClose, onRecords, settings, myPlacesCou
             </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-3 divide-x divide-white/10 border-t border-white/10 pt-3.5 text-center">
+          <div className="mt-4 grid grid-cols-3 text-center">
             <div className="px-1.5">
               <p className="font-display text-[21px] leading-none font-bold text-white tabular-nums">{myPlacesCount}</p>
               <p className="mt-1.5 text-[12px] text-mint/70">izim</p>
@@ -226,24 +228,32 @@ export default function ProfilePanel({ onClose, onRecords, settings, myPlacesCou
         <nav aria-label="Profil bölümleri" className="sticky top-0 z-10 -mx-6 mt-4 grid grid-cols-4 gap-1.5 border-y border-white/[0.06] bg-ink-2/95 px-3 py-2 md:gap-2 md:px-6">
           {[
             { id: "profile-account", label: "Hesabım", icon: UserRound },
-            { id: "profile-library", label: "Kayıtlar", icon: Bookmark },
+            { id: "profile-library", label: "Keşiflerim", icon: Bookmark },
             { id: "profile-settings", label: "Ayarlar", icon: SlidersHorizontal },
-            { id: "location-settings", label: "Konum", icon: MapPin },
           ].map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               type="button"
               aria-pressed={activeSection === id}
               onClick={() => scrollToSection(id)}
-              className={`flex min-h-10 min-w-0 items-center justify-center gap-1 rounded-full border px-1.5 text-[11px] font-semibold transition min-[380px]:gap-1.5 min-[380px]:px-2 min-[380px]:text-[12px] md:px-3 ${activeSection === id ? "border-sun/55 bg-sun/12 text-sun" : "border-white/12 text-mint/75 hover:border-sun/40 hover:text-mint"}`}
+              className={`flex min-h-10 min-w-0 items-center justify-center gap-1.5 rounded-full border px-2 text-[12px] font-semibold transition md:px-3 ${activeSection === id ? "border-sun/55 bg-sun/12 text-sun" : "border-white/12 text-mint/75 hover:border-sun/40 hover:text-mint"}`}
             >
               <Icon size={14} className="hidden shrink-0 min-[410px]:block" /><span className="truncate">{label}</span>
             </button>
           ))}
         </nav>
 
-        <div id="profile-account" className="mt-4 scroll-mt-20 rounded-2xl border border-white/10 bg-white/[0.03] p-3.5">
-          <div className="grid grid-cols-2 gap-3 border-b border-white/[0.07] pb-3">
+        {/* Hesap türü, doğrulama ve davet kimliği: tek katlanır satır.
+            Sürekli görünen tablo, profilin en gürültülü bloğuydu. */}
+        <details id="profile-account" className="group mt-5 scroll-mt-20 rounded-2xl border border-white/10 bg-white/[0.03]">
+          <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 px-3.5 text-[13px] font-semibold text-mint/85">
+            <ShieldCheck size={15} className="shrink-0 text-leaf" />
+            Hesap bilgileri
+            <span className="ml-auto text-[12px] font-normal text-mint/60">{accountType} · {verificationLabel}</span>
+            <ChevronRight size={15} className="shrink-0 text-mint/60 transition group-open:rotate-90" />
+          </summary>
+          <div className="border-t border-white/[0.07] p-3.5">
+          <div className="grid grid-cols-2 gap-3 pb-3">
             <div>
               <p className="text-[11px] text-mint/70">Hesap türü</p>
               <p className="mt-1 text-[13px] font-semibold text-mint">{accountType}</p>
@@ -274,7 +284,8 @@ export default function ProfilePanel({ onClose, onRecords, settings, myPlacesCou
               <Copy size={13} />
             </button>
           </div>
-        </div>
+          </div>
+        </details>
 
         {needsEmailVerification && (
           <section className="mt-4 rounded-2xl border border-sun/25 bg-sun/[0.07] p-4" aria-labelledby="verify-email-title">
@@ -291,22 +302,26 @@ export default function ProfilePanel({ onClose, onRecords, settings, myPlacesCou
           </section>
         )}
 
-        <form onSubmit={(event) => void submit(event)} className="mt-7">
-          <label htmlFor="profile-name" className="block text-sm text-mint/80">Profil adın</label>
-          <input
-            id="profile-name"
-            value={name}
-            onChange={(event) => updateName(event.target.value)}
-            maxLength={40}
-            className="mt-2 h-12 w-full rounded-xl border border-leaf/25 bg-ink px-3 text-[15px] outline-none focus:border-sun/60"
-          />
+        {/* Ad düzenleme tek satır: tam genişlik altın düğme ana ekrandan kalktı,
+            altın yalnız buradaki birincil eylemde kalıyor. */}
+        <form onSubmit={(event) => void submit(event)} className="mt-5 flex items-end gap-2">
+          <label htmlFor="profile-name" className="min-w-0 flex-1">
+            <span className="block text-[12px] text-mint/70">Profil adın</span>
+            <input
+              id="profile-name"
+              value={name}
+              onChange={(event) => updateName(event.target.value)}
+              maxLength={40}
+              className="mt-1.5 h-11 w-full rounded-xl border border-leaf/25 bg-ink px-3 text-[16px] outline-none focus:border-sun/60"
+            />
+          </label>
           <button
             type="submit"
             disabled={saving || name.trim().length < 2}
-            className="btn-gold mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold text-ink disabled:opacity-50"
+            className="btn-gold flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold text-ink disabled:opacity-50"
           >
-            {saving ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-            Değişiklikleri kaydet
+            {saving ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />}
+            Kaydet
           </button>
         </form>
 

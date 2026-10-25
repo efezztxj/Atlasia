@@ -106,7 +106,10 @@ describe("küçük ekran yerleşimi (≈360×640)", () => {
   const barHeight = px(css, /\.mobile-tab-bar \{\s*\n\s*height: calc\((\d+)px/);
   const fabLine = px(css, /--mobile-fab-bottom: calc\((\d+)px/);
   const collapsedBottom = px(bottomPanel, /max-md:bottom-\[calc\((\d+)px/);
-  const controlsBottom = px(css, /\.mobile-map-controls \{\s*\n(?:\s*\/\*[\s\S]*?\*\/\s*\n)?\s*right: 10px;\s*\n\s*bottom: calc\((\d+)px/);
+  // Kapsül artık sabit sayı yerine eylem çiftine bağlı:
+  // bottom: calc(var(--mobile-fab-bottom, 168px) + 58px)
+  const controlsOffset = px(css, /--mobile-fab-bottom, (\d+)px\) \+ 58px/);
+  const controlsBottom = controlsOffset + 58;
 
   it("alt çubuk 58 px (kod ile aynı)", () => {
     expect(barHeight).toBe(58);
@@ -176,6 +179,46 @@ describe("keşif kartı kalıcılığı", () => {
     expect(app).toContain("shiftedLeft={profileOpen}");
     expect(bottomPanel).toContain("shiftedLeft");
     expect(bottomPanel).toContain("lg:pr-[540px]");
+  });
+});
+
+describe("mobil harita kapsülü", () => {
+  it("telefonda yalnız 3 düğme: sıfırla, konum, katmanlar", () => {
+    // Zoom düğmeleri mobilde gizli (iki parmakla yakınlaştırma); yürüyüş ve
+    // Atlas AI alt eylem çiftinde. Bkz. docs/mobil-uygunluk.md §3.7.
+    for (const label of ["Yakınlaştır", "Uzaklaştır"]) {
+      const line = mapControls.split("\n").find((row) => row.includes(`label="${label}"`)) ?? "";
+      expect(line).toContain("max-md:hidden");
+    }
+    expect(mapControls).toMatch(/label="Konumuma git"/);
+    expect(mapControls).toMatch(/label=\{layersOpen \?/);
+  });
+
+  it("kapsül eylem çiftinin üstüne bağlı, sabit sayıya değil", () => {
+    expect(css).toContain("bottom: calc(var(--mobile-fab-bottom, 168px) + 58px)");
+    // Sıra numarasına dayalı gizleme geri gelmesin.
+    expect(css).not.toContain(".mobile-map-controls > div:nth-of-type(n + 5)");
+  });
+});
+
+describe("profil sadeleşmesi", () => {
+  const profile = read("src/components/ProfilePanel.tsx");
+
+  it("bölüm gezinmesi üç sekme; Konum çubuğu profilden kalktı", () => {
+    expect(profile).toContain('label: "Hesabım"');
+    expect(profile).toContain('label: "Keşiflerim"');
+    expect(profile).toContain('label: "Ayarlar"');
+    expect(profile).not.toContain('{ id: "location-settings"');
+  });
+
+  it("hesap türü/kimlik bilgisi katlanır tek satıra indi", () => {
+    expect(profile).toContain("<details id=\"profile-account\"");
+    expect(profile).toContain("Hesap bilgileri");
+  });
+
+  it("tam genişlik altın kaydet düğmesi ana ekrandan kalktı", () => {
+    expect(profile).not.toContain("Değişiklikleri kaydet");
+    expect(profile).toContain("Kaydet");
   });
 });
 
