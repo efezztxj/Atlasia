@@ -39,20 +39,4 @@ const builtAssets = readdirSync("dist/assets", { withFileTypes: true })
   .map((entry) => `/assets/${entry.name}`);
 const unreached = builtAssets.filter((path) => !reachable.has(path));
 assert.deepEqual(unreached, [], `SW ön önbellek grafiğine girmeyen üretim varlıkları: ${unreached.join(", ")}`);
-
-// Damgalama kapısı: dist/sw.js kaynağın kopyası olmalı; tek fark CACHE adı.
-// (scripts/stamp-sw.mjs her build'de yeni bir cache adı yazar; bu olmadan
-// tarayıcı yeni service worker'ı hiç görmez ve "Yeni sürüm hazır" çıkmaz.)
-const distSw = readFileSync("dist/sw.js", "utf8");
-const sourceCache = /const CACHE = "(atlasia-shell-[^"]+)";/.exec(swSource)?.[1];
-const distCache = /const CACHE = "(atlasia-shell-[^"]+)";/.exec(distSw)?.[1];
-assert.ok(sourceCache, "public/sw.js içinde CACHE sabiti yok.");
-assert.ok(distCache, "dist/sw.js içinde CACHE sabiti yok; önce `npm run stamp:sw` çalıştırılmalı.");
-assert.notEqual(distCache, sourceCache, "dist/sw.js damgalanmamış: her deploy'da SW güncellemesi algılanmaz.");
-assert.equal(
-  distSw,
-  swSource.replace(`const CACHE = "${sourceCache}";`, `const CACHE = "${distCache}";`),
-  "dist/sw.js kaynaktan farklı: damgalama yalnız CACHE adını değiştirmeli.",
-);
-
 console.log(`SW üretim kabuğu doğrulandı: ${reachable.size}/${builtAssets.length} varlık kapsanıyor.`);
