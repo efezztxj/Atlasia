@@ -8,6 +8,14 @@
  *    - VITE_FIREBASE_PROJECT_ID değeri geliştirme projesi ("atlasia-dev") ise build'i kırar.
  *    - VITE_PHONE_AUTH_ENABLED === "true" ise build'i kırar (Spark/SMS güvenlik kilidi).
  *
+ * Kural şiddeti iki kademelidir (`policyMode`):
+ *    - "eksik değişken" her zaman build'i kırar (uygulama onsuz çalışmaz).
+ *    - politika ihlalleri (debug token / dev proje / phone auth) varsayılan "warn"
+ *      modunda YALNIZ uyarır ve build devam eder; Cloudflare'de
+ *      `ATLASIA_PROD_ENV_POLICY=enforce` tanımlanınca build'i kırar.
+ *      Gerekçe: değerler yalnız Cloudflare panelinde görülebildiği için sert çıkış
+ *      teşhis edilemeyen bir dağıtım kilidine dönüşüyordu (2026-10-25 kesintisi).
+ *
  * Hata mesajları yalnız değişken ADINI ve kural nedenini yazar, gizli değeri asla yazmaz.
  */
 
@@ -25,6 +33,22 @@ export function isCloudflarePages(env = process.env) {
 
 export function shouldEnforce(env = process.env) {
   return isCloudflarePages(env) && env.CF_PAGES_BRANCH === "main";
+}
+
+/** Politika ihlallerinin build'i kırıp kırmayacağı. Varsayılan: yalnız uyar. */
+export const POLICY_MODES = ["warn", "enforce"];
+
+export function policyMode(env = process.env) {
+  const raw = typeof env.ATLASIA_PROD_ENV_POLICY === "string"
+    ? env.ATLASIA_PROD_ENV_POLICY.trim().toLowerCase()
+    : "";
+  return POLICY_MODES.includes(raw) ? raw : "warn";
+}
+
+/** Eksik zorunlu değişken her modda ölümcül; politika ihlali yalnız "enforce" modunda. */
+export function shouldFail({ missing = [], violations = [], mode = "warn" } = {}) {
+  if (missing.length) return true;
+  return mode === "enforce" && violations.length > 0;
 }
 
 function hasNonEmptyValue(value) {
@@ -87,31 +111,43 @@ export function policyViolations(env = process.env) {
 /**
  * @param {NodeJS.ProcessEnv} env
  * @param {{ exit?: boolean, log?: (msg: string) => void }} options
- * @returns {{ enforced: boolean, missing: string[], violations: { name: string, code: string, message: string }[] }}
+ * @returns {{ enforced: boolean, mode: string, missing: string[], violations: { name: string, code: string, message: string }[], failed: boolean }}
  */
 export function verify(env = process.env, { exit = true, log = console.error } = {}) {
   const enforced = shouldEnforce(env);
+  const mode = policyMode(env);
   const missing = enforced ? missingVars(env) : [];
   const violations = policyViolations(env);
+  const failed = shouldFail({ missing, violations, mode });
 
   if (missing.length || violations.length) {
     for (const name of missing) {
       log(`Missing required environment variable: ${name}`);
     }
+    // Uyarı modunda ihlal deploy'u durdurmaz; adı yine de logda görünür ki
+    // Cloudflare panelindeki yanlış değer teşhis edilebilsin.
     for (const violation of violations) {
-      log(violation.message);
+      log(mode === "enforce" ? violation.message : `ADVISORY (deploy continues): ${violation.message}`);
     }
     if (missing.length) {
       log(
-        "Production build requires all Firebase variables. Check Cloudflare Pages → Settings → Variables and secrets (Production).",
+        "Production build requires all Firebase variables. Check Cloudflare Pages \u2192 Settings \u2192 Variables and secrets (Production).",
       );
     }
-    if (exit) {
-      process.exit(1);
+    if (!failed && violations.length) {
+      const names = violations.map((violation) => violation.name).join(", ");
+      log(
+        `${violations.length} environment policy advisory item(s) for Cloudflare Pages: ${names}. ` +
+          "Set ATLASIA_PROD_ENV_POLICY=enforce to make these fatal.",
+      );
     }
   }
 
-  return { enforced, missing, violations };
+  if (failed && exit) {
+    process.exit(1);
+  }
+
+  return { enforced, mode, missing, violations, failed };
 }
 
 // CLI olarak çalıştırıldığında
