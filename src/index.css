@@ -642,12 +642,14 @@ html[data-theme="dark"] .text-leaf\/80 {
     padding: 10px;
   }
 
-  /* Kart (88) + kart yüksekliği (~70) + eylem çifti (46) + 10 px nefes
-     ≈ 224 px. Buradaki sabit değer yalnız yedektir; gerçek değeri aşağıdaki
-     ölçülen yığın kuralı belirler. */
+  /* Telefonda kapsül 3 düğme taşır (Sıfırla · Konum · Katmanlar) ve eylem
+     çiftinin 58 px üstünde durur: 168 + 46 + 12 = 226 px. Sabit sayı yerine
+     --mobile-fab-bottom'a bağlıdır, böylece alt yığın kayınca kapsül de
+     kayar ve üst üste binme oluşamaz. Alt yığın kuralı ölçülen kart alanını
+     yine öncelikli olarak uygular. */
   .mobile-map-controls {
     right: 10px;
-    bottom: calc(224px + env(safe-area-inset-bottom));
+    bottom: calc(var(--mobile-fab-bottom, 168px) + 58px);
     gap: 6px;
   }
 
@@ -663,6 +665,10 @@ html[data-theme="dark"] .text-leaf\/80 {
   }
   .mobile-map-controls .map-round-btn { width: 44px; height: 44px; }
   .mobile-map-controls .map-round-btn svg { width: 16px; height: 16px; }
+  /* Ayırıcı çizgiler telefonda gizli (düğmeler zaten .max-md:hidden ile
+     süzülüyor); hangi düğmenin görüneceği artık sıra numarasıyla değil,
+     açık sınıflarla belirlenir. */
+  .mobile-map-controls > span { display: none; }
 
   /* Harita üstü eylem çifti.
        · sol: yürüyüş kaydı (nötr cam), sağ: Atlas AI — aynı boy, aynı çizgi,
