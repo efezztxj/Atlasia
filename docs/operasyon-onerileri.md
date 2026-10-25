@@ -112,26 +112,35 @@ genişletir | ALTERNATİF: wildcard ekleme — Firebase wildcard desteklemez,
 gerçekten de mümkün değil | GERİ ALMA: Console'dan alan adı satırı silinir;
 etkisi yeni oturumlar için anlıktır.**
 
-## 4. Firestore yedeği (zamanlanmış export)
+## 4. Firestore yedeği (Spark $0 yerel yedek + ileride zamanlanmış export)
 
-**Gerçek kısıt:** Ücretsiz (Spark) planda **scheduled (zamanlanmış) export
-yoktur**; `gcloud firestore export` ve Cloud Scheduler **Blaze** ister.
+**Gerçek kısıt:** Ücretsiz (Spark) planda **scheduled (zamanlanmış) export** ve
+Google Cloud Storage tabanlı **`gcloud firestore export gs://...` yoktur** (her
+ikisi de Blaze + GCS bucket ister). Spark planında $0 tavanını bozmadan tam yedek
+almak için repodaki **`scripts/firestore-backup.mjs`** aracı Firestore REST v1
+okuma uçlarını kullanarak veriyi (hayalet `users/{uid}` alt koleksiyonları dahil)
+operatörün kendi diskindeki git-dışı `backups/` klasörüne NDJSON + SHA-256
+manifest olarak indirir.
 
 | Seçenek | Maliyet | Kapsam | Risk |
 | --- | --- | --- | --- |
-| **A. Elle export (gcloud, kullanıcı makinesi)** | $0 (komut yerelde) | Anlık tam yedek, GCS'e (gerekirse +30 gün lifecycle) | Rutin unutulabilir |
-| **B. Blaze + günlük Cloud Scheduler export** | Blaze geçiş + GCS depolama (~$0.026/GiB/ay) + okuma | Otomatik, denetimli | Açık uçlu fatura; aylık 1–2 $ ölçeği |
+| **A. Spark uyumlu yerel yedek (`scripts/firestore-backup.mjs`)** | $0 (yalnız Spark okuma kotası; `--max-reads` tavanlı) | Tüm koleksiyonlar + alt koleksiyonlar yerel diske (`backups/`) + SHA-256 doğrulama | Rutin unutulabilir; operatör makinesinde çalıştırılır |
+| **B. Blaze + günlük Cloud Scheduler `gcloud firestore export`** | Blaze geçiş + GCS depolama (~$0.026/GiB/ay) + okuma | Otomatik bulut içi, denetimli | Açık uçlu fatura; yalnız kullanıcı Blaze onayıyla |
 | **C. Yedek almak yerine geri alma disiplini** | $0 | Kurallar/veri değil yalnız kod (git) | Firestore içeriği kurtarılamaz |
 
-**Öneri (sıra):** Veri hacmi küçükken **A** ile 2–4 haftada bir elle export
-(alışkanlık + GCS bucket lifecycle 30 gün). Tazelik/kullanıcı verisi büyürse
-(≈10 bin belge) **B**'ye geçiş kararı ayrıca verilir — o karar Blaze'e açık
-onay demektir. Export **kuralları** yedeklemez (`firestore.rules` zaten git'te).
+**Öneri (sıra):** Spark planı korunurken **A** ile 2 haftada bir (ve kural/veri
+temizliği öncesinde) yerel yedek al + `--verify` ile SHA-256 bütünlüğünü doğrula
+(`docs/yedek-ve-kota-rutini.md`). Kullanıcı verisi büyürse (≈10 bin belge) **B**'ye
+geçiş kararı ayrıca verilir — o karar Blaze'e açık onay demektir. Export
+**kuralları** yedeklemez (`firestore.rules` zaten git'te; manifest içine o anki
+`rulesSha256` özeti yazılır).
 
-Elle export komutu (kullanıcı çalıştırır, proje açık yazılır):
+Spark uyumlu yerel yedek komutu (kullanıcı kendi makinesinde çalıştırır; proje
+açık yazılır, token repoya kaydedilmez):
 
 ```bash
-gcloud firestore export gs://<yedek-bucket>/<tarih> --project=<onayli-proje-id>
+FIREBASE_ACCESS_TOKEN="$(gcloud auth print-access-token)" \
+  node scripts/firestore-backup.mjs --project <onayli-proje-id>
 ```
 
 **KARAR: Şu evrede elle periyodik export (A); otomatik zamanlanmış export için
