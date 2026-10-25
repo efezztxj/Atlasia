@@ -32,7 +32,6 @@ export default function StoryViewer({
   const [index, setIndex] = useState(startIndex);
   const [progress, setProgress] = useState(0);
   const [paused, setPaused] = useState(false);
-  const rafRef = useRef(0);
 
   const story = stories[index];
 
@@ -56,26 +55,44 @@ export default function StoryViewer({
     if (story) onSeen(story.id);
   }, [story, onSeen]);
 
-  // İlerleme çubuğu
+  // İlerleme çubuğu.
+  //
+  // Denetim K-02: süre artık efektin yerel değişkeninde değil, ref'te tutulur.
+  // Böylece dokunmatikte "basılı tut → duraklat" çubuğu sıfıra döndürmez;
+  // yalnız geçen süre durur. Döngü bir kez kurulur; `paused`/`next` ref
+  // üzerinden okunur ki her karede yeniden kurulup süreyi sıfırlamasın.
+  const elapsedRef = useRef(0);
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
+  const nextRef = useRef(next);
+  nextRef.current = next;
+
   useEffect(() => {
-    let start = performance.now();
-    let elapsed = 0;
+    elapsedRef.current = 0;
+    setProgress(0);
+  }, [index]);
+
+  useEffect(() => {
+    let frame = 0;
+    let last: number | null = null;
     const tick = (t: number) => {
-      if (!paused) {
-        elapsed += t - start;
-        const p = Math.min(1, elapsed / DURATION);
+      if (last === null) last = t;
+      const delta = t - last;
+      last = t;
+      if (!pausedRef.current) {
+        elapsedRef.current += delta;
+        const p = Math.min(1, elapsedRef.current / DURATION);
         setProgress(p);
         if (p >= 1) {
-          next();
+          nextRef.current();
           return;
         }
       }
-      start = t;
-      rafRef.current = requestAnimationFrame(tick);
+      frame = requestAnimationFrame(tick);
     };
-    rafRef.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [index, paused, next]);
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   // Esc + odak tuzağı + odak dönüşü usePanelAccess'te (P18); oklar burada.
   const panelRef = usePanelAccess(true, onClose, true) as React.RefObject<HTMLDivElement>;
@@ -145,6 +162,8 @@ export default function StoryViewer({
           {story.kind === "user" && canDelete(story) && (
             <button
               onClick={() => {
+                // Denetim K-04: silme geri alınamaz; iptalde hikâye açık kalır.
+                if (!confirm("Bu hikâyeyi kalıcı olarak silmek istiyor musun?")) return;
                 onDelete(story.id);
                 onClose();
               }}

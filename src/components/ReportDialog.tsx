@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, Loader2, Send, X } from "lucide-react";
 import { REPORT_REASONS, createReport, type ReportReason } from "../lib/moderation";
 import { usePanelAccess } from "../hooks/usePanelAccess";
@@ -29,6 +29,12 @@ export default function ReportDialog({ targetType, targetId, targetOwnerUid, tar
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  // Denetim K-08: kapanış gecikmesi unmount'ta iptal edilir; aksi hâlde kapanmış
+  // pencerenin zamanlayıcısı ebeveyne ikinci bir onClose gönderir.
+  const closeTimer = useRef<number | null>(null);
+  useEffect(() => () => {
+    if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
+  }, []);
 
   const submit = async () => {
     setBusy(true);
@@ -36,7 +42,8 @@ export default function ReportDialog({ targetType, targetId, targetOwnerUid, tar
     try {
       await createReport({ targetType, targetId, targetOwnerUid, reason, details: details.trim() || undefined }, reporterUid);
       setDone(true);
-      setTimeout(() => {
+      closeTimer.current = window.setTimeout(() => {
+        closeTimer.current = null;
         onReported?.();
         onClose();
       }, 900);

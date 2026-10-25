@@ -7,6 +7,7 @@ import {
   Crosshair,
   Download,
   Eye,
+  Flag,
   Globe2,
   HardDriveDownload,
   Loader2,
@@ -61,6 +62,8 @@ export interface SettingsContentProps {
   onToggleTerrain: () => void;
   /** Haritanın görünen alanı; çevrimdışı paket bu alanı indirir. */
   mapBounds?: BBox | null;
+  /** Raporlar panelini açar (yalnız bulut hesabında verilir). */
+  onOpenReports?: () => void;
 }
 
 interface Props extends SettingsContentProps {
@@ -152,6 +155,7 @@ export function SettingsContent({
   terrainEnabled,
   onToggleTerrain,
   mapBounds = null,
+  onOpenReports,
 }: SettingsContentProps) {
   const [installNotice, setInstallNotice] = useState<string | null>(null);
   const [offlineOpen, setOfflineOpen] = useState(false);
@@ -306,6 +310,25 @@ export function SettingsContent({
         </div>
         <p className="mt-2 text-[12px] leading-relaxed text-mint/60">Bu seçimler yalnız bu cihazda saklanır. Klavye ile gezinme, “İçeriğe geç” bağlantısı, görünür odak halkası ve en az 44px dokunma hedefi her zaman açıktır.</p>
       </section>
+
+      {onOpenReports && (
+        <>
+          <div className="my-6 h-px bg-leaf/15" />
+          <section aria-labelledby="reports-title">
+            <p id="reports-title" className="text-[12px] font-bold tracking-[0.16em] text-mint/55 uppercase">Moderasyon</p>
+            <button
+              type="button"
+              onClick={onOpenReports}
+              className="mt-3 flex min-h-11 w-full items-center gap-2 rounded-2xl border border-leaf/20 bg-white/[0.04] px-4 text-left text-[14px] font-semibold text-mint transition hover:border-leaf/45"
+            >
+              <Flag className="size-4 text-sun" />Raporlarım ve inceleme durumu
+            </button>
+            <p className="mt-2 text-[12px] leading-relaxed text-mint/55">
+              Bildirdiğin içeriklerin durumunu buradan izleyebilirsin. Moderatör hesabında inceleme kuyruğu da açılır.
+            </p>
+          </section>
+        </>
+      )}
 
       <div className="my-6 h-px bg-leaf/15" />
       <section aria-labelledby="offline-title">

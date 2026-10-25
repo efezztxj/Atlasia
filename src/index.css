@@ -212,6 +212,10 @@ body,
 .atlas-sheet {
   animation: atlas-sheet-in 0.38s cubic-bezier(0.18, 0.8, 0.24, 1) both;
 }
+/* Windy benzeri hava katmanı tuvalleri (utils/mapWeather.ts satır içi stil
+   verir; burada yalnız yığın sırası sabitlenir: tuvaller 1–2, pinler 3). */
+.maplibregl-marker { z-index: 3; }
+
 .atlas-launcher { bottom: 28px; }
 @media (max-width: 767px) {
   .atlas-launcher { bottom: calc(188px + env(safe-area-inset-bottom)); }
@@ -646,8 +650,6 @@ html[data-theme="dark"] .text-leaf\/80 {
   }
   .mobile-map-controls .map-round-btn { width: 44px; height: 44px; }
   .mobile-map-controls .map-round-btn svg { width: 16px; height: 16px; }
-  .mobile-map-controls > span,
-  .mobile-map-controls > div:nth-of-type(n + 5) { display: none; }
 
   .atlas-launcher {
     right: 10px;

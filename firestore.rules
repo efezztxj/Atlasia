@@ -11,6 +11,63 @@ service cloud.firestore {
       return request.query.limit != null && request.query.limit <= maxItems;
     }
 
+    /**
+     * Moderatör erişimi. `moderators/{uid}` belgesi istemci tarafından
+     * YAZILAMAZ (aşağıdaki blok: create/update/delete = false); yalnız
+     * Firebase Console'da elle oluşturulur. `exists()` kural değerlendirmesinde
+     * okuma iznine tabi değildir, bu yüzden moderatör listesi istemciye
+     * açılmadan kontrol edilebilir.
+     */
+    function isModerator() {
+      return signedIn()
+             && exists(/databases/$(database)/documents/moderators/$(request.auth.uid));
+    }
+
+    /**
+     * Askıya alma (ban). Karar: "kısasa kısas" — moderatör, hakkında rapor
+     * verilmiş ve **kendi** incelemesiyle "işlem yapıldı" işaretlenmiş bir
+     * içeriğin sahibini askıya alır. Yaptırım sunucuda uygulanır: askıdaki
+     * hesap yeni gönderi/hikâye/yanıt/yer yazamaz. Belge silinmez, süresi
+     * dolunca kendiliğinden etkisizdir (iz kalır).
+     */
+    function banActive(uid) {
+      return exists(/databases/$(database)/documents/bans/$(uid))
+             && (
+               !('expiresAt' in get(/databases/$(database)/documents/bans/$(uid)).data)
+               || get(/databases/$(database)/documents/bans/$(uid)).data.expiresAt > request.time
+             );
+    }
+
+    function banned() {
+      return signedIn() && banActive(request.auth.uid);
+    }
+
+    /** Ban yalnız aynı moderatörün "işlem yapıldı" dediği rapordan doğar. */
+    function banHasProof(uid, reportId) {
+      return exists(/databases/$(database)/documents/reports/$(reportId))
+             && get(/databases/$(database)/documents/reports/$(reportId)).data.status == 'actioned'
+             && get(/databases/$(database)/documents/reports/$(reportId)).data.reviewerUid == request.auth.uid
+             && (
+               ('targetOwnerUid' in get(/databases/$(database)/documents/reports/$(reportId)).data
+                && get(/databases/$(database)/documents/reports/$(reportId)).data.targetOwnerUid == uid)
+               || (get(/databases/$(database)/documents/reports/$(reportId)).data.targetType == 'user'
+                   && get(/databases/$(database)/documents/reports/$(reportId)).data.targetId == uid)
+             );
+    }
+
+    function validBan(data, uid) {
+      return data.keys().hasAll(['uid', 'reason', 'reportId', 'createdAt', 'createdBy'])
+             && data.keys().hasOnly(['uid', 'reason', 'reportId', 'createdAt', 'createdBy', 'expiresAt'])
+             && data.uid == uid
+             && data.uid != request.auth.uid
+             && stringBetween(data.reason, 10, 500)
+             && stringBetween(data.reportId, 1, 128)
+             && data.createdBy == request.auth.uid
+             && data.createdAt == request.time
+             && (!('expiresAt' in data) || data.expiresAt > request.time)
+             && banHasProof(uid, data.reportId);
+    }
+
     function stringBetween(value, minSize, maxSize) {
       return value is string
              && value.size() >= minSize
@@ -293,6 +350,21 @@ service cloud.firestore {
              && data.createdAt == request.time;
     }
 
+    /**
+     * Moderatörün rapor üzerinde değiştirebileceği tek yüzey: durum, not ve
+     * inceleme izleri. İçerik alanları (reporterUid, targetId, targetType,
+     * reason, details) DEĞİŞTİRİLEMEZ; silme moderatöre kapalıdır.
+     */
+    function moderatorReportUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['status', 'resolution', 'reviewedAt', 'reviewerUid'])
+             && request.resource.data.status in ['open', 'reviewed', 'actioned']
+             && request.resource.data.reviewedAt == request.time
+             && request.resource.data.reviewerUid == request.auth.uid
+             && (!('resolution' in request.resource.data)
+                 || stringBetween(request.resource.data.resolution, 1, 500));
+    }
+
     function validBlock(data) {
       return data.keys().hasAll(['blockerUid', 'blockedUid', 'createdAt'])
              && data.keys().hasOnly(['blockerUid', 'blockedUid', 'createdAt'])
@@ -551,6 +623,7 @@ service cloud.firestore {
       // en fazla 50 kayıt okuyabilir; limitsiz ve aşırı büyük istek fail-closed.
       allow list: if boundedList(50);
       allow create: if signedIn()
+                    && !banned()
                     && validPlaceShape(request.resource.data)
                     && request.resource.data.authorUid == request.auth.uid
                     && request.resource.data.createdAt == request.time;
@@ -569,6 +642,7 @@ service cloud.firestore {
       // Akış cursor sayfaları 50 kayıtla sınırlıdır; eski kayıtlar sonraki sayfalardadır.
       allow list: if boundedList(50);
       allow create: if signedIn()
+                    && !banned()
                     && validPostShape(request.resource.data)
                     && request.resource.data.authorUid == request.auth.uid
                     && request.resource.data.createdAt == request.time
@@ -586,6 +660,7 @@ service cloud.firestore {
         allow get: if parentPostExists();
         allow list: if parentPostExists() && boundedList(100);
         allow create: if signedIn()
+                      && !banned()
                       && parentPostExists()
                       && validReplyShape(request.resource.data);
         allow update: if false;
@@ -609,6 +684,7 @@ service cloud.firestore {
       // 24 saatlik pencere de cursor ile 50 kayıtlık sayfalara ayrılır.
       allow list: if boundedList(50);
       allow create: if signedIn()
+                    && !banned()
                     && validStoryShape(request.resource.data)
                     && request.resource.data.authorUid == request.auth.uid
                     && request.resource.data.createdAt == request.time;
@@ -748,12 +824,40 @@ service cloud.firestore {
     }
 
     match /reports/{reportId} {
-      allow get: if signedIn() && resource.data.reporterUid == request.auth.uid;
+      // Raporlayan kendi raporunu görür; moderatör kuyruğu okur.
+      allow get: if signedIn()
+                    && (resource.data.reporterUid == request.auth.uid || isModerator());
       allow list: if signedIn() && boundedList(50)
-                    && resource.data.reporterUid == request.auth.uid;
+                    && (resource.data.reporterUid == request.auth.uid || isModerator());
       allow create: if signedIn() && validReport(request.resource.data);
-      allow update: if false;
+      // İnceleme sonucu YALNIZ moderatör tarafından ve sınırlı alanlarla yazılır.
+      allow update: if isModerator() && moderatorReportUpdate();
       allow delete: if signedIn() && resource.data.reporterUid == request.auth.uid;
+    }
+
+    /**
+     * Moderatör listesi. İstemci yalnız KENDİ kaydını okuyabilir (arayüz
+     * "moderatör müyüm?" sorusunu sorar); liste ve yazma tamamen kapalıdır.
+     * Belge oluşturma Firebase Console'da elle yapılır.
+     */
+    match /moderators/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow list, create, update, delete: if false;
+    }
+
+    /**
+     * Askıya alma kayıtları. Okuma: yalnız kendi kaydı (hesap kendi durumunu
+     * görür) ya da moderatör listesi. Yazma: yalnız moderatör, yalnız kanıtlı
+     * raporla. Kaldırma = `expiresAt` alanını geçmişe çekmek; silme kapalı.
+     */
+    match /bans/{uid} {
+      allow get: if signedIn() && (request.auth.uid == uid || isModerator());
+      allow list: if isModerator() && boundedList(50);
+      allow create: if isModerator() && validBan(request.resource.data, uid);
+      allow update: if isModerator()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['expiresAt'])
+                    && request.resource.data.expiresAt <= request.time;
+      allow delete: if false;
     }
 
     match /blocks/{blockId} {
