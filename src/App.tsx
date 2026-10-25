@@ -829,13 +829,16 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         hiddenOnMobile={panelOpen}
       />
 
+      {/* Alt eylem satırı — sol: yürüyüş kaydı (nötr cam), orta: ekle (altın
+          birincil), sağ: Atlas AI. Üçü tek taban çizgisinde; ölçüler
+          index.css → .mobile-walk-fab / .mobile-add-fab / .atlas-launcher. */}
       {!trackRecorderOpen && <button
         type="button"
         onClick={() => setTrackRecorderOpen(true)}
         aria-label="Yürüyüş kaydını aç"
         title="Yürüyüş kaydı"
-        className={`glass-panel gold-frame pressable fixed bottom-[calc(64px+env(safe-area-inset-bottom))] left-[calc(50%-78px)] z-30 grid size-[46px] place-items-center rounded-full text-[13px] font-semibold text-mint md:hidden${panelOpen ? " max-md:hidden" : ""}`}
-      ><span className="btn-gold grid size-9 place-items-center rounded-full"><Activity size={16} strokeWidth={2.2} /></span><span className="hidden md:inline">Yürüyüş kaydı</span></button>}
+        className={`mobile-walk-fab glass-panel gold-frame pressable grid place-items-center rounded-full md:hidden${panelOpen ? " max-md:hidden" : ""}`}
+      ><Activity size={19} strokeWidth={2} /></button>}
       {trackRecorderOpen && (
         <Suspense fallback={null}>
           <TrackRecorderPanel
@@ -1167,7 +1170,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         type="button"
         onClick={startAdd}
         aria-label="Haritaya iz bırak"
-        className={`mobile-add-fab btn-gold-round fixed bottom-[calc(64px+env(safe-area-inset-bottom))] left-1/2 z-30 grid size-[44px] -translate-x-1/2 place-items-center rounded-full text-[#10241A] transition active:scale-95 md:hidden${panelOpen ? " hidden" : ""}`}
+        className={`mobile-add-fab btn-gold-round fixed bottom-[calc(70px+env(safe-area-inset-bottom))] left-1/2 z-30 grid size-[50px] -translate-x-1/2 place-items-center rounded-full text-[#10241A] transition active:scale-95 md:hidden${panelOpen ? " hidden" : ""}`}
       >
         <Plus className="size-[22px]" strokeWidth={2.4} />
       </button>

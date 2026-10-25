@@ -117,6 +117,31 @@ Yüksekliği 500 px altındaki yatay ekranlarda başlık geri çekiliyor, arama
 sayfası ve keşif kartı kalan yüksekliğe göre kaydırılıyor, Atlas AI başlatıcısı
 alt çubuğun üstüne sabitleniyor. Dikey yığın haritayı yutmuyor.
 
+### 3.5 Alt eylem satırı: dağınık üç daire → tek taban çizgisi
+
+Telefon ekranında yürüyüş kaydı, ekle ve Atlas AI daireleri farklı boy ve
+hizalarda yüzüyordu (yürüyüş kaydı merkezin 78 px solunda, ekle 44 px ortada,
+Atlas AI sağda) ve **üçü birden altındı**; keşif kartı ile sekme çubuğu
+arasındaki bölge kalabalık görünüyordu.
+
+Yeni düzen (yalnız mobil; masaüstü değişmedi):
+
+| Öğe | Konum | Boy | Yüzey |
+|---|---|---|---|
+| Yürüyüş kaydı | sol 12 px | 46 px | nötr cam (mint ikon) |
+| Ekle | orta | 50 px | altın — **tek birincil eylem** |
+| Atlas AI | sağ 12 px | 46 px | altın (marka kararı, korunuyor) |
+
+- Üçü de tek taban çizgisinde: `--mobile-fab-bottom` = 70 px + güvenli alan.
+  Sekme çubuğu 58 px olduğu için araya 12 px nefes giriyor (önceden 6 px'ti).
+- Keşif kartı bu satırın 12 px üstünde durur (132 px); harita kontrol
+  kapsülünün yedeği 200 px.
+- Gerekçe tasarım sisteminin kendi kuralı: *altın yalnız birincil eylemde ve
+  seçili durumda*. Üç altın daire bu kuralı bozuyordu.
+- Atlas AI paneli (mobil) artık eylem satırının üstünde açılıyor (126 px).
+- Ölçüler tek yerden yönetilir: `index.css` → `--mobile-fab-bottom`,
+  `--mobile-fab-gap`, `.mobile-walk-fab`, `.mobile-add-fab`, `.atlas-launcher`.
+
 ---
 
 ## 4. Değişmeyen kararlar
