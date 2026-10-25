@@ -1,13 +1,5 @@
 # Atlasia Update
 
-## 2026-10-25 — Build başına service worker damgası
-
-- **`scripts/stamp-sw.mjs`:** Build sonunda `dist/sw.js` yazılır ve yalnız `CACHE` adı `atlasia-shell-<build-id>` yapılır (`CF_PAGES_COMMIT_SHA` → `GITHUB_SHA` → git kısa SHA → zaman damgası). Böylece her yeni build yeni bir service worker üretir: `UpdateNotice` "Yeni sürüm hazır" akışı gerçekten çalışır ve `activate` eski `atlasia-shell-*` cache'lerini siler. Kullanıcı saha paketleri (`atlasia-packs-*`) ve karo cache'i korunur.
-- **Kapılar:** `postbuild` artık `stamp:sw → bundle:budget → verify:sw-shell`. `verify:sw-shell` ek olarak `dist/sw.js`'in kaynaktan **yalnız CACHE adıyla** ayrıldığını doğrular; damgalanmamış çıktı build'i kırar.
-- **Test:** `scripts/stamp-sw.node-test.mjs` (5 test) `test:scripts` zincirine eklendi.
-- **Belge:** `docs/guncelleme-mimarisi.md` — bugünkü web/PWA güncelleme akışı, masaüstü paket/updater seçenekleri, imza, kademeli dağıtım ve geri alma sınırları.
-- `public/sw.js` davranışı, `firestore.rules`, UI ve yayın hattı değişmedi. Deploy yapılmadı.
-
 ## 2026-10-21/22 — Üretim izin düzeltmesi, P17 çekirdeği, T1-AUTH
 
 - **#31 (d393b4c):** Rota yayınlama/kaydetme ve yer kaydında `permission-denied` ve `undefined` alan hataları istemci tarafında düzeltildi (`withoutUndefined`, `readRouteIfVisible`); grup katılımı tam kimlikle yapılıyor. Firestore Rules değişmedi.
