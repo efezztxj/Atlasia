@@ -44,6 +44,7 @@ import { useFreshness } from "./hooks/useFreshness";
 import { subscribeNotifications, markNotificationRead, markAllRead, type AppNotification } from "./lib/notifications";
 import NotificationsPanel from "./components/NotificationsPanel";
 import { takePendingInvite, type SocialTarget } from "./utils/inviteLink";
+import { useMobileBackClose } from "./hooks/useMobileBackClose";
 // friendships zaten ilk pakette (moderation.ts); dinamik import bölmez.
 import { ensureFriendIndex } from "./lib/friendships";
 
@@ -189,6 +190,52 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   const [preciseLabel, setPreciseLabel] = useState<string | null>(null);
   const geocodedAt = useRef<{ lng: number; lat: number } | null>(null);
   const announced = useRef(false);
+
+  // --- Mobil geri tuşu ---
+  // Telefonda geri tuşu/kenar jesti uygulamadan çıkarmak yerine ekranda en
+  // üstte duran katmanı kapatır. Sıra, katmanların görsel yığınıyla aynıdır:
+  // önce tam ekran katmanlar, en sonda harita üstündeki keşif kartı.
+  const closeTopLayer = useCallback((): (() => void) | null => {
+    if (storyPlace) return () => setStoryPlace(null);
+    if (streetPlace) return () => setStreetPlace(null);
+    if (routeEditorRoute) return () => setRouteEditorRoute(null);
+    if (draft) return () => setDraft(null);
+    if (addMode) return () => setAddMode(false);
+    if (searchOpen) return () => setSearchOpen(false);
+    if (notificationsOpen) return () => setNotificationsOpen(false);
+    if (trackRecorderOpen) return () => setTrackRecorderOpen(false);
+    if (settingsOpen) return () => setSettingsOpen(false);
+    if (activeId) return () => setActiveId(null);
+    if (feedOpen) return () => setFeedOpen(false);
+    if (profileOpen) return () => setProfileOpen(false);
+    if (recordsOpen) return () => setRecordsOpen(false);
+    if (myPlacesOpen) return () => setMyPlacesOpen(false);
+    if (atlasOpen) return () => setAtlasOpen(false);
+    if (drawerOpen) return () => setDrawerOpen(false);
+    if (panelOpen) return () => setPanelOpen(false);
+    return null;
+  }, [
+    storyPlace,
+    streetPlace,
+    routeEditorRoute,
+    draft,
+    addMode,
+    searchOpen,
+    notificationsOpen,
+    trackRecorderOpen,
+    settingsOpen,
+    activeId,
+    feedOpen,
+    profileOpen,
+    recordsOpen,
+    myPlacesOpen,
+    atlasOpen,
+    drawerOpen,
+    panelOpen,
+  ]);
+  // Yalnız telefonda: masaüstünde tarayıcı geçmişi kirletilmez.
+  const backLayerClose = smallScreen ? closeTopLayer() : null;
+  useMobileBackClose(!!backLayerClose, () => backLayerClose?.());
 
   useEffect(() => {
     const screen = window.matchMedia("(max-width: 767px)");

@@ -12,10 +12,14 @@ const DEFAULT_DIST = fileURLToPath(new URL("../dist", import.meta.url));
  * başlangıç grafiğine sessizce giren yeni ağır bağımlılıkları yakalamaktır.
  * Bilinçli bir büyümede eşik, yeni ölçüm ve gerekçe teslimata yazılarak
  * güncellenir; yalnız testi yeşil yapmak için gevşetilmez.
+ *
+ * 2026-10-25 — CSS 34.500 -> 35.500 B: telefon sertleştirme katmanı
+ * (16px alan yazı tabanı, overscroll/touch-action, yatay kısa ekran kuralları)
+ * ölçülen gzip değerini 34.597 B'ye çıkardı; JS bütçeleri değişmedi.
  */
 export const BUNDLE_BUDGET = Object.freeze({
   totalJsGzipBytes: 888_000,
-  totalCssGzipBytes: 34_500,
+  totalCssGzipBytes: 35_500,
   initialGzipBytes: 439_000,
   categoryGzipBytes: Object.freeze({
     entry: 174_000,

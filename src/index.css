@@ -735,6 +735,48 @@ html[data-theme="dark"] .text-leaf\/80 {
   }
 }
 
+/* ---------- Telefon sertleştirme (mobil tarayıcı varsayılanları) ---------- */
+/* Görünümü değiştirmez; telefonda uygulamayı bozan tarayıcı davranışlarını
+   kapatır: iOS odak yakınlaştırması (16px altı alan), pull-to-refresh,
+   çift dokunuş gecikmesi, yatay çevirmede metin büyümesi. */
+@media (max-width: 767px) {
+  html,
+  body,
+  #root {
+    overscroll-behavior: none;
+    -webkit-text-size-adjust: 100%;
+  }
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  textarea,
+  select {
+    font-size: max(16px, 1em);
+  }
+  button,
+  [role="button"],
+  a {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+}
+
+/* Yatay telefon / çok kısa ekran: dikey yığın haritayı yutmasın. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .mobile-home-content {
+    display: none;
+  }
+  .mobile-search-sheet {
+    max-height: calc(100dvh - 76px);
+  }
+  .mobile-discovery-panel {
+    max-height: calc(100dvh - 150px);
+    overflow-y: auto;
+  }
+  .atlas-launcher,
+  .atlas-launcher.atlas-dock-expanded {
+    bottom: calc(64px + env(safe-area-inset-bottom));
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
