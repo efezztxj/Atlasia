@@ -1,0 +1,203 @@
+name: Atlasia Instagram yayını
+
+# Ne yapar:
+#   social/queue/*.json içindeki kayıtları okur, zamanı gelenleri Instagram'a
+#   (Graph API container akışıyla) yayınlar ve dosyayı social/published/ altına taşır.
+#
+# Arşiv neden ayrı dalda:
+#   main korumalı (inceleme zorunlu) → GITHUB_TOKEN doğrudan push edemez.
+#   Bu yüzden arşiv `social-archive` dalında tutulur; iş her çalıştığında
+#   o dalı main ile birleştirip üstüne yayın kaydını ekler.
+#
+# Kurulum: docs/instagram-otomasyon.md
+#
+# Not: `schedule` yalnızca varsayılan dalda (main) çalışır. Elle tetikleme
+# (workflow_dispatch) her dalda çalışır.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Yalnızca doğrula, gerçek yayın yapma"
+        type: boolean
+        default: true
+      post_id:
+        description: "Tek bir kaydın kimliği (boş bırakılırsa zamanı gelenlerin tümü)"
+        type: string
+        required: false
+
+  schedule:
+    # 15 dakikada bir. GitHub cron'u yoğun saatlerde birkaç dakika gecikebilir.
+    - cron: "*/15 * * * *"
+
+# Varsayılan en az yetki: okuma. Yazma yalnız arşiv işinde, iş düzeyinde açılır.
+permissions:
+  contents: read
+
+concurrency:
+  # Aynı anda iki yayın çalışmasın: çift gönderi riskini kapatır.
+  group: atlasia-instagram-publish
+  cancel-in-progress: false
+
+env:
+  ARCHIVE_BRANCH: social-archive
+
+jobs:
+  publish:
+    name: Instagram yayını
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    # Arşiv dalına commit gönderileceği için yalnız bu iş yazma yetkisi alır.
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+
+      # Zamanı gelmiş kayıt yoksa hiçbir şey yapmadan çık: 15 dakikada bir boş
+      # koşu dönmesin, sırlar eksikken de gereksiz hata üretmesin.
+      # Betiğin kendi loadQueue/isDue mantığı kullanılır; kural tek yerde kalsın.
+      - name: Zamanı gelen kayıt var mı
+        id: queue
+        env:
+          POST_ID: ${{ inputs.post_id }}
+        run: |
+          if [ -n "${POST_ID}" ]; then
+            echo "count=1" >> "$GITHUB_OUTPUT"
+            echo "Belirli kayıt istendi: ${POST_ID}"
+            exit 0
+          fi
+          count=$(node --input-type=module -e '
+            import { loadQueue, isDue } from "./scripts/publish-instagram.mjs";
+            const { entries } = await loadQueue("social/queue");
+            console.log(entries.filter((p) => isDue(p, new Date())).length);
+          ' 2>/dev/null) || count=""
+
+          # Ölçüm başarısız olursa işi durdurmak yerine devam et (fail-open):
+          # kaçırılan bir yayın, gereksiz bir koşudan daha kötü.
+          if ! [ "$count" -ge 0 ] 2>/dev/null; then
+            echo "::warning::Kuyruk okunamadı; yayın adımı yine de çalışacak."
+            count=1
+          fi
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          if [ "$count" -eq 0 ]; then
+            echo "Zamanı gelen kayıt yok; yapılacak iş yok."
+          else
+            echo "Zamanı gelen $count kayıt var."
+          fi
+
+      - name: Use Node.js 22
+        if: steps.queue.outputs.count != '0'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+
+      - name: Sırların varlığını denetle
+        if: steps.queue.outputs.count != '0'
+        env:
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+        run: |
+          missing=0
+          if [ -z "$IG_ACCESS_TOKEN" ]; then
+            echo "::error::IG_ACCESS_TOKEN secret'ı tanımlı değil."
+            missing=1
+          fi
+          if [ -z "$IG_USER_ID" ]; then
+            echo "::error::IG_USER_ID secret'ı tanımlı değil."
+            missing=1
+          fi
+          if [ "$missing" -eq 1 ]; then
+            echo "Kurulum adımları: docs/instagram-otomasyon.md"
+            exit 1
+          fi
+          echo "Sırlar yerinde."
+
+      - name: Betik testleri (kimlik bilgisi gerektirmez)
+        if: steps.queue.outputs.count != '0'
+        run: npm run test:social
+
+      - name: Arşiv dalını hazırla
+        if: steps.queue.outputs.count != '0'
+        run: |
+          set -euo pipefail
+          git config user.name "atlasia-bot"
+          git config user.email "atlasia-bot@users.noreply.github.com"
+
+          if git ls-remote --exit-code --heads origin "$ARCHIVE_BRANCH" >/dev/null 2>&1; then
+            git fetch origin "$ARCHIVE_BRANCH"
+            git checkout --no-track -B "$ARCHIVE_BRANCH" "origin/$ARCHIVE_BRANCH"
+            # Arşiv dalı main'in gerisinde kalmasın: yeni kuyruk kayıtları buradan gelir.
+            #
+            # directoryRenames=false ŞART: yayınlanan dosya queue/ → published/ taşındığı
+            # için git bunu "klasör adı değişti" sanıp main'den gelen yeni kuyruk
+            # kaydını çakışma olarak işaretliyor. Kapatınca temiz birleşiyor.
+            git -c merge.directoryRenames=false merge --no-edit \
+              -m "chore(social): arsiv dalini main ile birlestir" origin/main
+            echo "Arşiv dalı main ile birleştirildi."
+          else
+            git checkout --no-track -B "$ARCHIVE_BRANCH" origin/main
+            echo "Arşiv dalı ilk kez oluşturulacak."
+          fi
+
+      - name: Kuyruğu yayınla
+        id: publish
+        if: steps.queue.outputs.count != '0'
+        env:
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          IG_LOGIN_TYPE: ${{ vars.IG_LOGIN_TYPE || 'facebook' }}
+          IG_API_VERSION: ${{ vars.IG_API_VERSION || 'v26.0' }}
+          # Girdiler env üzerinden geçirilir; kabuğa doğrudan gömülmez.
+          POST_ID: ${{ inputs.post_id }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -o pipefail
+          args=("--due")
+          if [ -n "${POST_ID}" ]; then
+            args=("--post-id" "${POST_ID}")
+          fi
+          if [ "${DRY_RUN}" = "true" ]; then
+            args+=("--dry-run")
+          fi
+          args+=("--json")
+
+          node scripts/publish-instagram.mjs "${args[@]}" | tee publish-output.txt
+          exit "${PIPESTATUS[0]}"
+
+      - name: Özeti yaz
+        if: always() && steps.queue.outputs.count != '0'
+        run: |
+          {
+            echo ""
+            echo "#### Sonuç"
+            echo ""
+            echo '```'
+            grep -E '^[✓✗○↷→]|işleme' publish-output.txt 2>/dev/null | tail -40 || echo "Çıktı yok."
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Yayınlananları arşivle
+        if: always() && steps.queue.outputs.count != '0'
+        run: |
+          # Arşiv dalı hazırlanmadıysa (ör. sırlar eksik) burada yapılacak bir şey yok.
+          if ! git rev-parse --verify --quiet "refs/heads/$ARCHIVE_BRANCH" >/dev/null; then
+            echo "Arşiv dalı hazırlanmamış; atlanıyor."
+            exit 0
+          fi
+
+          if [ -n "$(git status --porcelain social)" ]; then
+            git add social
+            git commit -m "chore(social): yayinlanan gonderileri arsivle [skip ci]"
+          else
+            echo "Yeni yayın kaydı yok."
+          fi
+
+          # Birleştirme commit'i yayın olmasa da gönderilmeli; aksi hâlde her
+          # çalıştırmada aynı birleştirme yeniden yapılır.
+          git push origin "$ARCHIVE_BRANCH"
+          echo "Arşiv '$ARCHIVE_BRANCH' dalı güncel."
