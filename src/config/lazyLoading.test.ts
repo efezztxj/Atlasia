@@ -55,4 +55,13 @@ describe("ağır istemci modüllerinin tembel yüklenmesi", () => {
     expect(authChunk).toBeGreaterThan(-1);
     expect(coreChunk).toBeGreaterThan(authChunk);
   });
+
+  it("shareLink ve fflate başlangıç grafiğine statik import edilmez", () => {
+    for (const path of ["src/App.tsx", "src/components/RouteEditor.tsx"]) {
+      const source = read(path);
+      expect(source, path).toContain("shareLinkUrl");
+      expect(source, path).not.toMatch(/^import [^;]+ from "[./]+utils\/shareLink";/m);
+      expect(source, path).not.toContain('from "fflate"');
+    }
+  });
 });
