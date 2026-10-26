@@ -6,6 +6,13 @@ name: Canlı Yapılandırma Doğrulaması
 # yalnız ölçer; geliştirme projesine bağlıysa iş kırmızıya döner.
 
 on:
+  # workflow_dispatch yalnız varsayılan dalda kayıtlıyken tetiklenebildiği için
+  # dal üzerinde de çalışabilsin diye push tetikleyicisi dar kapsamla eklendi.
+  push:
+    branches: [main, "arena/**"]
+    paths:
+      - "scripts/canli-yapilandirma.mjs"
+      - ".github/workflows/canli-dogrula.yml"
   workflow_dispatch:
   schedule:
     - cron: "0 6 * * 1"
