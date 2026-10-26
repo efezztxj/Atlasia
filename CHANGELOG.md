@@ -1,5 +1,16 @@
 # Atlasia Update
 
+## 2026-10-26 — Yönetim Paneli: tam ekran moderasyon düzeni
+
+Sandbox prototipinde onaylanan klasik admin düzeni gerçek panele taşındı.
+
+- **Ayarlar → Moderasyon → Yönetim Paneli:** yalnız moderatörde görünür; moderatör durumu artık panel açılmadan da öğreniliyor (fail-closed aynı).
+- **Sol menü:** Kontrol Paneli · Kuyruk · İtirazlar · Kullanıcılar · Kayıtlar · Duyurular · Raporlarım; dar ekranda ikonlara daralır.
+- **Kontrol Paneli:** bekleyen rapor / aktif ban / bekleyen itiraz gibi tıklanabilir gösterge kartları + son işlemler listesi.
+- **Kullanıcılar görünümü:** rapor sahipleri ve ban kayıtlarından toplanan özet (rapor sayısı, ban rozeti, geçmiş). Raporsuz ceza ilkesi değişmedi.
+- Çekmece (Raporlarım) düzeni aynen; iki düzen aynı bileşeni ve aynı kuralları paylaşır. Firestore kural değişikliği yok.
+- Testler: 1054 (admin düzeni +4). Bütçe içinde (JS 900.911/908.000).
+
 ## 2026-10-25 — Kapsamlı moderasyon: kademeli yaptırım, itiraz, duyuru
 
 Akış: `docs/moderasyon-akisi.md` §7. Maintainer kararı: kapsam tam, içerik kaldırma kalıcı.

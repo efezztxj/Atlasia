@@ -129,3 +129,21 @@ ban kaydı — karar öncesi karttan açılır.
    `firestore.indexes.json` kaynağa eklendi. Console'da elle oluşturma da olur.
 3. Kurallar yayınlanana kadar yeni yetkiler fail-closed: panel sekmeleri
    görünse bile yazımlar reddedilir.
+
+---
+
+## 8. Yönetim Paneli (tam ekran düzen)
+
+Maintainer isteğiyle moderasyon, klasik admin paneli düzenine taşındı:
+
+- **Giriş:** Ayarlar → Moderasyon → **Yönetim Paneli** (yalnız moderatörde; durum
+  panel açılmadan da `fetchModeratorAccess` ile öğrenilir, fail-closed sürer).
+- **Düzen:** sol menü (Kontrol Paneli · Kuyruk · İtirazlar · Kullanıcılar ·
+  Kayıtlar · Duyurular · Raporlarım); dar ekranda ikonlara daralır.
+- **Kontrol Paneli:** bekleyen rapor / kuyruk / aktif ban / bekleyen itiraz /
+  duyuru / işlem kaydı kartları (tıklanınca ilgili görünüme gider) + son işlemler.
+- **Kullanıcılar:** kuyruktaki rapor sahipleri + ban kayıtlarının birleşimi;
+  rapor sayısı, ban rozeti ve geçmiş sorgusu. Raporsuz ceza ilkesi sürer:
+  bu ekran yalnız görüntüleme içindir.
+- Çekmece düzeni (Raporlarım ve inceleme durumu) aynen korunur; Yönetim Paneli
+  aynı bileşenin `admin` varyantıdır, veri ve yaptırım akışları ortaktır.

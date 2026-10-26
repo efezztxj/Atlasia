@@ -89,11 +89,13 @@ function StatusBadge({ status }: { status: ReportStatus }) {
   );
 }
 
-type Tab = "mine" | "queue" | "appeals" | "log" | "announce";
+type Tab = "mine" | "queue" | "appeals" | "log" | "announce" | "dash" | "users";
 
 interface Props {
   open: boolean;
   onClose: () => void;
+  /** Tam ekran Yönetim Paneli düzeni (sol menü + gösterge paneli). Yalnız moderatörde anlamlı. */
+  admin?: boolean;
   uid: string;
   moderator: boolean;
   myReports: Report[];
@@ -119,6 +121,7 @@ interface Props {
 export default function ReportsPanel({
   open,
   onClose,
+  admin = false,
   uid,
   moderator,
   myReports,
@@ -163,6 +166,28 @@ export default function ReportsPanel({
   useEffect(() => {
     if (!moderator && tab !== "mine") setTab("mine");
   }, [moderator, tab]);
+
+  useEffect(() => {
+    if (admin && moderator) setTab("dash");
+  }, [admin, moderator]);
+
+  // Kullanıcılar görünümü: kuyruktaki rapor sahipleri + ban kayıtları.
+  const userRows = useMemo(() => {
+    const map = new Map<string, { uid: string; reportCount: number; ban?: Ban }>();
+    for (const report of queue) {
+      const owner = targetOwnerOf(report);
+      if (!owner) continue;
+      const row = map.get(owner) ?? { uid: owner, reportCount: 0 };
+      row.reportCount += 1;
+      map.set(owner, row);
+    }
+    for (const ban of bans) {
+      const row = map.get(ban.uid) ?? { uid: ban.uid, reportCount: 0 };
+      row.ban = ban;
+      map.set(ban.uid, row);
+    }
+    return [...map.values()].sort((a, b) => b.reportCount - a.reportCount);
+  }, [queue, bans]);
 
   const openCount = useMemo(() => queue.filter((report) => report.status === "open").length, [queue]);
   const openAppeals = useMemo(() => appeals.filter((appeal) => appeal.status === "open").length, [appeals]);
@@ -219,35 +244,73 @@ export default function ReportsPanel({
   const error = tab === "queue" ? queueError : myReportsError;
 
   const tabs: Array<[Tab, string]> = moderator
-    ? [
-        ["mine", "Raporlarım"],
-        ["queue", openCount > 0 ? `Kuyruk · ${openCount}` : "Kuyruk"],
-        ["appeals", openAppeals > 0 ? `İtirazlar · ${openAppeals}` : "İtirazlar"],
-        ["log", "Kayıtlar"],
-        ["announce", "Duyurular"],
-      ]
+    ? admin
+      ? [
+          ["dash", "Kontrol Paneli"],
+          ["queue", openCount > 0 ? `Kuyruk · ${openCount}` : "Kuyruk"],
+          ["appeals", openAppeals > 0 ? `İtirazlar · ${openAppeals}` : "İtirazlar"],
+          ["users", "Kullanıcılar"],
+          ["log", "Kayıtlar"],
+          ["announce", "Duyurular"],
+          ["mine", "Raporlarım"],
+        ]
+      : [
+          ["mine", "Raporlarım"],
+          ["queue", openCount > 0 ? `Kuyruk · ${openCount}` : "Kuyruk"],
+          ["appeals", openAppeals > 0 ? `İtirazlar · ${openAppeals}` : "İtirazlar"],
+          ["log", "Kayıtlar"],
+          ["announce", "Duyurular"],
+        ]
     : [["mine", "Raporlarım"]];
 
   return (
-    <div className="fixed inset-0 z-[68] flex justify-end bg-black/40">
-      <button type="button" className="absolute inset-0" onClick={onClose} aria-label="Raporlar panelini kapat" />
+    <div className={admin ? "fixed inset-0 z-[68] flex bg-[#041d17]" : "fixed inset-0 z-[68] flex justify-end bg-black/40"}>
+      {!admin && <button type="button" className="absolute inset-0" onClick={onClose} aria-label="Raporlar panelini kapat" />}
+      {admin && moderator && (
+        <nav aria-label="Yönetim menüsü" className="flex w-14 shrink-0 flex-col border-r border-white/10 bg-[#03130e] py-3 md:w-[220px]">
+          <p className="px-3 pb-3 text-center font-display text-[13px] font-bold tracking-wide text-mint md:px-4 md:text-left">
+            🌍<span className="hidden md:inline"> ATLASİA</span>
+            <span className="mt-0.5 hidden text-[9px] font-semibold tracking-[0.2em] text-mint/45 md:block">YÖNETİM</span>
+          </p>
+          {tabs.map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={tab === id}
+              onClick={() => setTab(id)}
+              className={cn(
+                "flex min-h-11 items-center justify-center gap-2 px-2 text-[13px] font-semibold transition md:justify-start md:px-4",
+                tab === id ? "bg-sun/15 text-sun" : "text-mint/65 hover:bg-white/5",
+              )}
+            >
+              <span aria-hidden="true">{id === "dash" ? "📊" : id === "queue" ? "🚩" : id === "appeals" ? "✉️" : id === "users" ? "👥" : id === "log" ? "🧾" : id === "announce" ? "📣" : "🙋"}</span>
+              <span className="hidden md:inline">{label}</span>
+            </button>
+          ))}
+          <p className="mt-auto hidden px-4 pt-4 text-[10.5px] leading-relaxed text-mint/40 md:block">
+            Yetki sunucu kurallarındadır; bu ekran yalnız arayüzdür.
+          </p>
+        </nav>
+      )}
       <aside
         ref={panelRef as React.RefObject<HTMLElement>}
         role="dialog"
         aria-modal="true"
         aria-labelledby="reports-title"
-        className="relative flex h-dvh w-full max-w-[440px] flex-col overflow-hidden border-l border-leaf/20 bg-[#041d17] shadow-2xl"
+        className={admin
+          ? "relative flex h-dvh min-w-0 flex-1 flex-col overflow-hidden bg-[#041d17]"
+          : "relative flex h-dvh w-full max-w-[440px] flex-col overflow-hidden border-l border-leaf/20 bg-[#041d17] shadow-2xl"}
       >
         <header className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
           <h2 id="reports-title" className="flex items-center gap-2 font-display text-base font-semibold text-mint">
-            <Flag className="size-4 text-sun" />{moderator ? "Moderasyon" : "Raporlar"}
+            <Flag className="size-4 text-sun" />{admin ? "Yönetim Paneli" : moderator ? "Moderasyon" : "Raporlar"}
           </h2>
           <button type="button" onClick={onClose} aria-label="Kapat" className="grid size-9 place-items-center rounded-full text-mint/70 hover:bg-white/5">
             <X className="size-4" />
           </button>
         </header>
 
-        {moderator && (
+        {moderator && !admin && (
           <nav aria-label="Moderasyon görünümü" className="flex flex-wrap gap-1 border-b border-white/10 px-3 py-2">
             {tabs.map(([id, label]) => (
               <button
@@ -276,7 +339,83 @@ export default function ReportsPanel({
         {actionError && <p role="alert" className="mx-4 mt-3 text-[12px] text-red-300">{actionError}</p>}
 
         <div className="thin-scroll flex-1 overflow-y-auto px-4 py-4">
-          {tab === "appeals" && moderator ? (
+          {tab === "dash" && moderator ? (
+            <div>
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+                {[
+                  { label: "Bekleyen Rapor", value: openCount, target: "queue" as Tab, tone: "border-sun/30 bg-sun/10 text-sun" },
+                  { label: "Kuyruktaki Rapor", value: queue.length, target: "queue" as Tab, tone: "border-white/15 bg-white/[0.05] text-mint" },
+                  { label: "Aktif Ban", value: bans.length, target: "users" as Tab, tone: "border-red-300/30 bg-red-400/10 text-red-200" },
+                  { label: "Bekleyen İtiraz", value: openAppeals, target: "appeals" as Tab, tone: "border-white/15 bg-white/[0.05] text-mint" },
+                  { label: "Duyuru", value: announcements.length, target: "announce" as Tab, tone: "border-leaf/30 bg-leaf/10 text-leaf" },
+                  { label: "İşlem Kaydı", value: modActions.length, target: "log" as Tab, tone: "border-white/15 bg-white/[0.05] text-mint" },
+                ].map((card) => (
+                  <button
+                    key={card.label}
+                    type="button"
+                    onClick={() => setTab(card.target)}
+                    className={cn("rounded-2xl border p-4 text-left transition hover:brightness-125", card.tone)}
+                  >
+                    <span className="block font-display text-3xl font-bold">{card.value}</span>
+                    <span className="mt-1 block text-[12px] font-semibold opacity-85">{card.label} →</span>
+                  </button>
+                ))}
+              </div>
+
+              <h3 className="mt-5 mb-2 text-[13px] font-semibold text-mint">Son işlemler</h3>
+              {modActions.length === 0 ? (
+                <p className="text-[12.5px] text-mint/60">Henüz işlem kaydı yok.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {modActions.slice(0, 5).map((action) => (
+                    <li key={action.id} className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                      <p className="text-[12.5px] font-semibold text-mint">{ACTION_LABEL[action.action] ?? action.action}
+                        <span className="ml-2 font-mono text-[11px] font-normal text-mint/45">{relativeTime(action.createdAt)}</span>
+                      </p>
+                      {action.detail && <p className="mt-0.5 text-[12px] leading-relaxed text-mint/70">{action.detail}</p>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <p className="mt-4 text-[11.5px] leading-relaxed text-mint/50">
+                Yaptırım merdiveni: uyarı → içerik kaldırma → askıya alma. Karar öncesi hedefin geçmişini Kuyruk kartındaki “Geçmiş” ile gör.
+              </p>
+            </div>
+          ) : tab === "users" && moderator ? (
+            userRows.length === 0 ? (
+              <p className="mt-10 text-center text-[13px] text-mint/65">Kuyrukta hedef kullanıcı yok.</p>
+            ) : (
+              <ul className="space-y-2">
+                {userRows.map((row) => (
+                  <li key={row.uid} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-mono text-[12px] text-mint">{row.uid.slice(0, 12)}…</p>
+                      {row.ban
+                        ? <span className="rounded-full border border-red-300/30 bg-red-400/10 px-2 py-0.5 text-[11px] font-semibold text-red-200">Askıda{row.ban.expiresAt ? ` · ${new Date(row.ban.expiresAt).toLocaleDateString("tr-TR")}` : " · kalıcı"}</span>
+                        : <span className="rounded-full border border-white/15 px-2 py-0.5 text-[11px] font-semibold text-mint/70">Ban yok</span>}
+                    </div>
+                    <p className="mt-1 text-[12px] text-mint/70">Aleyhinde <strong className="text-mint">{row.reportCount}</strong> rapor (kuyruk penceresi içinde)</p>
+                    <button
+                      type="button"
+                      onClick={() => void toggleHistory(row.uid)}
+                      className="mt-2 flex min-h-9 items-center gap-1.5 rounded-full border border-white/15 px-3 text-[11.5px] text-mint/85"
+                    >
+                      <History className="size-3.5" />Geçmişi göster
+                    </button>
+                    {historyFor === row.uid && (
+                      <div className="mt-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-[12px] leading-relaxed text-mint/75">
+                        {historyBusy ? (
+                          <span className="flex items-center gap-2"><Loader2 className="size-3.5 animate-spin" />Geçmiş okunuyor…</span>
+                        ) : history ? (
+                          <p>Toplam <strong className="text-mint">{history.reports.length}</strong> rapor, <strong className="text-mint">{history.warningCount}</strong> uyarı. {history.ban ? `Ban kaydı var: ${history.ban.reason}` : "Ban kaydı yok."}</p>
+                        ) : null}
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )
+          ) : tab === "appeals" && moderator ? (
             appeals.length === 0 ? (
               <p className="mt-10 text-center text-[13px] text-mint/65">Bekleyen itiraz yok.</p>
             ) : (

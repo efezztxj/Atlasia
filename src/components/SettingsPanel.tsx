@@ -70,6 +70,8 @@ export interface SettingsContentProps {
   mapBounds?: BBox | null;
   /** Raporlar panelini açar (yalnız bulut hesabında verilir). */
   onOpenReports?: () => void;
+  /** Tam ekran Yönetim Panelini açar (yalnız moderatör hesabında verilir). */
+  onOpenAdmin?: () => void;
 }
 
 interface Props extends SettingsContentProps {
@@ -162,6 +164,7 @@ export function SettingsContent({
   onToggleTerrain,
   mapBounds = null,
   onOpenReports,
+  onOpenAdmin,
 }: SettingsContentProps) {
   const [installNotice, setInstallNotice] = useState<string | null>(null);
   const [offlineOpen, setOfflineOpen] = useState(false);
@@ -336,6 +339,15 @@ export function SettingsContent({
             >
               <Flag className="size-4 text-sun" />Raporlarım ve inceleme durumu
             </button>
+            {onOpenAdmin && (
+              <button
+                type="button"
+                onClick={onOpenAdmin}
+                className="mt-2 flex min-h-11 w-full items-center gap-2 rounded-2xl border border-sun/30 bg-sun/[0.07] px-4 text-left text-[14px] font-semibold text-mint transition hover:border-sun/55"
+              >
+                <ShieldCheck className="size-4 text-sun" />Yönetim Paneli
+              </button>
+            )}
             <p className="mt-2 text-[12px] leading-relaxed text-mint/55">
               Bildirdiğin içeriklerin durumunu buradan izleyebilirsin. Moderatör hesabında inceleme kuyruğu da açılır.
             </p>
