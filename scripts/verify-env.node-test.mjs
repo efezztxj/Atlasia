@@ -174,6 +174,6 @@ describe("verify-env (Cloudflare Pages üretim ve güvenlik kapısı)", () => {
   });
 });
 
-// PR #103 package.json dosyasına dokunduğu için çakışma yaratmadan
-// Spark yerel yedekleme/kota testlerini de CI test:scripts kapısına bağla:
+// Spark yerel yedekleme, kota ve veri temizliği testlerini de CI test:scripts kapısına bağla:
 import "./firestore-backup.node-test.mjs";
+import "./firestore-cleanup.node-test.mjs";
