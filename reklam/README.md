@@ -364,6 +364,7 @@ Bu akış **izleyiciyi ziyaretçi, ziyaretçiyi kullanıcı** yapmıyor. Minimum
 | Dosya | Ne var |
 |---|---|
 | [`metin-bankasi.md`](metin-bankasi.md) | 24 hook, 10 caption, 6 reklam metni, influencer DM'leri |
+| [`kanca-kurgu.md`](kanca-kurgu.md) | **Kanca -> Konu -> Etki** yapisi, 12 hazir senaryo, 30 kanca, eslestirme tablosu |
 | [`10-yenilikci-fikir.md`](10-yenilikci-fikir.md) | Klasik reklam dışı 10 fikir: karanlık harita, şehir radyosu, rota takası, veri raporu, widget… |
 | [`reels/01-ayni-sehir-200-metre.md`](reels/01-ayni-sehir-200-metre.md) | Amiral gemisi, saniye saniye |
 | [`reels/02-kalabaligin-bittigi-yer.md`](reels/02-kalabaligin-bittigi-yer.md) | Seri formatı, 10 sn |
