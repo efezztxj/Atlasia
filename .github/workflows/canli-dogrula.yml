@@ -40,4 +40,4 @@ jobs:
         run: node scripts/canli-yapilandirma.mjs
         env:
           ATLASIA_CANLI_BASE: ${{ vars.ATLASIA_CANLI_BASE }}
-          ATLASIA_BEKLEYEN_PROJE: ${{ vars.ATLASIA_BEKLEYEN_PROJE }}
+          ATLASIA_URETIM_PROJESI: ${{ vars.ATLASIA_URETIM_PROJESI }}

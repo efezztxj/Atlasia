@@ -5,8 +5,11 @@
  *    - VITE_APPCHECK_DEBUG_TOKEN doluysa build'i kırar (yalnız yerel .env.local içindir).
  * 2) Yalnız Cloudflare Pages üretim build'inde (CF_PAGES === "1" && CF_PAGES_BRANCH === "main"):
  *    - Üç zorunlu Firebase değişkeninden biri eksik/boşluksa build'i kırar.
- *    - VITE_FIREBASE_PROJECT_ID değeri geliştirme projesi ("atlasia-dev") ise build'i kırar.
- *    - VITE_PHONE_AUTH_ENABLED === "true" ise build'i kırar (Spark/SMS güvenlik kilidi).
+ *    - VITE_PHONE_AUTH_ENABLED === "true" ise ihlal (Spark/SMS güvenlik kilidi).
+ *    - VITE_FIREBASE_PROJECT_ID, operatörün `ATLASIA_URETIM_PROJESI` ile BİLDİRDİĞİ
+ *      üretim projesinden farklıysa ihlal. Bildirim yoksa "proje beyan edilmemiş"
+ *      uyarısı verilir (2026-10-25: depoda tek proje var, `atlasia-dev`; kapının
+ *      "ayrı üretim projesi olmalı" varsayımı yanlıştı ve deploy'u kırıyordu).
  *
  * Kural şiddeti iki kademelidir (`policyMode`):
  *    - "eksik değişken" her zaman build'i kırar (uygulama onsuz çalışmaz).
@@ -25,7 +28,13 @@ const REQUIRED = [
   "VITE_FIREBASE_PROJECT_ID",
 ];
 
-const DEV_PROJECT_ALIASES = new Set(["atlasia-dev"]);
+/** Operatörün "üretim budur" beyanı. İstemciye gitmez (VITE_ öneki yok). */
+export const PRODUCTION_PROJECT_VAR = "ATLASIA_URETIM_PROJESI";
+
+export function declaredProductionProject(env = process.env) {
+  const raw = env[PRODUCTION_PROJECT_VAR];
+  return typeof raw === "string" && raw.trim() ? raw.trim() : null;
+}
 
 export function isCloudflarePages(env = process.env) {
   return env.CF_PAGES === "1";
@@ -81,14 +90,24 @@ export function policyViolations(env = process.env) {
 
   if (shouldEnforce(env)) {
     const projectId = typeof env.VITE_FIREBASE_PROJECT_ID === "string"
-      ? env.VITE_FIREBASE_PROJECT_ID.trim().toLowerCase()
+      ? env.VITE_FIREBASE_PROJECT_ID.trim()
       : "";
-    if (projectId && DEV_PROJECT_ALIASES.has(projectId)) {
+    const declared = declaredProductionProject(env);
+    if (projectId && declared && projectId !== declared) {
       violations.push({
         name: "VITE_FIREBASE_PROJECT_ID",
-        code: "dev_project_in_production",
+        code: "production_project_mismatch",
+        // Değer yazılmaz: teşhis için canlı paketi okuyan `dogrula:canli` var.
         message:
-          "Invalid production environment variable: VITE_FIREBASE_PROJECT_ID must not target the development Firebase project",
+          `Production project mismatch: VITE_FIREBASE_PROJECT_ID does not match ${PRODUCTION_PROJECT_VAR}`,
+      });
+    } else if (projectId && !declared) {
+      violations.push({
+        name: PRODUCTION_PROJECT_VAR,
+        code: "production_project_undeclared",
+        message:
+          `Production Firebase project is not declared: set ${PRODUCTION_PROJECT_VAR} to the project ` +
+          `production must use (check the live value with npm run dogrula:canli)`,
       });
     }
 

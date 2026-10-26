@@ -143,7 +143,7 @@ async function main() {
   const baseIndex = args.indexOf("--base");
   const base = baseIndex >= 0 ? args[baseIndex + 1] : process.env.ATLASIA_CANLI_BASE || DEFAULT_BASE;
   const asJson = args.includes("--json");
-  const expectedProject = process.env.ATLASIA_BEKLEYEN_PROJE || undefined;
+  const expectedProject = process.env.ATLASIA_URETIM_PROJESI || undefined;
 
   const result = await inspectLiveSite({ base });
   const verdict = evaluateConfig(result.config, { expectedProject });

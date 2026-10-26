@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  declaredProductionProject,
   missingVars,
   policyMode,
   policyViolations,
@@ -55,6 +56,7 @@ describe("verify-env (Cloudflare Pages üretim ve güvenlik kapısı)", () => {
         VITE_FIREBASE_API_KEY: "AIza...",
         VITE_FIREBASE_AUTH_DOMAIN: "atlasia.firebaseapp.com",
         VITE_FIREBASE_PROJECT_ID: "atlasia-prod",
+        ATLASIA_URETIM_PROJESI: "atlasia-prod",
         VITE_APPCHECK_DEBUG_TOKEN: debugSecret,
       });
       const logs = [];
@@ -66,21 +68,54 @@ describe("verify-env (Cloudflare Pages üretim ve güvenlik kapısı)", () => {
     }
   });
 
-  it("CF main: VITE_FIREBASE_PROJECT_ID=atlasia-dev üretimde reddedilir", () => {
+  it("CF main: beyan edilen proje ile yapılandırma uyuşursa ihlal yok (atlasia-dev gerçek üretim)", () => {
+    // 2026-10-25 bulgusu: depoda tek Firebase projesi var ve canlı site atlasia-dev
+    // üzerinde çalışıyor. Kapının "atlasia-dev asla üretim olamaz" varsayımı yanlıştı.
+    const env = envWith({
+      CF_PAGES: "1",
+      CF_PAGES_BRANCH: "main",
+      VITE_FIREBASE_API_KEY: "AIza...",
+      VITE_FIREBASE_AUTH_DOMAIN: "atlasia-dev.firebaseapp.com",
+      VITE_FIREBASE_PROJECT_ID: "atlasia-dev",
+      ATLASIA_URETIM_PROJESI: "atlasia-dev",
+    });
+    assert.deepEqual(policyViolations(env), []);
+  });
+
+  it("CF main: beyan edilen projeden farklı proje ihlal sayılır", () => {
     const env = envWith({
       CF_PAGES: "1",
       CF_PAGES_BRANCH: "main",
       VITE_FIREBASE_API_KEY: "AIza...",
       VITE_FIREBASE_AUTH_DOMAIN: "atlasia.firebaseapp.com",
       VITE_FIREBASE_PROJECT_ID: "atlasia-dev",
+      ATLASIA_URETIM_PROJESI: "atlasia-uretim",
     });
     const violations = policyViolations(env);
     assert.equal(violations.length, 1);
-    assert.equal(violations[0].code, "dev_project_in_production");
+    assert.equal(violations[0].code, "production_project_mismatch");
+    assert.ok(violations[0].message.includes("ATLASIA_URETIM_PROJESI"), "değişken adı mesajda olmalı");
+    assert.ok(!violations[0].message.includes("atlasia-dev"), "değer sızmamalı");
     const logs = [];
     const result = verify(env, { exit: false, log: (m) => logs.push(m) });
     assert.equal(result.violations.length, 1);
     assert.ok(logs.some((m) => m.includes("VITE_FIREBASE_PROJECT_ID")));
+  });
+
+  it("CF main: proje beyan edilmemişse uyarı verir, adı söyler", () => {
+    const env = envWith({
+      CF_PAGES: "1",
+      CF_PAGES_BRANCH: "main",
+      VITE_FIREBASE_API_KEY: "AIza...",
+      VITE_FIREBASE_AUTH_DOMAIN: "atlasia-dev.firebaseapp.com",
+      VITE_FIREBASE_PROJECT_ID: "atlasia-dev",
+    });
+    const violations = policyViolations(env);
+    assert.equal(violations.length, 1);
+    assert.equal(violations[0].code, "production_project_undeclared");
+    assert.equal(violations[0].name, "ATLASIA_URETIM_PROJESI");
+    assert.equal(declaredProductionProject(env), null);
+    assert.equal(declaredProductionProject({ ATLASIA_URETIM_PROJESI: "  atlasia-dev " }), "atlasia-dev");
   });
 
   it("CF preview: preview dalında atlasia-dev kullanılabilir", () => {
@@ -101,6 +136,7 @@ describe("verify-env (Cloudflare Pages üretim ve güvenlik kapısı)", () => {
       VITE_FIREBASE_API_KEY: "AIza...",
       VITE_FIREBASE_AUTH_DOMAIN: "atlasia.firebaseapp.com",
       VITE_FIREBASE_PROJECT_ID: "atlasia-prod",
+      ATLASIA_URETIM_PROJESI: "atlasia-prod",
       VITE_PHONE_AUTH_ENABLED: "true",
     });
     const blocked = verify(blockedEnv, { exit: false, log: () => {} });
@@ -144,6 +180,7 @@ describe("verify-env (Cloudflare Pages üretim ve güvenlik kapısı)", () => {
       VITE_FIREBASE_API_KEY: "AIza...",
       VITE_FIREBASE_AUTH_DOMAIN: "atlasia.firebaseapp.com",
       VITE_FIREBASE_PROJECT_ID: "atlasia-prod",
+      ATLASIA_URETIM_PROJESI: "atlasia-prod",
     });
     assert.equal(shouldEnforce(env), true);
     assert.deepEqual(missingVars(env), []);
@@ -174,6 +211,7 @@ describe("verify-env (Cloudflare Pages üretim ve güvenlik kapısı)", () => {
       VITE_FIREBASE_API_KEY: "",
       VITE_FIREBASE_AUTH_DOMAIN: "ok",
       VITE_FIREBASE_PROJECT_ID: secret,
+      ATLASIA_URETIM_PROJESI: "atlasia-uretim",
     });
     const logs = [];
     verify(env, { exit: false, log: (m) => logs.push(m) });
@@ -188,6 +226,7 @@ describe("verify-env (kural şiddeti: warn / enforce)", () => {
     VITE_FIREBASE_API_KEY: "AIza...",
     VITE_FIREBASE_AUTH_DOMAIN: "atlasia.firebaseapp.com",
     VITE_FIREBASE_PROJECT_ID: "atlasia-prod",
+    ATLASIA_URETIM_PROJESI: "atlasia-prod",
     VITE_PHONE_AUTH_ENABLED: "true",
   };
 
