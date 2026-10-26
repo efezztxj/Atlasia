@@ -73,16 +73,25 @@ export function extractFirebaseConfig(text) {
  */
 export function evaluateConfig(config, { expectedProject } = {}) {
   const problems = [];
+  const notes = [];
   if (!config.projectId) problems.push("projectId pakette bulunamadı (Firebase yapılandırması eksik)");
   if (!config.authDomain) problems.push("authDomain pakette bulunamadı");
   if (!config.apiKeyPresent) problems.push("apiKey pakette bulunamadı");
+
+  // Not: "atlasia-dev" artık tek başına hata değil. Depoda tek Firebase projesi var
+  // ve canlı site onun üzerinde çalışıyor (2026-10-26 ölçümü). Doğru ölçüt, beklenen
+  // projenin operatör tarafından beyan edilmesi ve yapılandırmanın ona uymasıdır.
   if (config.projectId && config.projectId.toLowerCase() === "atlasia-dev") {
-    problems.push("canlı yapı GELİŞTİRME Firebase projesine (atlasia-dev) bağlı");
+    notes.push("canlı yapı atlasia-dev projesine bağlı (depoda tek proje)");
   }
-  if (expectedProject && config.projectId && config.projectId !== expectedProject) {
-    problems.push(`projectId beklenen değerle uyuşmuyor: ${config.projectId} ≠ ${expectedProject}`);
+  if (expectedProject) {
+    if (config.projectId && config.projectId !== expectedProject) {
+      problems.push(`projectId beyan edilen üretim projesiyle uyuşmuyor: ${config.projectId} ≠ ${expectedProject}`);
+    }
+  } else {
+    notes.push("beklenen proje beyan edilmedi (ATLASIA_URETIM_PROJESI) — yalnız raporlandı");
   }
-  return { ok: problems.length === 0, problems };
+  return { ok: problems.length === 0, problems, notes };
 }
 
 /** Cache ve SW'yi atlatmak için her isteğe tekil sorgu ekler. */
@@ -120,7 +129,7 @@ function annotation(level, title, message) {
   console.log(`::${level} title=${title}::${clean}`);
 }
 
-function printReport({ base, entry, bytes, config }, { ok, problems }) {
+function printReport({ base, entry, bytes, config }, { ok, problems, notes = [] }) {
   const line = (label, value) => console.log(`${label.padEnd(22)} ${value}`);
   console.log(`Canlı yapılandırma doğrulaması — ${base}`);
   line("Giriş paketi:", entry);
@@ -129,6 +138,7 @@ function printReport({ base, entry, bytes, config }, { ok, problems }) {
   line("authDomain:", config.authDomain ?? "(yok)");
   line("apiKey:", config.apiKeyPresent ? `var (${config.apiKeyMasked})` : "YOK");
   line("atlasia-dev izi:", config.mentionsDevProject ? "VAR" : "yok");
+  for (const note of notes) line("Not:", note);
   console.log("");
   if (ok) {
     console.log("SONUÇ: ✅ canlı yapılandırma sağlıklı");

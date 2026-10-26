@@ -49,15 +49,30 @@ describe("canli-yapilandirma (canlı paket denetimi)", () => {
     assert.equal(config.mentionsDevProject, false);
   });
 
-  it("geliştirme projesine bağlı canlı yapıyı hatalı sayar", () => {
-    const verdict = evaluateConfig(extractFirebaseConfig(DEV_JS));
+  it("atlasia-dev tek başına hata değil; not olarak raporlanır", () => {
+    // Depoda tek Firebase projesi var ve canlı site onun üzerinde çalışıyor.
+    const verdict = evaluateConfig(extractFirebaseConfig(DEV_JS), { expectedProject: "atlasia-dev" });
+    assert.equal(verdict.ok, true);
+    assert.deepEqual(verdict.problems, []);
+    assert.ok(verdict.notes.some((n) => n.includes("atlasia-dev")));
+  });
+
+  it("beyan edilen üretim projesinden farklıysa hatalı sayar", () => {
+    const verdict = evaluateConfig(extractFirebaseConfig(DEV_JS), { expectedProject: "atlasia-uretim" });
     assert.equal(verdict.ok, false);
-    assert.ok(verdict.problems.some((p) => p.includes("atlasia-dev")));
+    assert.ok(verdict.problems.some((p) => p.includes("uyuşmuyor")));
+  });
+
+  it("beyan yoksa hata değil, not üretir", () => {
+    const verdict = evaluateConfig(extractFirebaseConfig(DEV_JS));
+    assert.equal(verdict.ok, true);
+    assert.ok(verdict.notes.some((n) => n.includes("ATLASIA_URETIM_PROJESI")));
   });
 
   it("sağlıklı üretim yapılandırmasını geçirir", () => {
     const verdict = evaluateConfig(extractFirebaseConfig(PROD_JS), { expectedProject: "atlasia-prod" });
-    assert.deepEqual(verdict, { ok: true, problems: [] });
+    assert.equal(verdict.ok, true);
+    assert.deepEqual(verdict.problems, []);
   });
 
   it("beklenen proje kimliği tutmazsa uyarır", () => {
