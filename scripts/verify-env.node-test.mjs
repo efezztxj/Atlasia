@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { missingVars, policyViolations, shouldEnforce, verify } from "./verify-env.mjs";
+import {
+  missingVars,
+  policyMode,
+  policyViolations,
+  shouldEnforce,
+  shouldFail,
+  verify,
+} from "./verify-env.mjs";
 
 function envWith(overrides) {
   return { ...overrides };
@@ -171,6 +178,70 @@ describe("verify-env (Cloudflare Pages üretim ve güvenlik kapısı)", () => {
     const logs = [];
     verify(env, { exit: false, log: (m) => logs.push(m) });
     assert.ok(logs.every((m) => !m.includes(secret)));
+  });
+});
+
+describe("verify-env (kural şiddeti: warn / enforce)", () => {
+  const prodEnv = {
+    CF_PAGES: "1",
+    CF_PAGES_BRANCH: "main",
+    VITE_FIREBASE_API_KEY: "AIza...",
+    VITE_FIREBASE_AUTH_DOMAIN: "atlasia.firebaseapp.com",
+    VITE_FIREBASE_PROJECT_ID: "atlasia-prod",
+    VITE_PHONE_AUTH_ENABLED: "true",
+  };
+
+  it("varsayılan mod warn; ATLASIA_PROD_ENV_POLICY=enforce ile sertleşir", () => {
+    assert.equal(policyMode({}), "warn");
+    assert.equal(policyMode({ ATLASIA_PROD_ENV_POLICY: "ENFORCE " }), "enforce");
+    assert.equal(policyMode({ ATLASIA_PROD_ENV_POLICY: "warn" }), "warn");
+    assert.equal(policyMode({ ATLASIA_PROD_ENV_POLICY: "gecersiz" }), "warn");
+  });
+
+  it("eksik zorunlu değişken her modda ölümcül", () => {
+    for (const mode of ["warn", "enforce"]) {
+      assert.equal(shouldFail({ missing: ["VITE_FIREBASE_API_KEY"], violations: [], mode }), true);
+    }
+  });
+
+  it("politika ihlali warn modunda deploy'u durdurmaz, enforce modunda durdurur", () => {
+    assert.equal(shouldFail({ missing: [], violations: [{ code: "x" }], mode: "warn" }), false);
+    assert.equal(shouldFail({ missing: [], violations: [{ code: "x" }], mode: "enforce" }), true);
+  });
+
+  it("warn modunda ihlal ADVISORY olarak loglanır ve deploy devam eder", () => {
+    const logs = [];
+    const result = verify(prodEnv, { exit: false, log: (m) => logs.push(m) });
+    assert.equal(result.mode, "warn");
+    assert.equal(result.failed, false);
+    assert.equal(result.violations.length, 1);
+    assert.ok(logs.some((m) => m.includes("ADVISORY (deploy continues)")));
+    assert.ok(logs.some((m) => m.includes("VITE_PHONE_AUTH_ENABLED")));
+    assert.ok(logs.some((m) => m.includes("ATLASIA_PROD_ENV_POLICY=enforce")));
+  });
+
+  it("enforce modunda ihlal build'i kırar (failed=true)", () => {
+    const logs = [];
+    const result = verify(
+      { ...prodEnv, ATLASIA_PROD_ENV_POLICY: "enforce" },
+      { exit: false, log: (m) => logs.push(m) },
+    );
+    assert.equal(result.mode, "enforce");
+    assert.equal(result.failed, true);
+    assert.ok(logs.some((m) => m.startsWith("Forbidden production environment variable")));
+  });
+
+  it("temiz üretim env'inde hiçbir mod uyarı üretmez", () => {
+    for (const mode of [undefined, "enforce"]) {
+      const logs = [];
+      const result = verify(
+        { ...prodEnv, VITE_PHONE_AUTH_ENABLED: "false", ATLASIA_PROD_ENV_POLICY: mode },
+        { exit: false, log: (m) => logs.push(m) },
+      );
+      assert.deepEqual(result.violations, []);
+      assert.equal(result.failed, false);
+      assert.equal(logs.length, 0);
+    }
   });
 });
 

@@ -164,6 +164,47 @@ bekleyen öneri sıfırlanıyordu.
   sağa kayar (`shifted` → `lg:pl-[420px]`).
 - Kilit testi: `uiSurface.test.ts` → "keşif kartı kalıcılığı" (üç test).
 
+### 3.7 Harita kapsülü 3 düğmeye indi, çakışma bitti
+
+Telefonda kapsülde 7 düğme vardı (`+`, `−`, sıfırla, konumum, katmanlar,
+yürüyüş kaydı, Atlas AI). Son ikisi alt eylem çiftiyle aynı işi iki kez
+yapıyordu; ayrıca kapsülün tabanı ölçülen kart alanından (168 px) geldiği için
+altın Atlas dairesiyle üst üste biniyordu (ekran görüntüsü: 2026-10-25).
+
+- Mobilde kapsül artık **Sıfırla · Konumum · Katmanlar**. Yakınlaştırma
+  düğmeleri yalnız masaüstünde (telefonda iki parmakla yakınlaştırma).
+- Kapsülün alt sınırı sabit sayı değil,
+  `calc(var(--mobile-fab-bottom) + 58px)` → eylem çiftinin 46 px boyu + 12 px
+  nefes. Alt yığın kayınca kapsül de kayar; çakışma oluşamaz.
+- Sıra numarasına dayalı gizleme (`:nth-of-type(n+5)`) kaldırıldı; görünürlük
+  artık açık `max-md:hidden` sınıflarıyla yönetiliyor (CSS sırası değişse de
+  bozulmaz).
+- Kazanç: dikey sütun ~350 px'ten ~144 px'e indi, harita alanı geri geldi.
+
+### 3.8 Profil ekranı sadeleşti (Instagram mantığı)
+
+Profil, yedi katmanı tek sayfaya sıkıştırıyordu. Kullanıcı kararı (2026-10-25):
+png 3'teki gibi sade; ama yeni alt sayfa açmadan, silerek.
+
+- Kimlik kartının çerçevesi/gradyanı kalktı; istatistikler kutusuz üç sütun.
+- Bölüm gezinmesi **4 → 3 sekme**: Hesabım · Keşiflerim · Ayarlar.
+  "Konum" sekmesi kalktı (konum ayarları Ayarlar içinde zaten var).
+- Hesap türü, doğrulama ve grup daveti kimliği tek **katlanır satıra** indi
+  (`<details>` → "Hesap bilgileri"); kopyala düğmesi korunuyor.
+- Tam genişlik altın "Değişiklikleri kaydet" ana ekrandan kalktı; ad düzenleme
+  tek satır (alan + küçük "Kaydet"). Altın artık ana profil ekranında yok —
+  tasarım kuralı geri sağlandı.
+- Hesap silme/çıkış alt alanı ve doğrulama uyarısı değişmedi.
+
+### 3.9 Manifest: ayrı maskable ikon
+
+`icon-512.png` hem `any` hem `maskable` olarak tanımlıydı; Android uyarlanabilir
+ikonunda logo kırpılabiliyordu. Ayrı `icons/icon-maskable-512.png` üretildi
+(logo %66 güvenli alanda, zemin ikonun kendi rengi `#031815`), manifestte
+maskable artık bu dosyayı gösteriyor. Kilit testi güncellendi: maskable ayrı
+dosya olmalı. `screenshots` alanı gerçek cihaz görüntüleri gerektirdiği için
+eklenmedi (uydurma görsel konmaz).
+
 ---
 
 ## 4. Değişmeyen kararlar
