@@ -62,13 +62,15 @@ firebase deploy --only firestore:rules,firestore:indexes --project <onayli-proje
 
 ## 6. Üretim build kapısı
 
-- `scripts/verify-env.mjs` şunları otomatik zorlar (hata mesajı yalnız değişken adını yazar, gizli değeri asla yazmaz):
-  - **Tüm Cloudflare Pages build'lerinde (`CF_PAGES === "1"` — hem `main` hem `preview`):** `VITE_APPCHECK_DEBUG_TOKEN` doluysa build kırılır.
-  - **Yalnız üretim build'inde (`CF_PAGES === "1" && CF_PAGES_BRANCH === "main"`):**
-    - Üç zorunlu Firebase değişkeninden biri eksik/boşluksa build kırılır.
-    - `VITE_FIREBASE_PROJECT_ID` değeri `atlasia-dev` ise build kırılır.
-    - `VITE_PHONE_AUTH_ENABLED === "true"` ise build kırılır.
-- Yerel `npm run build` ve GitHub Actions üzerinde kapı **devreye girmez**.
+- `scripts/verify-env.mjs` iki kademeli çalışır. Hata/uyarı mesajı yalnız değişken **adını** yazar, gizli değeri asla yazmaz.
+- **Kademe 1 — her zaman ölümcül:**
+  - **Yalnız üretim build'inde (`CF_PAGES === "1" && CF_PAGES_BRANCH === "main"`):** üç zorunlu Firebase değişkeninden biri eksik/boşluksa build kırılır.
+- **Kademe 2 — politika ihlalleri (varsayılan: yalnız uyarı, `ADVISORY (deploy continues)`):**
+  - **Tüm Cloudflare Pages build'lerinde (`CF_PAGES === "1"` — hem `main` hem `preview`):** `VITE_APPCHECK_DEBUG_TOKEN` doluysa ihlal.
+  - **Yalnız üretim build'inde:** `VITE_FIREBASE_PROJECT_ID` değeri `atlasia-dev` ise ihlal; `VITE_PHONE_AUTH_ENABLED === "true"` ise ihlal.
+- **Neden varsayılan `warn`:** bu değerler yalnız Cloudflare panelinde görülebildiği için sert çıkış, teşhis edilemeyen bir dağıtım kilidine dönüşüyordu (2026-10-25: `main` üretim deploy'u üst üste "Build failed" verdi, panel erişimi olmadan sebep okunamadı). Uyarı modunda deploy geçer, ihlal edilen değişken adı build log'unda görünür.
+- **Kilidi geri sertleştirmek için:** Cloudflare Pages → Settings → Variables and secrets → **Production** kapsamına `ATLASIA_PROD_ENV_POLICY=enforce` eklenir (istemciye gitmeyen, `VITE_` öneki olmayan bir değişkendir). Değerler doğrulandıktan sonra bu adım önerilir.
+- Yerel `npm run build` ve GitHub Actions üzerinde kapı **devreye girmez** (`CF_PAGES` yok).
 - Test: `npm run test:scripts` (veya `node --test scripts/verify-env.node-test.mjs`)
 
 ## 7. Uygulanacak doğrulama adımları (kullanıcı)

@@ -105,10 +105,12 @@ export default function MapControls({
         hiddenOnMobile && "max-md:hidden",
       )}
     >
-      <RoundBtn label="Yakınlaştır" onClick={onZoomIn}>
+      {/* Mobilde yakınlaştırma iki parmakla yapılır; düğmeler yalnız masaüstünde
+          (kullanıcı kararı 2026-10-25: kapsül telefonda 3 düğmeye insin). */}
+      <RoundBtn label="Yakınlaştır" onClick={onZoomIn} className="max-md:hidden">
         <ZoomIn className="size-[18px]" />
       </RoundBtn>
-      <RoundBtn label="Uzaklaştır" onClick={onZoomOut}>
+      <RoundBtn label="Uzaklaştır" onClick={onZoomOut} className="max-md:hidden">
         <ZoomOut className="size-[18px]" />
       </RoundBtn>
       <RoundBtn label="Görünümü sıfırla" onClick={onReset}>

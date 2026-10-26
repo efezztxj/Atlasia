@@ -51,12 +51,16 @@ describe("manifest — kurulabilirlik", () => {
     expect(manifest.short_name).toBe("Atlasia");
   });
 
-  it("192 ve 512 ikonları var, 512 ayrıca maskable", () => {
+  it("192 ve 512 ikonları var; maskable ayrı dosya", () => {
     const icons = manifest.icons ?? [];
     const sizes = icons.map((icon) => icon.sizes);
     expect(sizes).toContain("192x192");
     expect(sizes).toContain("512x512");
-    expect(icons.some((icon) => icon.sizes === "512x512" && icon.purpose === "maskable")).toBe(true);
+    // Android uyarlanabilir ikonu logoyu kırpmasın: maskable ayrı, dolgulu dosya.
+    const maskable = icons.find((icon) => icon.purpose === "maskable");
+    expect(maskable).toBeDefined();
+    expect(maskable?.sizes).toBe("512x512");
+    expect(maskable?.src).toContain("maskable");
     for (const icon of icons) {
       expect(icon.type).toBe("image/png");
       expect(exists(`public/${icon.src}`)).toBe(true);
