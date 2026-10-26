@@ -140,12 +140,12 @@ npm run audit:check    # production dependency security baseline
 
 ---
 
-## 7. Güncel durum (bu planla eşzamanlı)
+## 7. Güncel durum (tamamlanan adımlar)
 
 - **PR #98:** Birleşmiş ✅
-- **PR #106:** Açık, CI yeşil, mergeable ⏳ (bu planla bu dalına çekilecek)
-- **Birleşince yapılacaklar:** Kuralları yeniden yayınla + `blocks` bileşik indeksi ekle
-- **Test sayısı:** PR #106 ile 999 → 1016
+- **PR #106 entegrasyonu:** `arena/78c4c082-atlasia` dalına çekildi ve güncel `main` (`32069cc`) ile birleştirildi ✅
+- **Firestore kuralları ve indeksler:** `firestore.rules` + `firestore.indexes.json` (`reports` ve `blocks` bileşik indeksleri) `atlasia-dev` projesine yayınlandı ✅
+- **Test sayısı:** 137 birim test dosyası / 1052+ test + betik testleri yeşil ✅
 
 ---
 
