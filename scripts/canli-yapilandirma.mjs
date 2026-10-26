@@ -111,6 +111,15 @@ export async function inspectLiveSite({
   return { base, entry, bytes: js.length, config };
 }
 
+/**
+ * GitHub Actions log'una erişilemeyen ortamlar için bulguyu annotation olarak
+ * yayınlar (annotations API'den okunabilir). Annotation girdileri tek satırdır.
+ */
+function annotation(level, title, message) {
+  const clean = String(message).replace(/\r?\n/g, " ").replace(/%/g, "%25");
+  console.log(`::${level} title=${title}::${clean}`);
+}
+
 function printReport({ base, entry, bytes, config }, { ok, problems }) {
   const line = (label, value) => console.log(`${label.padEnd(22)} ${value}`);
   console.log(`Canlı yapılandırma doğrulaması — ${base}`);
@@ -144,6 +153,20 @@ async function main() {
   } else {
     printReport(result, verdict);
   }
+
+  if (process.env.GITHUB_ACTIONS === "true") {
+    const { config, entry, base } = result;
+    const facts =
+      `base=${base} | entry=${entry} | projectId=${config.projectId ?? "(yok)"} | ` +
+      `authDomain=${config.authDomain ?? "(yok)"} | apiKey=${config.apiKeyPresent ? "var" : "YOK"} | ` +
+      `atlasia-dev izi=${config.mentionsDevProject ? "VAR" : "yok"}`;
+    if (verdict.ok) {
+      annotation("notice", "Canli yapilandirma", `Saglikli: ${facts}`);
+    } else {
+      annotation("error", "Canli yapilandirma", `${facts} | Sorunlar: ${verdict.problems.join(" ; ")}`);
+    }
+  }
+
   if (!verdict.ok) process.exit(1);
 }
 
