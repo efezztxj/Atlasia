@@ -292,3 +292,17 @@ Her videonun tek birincil metriği var; panik yapıp hepsine bakma.
 Hazır olduğunda yapabileceklerim: yukarıdaki 5 caption'ı `social/queue/`
 JSON'larına dönüştürmek (yayın tarihi sende), video senaryolarını storyboard
 görsellerine çevirmek, saha kartının tek sayfa tasarımını hazırlamak.
+
+---
+
+## 11. Üretilen varlık (2026-10-26)
+
+F1 formatının ilk örneği **AI ile üretildi ve hazır**: [`reklam/dokunma/`](../../reklam/dokunma/README.md)
+
+- `reklam/dokunma/reklam-dokunma.mp4` — 14 sn, 1080×1920, Türkçe seslendirme + sentez jenerik
+- `reklam/dokunma/kapak.jpg` — Reels kapağı
+- `reklam/dokunma/uret.py` — metin/süre değişince filmi tek komutla yeniden üretir
+
+Sıradaki üretim: F2 (ekran kaydı) ve F4 (bu filmdeki 3–4. sahnelerden 18 sn'lik
+bağımsız kurgu). Yayına almak için `public/social/` + `social/queue/` adımları
+[docs/instagram-otomasyon.md](../instagram-otomasyon.md) içinde.
