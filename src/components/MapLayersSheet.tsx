@@ -100,16 +100,16 @@ export default function MapLayersSheet({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[64] flex items-end justify-center bg-black/40 md:items-center">
+    <div className="mobile-fullscreen-wrap fixed inset-0 z-[64] flex items-end justify-center bg-black/40 md:items-center">
       <button type="button" className="absolute inset-0" onClick={onClose} aria-label="Katmanlar sayfasını kapat" />
       <section
         ref={panelRef as React.RefObject<HTMLElement>}
         role="dialog"
         aria-modal="true"
         aria-labelledby="map-layers-title"
-        className="animate-rise relative mb-[max(10px,env(safe-area-inset-bottom))] w-full max-w-[430px] overflow-hidden rounded-[24px] border border-white/12 bg-[#041d17] shadow-2xl md:mb-0"
+        className="panel-solid mobile-fullscreen animate-rise relative flex w-full max-w-[430px] flex-col overflow-y-auto rounded-[24px] border border-white/12 bg-[#041d17] shadow-2xl"
       >
-        <header className="flex items-center justify-between gap-3 px-4 pt-4 pb-2">
+        <header className="flex items-center justify-between gap-3 px-4 pt-2 pb-2 md:pt-4">
           <h2 id="map-layers-title" className="flex items-center gap-2 font-display text-base font-semibold text-mint">
             <Layers className="size-4 text-sun" />Katmanlar
           </h2>
@@ -152,7 +152,7 @@ export default function MapLayersSheet({
           </div>
         )}
 
-        <footer className="mt-2 flex items-center justify-between gap-3 border-t border-white/[0.07] px-3 py-2">
+        <footer className="mt-auto flex items-center justify-between gap-3 border-t border-white/[0.07] px-3 py-2 md:mt-2">
           <button
             type="button"
             onClick={onReset}

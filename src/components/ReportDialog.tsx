@@ -55,9 +55,9 @@ export default function ReportDialog({ targetType, targetId, targetOwnerUid, tar
   };
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/45 p-4">
+    <div className="mobile-fullscreen-wrap fixed inset-0 z-[70] flex items-center justify-center bg-black/45 p-4">
       <button type="button" aria-label="Rapor penceresini kapat" onClick={onClose} className="absolute inset-0" />
-      <section ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="report-title" className="panel-solid relative w-full max-w-[420px] rounded-[20px] border border-white/10 bg-[#0a221b] p-5 shadow-2xl">
+      <section ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="report-title" className="panel-solid mobile-fullscreen relative w-full max-w-[420px] overflow-y-auto rounded-[20px] border border-white/10 bg-[#0a221b] p-5 shadow-2xl">
         <header className="flex items-start justify-between gap-3">
           <h3 id="report-title" className="flex items-center gap-2 font-display text-lg font-semibold text-sun"><AlertTriangle size={18} />İçeriği bildir</h3>
           <button type="button" onClick={onClose} aria-label="Kapat" className="grid size-9 place-items-center rounded-full hover:bg-white/5"><X size={18} /></button>

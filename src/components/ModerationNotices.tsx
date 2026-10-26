@@ -17,13 +17,13 @@ export function WarningNotice({
   const panelRef = usePanelAccess(true, () => {}, true);
   return (
     <div
-      className="fixed inset-0 z-[110] grid place-items-center overflow-y-auto bg-black/60 px-5 py-8"
+      className="mobile-fullscreen-wrap fixed inset-0 z-[110] grid place-items-center overflow-y-auto bg-black/60 px-5 py-8"
       role="alertdialog"
       aria-modal="true"
       aria-labelledby="warning-title"
       ref={panelRef as React.RefObject<HTMLDivElement>}
     >
-      <div className="w-full max-w-[420px] rounded-3xl border border-sun/30 bg-[#0b1f18] p-6">
+      <div className="panel-solid mobile-fullscreen flex w-full max-w-[420px] flex-col justify-center rounded-3xl border border-sun/30 bg-[#0b1f18] p-6 md:block">
         <p className="flex items-center gap-2 text-[12px] font-semibold tracking-wide text-sun uppercase">
           <AlertTriangle className="size-4" />Moderatör uyarısı
         </p>
