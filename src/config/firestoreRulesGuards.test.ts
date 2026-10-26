@@ -124,12 +124,19 @@ describe("firestore.rules — notificationProof + friendDeclineProof", () => {
     },
   );
 
-  it.each(["system", "blocked", "report_actioned"])(
+  it.each(["system", "blocked"])(
     "%s tipi istemciye kapalı (kanıtsız yazılamaz)",
     (type) => {
       expect(proof).not.toContain(`'${type}'`);
     },
   );
+
+  it("report_actioned yalnız inceleyen moderatörün raporlaya kanıtlı yazımına açıktır", () => {
+    expect(proof).toContain("'report_actioned'");
+    expect(proof).toContain("data.reviewerUid == data.actorUid");
+    expect(proof).toContain("data.reporterUid == data.recipientUid");
+    expect(proof).toContain("data.status in ['reviewed', 'actioned']");
+  });
 
   it("friend_declined kanıtı ayrı kilit olan friendDeclineProof'ta kalır", () => {
     const decline = block("function friendDeclineProof");

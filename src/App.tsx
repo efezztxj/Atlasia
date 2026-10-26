@@ -45,17 +45,37 @@ import { useFreshness } from "./hooks/useFreshness";
 import { subscribeNotifications, markNotificationRead, markAllRead, type AppNotification } from "./lib/notifications";
 import {
   banUser,
+  createAnnouncement,
+  createAppeal,
+  deleteAnnouncement,
   fetchModeratorAccess,
+  fetchTargetHistory,
   liftBan,
+  logModAction,
+  markWarningRead,
+  notifyReportActioned,
+  resolveAppeal,
   setReportStatus,
   subscribeActiveBans,
+  subscribeAnnouncements,
+  subscribeAppeals,
+  subscribeModActions,
   subscribeModerationQueue,
+  subscribeMyAppeals,
   subscribeMyBan,
   subscribeMyReports,
+  subscribeMyWarnings,
+  takedownReportTarget,
+  warnUser,
+  type Announcement,
+  type Appeal,
+  type AppealStatus,
   type Ban,
   type BanDuration,
+  type ModAction,
   type Report,
   type ReportStatus,
+  type Warning,
 } from "./lib/moderation";
 import NotificationsPanel from "./components/NotificationsPanel";
 import { takePendingInvite, type SocialTarget } from "./utils/inviteLink";
@@ -76,6 +96,8 @@ const MapLayersSheet = lazy(() => import("./components/MapLayersSheet"));
 // Raporlar/moderasyon paneli ayrı parça: kuyruk yalnız ihtiyaç anında yüklenir.
 const ReportsPanel = lazy(() => import("./components/ReportsPanel"));
 const SuspensionNotice = lazy(() => import("./components/SuspensionNotice"));
+const WarningNotice = lazy(() => import("./components/ModerationNotices").then((m) => ({ default: m.WarningNotice })));
+const AnnouncementBanner = lazy(() => import("./components/ModerationNotices").then((m) => ({ default: m.AnnouncementBanner })));
 const MAP_STYLE_KEY = "atlasia.mapStyle.v1";
 
 function initialMapStyle(): BaseMapStyle {
@@ -212,6 +234,12 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   const [queueError, setQueueError] = useState<string | null>(null);
   const [bans, setBans] = useState<Ban[]>([]);
   const [myBan, setMyBan] = useState<Ban | null>(null);
+  const [myWarnings, setMyWarnings] = useState<Warning[]>([]);
+  const [myAppeals, setMyAppeals] = useState<Appeal[]>([]);
+  const [appeals, setAppeals] = useState<Appeal[]>([]);
+  const [modActions, setModActions] = useState<ModAction[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [dismissedAnnouncement, setDismissedAnnouncement] = useState<string | null>(() => storageGet("atlasia.announcement.dismissed"));
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [socialTarget, setSocialTarget] = useState<SocialTarget | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -489,20 +517,99 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
     return () => unsub();
   }, [user?.uid, cloudAccount]);
 
+  // Kendi uyarılarım + itirazlarım (kademeli yaptırımın kullanıcı yüzü).
+  useEffect(() => {
+    if (!user?.uid || !cloudAccount) { setMyWarnings([]); setMyAppeals([]); return; }
+    const unsubWarnings = subscribeMyWarnings(user.uid, setMyWarnings, (error) => {
+      console.warn("[Atlasia] Uyarılar okunamadı:", error);
+    });
+    const unsubAppeals = subscribeMyAppeals(user.uid, setMyAppeals, (error) => {
+      console.warn("[Atlasia] İtirazlar okunamadı:", error);
+    });
+    return () => { unsubWarnings(); unsubAppeals(); };
+  }, [user?.uid, cloudAccount]);
+
+  // Moderatör akışları: itiraz kuyruğu + işlem kaydı.
+  useEffect(() => {
+    if (!moderator || !cloudAccount) { setAppeals([]); setModActions([]); return; }
+    const unsubAppeals = subscribeAppeals(setAppeals, (error) => {
+      console.warn("[Atlasia] İtiraz kuyruğu okunamadı:", error);
+    });
+    const unsubActions = subscribeModActions(setModActions, (error) => {
+      console.warn("[Atlasia] İşlem kaydı okunamadı:", error);
+    });
+    return () => { unsubAppeals(); unsubActions(); };
+  }, [moderator, cloudAccount]);
+
+  // Duyurular: giriş yapmış herkese açık okuma (kural da öyle).
+  useEffect(() => {
+    if (!user?.uid || !cloudAccount) { setAnnouncements([]); return; }
+    const unsub = subscribeAnnouncements(setAnnouncements, (error) => {
+      console.warn("[Atlasia] Duyurular okunamadı:", error);
+    });
+    return () => unsub();
+  }, [user?.uid, cloudAccount]);
+
   const handleReportStatus = useCallback(async (reportId: string, status: ReportStatus, note?: string) => {
     if (!user?.uid) throw new Error("Oturum bulunamadı.");
     await setReportStatus(reportId, status, user.uid, note);
-  }, [user?.uid]);
+    void logModAction({ action: "report_status", reportId, detail: status });
+    if (status === "actioned") {
+      const report = queue.find((item) => item.id === reportId);
+      if (report) {
+        // Bildirim kanıtı rapordaki reviewerUid'ye bakar; durum yazıldıktan sonra gönderilir.
+        void notifyReportActioned(report, user.uid).catch((error) => {
+          console.warn("[Atlasia] Rapor sonucu bildirimi gönderilemedi:", error);
+        });
+      }
+    }
+  }, [user?.uid, queue]);
 
   const handleBan = useCallback(async (report: Report, days: BanDuration, reason: string) => {
     const target = report.targetOwnerUid ?? (report.targetType === "user" ? report.targetId : undefined);
     if (!target) throw new Error("Bu raporun sahibi belirlenemedi; ban atılamaz.");
     await banUser({ uid: target, reason, reportId: report.id, days });
+    void logModAction({ action: "ban", targetType: report.targetType, targetId: report.targetId, targetOwnerUid: target, reportId: report.id, detail: reason });
   }, []);
 
   const handleLiftBan = useCallback(async (uid: string) => {
     await liftBan(uid);
+    void logModAction({ action: "lift_ban", targetOwnerUid: uid });
   }, []);
+
+  const handleWarn = useCallback(async (report: Report, reason: string) => {
+    const target = report.targetOwnerUid ?? (report.targetType === "user" ? report.targetId : undefined);
+    if (!target) throw new Error("Bu raporun sahibi belirlenemedi; uyarı gönderilemez.");
+    await warnUser({ uid: target, reason, reportId: report.id });
+  }, []);
+
+  const handleTakedown = useCallback(async (report: Report) => {
+    await takedownReportTarget(report);
+    // İçerik gittiyse rapor da kapanır: durum + raporlayana bildirim.
+    await handleReportStatus(report.id, "actioned", "İçerik kalıcı olarak kaldırıldı.");
+  }, [handleReportStatus]);
+
+  const handleResolveAppeal = useCallback(async (appealId: string, status: Exclude<AppealStatus, "open">) => {
+    await resolveAppeal(appealId, status);
+  }, []);
+
+  const handleCreateAnnouncement = useCallback(async (title: string, body: string) => {
+    await createAnnouncement(title, body);
+  }, []);
+
+  const handleDeleteAnnouncement = useCallback(async (announcementId: string) => {
+    await deleteAnnouncement(announcementId);
+  }, []);
+
+  const handleAppeal = useCallback(async (message: string) => {
+    await createAppeal(message);
+  }, []);
+
+  const handleFetchHistory = useCallback((targetUid: string) => fetchTargetHistory(targetUid), []);
+
+  const activeWarning = myWarnings.find((warning) => !warning.read) ?? null;
+  const myAppeal = myAppeals[0] ?? null;
+  const latestAnnouncement = announcements[0] ?? null;
 
   // Kabul edilen arkadaşlık isteği: karşı taraf benim listeme yazamaz (kural);
   // "friend_accepted" bildirimi gelince kendi listemi ben tamamlarım.
@@ -1294,6 +1401,15 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
             bans={bans}
             onBan={handleBan}
             onLiftBan={handleLiftBan}
+            onWarn={handleWarn}
+            onTakedown={handleTakedown}
+            appeals={appeals}
+            onResolveAppeal={handleResolveAppeal}
+            modActions={modActions}
+            announcements={announcements}
+            onCreateAnnouncement={handleCreateAnnouncement}
+            onDeleteAnnouncement={handleDeleteAnnouncement}
+            onFetchHistory={handleFetchHistory}
           />
         </Suspense>
       )}
@@ -1424,7 +1540,22 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
 
       {myBan && (
         <Suspense fallback={null}>
-          <SuspensionNotice ban={myBan} onSignOut={logout} />
+          <SuspensionNotice ban={myBan} appeal={myAppeal} onAppeal={handleAppeal} onSignOut={logout} />
+        </Suspense>
+      )}
+
+      {!myBan && activeWarning && (
+        <Suspense fallback={null}>
+          <WarningNotice warning={activeWarning} onAcknowledge={markWarningRead} />
+        </Suspense>
+      )}
+
+      {!myBan && latestAnnouncement && dismissedAnnouncement !== latestAnnouncement.id && (
+        <Suspense fallback={null}>
+          <AnnouncementBanner
+            announcement={latestAnnouncement}
+            onDismiss={(id) => { setDismissedAnnouncement(id); storageSet("atlasia.announcement.dismissed", id); }}
+          />
         </Suspense>
       )}
 

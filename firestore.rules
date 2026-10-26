@@ -68,6 +68,62 @@ service cloud.firestore {
              && banHasProof(uid, data.reportId);
     }
 
+    /** Uyarı kanıtı: uyarı, aynı moderatörün incelediği (reviewed/actioned) rapordan doğar. */
+    function warnHasProof(uid, reportId) {
+      return exists(/databases/$(database)/documents/reports/$(reportId))
+             && get(/databases/$(database)/documents/reports/$(reportId)).data.reviewerUid == request.auth.uid
+             && get(/databases/$(database)/documents/reports/$(reportId)).data.status in ['reviewed', 'actioned']
+             && (
+               ('targetOwnerUid' in get(/databases/$(database)/documents/reports/$(reportId)).data
+                && get(/databases/$(database)/documents/reports/$(reportId)).data.targetOwnerUid == uid)
+               || (get(/databases/$(database)/documents/reports/$(reportId)).data.targetType == 'user'
+                   && get(/databases/$(database)/documents/reports/$(reportId)).data.targetId == uid)
+             );
+    }
+
+    function validWarning(data) {
+      return data.keys().hasAll(['uid', 'reason', 'reportId', 'createdBy', 'createdAt', 'read'])
+             && data.keys().hasOnly(['uid', 'reason', 'reportId', 'createdBy', 'createdAt', 'read'])
+             && stringBetween(data.uid, 1, 128)
+             && data.uid != request.auth.uid
+             && stringBetween(data.reason, 10, 500)
+             && stringBetween(data.reportId, 1, 128)
+             && data.createdBy == request.auth.uid
+             && data.createdAt == request.time
+             && data.read == false
+             && warnHasProof(data.uid, data.reportId);
+    }
+
+    function validAppeal(data) {
+      return data.keys().hasAll(['uid', 'message', 'createdAt'])
+             && data.keys().hasOnly(['uid', 'message', 'createdAt'])
+             && data.uid == request.auth.uid
+             && stringBetween(data.message, 10, 500)
+             && data.createdAt == request.time;
+    }
+
+    function validModAction(data) {
+      return data.keys().hasAll(['actorUid', 'action', 'createdAt'])
+             && data.keys().hasOnly(['actorUid', 'action', 'targetType', 'targetId', 'targetOwnerUid', 'reportId', 'detail', 'createdAt'])
+             && data.actorUid == request.auth.uid
+             && data.action in ['report_status', 'warn', 'takedown', 'ban', 'lift_ban', 'announcement']
+             && (!('targetType' in data) || data.targetType in ['place', 'post', 'story', 'user'])
+             && (!('targetId' in data) || stringBetween(data.targetId, 1, 200))
+             && (!('targetOwnerUid' in data) || stringBetween(data.targetOwnerUid, 1, 128))
+             && (!('reportId' in data) || stringBetween(data.reportId, 1, 128))
+             && (!('detail' in data) || stringBetween(data.detail, 1, 500))
+             && data.createdAt == request.time;
+    }
+
+    function validAnnouncement(data) {
+      return data.keys().hasAll(['title', 'body', 'createdBy', 'createdAt'])
+             && data.keys().hasOnly(['title', 'body', 'createdBy', 'createdAt'])
+             && stringBetween(data.title, 1, 120)
+             && stringBetween(data.body, 1, 1000)
+             && data.createdBy == request.auth.uid
+             && data.createdAt == request.time;
+    }
+
     function stringBetween(value, minSize, maxSize) {
       return value is string
              && value.size() >= minSize
@@ -587,7 +643,7 @@ service cloud.firestore {
      * Bildirim yazımının İLİŞKİ kanıtı (#61 p6'dan taşındı). Her tip, istemcinin
      * gerçekten ürettiği bir belgeye bağlanır; böylece herhangi bir oturum
      * herhangi bir kullanıcıya serbest metinli bildirim gönderemez.
-     * Kanıtlanamayan tipler (blocked, system, report_actioned) istemciye
+     * Kanıtlanamayan tipler (blocked, system) istemciye
      * kapalıdır: bunlar yönetici/sunucu yazımıdır, bu projede sunucu yok.
      * friend_declined bu fonksiyondan geçmez; onun kanıtı ayrı kilitte
      * (friendDeclineProof) ve create kuralı İKİ kapıyı birden ister.
@@ -614,7 +670,13 @@ service cloud.firestore {
              || (data.type == 'report_received'
                  && 'targetId' in data
                  && exists(/databases/$(database)/documents/reports/$(data.targetId))
-                 && get(/databases/$(database)/documents/reports/$(data.targetId)).data.reporterUid == data.actorUid);
+                 && get(/databases/$(database)/documents/reports/$(data.targetId)).data.reporterUid == data.actorUid)
+             || (data.type == 'report_actioned'
+                 && 'targetId' in data
+                 && exists(/databases/$(database)/documents/reports/$(data.targetId))
+                 && get(/databases/$(database)/documents/reports/$(data.targetId)).data.reviewerUid == data.actorUid
+                 && get(/databases/$(database)/documents/reports/$(data.targetId)).data.reporterUid == data.recipientUid
+                 && get(/databases/$(database)/documents/reports/$(data.targetId)).data.status in ['reviewed', 'actioned']);
     }
 
     match /places/{placeId} {
@@ -633,8 +695,9 @@ service cloud.firestore {
                     && request.resource.data.authorUid == resource.data.authorUid
                     && request.resource.data.kind == resource.data.kind
                     && request.resource.data.createdAt == resource.data.createdAt;
+      // Moderatör içerik kaldırabilir (kalıcı silme; işlem modActions'a yazılır).
       allow delete: if signedIn()
-                    && resource.data.authorUid == request.auth.uid;
+                    && (resource.data.authorUid == request.auth.uid || isModerator());
     }
 
     match /posts/{postId} {
@@ -650,7 +713,7 @@ service cloud.firestore {
                     && request.resource.data.likedBy.size() == 0;
       allow update: if signedIn() && validPostInteraction();
       allow delete: if signedIn()
-                    && resource.data.authorUid == request.auth.uid;
+                    && (resource.data.authorUid == request.auth.uid || isModerator());
 
       match /replies/{replyId} {
         function parentPostExists() {
@@ -666,6 +729,7 @@ service cloud.firestore {
         allow update: if false;
         allow delete: if signedIn()
                       && (resource.data.authorUid == request.auth.uid
+                          || isModerator()
                           || (parentPostExists()
                               && get(/databases/$(database)/documents/posts/$(postId)).data.authorUid == request.auth.uid));
       }
@@ -690,7 +754,7 @@ service cloud.firestore {
                     && request.resource.data.createdAt == request.time;
       allow update: if false;
       allow delete: if signedIn()
-                    && resource.data.authorUid == request.auth.uid;
+                    && (resource.data.authorUid == request.auth.uid || isModerator());
     }
 
     match /routes/{routeId} {
@@ -858,6 +922,53 @@ service cloud.firestore {
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['expiresAt'])
                     && request.resource.data.expiresAt <= request.time;
       allow delete: if false;
+    }
+
+    /**
+     * Kademeli yaptırım 1 — uyarı. Yalnız moderatör yazar, yalnız kanıtlı
+     * rapordan doğar; kullanıcı kendi uyarısını okur ve "okundu" işaretler.
+     */
+    match /warnings/{warningId} {
+      allow get: if signedIn() && (resource.data.uid == request.auth.uid || isModerator());
+      allow list: if boundedList(50)
+                    && (resource.data.uid == request.auth.uid || isModerator());
+      allow create: if isModerator() && validWarning(request.resource.data);
+      allow update: if signedIn()
+                    && resource.data.uid == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read'])
+                    && request.resource.data.read == true;
+      allow delete: if false;
+    }
+
+    /** Ban itirazları: askıdaki kullanıcı yazar, moderatör görür/sonuçlandırır. */
+    match /appeals/{appealId} {
+      allow get: if signedIn() && (resource.data.uid == request.auth.uid || isModerator());
+      allow list: if boundedList(50)
+                    && (resource.data.uid == request.auth.uid || isModerator());
+      allow create: if signedIn() && validAppeal(request.resource.data);
+      allow update: if isModerator()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedAt', 'reviewerUid'])
+                    && request.resource.data.status in ['seen', 'accepted', 'rejected']
+                    && request.resource.data.reviewedAt == request.time
+                    && request.resource.data.reviewerUid == request.auth.uid;
+      allow delete: if false;
+    }
+
+    /** Moderatör işlem kaydı (audit log): yalnız moderatör yazar/okur, değiştirilemez. */
+    match /modActions/{actionId} {
+      allow get: if isModerator();
+      allow list: if isModerator() && boundedList(50);
+      allow create: if isModerator() && validModAction(request.resource.data);
+      allow update, delete: if false;
+    }
+
+    /** Moderatör duyuruları: giriş yapmış herkes okur, yalnız moderatör yazar/siler. */
+    match /announcements/{announcementId} {
+      allow get: if signedIn();
+      allow list: if signedIn() && boundedList(20);
+      allow create: if isModerator() && validAnnouncement(request.resource.data);
+      allow update: if false;
+      allow delete: if isModerator();
     }
 
     match /blocks/{blockId} {
