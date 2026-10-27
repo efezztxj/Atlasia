@@ -370,6 +370,7 @@ Bu akış **izleyiciyi ziyaretçi, ziyaretçiyi kullanıcı** yapmıyor. Minimum
 | [`reels/02-kalabaligin-bittigi-yer.md`](reels/02-kalabaligin-bittigi-yer.md) | Seri formatı, 10 sn |
 | [`reels/03-tas-konusuyor.md`](reels/03-tas-konusuyor.md) | Sesli anlatım, 15 sn |
 | [`reels/04-dort-bin-fotograf.md`](reels/04-dort-bin-fotograf.md) | **Üretildi:** sesi hazır sesli reklam (17,8 sn + 9,4 sn bumper + altyazı) |
+| [`reels/05-uc-saat-kirk-yer.md`](reels/05-uc-saat-kirk-yer.md) | **Üretildi:** "3 saatim vardı, 40 yer vardı" sesli reklam (16,7 sn) |
 | [`pano.html`](pano.html) | Görsel pano — telefonda/ekranda bakılacak hâli |
 
 Üç senaryonun sonunda **kuyruğa hazır JSON** var; video `public/social/` içine

@@ -1,4 +1,13 @@
-# reklam/video — "4.000 fotoğraf" sesli reklam filmi
+# reklam/video — sesli reklam filmleri
+
+İki film, ortak görsel kit ([`atlasia_kit.py`](atlasia_kit.py)):
+
+| # | Dosya | Süre | Üretici |
+|---|---|---|---|
+| 04 | [`200-metre-04.mp4`](200-metre-04.mp4) — "4.000 fotoğraf" | 17,78 sn | [`render_04.py`](render_04.py) |
+| 05 | [`200-metre-05.mp4`](200-metre-05.mp4) — "3 saatim vardı, 40 yer" | 16,70 sn | [`render_05.py`](render_05.py) |
+
+## 04 — "4.000 fotoğraf"
 
 | | |
 |---|---|
@@ -8,13 +17,14 @@
 | Boyut | ~3,7 MB |
 | Ses | [`../ses/04-dort-bin-fotograf.mp3`](../ses/04-dort-bin-fotograf.mp3) |
 | Kapak | [`build/cover.jpg`](build/cover.jpg) |
-| Üretici | [`render-reklam.py`](render-reklam.py) — tek komutla yeniden üretir |
+| Üretici | `render_04.py` — tek komutla yeniden üretir |
 
 ## Yeniden üretmek
 
 ```bash
 pip install --break-system-packages pillow imageio-ffmpeg
-python3 reklam/video/render-reklam.py
+python3 reklam/video/render_04.py   # 04
+python3 reklam/video/render_05.py   # 05
 ```
 
 Betik `public/social/*.mp4` kliplerinden kare çıkarır (kareler `build/stills/`),
@@ -43,3 +53,35 @@ Bu, reklamı "stok video + yazı"dan çıkarıp **kendi grafik diline** sokuyor.
 | 8,00–14,20 | Konu | Ürün kartı: rota + durak | (Atlasia) |
 | 14,20–16,60 | Etki | 12 kare + "12 fotoğraf" | "12 fotoğraf çektim." |
 | 16,60–17,82 | Etki | Tam ekran foto → logo | "Hepsi aklımda." |
+
+
+---
+
+## 05 — "3 saatim vardı. 40 yer vardı."
+
+| | |
+|---|---|
+| Dosya | [`200-metre-05.mp4`](200-metre-05.mp4) |
+| Süre | 16,70 sn |
+| Ses | [`../ses/05-tam-pad.mp3`](../ses/05-tam-pad.mp3) (16,69 sn, 0,63 sn sessiz kuyruk) |
+| Kapak | [`build/cover-05.jpg`](build/cover-05.jpg) |
+| Üretici | [`render_05.py`](render_05.py) |
+| Plan | [`../reels/05-uc-saat-kirk-yer.md`](../reels/05-uc-saat-kirk-yer.md) |
+
+| sn | Beat | Görüntü |
+|---|---|---|
+| 0,0–2,7 | Kanca | 40 kartlık kaos duvarı, sayaç 1→40 |
+| 2,7–5,6 | Kanca | Duvar kararır, saat ibresi 3 tur döner (2 saat kaybolur) |
+| 5,6–8,0 | Boşluk | Duvar tek noktaya çöker → "Sorun yer sayısı değildi." → "Sıraydı." |
+| 8,0–11,9 | Konu | Ürün kartı: 7 durak, saatleriyle çizilir (09:00→12:15) |
+| 11,9–15,3 | Konu | Durak detayı: "Varışta 27° · yağış %10" |
+| 15,3–16,7 | Etki | "0 karar" → logo |
+
+> `STOP_TIMES` dizisi temsilî saatlerdir. Yayından önce uygulamadan gerçek bir
+> 3 saatlik rota çekip güncelle.
+
+## Ortak kit
+
+`atlasia_kit.py` şunları taşır: temiz kırpım (`clean_square`/`clean_wide`),
+metin katmanı + gölge, rozet, ürün kartı + rota çizimi, durak çipi, galeri duvarı,
+vignette/scrim, `encode_video`. Yeni bir reklam eklerken sadece beat karelerini yaz.
