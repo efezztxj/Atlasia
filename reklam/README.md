@@ -373,6 +373,7 @@ Bu akış **izleyiciyi ziyaretçi, ziyaretçiyi kullanıcı** yapmıyor. Minimum
 | [`reels/05-uc-saat-kirk-yer.md`](reels/05-uc-saat-kirk-yer.md) | **Üretildi:** "3 saatim vardı, 40 yer vardı" sesli reklam (16,7 sn) |
 | [`reels/00-konseptler.md`](reels/00-konseptler.md) | **8 ayrı konu** — hangisi üretildi, hangisi taslak |
 | [`reels/04-aciklama.md`](reels/04-aciklama.md) | 04 videosunun Instagram açıklaması (3 varyant + hashtag + hazır cevaplar) |
+| [`reels/teslim.md`](reels/teslim.md) | **Teslim sayfası** — dört filmin süresi, boyutu ve Drive linki |
 | [`pano.html`](pano.html) | Görsel pano — telefonda/ekranda bakılacak hâli |
 
 Senaryoların sonunda **kuyruğa hazır JSON** var; video `public/social/` içine
