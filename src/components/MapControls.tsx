@@ -48,7 +48,7 @@ function RoundBtn({
   className?: string;
 }) {
   return (
-    <div className={cn("group relative", className)}>
+    <div className={cn("group relative shrink-0", className)}>
       <button
         type="button"
         onClick={onClick}

@@ -934,11 +934,11 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
 
   const heroHidden = view.zoom > 3.4;
   // Keşif kartı yalnız ekranı bütünüyle kaplayan katmanlarda gizlenir.
-  // Profil / İzlerim / Topluluk açıldığında kart yerinde kalır (kullanıcı
-  // isteği 2026-10-25): panel kapanınca "kart nerede?" boşluğu oluşmuyor,
-  // kartın genişleme durumu ve sırada bekleyen öneri korunuyor. Masaüstünde
-  // sağdan açılan panel kartı örtmesin diye kart sola kaydırılır (shifted).
-  const dockVisible = !recordsOpen && !storyPlace && !atlasOpen && !settingsOpen && !drawerOpen;
+  // Profil / İzlerim / Topluluk / Atlas AI açıldığında kart yerinde kalır
+  // (kullanıcı isteği 2026-10-25 ve 2026-10-27): panel kapanınca "kart nerede?"
+  // boşluğu oluşmuyor, PC'de Atlas AI açıldığında alt keşif paneli kapanmıyor.
+  // Masaüstünde sağdan açılan panel kartı örtmesin diye kart sola kaydırılır.
+  const dockVisible = !recordsOpen && !storyPlace && !settingsOpen && !drawerOpen;
   useEffect(() => {
     if (!dockVisible) setDiscoverySpace(0);
   }, [dockVisible]);
@@ -1262,7 +1262,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         onDelete={handleDelete}
         onAdd={startAdd}
         shifted={feedOpen}
-        shiftedLeft={profileOpen}
+        shiftedLeft={profileOpen || atlasOpen}
         onOpenFeed={() => { closePanels(); setFeedOpen(true); }}
         accuracy={precise?.accuracy ?? null}
         locating={geo.status === "locating" || geo.status === "refining"}

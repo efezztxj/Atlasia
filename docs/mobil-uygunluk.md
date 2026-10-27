@@ -157,11 +157,13 @@ panel kapanınca alt bölgede boşluk kalıyor, kartın genişleme durumu ve sı
 bekleyen öneri sıfırlanıyordu.
 
 - `dockVisible` artık yalnız **ekranı bütünüyle kaplayan** katmanlarda false:
-  kayıtlar, hikâye, Atlas AI, ayarlar, çekmece. Profil / İzlerim / Topluluk
-  kartı gizlemiyor.
-- Masaüstünde sağdan açılan profil paneli kartı örtmesin diye kart sola kayar
-  (`shiftedLeft` → `lg:pr-[540px]`); topluluk paneli solda olduğu için kart
-  sağa kayar (`shifted` → `lg:pl-[420px]`).
+  kayıtlar, hikâye, ayarlar, çekmece. Profil / İzlerim / Topluluk / Atlas AI
+  kartı gizlemiyor (2026-10-27: PC'de Atlas AI açıldığında da alt keşif paneli
+  açık kalır).
+- Masaüstünde sağdan açılan profil ve Atlas AI panelleri kartı örtmesin diye
+  kart sola kayar (`shiftedLeft={profileOpen || atlasOpen}` → `lg:pr-[540px]`,
+  Atlas AI `md:right-20`); topluluk paneli solda olduğu için kart sağa kayar
+  (`shifted` → `lg:pl-[420px]`).
 - Kilit testi: `uiSurface.test.ts` → "keşif kartı kalıcılığı" (üç test).
 
 ### 3.7 Harita kapsülü 3 düğmeye indi, çakışma bitti
@@ -173,9 +175,13 @@ altın Atlas dairesiyle üst üste biniyordu (ekran görüntüsü: 2026-10-25).
 
 - Mobilde kapsül artık **Sıfırla · Konumum · Katmanlar**. Yakınlaştırma
   düğmeleri yalnız masaüstünde (telefonda iki parmakla yakınlaştırma).
-- Kapsülün alt sınırı sabit sayı değil,
-  `calc(var(--mobile-fab-bottom) + 58px)` → eylem çiftinin 46 px boyu + 12 px
-  nefes. Alt yığın kayınca kapsül de kayar; çakışma oluşamaz.
+- Kapsülün alt sınırı hem `.mobile-map-controls` hem `.mobile-bottom-stack-control`
+  üzerinde `max(calc(var(--mobile-fab-bottom, 168px) + 58px), calc(var(--discovery-occupied-space, 0px) + 68px))`
+  tabanına kilitlendi → eylem çiftinin 46 px boyu + 12 px nefes korunur,
+  sonradan gelen `.mobile-bottom-stack-control` kuralı kapsülü tekrar altın
+  Atlas AI düğmesinin üstüne indiremez. Ayrıca masaüstü kısa pencerelerde
+  (`max-height: 800px`) ray düğmeleri `shrink-0` ve kompakt ölçüyle ezilmeden
+  hizalanır.
 - Sıra numarasına dayalı gizleme (`:nth-of-type(n+5)`) kaldırıldı; görünürlük
   artık açık `max-md:hidden` sınıflarıyla yönetiliyor (CSS sırası değişse de
   bozulmaz).

@@ -582,10 +582,8 @@ html[data-theme="dark"] .text-leaf\/80 {
   .auth-field .auth-input-action { min-height: 45px; }
   .auth-secondary-providers > button, .auth-email-form .auth-submit { min-height: 48px; }
   .auth-forgot { min-height: 36px; }
-}
 
-/* Compact phone shell: map keeps the screen, chrome shrinks to a quarter. */
-@media (max-width: 767px) {
+  /* Compact phone shell: map keeps the screen, chrome shrinks to a quarter. */
   #root { height: 100dvh; min-height: 100dvh; }
 
   /* Alt yığın sırası (kullanıcı isteği 2026-10-25): sekme çubuğu → keşif
@@ -661,13 +659,13 @@ html[data-theme="dark"] .text-leaf\/80 {
     gap: 6px;
   }
 
-  /* Alt yığın: harita kontrolleri keşif kartının üst kenarına yaslanır.
-     Aynı özgüllükte ve .mobile-map-controls'tan sonra geldiği için ölçülen
-     --discovery-occupied-space her zaman kazanır (daraltılmış kartta ≈196 px). */
+  /* Alt yığın: harita kontrolleri her zaman Atlas AI / yürüyüş eylem çiftinin
+     (46 px boy + 12 px nefes = 58 px) üstünde kalır; kart büyürse 10 + 46 + 12
+     = 68 px payla birlikte yukarı kayar, kapsül ile altın düğme üst üste binmez. */
   .mobile-bottom-stack-control {
     bottom: max(
-      calc(var(--mobile-stack-base, 132px) + env(safe-area-inset-bottom)),
-      calc(var(--discovery-occupied-space, 0px) + 10px)
+      calc(var(--mobile-fab-bottom, 168px) + 58px),
+      calc(var(--discovery-occupied-space, 0px) + 68px)
     );
     transition: bottom .35s cubic-bezier(.2, .8, .2, 1);
   }
@@ -802,13 +800,10 @@ html[data-theme="dark"] .text-leaf\/80 {
   .animate-rise.fixed.top-\[88px\].left-1\/2 {
     top: calc(56px + env(safe-area-inset-top));
   }
-}
-
-/* ---------- Telefon sertleştirme (mobil tarayıcı varsayılanları) ---------- */
-/* Görünümü değiştirmez; telefonda uygulamayı bozan tarayıcı davranışlarını
-   kapatır: iOS odak yakınlaştırması (16px altı alan), pull-to-refresh,
-   çift dokunuş gecikmesi, yatay çevirmede metin büyümesi. */
-@media (max-width: 767px) {
+  /* ---------- Telefon sertleştirme (mobil tarayıcı varsayılanları) ---------- */
+  /* Görünümü değiştirmez; telefonda uygulamayı bozan tarayıcı davranışlarını
+     kapatır: iOS odak yakınlaştırması (16px altı alan), pull-to-refresh,
+     çift dokunuş gecikmesi, yatay çevirmede metin büyümesi. */
   html,
   body,
   #root {
@@ -826,26 +821,8 @@ html[data-theme="dark"] .text-leaf\/80 {
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
   }
-}
 
-/* Yatay telefon / çok kısa ekran: dikey yığın haritayı yutmasın. */
-@media (orientation: landscape) and (max-height: 500px) {
-  .mobile-home-content {
-    display: none;
-  }
-  .mobile-discovery-panel:not(.mobile-fullscreen) {
-    max-height: calc(100dvh - 150px);
-    overflow-y: auto;
-  }
-  .atlas-launcher,
-  .atlas-launcher.atlas-dock-expanded,
-  .mobile-walk-fab {
-    bottom: var(--mobile-fab-bottom);
-  }
-}
-
-/* Telefonda açılan tüm paneller, çekmeceler ve pencereler tam ekran çalışır. */
-@media (max-width: 767px) {
+  /* Telefonda açılan tüm paneller, çekmeceler ve pencereler tam ekran çalışır. */
   .mobile-fullscreen-wrap {
     padding: 0;
     place-items: stretch;
@@ -877,6 +854,35 @@ html[data-theme="dark"] .text-leaf\/80 {
   }
   .mobile-safe-bottom {
     padding-bottom: max(14px, env(safe-area-inset-bottom));
+  }
+}
+
+/* Yatay telefon / çok kısa ekran: dikey yığın haritayı yutmasın. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .mobile-home-content {
+    display: none;
+  }
+  .mobile-discovery-panel:not(.mobile-fullscreen) {
+    max-height: calc(100dvh - 150px);
+    overflow-y: auto;
+  }
+  .atlas-launcher,
+  .atlas-launcher.atlas-dock-expanded,
+  .mobile-walk-fab {
+    bottom: var(--mobile-fab-bottom);
+  }
+}
+
+/* Kısa masaüstü/dizüstü pencerelerde dikey ray düğmeleri üst üste binmesin. */
+@media (min-width: 768px) and (max-height: 800px) {
+  .mobile-map-controls {
+    top: 84px;
+    bottom: 24px;
+    gap: 4px;
+  }
+  .mobile-map-controls .map-round-btn {
+    width: 36px;
+    height: 36px;
   }
 }
 
