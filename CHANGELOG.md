@@ -1,5 +1,12 @@
 # Atlasia Update
 
+## 2026-10-26 — Düzeltme: CSS paket bütçesi taşması (main CI)
+
+Yönetim Paneli (#112) birleşmesi toplam CSS'i bütçenin 53 bayt üzerine çıkardı; ana dal CI'ı bu yüzden kırmızıya döndü.
+
+- Paneldeki tek seferlik yarım piksel yazı boyutları ve özel opaklık/renk sınıfları, uygulama genelinde zaten kullanılan karşılıklarıyla değiştirildi (görünüm farkı fark edilmez düzeyde).
+- CSS: 35.153 → 35.042 bayt gzip (bütçe 35.100). Typecheck, lint, 1102 test ve build yeşil.
+
 ## 2026-10-26 — Yönetim Paneli: tam ekran moderasyon düzeni
 
 Sandbox prototipinde onaylanan klasik admin düzeni gerçek panele taşındı.
