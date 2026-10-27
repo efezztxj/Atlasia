@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Atlasia · Reklam Panosu — 200 Metre</title>
+<style>
+  :root{
+    --ink:#020d17;
+    --ink-2:#04181f;
+    --mint:#7ee0b8;
+    --gold:#f3c870;
+    --cream:#f1f0e9;
+    --line:rgba(255,255,255,.10);
+    --muted:rgba(222,240,235,.58);
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;background:var(--ink);color:var(--cream);
+    font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    line-height:1.5;
+    background-image:
+      radial-gradient(1100px 600px at 82% -10%, rgba(243,200,112,.13), transparent 62%),
+      radial-gradient(900px 500px at 4% 18%, rgba(126,224,184,.07), transparent 60%);
+    background-attachment:fixed;
+  }
+  .wrap{max-width:1280px;margin:0 auto;padding:0 20px}
+  a{color:inherit}
+
+  /* ---------- header ---------- */
+  header{padding:64px 0 34px;border-bottom:1px solid var(--line)}
+  .eyebrow{
+    display:flex;align-items:center;gap:12px;
+    font-size:10px;letter-spacing:.32em;text-transform:uppercase;
+    color:var(--gold);font-weight:700;
+  }
+  .eyebrow::before{content:"";width:34px;height:1px;background:var(--gold)}
+  h1{
+    margin:22px 0 0;font-size:clamp(58px,12vw,148px);line-height:.82;
+    letter-spacing:-.055em;font-weight:700;
+  }
+  h1 em{font-style:normal;color:var(--gold)}
+  .lede{margin:26px 0 0;max-width:620px;font-size:17px;color:rgba(241,240,233,.74)}
+  .lede b{color:var(--cream);font-weight:600}
+  .stats{display:flex;flex-wrap:wrap;gap:10px;margin-top:30px}
+  .stat{
+    border:1px solid var(--line);padding:9px 14px;font-size:11px;
+    letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
+    background:rgba(255,255,255,.02);
+  }
+  .stat b{color:var(--cream);letter-spacing:0}
+
+  /* ---------- big idea ---------- */
+  .idea{
+    display:grid;gap:26px;grid-template-columns:1fr;
+    padding:44px 0;border-bottom:1px solid var(--line);
+  }
+  @media(min-width:900px){.idea{grid-template-columns:1.05fr .95fr;gap:54px}}
+  .quote{
+    font-size:clamp(24px,3.2vw,36px);line-height:1.18;letter-spacing:-.025em;
+    font-weight:600;margin:0;
+  }
+  .quote span{color:var(--gold)}
+  .idea p{margin:0;color:rgba(241,240,233,.66);font-size:15px}
+  .idea p + p{margin-top:14px}
+
+  /* ---------- section label ---------- */
+  .label{
+    display:flex;align-items:baseline;gap:14px;margin:56px 0 26px;
+    font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--gold);
+    font-weight:700;
+  }
+  .label span{color:rgba(241,240,233,.32);letter-spacing:.12em;font-weight:400}
+
+  /* ---------- board ---------- */
+  .board{display:grid;gap:40px 26px;grid-template-columns:repeat(auto-fill,minmax(258px,1fr))}
+  .card{display:flex;flex-direction:column;gap:16px}
+
+  .phone{
+    position:relative;aspect-ratio:9/16;border-radius:22px;overflow:hidden;
+    background:#061419;border:1px solid rgba(255,255,255,.13);
+    box-shadow:0 26px 60px -30px rgba(0,0,0,.95), inset 0 0 0 1px rgba(255,255,255,.03);
+    display:flex;flex-direction:column;justify-content:space-between;
+    padding:20px 16px 18px;
+  }
+  .phone::after{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background:repeating-linear-gradient(0deg,rgba(255,255,255,.022) 0 1px,transparent 1px 3px);
+    mix-blend-mode:overlay;
+  }
+  .series{
+    position:relative;z-index:2;align-self:flex-start;
+    font-size:8.5px;letter-spacing:.28em;text-transform:uppercase;
+    color:rgba(255,255,255,.8);border:1px solid rgba(255,255,255,.28);
+    padding:4px 8px;border-radius:99px;backdrop-filter:blur(4px);
+  }
+  .hook{
+    position:relative;z-index:2;margin-top:auto;
+    font-size:clamp(19px,2.1vw,23px);line-height:1.06;font-weight:700;
+    letter-spacing:-.03em;text-shadow:0 2px 20px rgba(0,0,0,.9);
+  }
+  .hook .small{display:block;margin-top:9px;font-size:11.5px;font-weight:500;
+    letter-spacing:0;color:rgba(255,255,255,.66);text-shadow:none;line-height:1.4}
+  .cta{
+    position:relative;z-index:2;margin-top:15px;display:flex;align-items:center;
+    justify-content:space-between;gap:8px;
+    background:var(--gold);color:#14201c;font-size:10.5px;font-weight:800;
+    letter-spacing:.06em;text-transform:uppercase;padding:11px 12px;border-radius:6px;
+  }
+  .cta i{font-style:normal;font-size:14px;line-height:1}
+
+  /* scene backgrounds (CSS-only storyboards, not photos) */
+  .s1{background:
+      linear-gradient(180deg,rgba(2,13,23,.25),rgba(2,13,23,.95)),
+      radial-gradient(120% 60% at 50% 20%,#2a3a3f,#0a1a1e 70%)}
+  .s1::before{content:"";position:absolute;inset:0;background:
+      linear-gradient(180deg,transparent 62%,rgba(2,13,23,.96)),
+      repeating-linear-gradient(90deg,rgba(255,255,255,.10) 0 7px,transparent 7px 19px)}
+  .s2{background:
+      linear-gradient(180deg,rgba(2,13,23,.05),rgba(2,13,23,.96)),
+      linear-gradient(160deg,#1d3a34,#08181a 65%)}
+  .s2::before{content:"";position:absolute;inset:0;opacity:.5;background:
+      repeating-linear-gradient(105deg,rgba(126,224,184,.20) 0 2px,transparent 2px 26px)}
+  .s3{background:
+      radial-gradient(90% 70% at 30% 30%,#4a3a26,#0a1114 72%)}
+  .s3::before{content:"";position:absolute;inset:0;opacity:.6;background:
+      repeating-radial-gradient(circle at 34% 34%,rgba(243,200,112,.14) 0 1px,transparent 1px 9px)}
+  .s4{background:linear-gradient(180deg,#04121b,#071e22)}
+  .s4::before{content:"";position:absolute;inset:0;background:
+      linear-gradient(90deg,rgba(243,200,112,.22) 0 2px,transparent 2px) 50% 0/52% 100% no-repeat,
+      linear-gradient(0deg,rgba(243,200,112,.22) 0 2px,transparent 2px) 0 46%/100% 48% no-repeat}
+  .s5{background:linear-gradient(170deg,#0b2430,#050f18 70%)}
+  .s5::before{content:"";position:absolute;inset:0;background:
+      radial-gradient(circle at 74% 26%,rgba(126,224,184,.42),transparent 42%)}
+  .s6{background:linear-gradient(160deg,#12211d,#050d10)}
+  .s6::before{content:"";position:absolute;inset:0;opacity:.45;background:
+      repeating-linear-gradient(45deg,rgba(255,255,255,.07) 0 1px,transparent 1px 14px)}
+  .s7{background:linear-gradient(180deg,#0a1113,#1b1d19 60%,#0a1113)}
+  .s7::before{content:"";position:absolute;inset:0;background:
+      repeating-linear-gradient(0deg,rgba(255,255,255,.05) 0 1px,transparent 1px 5px)}
+
+  .meta h3{margin:0;font-size:16px;letter-spacing:-.01em;font-weight:700}
+  .meta p{margin:7px 0 0;font-size:12.5px;color:rgba(241,240,233,.58);line-height:1.55}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}
+  .chip{
+    font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;
+    border:1px solid rgba(255,255,255,.15);color:rgba(241,240,233,.62);
+    padding:4px 7px;border-radius:4px;
+  }
+  .chip.k{color:var(--gold);border-color:rgba(243,200,112,.35)}
+
+  /* ---------- before you spend ---------- */
+  .checklist{border-top:1px solid var(--line);margin-top:66px;padding:46px 0 0}
+  .checklist ol{list-style:none;margin:0;padding:0;display:grid;gap:1px;background:var(--line)}
+  @media(min-width:820px){.checklist ol{grid-template-columns:repeat(3,1fr)}}
+  .checklist li{background:var(--ink);padding:24px 22px}
+  .checklist .n{
+    font-size:10px;letter-spacing:.24em;color:var(--gold);font-weight:700;display:block;margin-bottom:12px
+  }
+  .checklist strong{display:block;font-size:15px;margin-bottom:8px;letter-spacing:-.01em}
+  .checklist p{margin:0;font-size:12.5px;color:rgba(241,240,233,.58);line-height:1.6}
+  code{
+    background:rgba(243,200,112,.10);color:var(--gold);padding:1px 5px;border-radius:3px;
+    font-size:11px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  .warn{
+    margin-top:30px;border-left:2px solid var(--gold);padding:16px 20px;
+    background:rgba(243,200,112,.055);font-size:13px;color:rgba(241,240,233,.78)
+  }
+  .warn b{color:var(--gold)}
+
+  footer{
+    margin-top:56px;padding:26px 0 60px;border-top:1px solid var(--line);
+    display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;
+    font-size:11px;color:rgba(241,240,233,.4);letter-spacing:.06em
+  }
+  footer b{color:var(--cream);letter-spacing:-.02em;font-size:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">Atlasia · Reklam panosu</div>
+    <h1>200<em> </em>metre</h1>
+    <p class="lede">
+      Herkesin durduğu yerden <b>200 metre</b> sonrası. Reklamın tamamı bu iki kadraj
+      arasındaki fark. Stüdyo yok, telefon yeter.
+    </p>
+    <div class="stats">
+      <div class="stat"><b>1</b> büyük fikir</div>
+      <div class="stat"><b>7</b> konsept</div>
+      <div class="stat"><b>3</b> hazır senaryo</div>
+      <div class="stat"><b>14</b> gün test</div>
+      <div class="stat"><b>₺12.100</b> toplam bütçe</div>
+    </div>
+  </header>
+
+  <section class="idea">
+    <p class="quote">
+      Harita sana nereye gideceğini söyler.<br />
+      Atlasia <span>neyi kaçırdığını</span> söyler.
+    </p>
+    <div>
+      <p>
+        Bir ünlü nokta ile onun 200 metre gerisi arasındaki fark: kalabalık, gürültü,
+        aynı fotoğraf. Ötesi genelde daha güzel, daha boş ve daha gerçek — sadece
+        kimse “orada bir şey var” demediği için boş.
+      </p>
+      <p>
+        Atlasia tam olarak bunu söylüyor: kaç dakika, hangi sırayla, varınca ne
+        dinleyeceksin. <b>Ölçülebilir bir iddia, aynı format her şehirde.</b>
+      </p>
+    </div>
+  </section>
+
+  <div class="label">Konseptler <span>9:16 · telefon çekimi · 10–20 sn</span></div>
+
+  <div class="board">
+
+    <!-- K1 -->
+    <article class="card">
+      <div class="phone s1">
+        <span class="series">200 metre · 01</span>
+        <div>
+          <div class="hook">Herkes burada.<span class="small">Aynı şehir. Aynı gün. 200 metre sonra: kimse yok.</span></div>
+          <div class="cta">Kaç metre yürüyeceğini gör <i>→</i></div>
+        </div>
+      </div>
+      <div class="meta">
+        <h3>Amiral gemisi</h3>
+        <p>İki kadraj, tek kesme. Kalabalık → boşluk. Reklamın kendisi bir gözlem; ürün sadece aracı.</p>
+        <div class="chips"><span class="chip k">farkındalık</span><span class="chip">16 sn</span><span class="chip">Reels · TikTok</span></div>
+      </div>
+    </article>
+
+    <!-- K2 -->
+    <article class="card">
+      <div class="phone s2">
+        <span class="series">200 metre · 05 · Efes</span>
+        <div>
+          <div class="hook">En çok fotoğraf çekilen yer,<br />en sıkıcı yer.<span class="small">Yürümeye devam. 30 dakikada kalabalık bitiyor.</span></div>
+          <div class="cta">Nerede biteceğini gör <i>→</i></div>
+        </div>
+      </div>
+      <div class="meta">
+        <h3>Seri formatı</h3>
+        <p>Haftada 2, aynı şablon, farklı şehir. Bir kez kurulur, 12 hafta döner. Her cümlede bir sayı var.</p>
+        <div class="chips"><span class="chip k">süreklilik</span><span class="chip">10–12 sn</span><span class="chip">Reels</span></div>
+      </div>
+    </article>
+
+    <!-- K3 -->
+    <article class="card">
+      <div class="phone s3">
+        <span class="series">200 metre · taş</span>
+        <div>
+          <div class="hook">Bu taş 1.900 yaşında.<span class="small">Ve sen ona bakıp geçiyorsun. Duymak için durman gerekiyor.</span></div>
+          <div class="cta">Kulaklığını tak. Geçme. <i>→</i></div>
+        </div>
+      </div>
+      <div class="meta">
+        <h3>Duygu / sesli anlatım</h3>
+        <p>Sessizlik + gerçek TTS kaydı. Müzik yok. Görüntü değil ses sattığı için akışta ayrışıyor.</p>
+        <div class="chips"><span class="chip k">kaydetme</span><span class="chip">15 sn</span><span class="chip">Reels · TikTok</span></div>
+      </div>
+    </article>
+
+    <!-- K4 -->
+    <article class="card">
+      <div class="phone s4">
+        <span class="series">3 saatim var</span>
+        <div>
+          <div class="hook">3 saat. Yürüyorum.<br />Tarih ilgileniyor.<span class="small">7 durak. Saatleriyle sıralı. Her durakta varış havası.</span></div>
+          <div class="cta">Rotanı çiz <i>→</i></div>
+        </div>
+      </div>
+      <div class="meta">
+        <h3>Ürün demosu · performans</h3>
+        <p>Tek gerçek kanıt. Az beğeni, en çok kayıt. Farkındalık kampanyasıyla karıştırma — ayrı bütçe.</p>
+        <div class="chips"><span class="chip k">dönüşüm</span><span class="chip">20 sn</span><span class="chip">Meta · YouTube</span></div>
+      </div>
+    </article>
+
+    <!-- K5 -->
+    <article class="card">
+      <div class="phone s5">
+        <span class="series">yağmur planı</span>
+        <div>
+          <div class="hook">Yarın yağmur var.<br />Planın hâlâ geçerli mi?<span class="small">Rota yeniden sıralanıyor. Her durağın altında varış havası.</span></div>
+          <div class="cta">Hava değişince plan da değişsin <i>→</i></div>
+        </div>
+      </div>
+      <div class="meta">
+        <h3>Farklılaşma</h3>
+        <p>Rehber kitaplarının asla yapamayacağı tek şey. “Bu adam havayı düşünmüş” hissi güven getirir.</p>
+        <div class="chips"><span class="chip k">güven</span><span class="chip">15 sn</span><span class="chip">Reels · Meta</span></div>
+      </div>
+    </article>
+
+    <!-- K6 -->
+    <article class="card">
+      <div class="phone s6">
+        <span class="series">gezgin izi</span>
+        <div>
+          <div class="hook">“Kapıdan girme, sağdan dolan.<br />10 dk.”<span class="small">Bu notu bir gezgin bıraktı. Rehber kitabında yok.</span></div>
+          <div class="cta">Sen de bir iz bırak <i>→</i></div>
+        </div>
+      </div>
+      <div class="meta">
+        <h3>Topluluk · UGC döngüsü</h3>
+        <p>İzleyici reklamı izlerken içeriği üretmeye davet ediliyor. Her gelen, sonraki reklamın malzemesi.</p>
+        <div class="chips"><span class="chip k">büyüme</span><span class="chip">12 sn</span><span class="chip">Reels · Story</span></div>
+      </div>
+    </article>
+
+    <!-- K7 -->
+    <article class="card">
+      <div class="phone s7">
+        <span class="series">uçak modu</span>
+        <div>
+          <div class="hook">Sinyal yok.<br />Harita hâlâ burada.<span class="small">Bölgeyi indir, çık. Yürüyüş ve karavan için.</span></div>
+          <div class="cta">İndir, çık <i>→</i></div>
+        </div>
+      </div>
+      <div class="meta">
+        <h3>Niş · yüksek niyet</h3>
+        <p>Düşük CPM, yüksek niyet, küçük kapsam. Bütçenin %10'undan fazlasını verme.</p>
+        <div class="chips"><span class="chip k">niş</span><span class="chip">12 sn</span><span class="chip">Reels · gruplar</span></div>
+      </div>
+    </article>
+
+    <!-- K8 -->
+    <article class="card">
+      <div class="phone s6" style="background:linear-gradient(165deg,#0e1c19,#040b0e)">
+        <span class="series">kurucu notu</span>
+        <div>
+          <div class="hook">Yapamadıkları:<span class="small">Navigasyon yok · her şehirde içerik yok · stüdyo seslendirme yok.<br /><br />Yapabildikleri: zamanına göre rota, varışta hava, yerinde anlatım.</span></div>
+          <div class="cta">Denemek istersen <i>→</i></div>
+        </div>
+      </div>
+      <div class="meta">
+        <h3>Kurucu notu</h3>
+        <p>Carousel veya 45 sn kamera. Dürüst “yapamadıkları” slaytı, tüm bütçeden fazla güven üretir. Bütçe: ₺0.</p>
+        <div class="chips"><span class="chip k">güven</span><span class="chip">8 slayt</span><span class="chip">organik</span></div>
+      </div>
+    </article>
+
+  </div>
+
+  <section class="checklist">
+    <div class="label" style="margin-top:0">Reklamdan önce <span>yoksa karanlıkta para yakıyorsun</span></div>
+    <ol>
+      <li>
+        <span class="n">01</span>
+        <strong>UTM'i kaydet</strong>
+        <p>İlk gelişte <code>utm_*</code> değerlerini sakla, kayıtta <code>users/{uid}.acquisition</code> alanına yaz. 20 satırlık iş.</p>
+      </li>
+      <li>
+        <span class="n">02</span>
+        <strong>Pixel'i onaya bağla</strong>
+        <p><code>cookieConsent.marketing</code> zaten var, hiçbir şey yüklemiyor. Meta Pixel yalnız onay verilince yüklensin.</p>
+      </li>
+      <li>
+        <span class="n">03</span>
+        <strong>Tek dönüşüm seç</strong>
+        <p><code>first_pin_created</code>. Kayıta optimize edersen, hiçbir şey yapmayan kullanıcıya para ödersin.</p>
+      </li>
+    </ol>
+    <div class="warn">
+      <b>Kota uyarısı:</b> Firebase Spark planı günde 50.000 okuma. Reklam çalışınca bu
+      tavan <em>reklamın başarısı yüzünden</em> dolar ve uygulama herkese kapanır.
+      Harcamaya başlamadan önce tavanı yükselt ya da kampanyayı kontrollü başlat.
+      <b>Reklamın başarısı ürünü öldürmesin.</b>
+    </div>
+  </section>
+
+  <footer>
+    <b>atlasia<span style="color:var(--gold)">.</span></b>
+    <span>200 METRE · reklam kiti · reklam/README.md</span>
+    <span>Bu panodaki görseller CSS ile çizilmiş storyboard'dur, fotoğraf değildir.</span>
+  </footer>
+
+</div>
+</body>
+</html>
