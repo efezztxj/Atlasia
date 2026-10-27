@@ -38,3 +38,7 @@ rules-emulator.log
 
 # Local Firestore backups (never commit user or production data)
 backups/
+
+# reklam üretim araçları: ara kareler ve türetilmiş çıktılar depoda tutulmaz
+reklam/video/build/
+reklam/video/*.mp4
