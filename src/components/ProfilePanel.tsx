@@ -378,7 +378,7 @@ export default function ProfilePanel({ onClose, onRecords, settings, myPlacesCou
 
         <section id="profile-settings" aria-labelledby="profile-settings-title" className="mt-9 scroll-mt-20">
           <h3 id="profile-settings-title" className="font-display text-lg font-semibold">Ayarlar</h3>
-          <p className="mt-1 text-[12px] leading-relaxed text-mint/70">Görünüm, harita, çevrimdışı kullanım, uygulama ve konum tercihlerinin tamamı burada.</p>
+          <p className="mt-1 text-[12px] leading-relaxed text-mint/70">Görünüm, çevrimdışı kullanım, uygulama ve konum tercihlerinin tamamı burada.</p>
           <div className="mt-5">
             <SettingsContent {...settings} />
           </div>
@@ -421,8 +421,8 @@ export default function ProfilePanel({ onClose, onRecords, settings, myPlacesCou
       </footer>
 
       {confirmLogout && (
-        <div className="absolute inset-0 z-20 grid place-items-end bg-black/65 p-4 backdrop-blur-sm md:place-items-center">
-          <section role="alertdialog" aria-modal="true" aria-labelledby="logout-title" className="logout-confirm w-full rounded-[24px] border border-white/10 bg-[#06221b] p-5 shadow-2xl">
+        <div className="mobile-fullscreen-wrap absolute inset-0 z-20 grid place-items-end bg-black/65 p-4 backdrop-blur-sm md:place-items-center">
+          <section role="alertdialog" aria-modal="true" aria-labelledby="logout-title" className="logout-confirm mobile-fullscreen flex w-full flex-col justify-center rounded-[24px] border border-white/10 bg-[#06221b] p-5 shadow-2xl md:block">
             <h3 id="logout-title" className="font-display text-lg font-semibold">Hesaptan çıkılsın mı?</h3>
             <p className="mt-2 text-[13px] leading-relaxed text-mint/70">Tekrar keşfetmek için hesabınla yeniden giriş yapman gerekir.</p>
             <div className="mt-5 grid grid-cols-2 gap-2">
@@ -436,8 +436,8 @@ export default function ProfilePanel({ onClose, onRecords, settings, myPlacesCou
         </div>
       )}
       {confirmDelete && (
-        <div className="absolute inset-0 z-20 grid place-items-end bg-black/65 p-4 backdrop-blur-sm md:place-items-center">
-          <section role="alertdialog" aria-modal="true" aria-labelledby="delete-title" className="panel-solid w-full rounded-[24px] border border-red-300/20 bg-[#1a0f0f] p-5 shadow-2xl">
+        <div className="mobile-fullscreen-wrap absolute inset-0 z-20 grid place-items-end bg-black/65 p-4 backdrop-blur-sm md:place-items-center">
+          <section role="alertdialog" aria-modal="true" aria-labelledby="delete-title" className="panel-solid mobile-fullscreen flex w-full flex-col justify-center overflow-y-auto rounded-[24px] border border-red-300/20 bg-[#1a0f0f] p-5 shadow-2xl md:block">
             <h3 id="delete-title" className="font-display text-lg font-semibold text-red-200">Hesabın tamamen silinsin mi?</h3>
             <p className="mt-2 text-[13px] leading-relaxed text-mint/70">İzlerin, rotaların, kayıtların, gönderilerin, hikâyelerin, arkadaşlıkların, grup üyeliklerin, bildirimlerin, raporların, engellerin ve geri bildirimlerin silinir. Bir adım başarısız olursa hesabın silinmez ve tekrar deneyebilirsin. Bu işlem geri alınamaz. Onaylıyor musun?</p>
             {user?.backend === "firebase" && (

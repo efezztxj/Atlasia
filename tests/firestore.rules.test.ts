@@ -1096,6 +1096,116 @@ describe("Firestore güvenlik kuralları", () => {
     }));
   });
 
+  it("kademeli yaptırım: uyarı kanıt ister, itiraz ve duyuru yetkileri ayrıdır", async () => {
+    await seed("reports/reviewed-proof", {
+      reporterUid: "member",
+      targetType: "post",
+      targetId: "post-1",
+      targetOwnerUid: "spammer",
+      reason: "spam",
+      createdAt: Timestamp.now(),
+      status: "reviewed",
+      reviewedAt: Timestamp.now(),
+      reviewerUid: "mod-9",
+    });
+    await seed("reports/open-report", {
+      reporterUid: "member",
+      targetType: "post",
+      targetId: "post-2",
+      targetOwnerUid: "spammer",
+      reason: "spam",
+      createdAt: Timestamp.now(),
+      status: "open",
+    });
+    await seed("moderators/mod-9", { createdAt: Timestamp.now() });
+
+    const modDb = testEnv.authenticatedContext("mod-9").firestore();
+    const memberDb = testEnv.authenticatedContext("member").firestore();
+    const spammerDb = testEnv.authenticatedContext("spammer").firestore();
+
+    // Uyarı: yalnız moderatör, yalnız incelenmiş rapordan.
+    const warning = {
+      uid: "spammer",
+      reason: "Küfürlü yorumların tekrarı.",
+      reportId: "reviewed-proof",
+      createdBy: "mod-9",
+      createdAt: serverTimestamp(),
+      read: false,
+    };
+    await assertFails(setDoc(doc(memberDb, "warnings/w-x"), warning));
+    await assertFails(setDoc(doc(modDb, "warnings/w-x"), { ...warning, reportId: "open-report" }));
+    await assertFails(setDoc(doc(modDb, "warnings/w-x"), { ...warning, reason: "kısa" }));
+    await assertSucceeds(setDoc(doc(modDb, "warnings/w-1"), warning));
+    // Kullanıcı kendi uyarısını okur ve yalnız okundu işaretler.
+    await assertSucceeds(getDoc(doc(spammerDb, "warnings/w-1")));
+    await assertFails(getDoc(doc(memberDb, "warnings/w-1")));
+    await assertFails(updateDoc(doc(spammerDb, "warnings/w-1"), { reason: "Değişti." }));
+    await assertSucceeds(updateDoc(doc(spammerDb, "warnings/w-1"), { read: true }));
+    await assertFails(deleteDoc(doc(modDb, "warnings/w-1")));
+
+    // İtiraz: askıdaki kullanıcı kendi adına yazar; moderatör sonuçlandırır.
+    const appeal = { uid: "spammer", message: "Yanlış anlaşılma oldu.", createdAt: serverTimestamp() };
+    await assertFails(setDoc(doc(memberDb, "appeals/a-x"), appeal));
+    await assertFails(setDoc(doc(spammerDb, "appeals/a-x"), { ...appeal, uid: "member" }));
+    await assertSucceeds(setDoc(doc(spammerDb, "appeals/a-1"), appeal));
+    await assertFails(updateDoc(doc(memberDb, "appeals/a-1"), { status: "rejected", reviewedAt: serverTimestamp(), reviewerUid: "member" }));
+    await assertSucceeds(updateDoc(doc(modDb, "appeals/a-1"), { status: "accepted", reviewedAt: serverTimestamp(), reviewerUid: "mod-9" }));
+    await assertFails(deleteDoc(doc(modDb, "appeals/a-1")));
+
+    // İşlem kaydı: yalnız moderatör yazar/okur, değiştirilemez.
+    const action = { actorUid: "mod-9", action: "warn", targetOwnerUid: "spammer", reportId: "reviewed-proof", createdAt: serverTimestamp() };
+    await assertFails(setDoc(doc(memberDb, "modActions/m-x"), action));
+    await assertSucceeds(setDoc(doc(modDb, "modActions/m-1"), action));
+    await assertFails(getDoc(doc(memberDb, "modActions/m-1")));
+    await assertFails(updateDoc(doc(modDb, "modActions/m-1"), { action: "ban" }));
+
+    // Duyuru: moderatör yazar/siler, üye yalnız okur.
+    const announcement = { title: "Bakım", body: "Bu gece kısa bakım var.", createdBy: "mod-9", createdAt: serverTimestamp() };
+    await assertFails(setDoc(doc(memberDb, "announcements/n-x"), announcement));
+    await assertSucceeds(setDoc(doc(modDb, "announcements/n-1"), announcement));
+    await assertSucceeds(getDoc(doc(memberDb, "announcements/n-1")));
+    await assertSucceeds(deleteDoc(doc(modDb, "announcements/n-1")));
+  });
+
+  it("moderatör içeriği kalıcı silebilir; rapor sonucu bildirimi kanıtlıdır", async () => {
+    await seed("posts/spam-post", { ...validPost("spammer"), createdAt: Timestamp.now() });
+    await seed("stories/spam-story", { author: "Gezgin", authorUid: "spammer", text: "Spam hikâye.", accent: "sun", createdAt: Timestamp.now(), kind: "user" });
+    await seed("moderators/mod-9", { createdAt: Timestamp.now() });
+    await seed("reports/actioned-proof", {
+      reporterUid: "member",
+      targetType: "post",
+      targetId: "spam-post",
+      targetOwnerUid: "spammer",
+      reason: "spam",
+      createdAt: Timestamp.now(),
+      status: "actioned",
+      reviewedAt: Timestamp.now(),
+      reviewerUid: "mod-9",
+    });
+
+    const modDb = testEnv.authenticatedContext("mod-9").firestore();
+    const memberDb = testEnv.authenticatedContext("member").firestore();
+
+    // Kalıcı silme: üye başkasının içeriğini silemez, moderatör siler.
+    await assertFails(deleteDoc(doc(memberDb, "posts/spam-post")));
+    await assertSucceeds(deleteDoc(doc(modDb, "posts/spam-post")));
+    await assertSucceeds(deleteDoc(doc(modDb, "stories/spam-story")));
+
+    // Rapor sonucu bildirimi: yalnız inceleyen moderatör, yalnız raporlayana.
+    const notice = {
+      recipientUid: "member",
+      actorUid: "mod-9",
+      type: "report_actioned",
+      title: "Raporun sonuçlandı",
+      body: "İncelendi.",
+      read: false,
+      createdAt: serverTimestamp(),
+      targetId: "actioned-proof",
+    };
+    await assertFails(setDoc(doc(memberDb, "users/member/notifications/n-x"), { ...notice, actorUid: "member" }));
+    await assertSucceeds(setDoc(doc(modDb, "users/member/notifications/n-1"), notice));
+  });
+
   it("engellemeyi yalnız kendi adına, kendini engellemeden yazar", async () => {
     const memberDb = testEnv.authenticatedContext("member").firestore();
     const otherDb = testEnv.authenticatedContext("other").firestore();

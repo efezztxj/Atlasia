@@ -8,25 +8,20 @@ import {
   Download,
   Eye,
   Flag,
-  Globe2,
   HardDriveDownload,
   Loader2,
-  Map,
   MapPin,
   Moon,
-  Mountain,
   ShieldCheck,
   Smartphone,
   Sparkles,
   Sun,
-  Tags,
   Type,
   TriangleAlert,
   X,
   type LucideIcon,
 } from "lucide-react";
 import { formatAccuracy, type GeoFix, type GeoStatus } from "../hooks/useGeolocation";
-import type { BaseMapStyle } from "./MapView";
 import type { AppTheme } from "../hooks/useTheme";
 import type { InstallAppController } from "../hooks/useInstallApp";
 import { cn } from "../utils/cn";
@@ -48,8 +43,6 @@ export type SettingsTab = "location";
 export interface SettingsContentProps {
   theme: AppTheme;
   onTheme: (theme: AppTheme) => void;
-  baseMap: BaseMapStyle;
-  onBaseMap: (style: BaseMapStyle) => void;
   installApp: InstallAppController;
   location: {
     supported: boolean;
@@ -62,14 +55,12 @@ export interface SettingsContentProps {
   onAllowLocation: () => void;
   onClearLocation: () => void;
   onShowLocation: () => void;
-  showLabels: boolean;
-  onToggleLabels: () => void;
-  terrainEnabled: boolean;
-  onToggleTerrain: () => void;
   /** Haritanın görünen alanı; çevrimdışı paket bu alanı indirir. */
   mapBounds?: BBox | null;
   /** Raporlar panelini açar (yalnız bulut hesabında verilir). */
   onOpenReports?: () => void;
+  /** Tam ekran Yönetim Panelini açar (yalnız moderatör hesabında verilir). */
+  onOpenAdmin?: () => void;
 }
 
 interface Props extends SettingsContentProps {
@@ -149,19 +140,14 @@ const THEME_OPTIONS = [
 export function SettingsContent({
   theme,
   onTheme,
-  baseMap,
-  onBaseMap,
   installApp,
   location: geo,
   onAllowLocation,
   onClearLocation,
   onShowLocation,
-  showLabels,
-  onToggleLabels,
-  terrainEnabled,
-  onToggleTerrain,
   mapBounds = null,
   onOpenReports,
+  onOpenAdmin,
 }: SettingsContentProps) {
   const [installNotice, setInstallNotice] = useState<string | null>(null);
   const [offlineOpen, setOfflineOpen] = useState(false);
@@ -219,58 +205,6 @@ export function SettingsContent({
           ))}
         </div>
         <p className="mt-2 text-[12px] leading-relaxed text-mint/50">Renk seçimin bu cihazda saklanır.</p>
-
-        <p className="mt-5 text-[12px] font-semibold text-mint/70">Harita altlığı</p>
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          {([
-            { id: "satellite", label: "Uydu", icon: Globe2 },
-            { id: "dark", label: "Karanlık", icon: Moon },
-            { id: "street", label: "Sokak", icon: Map },
-            { id: "topographic", label: "Topoğrafik", icon: Mountain },
-          ] as const).map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              type="button"
-              aria-pressed={baseMap === id}
-              onClick={() => onBaseMap(id)}
-              className={cn(
-                "flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 text-[13px] font-semibold transition",
-                baseMap === id ? "border-sun/60 bg-sun/10 text-sun" : "border-leaf/20 text-mint/65 hover:border-leaf/45 hover:text-mint",
-              )}
-            >
-              <Icon className="size-4" />{label}
-            </button>
-          ))}
-        </div>
-        <p className="mt-2 text-[11.5px] leading-relaxed text-mint/45">Pinlerin, rota çizgin ve 3B arazi tercihin korunur.</p>
-
-        <p className="mt-5 text-[12px] font-semibold text-mint/70">Harita gösterimi</p>
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            aria-pressed={showLabels}
-            onClick={onToggleLabels}
-            className={cn(
-              "flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 text-[13px] font-semibold transition",
-              showLabels ? "border-sun/60 bg-sun/10 text-sun" : "border-leaf/20 text-mint/65 hover:border-leaf/45 hover:text-mint",
-            )}
-          >
-            <Tags className="size-4" />Yer adları
-            <span className="text-[11px] font-medium opacity-80">{showLabels ? "Açık" : "Kapalı"}</span>
-          </button>
-          <button
-            type="button"
-            aria-pressed={terrainEnabled}
-            onClick={onToggleTerrain}
-            className={cn(
-              "flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 text-[13px] font-semibold transition",
-              terrainEnabled ? "border-sun/60 bg-sun/10 text-sun" : "border-leaf/20 text-mint/65 hover:border-leaf/45 hover:text-mint",
-            )}
-          >
-            <Mountain className="size-4" />3B arazi
-            <span className="text-[11px] font-medium opacity-80">{terrainEnabled ? "Açık" : "Kapalı"}</span>
-          </button>
-        </div>
       </section>
 
       <div className="my-6 h-px bg-leaf/15" />
@@ -336,6 +270,15 @@ export function SettingsContent({
             >
               <Flag className="size-4 text-sun" />Raporlarım ve inceleme durumu
             </button>
+            {onOpenAdmin && (
+              <button
+                type="button"
+                onClick={onOpenAdmin}
+                className="mt-2 flex min-h-11 w-full items-center gap-2 rounded-2xl border border-sun/30 bg-sun/[0.07] px-4 text-left text-[14px] font-semibold text-mint transition hover:border-sun/55"
+              >
+                <ShieldCheck className="size-4 text-sun" />Yönetim Paneli
+              </button>
+            )}
             <p className="mt-2 text-[12px] leading-relaxed text-mint/55">
               Bildirdiğin içeriklerin durumunu buradan izleyebilirsin. Moderatör hesabında inceleme kuyruğu da açılır.
             </p>

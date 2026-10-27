@@ -183,27 +183,26 @@ export default function BottomPanel({
   return (
     <div
       className={cn(
-        "pointer-events-none absolute inset-x-0 bottom-[calc(70px+env(safe-area-inset-bottom))] z-20 flex justify-center px-3 pb-3 transition-[padding] duration-500 md:bottom-0 md:pb-7",
+        "pointer-events-none absolute inset-x-0 bottom-[calc(70px+env(safe-area-inset-bottom))] z-50 flex justify-center px-3 pb-3 transition-[padding] duration-500 md:bottom-0 md:z-20 md:pb-7",
         shifted && "lg:pl-[420px]",
         shiftedLeft && "lg:pr-[540px]",
       )}
     >
       <div className="w-full max-w-[920px]">
-        <section ref={(node) => { panelRef.current = node; }} aria-label="Keşif önerileri" className="mobile-discovery-panel gold-frame pointer-events-auto rounded-[26px] bg-[#021b16] px-3.5 pb-3.5 pt-2.5 max-md:fixed max-md:inset-x-3 max-md:bottom-[calc(88px+env(safe-area-inset-bottom))] max-md:z-20 max-md:max-h-[calc(42dvh-54px)] max-md:overflow-y-auto md:hidden">
-          <span aria-hidden className="sheet-handle mb-2.5" />
+        <section ref={(node) => { panelRef.current = node; }} aria-label="Keşif önerileri" className="mobile-discovery-panel mobile-fullscreen gold-frame pointer-events-auto fixed inset-0 z-50 flex flex-col overflow-y-auto bg-[#021b16] px-4 md:hidden">
           <div className="flex items-center justify-between gap-3">
             <p className="truncate text-[12px] text-mint/75">Yol üstündekilerden küçük ipuçları</p>
-            <button type="button" onClick={onToggle} aria-expanded={open} aria-label={open ? "Öneri panelini küçült" : "Öneri panelini genişlet"} className="flex min-h-9 shrink-0 items-center gap-1 text-[12px] font-medium text-sun">
+            <button type="button" onClick={onToggle} aria-expanded={open} aria-label={open ? "Öneri panelini küçült" : "Öneri panelini genişlet"} className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border border-white/10 px-3 text-[12px] font-medium text-sun">
               <MapPin className="size-3.5" />{total} iz
-              <ChevronDown className={cn("size-3.5 transition-transform", !open && "rotate-180")} />
+              <ChevronDown className={cn("size-4 transition-transform", !open && "rotate-180")} />
             </button>
           </div>
 
-          <h2 className="font-display mt-1.5 text-[18px] leading-tight font-semibold tracking-tight text-mint">Bir sonraki güzel tesadüfün</h2>
+          <h2 className="font-display mt-2 text-xl leading-tight font-semibold tracking-tight text-mint">Bir sonraki güzel tesadüfün</h2>
           {open && (
             <>
-              <p className="mt-0.5 text-[12px] leading-[1.35] text-mint/75">Küreyi çevir ya da bir nokta seç. Merakının götürdüğü yere.</p>
-              <div className="mobile-category-grid mt-3 grid grid-cols-5 gap-1.5">
+              <p className="mt-1 text-[13px] leading-relaxed text-mint/75">Küreyi çevir ya da bir nokta seç. Merakının götürdüğü yere.</p>
+              <div className="mobile-category-grid mt-4 grid grid-cols-5 gap-2">
                 {CATEGORIES.map((item) => {
                   const Icon = item.icon;
                   const selected = category === item.id;
@@ -214,23 +213,23 @@ export default function BottomPanel({
                       onClick={() => onCategory(selected ? null : item.id)}
                       aria-pressed={selected}
                       className={cn(
-                        "mobile-category-item pressable flex min-h-[46px] flex-col items-center justify-center gap-0.5 rounded-[18px] border px-0.5 py-1 text-center text-[10px] leading-[1.05] transition",
+                        "mobile-category-item pressable flex min-h-[54px] flex-col items-center justify-center gap-1 rounded-[18px] border px-1 py-1.5 text-center text-[10.5px] leading-tight transition",
                         selected ? "btn-gold border-transparent font-bold" : "border-leaf/35 bg-white/[0.015] text-mint/90",
                       )}
                     >
-                      <Icon className="size-[15px] shrink-0" strokeWidth={1.65} />
+                      <Icon className="size-4 shrink-0" strokeWidth={1.65} />
                       <span>{item.label}</span>
                     </button>
                   );
                 })}
               </div>
               {current ? (
-                <>
-                  <div className="mt-3 flex items-center gap-2.5 border-t border-white/10 pt-2.5">
-                    <PlaceThumb place={current} className="size-[52px] shrink-0 rounded-xl" />
+                <div className="mt-4 flex flex-1 flex-col rounded-2xl border border-white/10 bg-white/[0.025] p-3.5">
+                  <PlaceThumb place={current} className="h-40 w-full shrink-0 rounded-xl" />
+                  <div className="mt-3 flex items-start gap-2.5">
                     <button type="button" onClick={() => onShow(current)} className="min-w-0 flex-1 text-left">
-                      <span className="block truncate text-[13px] font-semibold text-mint">{current.title} <span className="font-normal text-sun">· {current.kind === "user" ? current.author : "Atlasia rehberi"}</span></span>
-                      <span className="mt-0.5 block line-clamp-2 text-[11px] leading-[1.25] text-mint/75">{current.note}</span>
+                      <span className="block text-[15px] font-semibold text-mint">{current.title} <span className="font-normal text-sun">· {current.kind === "user" ? current.author : "Atlasia rehberi"}</span></span>
+                      <span className="mt-1 block text-[12.5px] leading-relaxed text-mint/75">{current.note}</span>
                     </button>
                     {canDelete(current) && (
                       <button type="button" onClick={() => void onDelete(current)} aria-label="Bu izimi sil" className="grid size-10 shrink-0 place-items-center rounded-full border border-red-300/25 text-red-200/80 transition hover:bg-red-400/10 hover:text-red-200">
@@ -241,14 +240,14 @@ export default function BottomPanel({
                       <ChevronRight className="size-4" />
                     </button>
                   </div>
-                  <button type="button" onClick={() => onShow(current)} className="mt-2 flex min-h-[44px] w-full items-center justify-center gap-2 btn-gold rounded-full px-4 text-[13px] font-bold text-[#10241A] transition">
+                  <button type="button" onClick={() => onShow(current)} className="mt-auto flex min-h-12 w-full items-center justify-center gap-2 btn-gold rounded-full px-4 pt-0 text-[13.5px] font-bold text-[#10241A] transition">
                     <Map className="size-[17px]" strokeWidth={1.8} />Haritada gör <ArrowRight className="size-4" />
                   </button>
-                </>
+                </div>
               ) : (
-                <div className="mt-3 flex items-center justify-between gap-2 border-t border-white/10 pt-3">
-                  <p className="text-[12px] text-mint/75">Bu kategoride henüz iz yok.</p>
-                  <button type="button" onClick={onAdd} className="btn-gold min-h-10 rounded-full px-3 text-[12px] font-semibold text-ink">İz bırak</button>
+                <div className="mt-4 flex items-center justify-between gap-2 border-t border-white/10 pt-4">
+                  <p className="text-[13px] text-mint/75">Bu kategoride henüz iz yok.</p>
+                  <button type="button" onClick={onAdd} className="btn-gold min-h-11 rounded-full px-4 text-[13px] font-semibold text-ink">İz bırak</button>
                 </div>
               )}
             </>

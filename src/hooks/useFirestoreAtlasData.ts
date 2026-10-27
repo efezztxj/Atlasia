@@ -37,6 +37,7 @@ import {
   type NewStoryInput,
   type PlaceViewport,
 } from "../lib/firestoreData";
+import { analytics } from "../lib/analytics";
 import type { FeedPost, FeedReply, Place, Story, UploadPhotoKind } from "../types";
 
 export interface UseFirestoreAtlasDataArgs {
@@ -340,6 +341,8 @@ export function useFirestoreAtlasData({
       photoUrl: post.photo,
     };
     await addPostFs(input);
+    // Ölçüm: yalnız sabit/sayısal alan; metin ve konum gönderilmez.
+    analytics.postCreated({ hasPhoto: Boolean(input.photoUrl), kind: "post" });
   };
 
   const removePost = async (id: string) => {

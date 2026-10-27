@@ -387,6 +387,378 @@ export async function setReportStatus(
   await updateDoc(doc(db, "reports", cleanId), payload);
 }
 
+/* ─────── Kademeli yaptırım: uyarı · içerik kaldırma · itiraz · işlem kaydı · duyuru ─────── */
+
+export const MOD_ACTIONS = ["report_status", "warn", "takedown", "ban", "lift_ban", "announcement"] as const;
+export type ModActionKind = (typeof MOD_ACTIONS)[number];
+
+export interface ModAction {
+  id: string;
+  actorUid: string;
+  action: ModActionKind;
+  targetType?: ReportInput["targetType"];
+  targetId?: string;
+  targetOwnerUid?: string;
+  reportId?: string;
+  detail?: string;
+  createdAt: number;
+}
+
+export function normalizeModAction(id: string, raw: Record<string, unknown>): ModAction {
+  return {
+    id,
+    actorUid: typeof raw.actorUid === "string" ? raw.actorUid : "",
+    action: (MOD_ACTIONS as readonly string[]).includes(raw.action as string) ? (raw.action as ModActionKind) : "report_status",
+    targetType: typeof raw.targetType === "string" ? (raw.targetType as ReportInput["targetType"]) : undefined,
+    targetId: typeof raw.targetId === "string" ? raw.targetId : undefined,
+    targetOwnerUid: typeof raw.targetOwnerUid === "string" ? raw.targetOwnerUid : undefined,
+    reportId: typeof raw.reportId === "string" ? raw.reportId : undefined,
+    detail: typeof raw.detail === "string" ? raw.detail : undefined,
+    createdAt: toMillis(raw.createdAt),
+  };
+}
+
+/**
+ * Moderatör işlem kaydı (audit log). Kayıt yazılamazsa yaptırım yine de
+ * geçerlidir; bu yüzden hata yutulur (kayıt, yaptırımın ön şartı değildir).
+ */
+export async function logModAction(input: Omit<ModAction, "id" | "actorUid" | "createdAt">): Promise<void> {
+  if (!db) return;
+  try {
+    const auth = await getAtlasAuth();
+    const actor = auth.currentUser?.uid;
+    if (!actor) return;
+    const payload: Record<string, unknown> = { actorUid: actor, action: input.action, createdAt: serverTimestamp() };
+    if (input.targetType) payload.targetType = input.targetType;
+    if (input.targetId) payload.targetId = input.targetId.slice(0, 200);
+    if (input.targetOwnerUid) payload.targetOwnerUid = input.targetOwnerUid.slice(0, 128);
+    if (input.reportId) payload.reportId = input.reportId.slice(0, 128);
+    if (input.detail) payload.detail = input.detail.slice(0, 500);
+    await setDoc(doc(collection(db, "modActions")), payload);
+  } catch {
+    /* kayıt tutulamadı; yaptırım geçerli kalır */
+  }
+}
+
+/** Moderatör için işlem kaydı akışı (en yeni 50). */
+export function subscribeModActions(
+  onChange: (items: ModAction[]) => void,
+  onError?: (error: Error) => void,
+): () => void {
+  if (!db) return () => {};
+  const q = query(collection(db, "modActions"), orderBy("createdAt", "desc"), limit(50));
+  return onSnapshot(q, (snap) => onChange(snap.docs.map((d) => normalizeModAction(d.id, d.data()))), onError);
+}
+
+/* — Uyarı (kademeli yaptırımın ilk basamağı) — */
+
+export const WARNING_REASON_MIN = 10;
+export const WARNING_REASON_MAX = 500;
+
+export interface Warning {
+  id: string;
+  uid: string;
+  reason: string;
+  reportId: string;
+  createdBy: string;
+  createdAt: number;
+  read: boolean;
+}
+
+export interface WarningInput {
+  uid: string;
+  reason: string;
+  reportId: string;
+}
+
+export function normalizeWarning(id: string, raw: Record<string, unknown>): Warning {
+  return {
+    id,
+    uid: typeof raw.uid === "string" ? raw.uid : "",
+    reason: typeof raw.reason === "string" ? raw.reason : "",
+    reportId: typeof raw.reportId === "string" ? raw.reportId : "",
+    createdBy: typeof raw.createdBy === "string" ? raw.createdBy : "",
+    createdAt: toMillis(raw.createdAt),
+    read: raw.read === true,
+  };
+}
+
+export function validateWarningInput(input: WarningInput, reviewerUid: string): string | null {
+  const reviewer = reviewerUid.trim();
+  if (!reviewer) return "auth/required";
+  const uid = input.uid.trim();
+  if (!uid) return "warn/user-invalid";
+  if (uid === reviewer) return "warn/self";
+  const reason = input.reason.trim();
+  if (reason.length < WARNING_REASON_MIN) return "warn/reason-too-short";
+  if (reason.length > WARNING_REASON_MAX) return "warn/reason-too-long";
+  if (!input.reportId.trim()) return "warn/report-invalid";
+  return null;
+}
+
+/** Kullanıcıya resmî uyarı gönderir; kural kanıtlı rapor ister (reviewed/actioned). */
+export async function warnUser(input: WarningInput): Promise<void> {
+  if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
+  const auth = await getAtlasAuth();
+  const reviewer = auth.currentUser?.uid;
+  if (!reviewer) throw dataError("auth/required", "Oturum bulunamadı.");
+  const problem = validateWarningInput(input, reviewer);
+  if (problem) throw dataError(problem, problem === "warn/self" ? "Kendine uyarı gönderemezsin." : "Uyarı bilgileri geçersiz.");
+  await setDoc(doc(collection(db, "warnings")), {
+    uid: input.uid.trim(),
+    reason: input.reason.trim(),
+    reportId: input.reportId.trim(),
+    createdBy: reviewer,
+    createdAt: serverTimestamp(),
+    read: false,
+  });
+  await logModAction({ action: "warn", targetOwnerUid: input.uid.trim(), reportId: input.reportId.trim(), detail: input.reason.trim() });
+}
+
+/** Kendi uyarılarım (en yeni önce, istemcide sıralanır; bileşik indeks gerektirmez). */
+export function subscribeMyWarnings(
+  uid: string,
+  onChange: (items: Warning[]) => void,
+  onError?: (error: Error) => void,
+): () => void {
+  if (!db || !uid.trim()) return () => {};
+  const q = query(collection(db, "warnings"), where("uid", "==", uid.trim()), limit(20));
+  return onSnapshot(
+    q,
+    (snap) => onChange(snap.docs.map((d) => normalizeWarning(d.id, d.data())).sort((a, b) => b.createdAt - a.createdAt)),
+    onError,
+  );
+}
+
+export async function markWarningRead(warningId: string): Promise<void> {
+  if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
+  await updateDoc(doc(db, "warnings", warningId), { read: true });
+}
+
+/* — İçerik kaldırma (kalıcı silme) — */
+
+const TAKEDOWN_COLLECTION: Partial<Record<ReportInput["targetType"], string>> = {
+  post: "posts",
+  story: "stories",
+  place: "places",
+};
+
+/**
+ * Raporlanan içeriği kalıcı siler (kullanıcı kararı: yumuşak gizleme değil).
+ * Gönderiyse yanıtları da temizlenir. Kullanıcı hedefi buradan silinemez;
+ * onun yaptırımı uyarı/bandır. Kural tarafı: sahip ya da moderatör.
+ */
+export async function takedownReportTarget(report: Report): Promise<void> {
+  if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
+  const collectionName = TAKEDOWN_COLLECTION[report.targetType];
+  if (!collectionName) throw dataError("takedown/unsupported", "Kullanıcı hedefi silinemez; uyarı veya askıya alma kullan.");
+  if (report.targetType === "post") {
+    try {
+      const replies = await getDocs(query(collection(db, `posts/${report.targetId}/replies`), limit(100)));
+      await Promise.all(replies.docs.map((reply) => deleteDoc(reply.ref).catch(() => undefined)));
+    } catch {
+      /* yanıt temizliği en iyi çaba; asıl belge silinir */
+    }
+  }
+  await deleteDoc(doc(db, collectionName, report.targetId));
+  await logModAction({
+    action: "takedown",
+    targetType: report.targetType,
+    targetId: report.targetId,
+    targetOwnerUid: report.targetOwnerUid,
+    reportId: report.id,
+  });
+}
+
+/* — Ban itirazı — */
+
+export const APPEAL_MIN = 10;
+export const APPEAL_MAX = 500;
+export const APPEAL_STATUSES = ["open", "seen", "accepted", "rejected"] as const;
+export type AppealStatus = (typeof APPEAL_STATUSES)[number];
+
+export interface Appeal {
+  id: string;
+  uid: string;
+  message: string;
+  createdAt: number;
+  status: AppealStatus;
+  reviewedAt?: number;
+}
+
+export function normalizeAppeal(id: string, raw: Record<string, unknown>): Appeal {
+  return {
+    id,
+    uid: typeof raw.uid === "string" ? raw.uid : "",
+    message: typeof raw.message === "string" ? raw.message : "",
+    createdAt: toMillis(raw.createdAt),
+    status: (APPEAL_STATUSES as readonly string[]).includes(raw.status as string) ? (raw.status as AppealStatus) : "open",
+    reviewedAt: raw.reviewedAt === undefined ? undefined : toMillis(raw.reviewedAt),
+  };
+}
+
+export function validateAppealInput(message: string): string | null {
+  const text = message.trim();
+  if (text.length < APPEAL_MIN) return "appeal/too-short";
+  if (text.length > APPEAL_MAX) return "appeal/too-long";
+  return null;
+}
+
+/** Askıdaki kullanıcı itiraz yazar; belge kimliği sunucuda üretilir. */
+export async function createAppeal(message: string): Promise<void> {
+  if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
+  const auth = await getAtlasAuth();
+  const uid = auth.currentUser?.uid;
+  if (!uid) throw dataError("auth/required", "Oturum bulunamadı.");
+  const problem = validateAppealInput(message);
+  if (problem) throw dataError(problem, `İtiraz metni ${APPEAL_MIN}–${APPEAL_MAX} karakter olmalı.`);
+  await setDoc(doc(collection(db, "appeals")), { uid, message: message.trim(), createdAt: serverTimestamp() });
+}
+
+/** Kendi itirazlarım (en yeni önce). */
+export function subscribeMyAppeals(
+  uid: string,
+  onChange: (items: Appeal[]) => void,
+  onError?: (error: Error) => void,
+): () => void {
+  if (!db || !uid.trim()) return () => {};
+  const q = query(collection(db, "appeals"), where("uid", "==", uid.trim()), limit(20));
+  return onSnapshot(
+    q,
+    (snap) => onChange(snap.docs.map((d) => normalizeAppeal(d.id, d.data())).sort((a, b) => b.createdAt - a.createdAt)),
+    onError,
+  );
+}
+
+/** Moderatör için itiraz kuyruğu (en yeni 50). */
+export function subscribeAppeals(
+  onChange: (items: Appeal[]) => void,
+  onError?: (error: Error) => void,
+): () => void {
+  if (!db) return () => {};
+  const q = query(collection(db, "appeals"), orderBy("createdAt", "desc"), limit(50));
+  return onSnapshot(q, (snap) => onChange(snap.docs.map((d) => normalizeAppeal(d.id, d.data()))), onError);
+}
+
+export async function resolveAppeal(appealId: string, status: Exclude<AppealStatus, "open">): Promise<void> {
+  if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
+  const auth = await getAtlasAuth();
+  const reviewer = auth.currentUser?.uid;
+  if (!reviewer) throw dataError("auth/required", "Oturum bulunamadı.");
+  await updateDoc(doc(db, "appeals", appealId), {
+    status,
+    reviewedAt: serverTimestamp(),
+    reviewerUid: reviewer,
+  });
+}
+
+/* — Moderatör duyuruları — */
+
+export const ANNOUNCEMENT_TITLE_MAX = 120;
+export const ANNOUNCEMENT_BODY_MAX = 1000;
+
+export interface Announcement {
+  id: string;
+  title: string;
+  body: string;
+  createdBy: string;
+  createdAt: number;
+}
+
+export function normalizeAnnouncement(id: string, raw: Record<string, unknown>): Announcement {
+  return {
+    id,
+    title: typeof raw.title === "string" ? raw.title : "",
+    body: typeof raw.body === "string" ? raw.body : "",
+    createdBy: typeof raw.createdBy === "string" ? raw.createdBy : "",
+    createdAt: toMillis(raw.createdAt),
+  };
+}
+
+export function validateAnnouncementInput(title: string, body: string): string | null {
+  if (!title.trim() || title.trim().length > ANNOUNCEMENT_TITLE_MAX) return "announcement/title-invalid";
+  if (!body.trim() || body.trim().length > ANNOUNCEMENT_BODY_MAX) return "announcement/body-invalid";
+  return null;
+}
+
+export function subscribeAnnouncements(
+  onChange: (items: Announcement[]) => void,
+  onError?: (error: Error) => void,
+): () => void {
+  if (!db) return () => {};
+  const q = query(collection(db, "announcements"), orderBy("createdAt", "desc"), limit(20));
+  return onSnapshot(q, (snap) => onChange(snap.docs.map((d) => normalizeAnnouncement(d.id, d.data()))), onError);
+}
+
+export async function createAnnouncement(title: string, body: string): Promise<void> {
+  if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
+  const auth = await getAtlasAuth();
+  const author = auth.currentUser?.uid;
+  if (!author) throw dataError("auth/required", "Oturum bulunamadı.");
+  const problem = validateAnnouncementInput(title, body);
+  if (problem) throw dataError(problem, "Duyuru başlığı/gövdesi geçersiz.");
+  await setDoc(doc(collection(db, "announcements")), {
+    title: title.trim(),
+    body: body.trim(),
+    createdBy: author,
+    createdAt: serverTimestamp(),
+  });
+  await logModAction({ action: "announcement", detail: title.trim() });
+}
+
+export async function deleteAnnouncement(announcementId: string): Promise<void> {
+  if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
+  await deleteDoc(doc(db, "announcements", announcementId));
+}
+
+/* — Hedef kullanıcı geçmişi — */
+
+export interface TargetHistory {
+  reports: Report[];
+  warningCount: number;
+  ban: Ban | null;
+}
+
+/**
+ * Moderatör kararından önce hedefin geçmişi: aleyhindeki raporlar (içerik
+ * sahipliği + doğrudan kullanıcı raporları), uyarı sayısı ve ban kaydı.
+ * Sıralama istemcide; bileşik indeks gerektirmez.
+ */
+export async function fetchTargetHistory(uid: string): Promise<TargetHistory> {
+  if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
+  const clean = uid.trim();
+  if (!clean) throw dataError("history/user-invalid", "Kullanıcı kimliği geçersiz.");
+  const [byOwner, byTarget, warningsSnap, banSnap] = await Promise.all([
+    getDocs(query(collection(db, "reports"), where("targetOwnerUid", "==", clean), limit(50))),
+    getDocs(query(collection(db, "reports"), where("targetId", "==", clean), limit(50))),
+    getDocs(query(collection(db, "warnings"), where("uid", "==", clean), limit(50))),
+    getDoc(doc(db, "bans", clean)),
+  ]);
+  const merged = new Map<string, Report>();
+  for (const d of byOwner.docs) merged.set(d.id, normalizeReport(d.id, d.data()));
+  for (const d of byTarget.docs) {
+    const report = normalizeReport(d.id, d.data());
+    if (report.targetType === "user") merged.set(d.id, report);
+  }
+  return {
+    reports: [...merged.values()].sort((a, b) => b.createdAt - a.createdAt),
+    warningCount: warningsSnap.size,
+    ban: banSnap.exists() ? normalizeBan(clean, banSnap.data()) : null,
+  };
+}
+
+/** Rapor sonucu bildirimi: kural, inceleyen moderatör + rapor sahibi eşleşmesi ister. */
+export async function notifyReportActioned(report: Report, moderatorUid: string): Promise<void> {
+  await createNotification({
+    recipientUid: report.reporterUid,
+    actorUid: moderatorUid,
+    type: "report_actioned",
+    title: "Raporun sonuçlandı",
+    body: "Bildirdiğin içerik incelendi ve gerekli işlem yapıldı. Ayrıntı için Ayarlar → Moderasyon → Raporlarım.",
+    targetId: report.id,
+  });
+}
+
 /* ─────────────── Engelleme ─────────────── */
 
 export interface BlockRecord {

@@ -45,9 +45,14 @@ export default function SearchBox({ places, onPick, onOpenFilters, autoFocus = f
   const [remote, setRemote] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
   const [recents, setRecents] = useState<RecentSearch[]>(readRecents);
   const wrapRef = useRef<HTMLDivElement>(null);
+
+  const closeMobileSheet = () => {
+    const closeBtn = wrapRef.current?.closest(".mobile-search-sheet")?.previousElementSibling;
+    if (closeBtn instanceof HTMLButtonElement) closeBtn.click();
+  };
 
   const local = useMemo<SearchResult[]>(() => {
     const n = normalize(q.trim());
@@ -135,6 +140,17 @@ export default function SearchBox({ places, onPick, onOpenFilters, autoFocus = f
 
   return (
     <div ref={wrapRef} className="pointer-events-auto order-1 w-full md:order-2 md:w-[312px]">
+      <div className="mb-3 flex items-center justify-between md:hidden">
+        <p className="font-display text-lg font-semibold text-mint">Yer ara</p>
+        <button
+          type="button"
+          onClick={closeMobileSheet}
+          aria-label="Aramayı kapat"
+          className="grid size-10 place-items-center rounded-full text-mint/75 hover:bg-white/10"
+        >
+          <X className="size-5" />
+        </button>
+      </div>
       <label htmlFor="atlasia-search" className="sr-only md:not-sr-only md:mb-2 md:block md:text-[11px] md:tracking-wide md:text-mint/65">
         Yer, şehir veya ülke ara
       </label>

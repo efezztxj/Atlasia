@@ -38,6 +38,15 @@ const baseProps: PanelProps = {
   onStatus: vi.fn(async () => {}),
   bans: [],
   onBan: vi.fn(async () => {}),
+  onWarn: vi.fn(async () => {}),
+  onTakedown: vi.fn(async () => {}),
+  appeals: [],
+  onResolveAppeal: vi.fn(async () => {}),
+  modActions: [],
+  announcements: [],
+  onCreateAnnouncement: vi.fn(async () => {}),
+  onDeleteAnnouncement: vi.fn(async () => {}),
+  onFetchHistory: vi.fn(async () => ({ reports: [], warningCount: 0, ban: null })),
   onLiftBan: vi.fn(async () => {}),
 };
 
@@ -145,5 +154,165 @@ describe("ReportsPanel · askıya alma akışı", () => {
     renderPanel({ moderator: true, uid: "spammer", queue: [actioned()] });
     fireEvent.click(screen.getByRole("button", { name: /Kuyruk/ }));
     expect(screen.queryByRole("button", { name: /Hesabı askıya al/ })).toBeNull();
+  });
+});
+
+describe("ReportsPanel · kademeli yaptırım ve ayrıcalıklı görünümler", () => {
+  afterEach(() => cleanup());
+
+  const reviewed = () => report({ status: "reviewed", targetOwnerUid: "spammer" });
+
+  it("uyarı ancak incelenmiş raporda açılır; kısa gerekçeyle gönderilmez", async () => {
+    const onWarn = vi.fn(async () => {});
+    renderPanel({ moderator: true, queue: [reviewed()], onWarn });
+    fireEvent.click(screen.getByRole("button", { name: /Kuyruk/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Uyarı gönder/ }));
+    const send = screen.getByRole("button", { name: "Uyarıyı gönder" }) as HTMLButtonElement;
+    expect(send.disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText(/Uyarı gerekçesi/), { target: { value: "Küfürlü yorumların tekrarı." } });
+    expect(send.disabled).toBe(false);
+    fireEvent.click(send);
+    await waitFor(() => expect(onWarn).toHaveBeenCalledWith(expect.objectContaining({ id: "report-1" }), "Küfürlü yorumların tekrarı."));
+  });
+
+  it("açık raporda uyarı kapısı kapalıdır", () => {
+    renderPanel({ moderator: true, queue: [report({ targetOwnerUid: "spammer" })] });
+    fireEvent.click(screen.getByRole("button", { name: /Kuyruk/ }));
+    expect(screen.queryByRole("button", { name: /Uyarı gönder/ })).toBeNull();
+    expect(screen.getByText(/Uyarı için önce raporu/)).toBeTruthy();
+  });
+
+  it("içerik kaldırma iki aşamalı onay ister ve kalıcı silmeyi çağırır", async () => {
+    const onTakedown = vi.fn(async () => {});
+    renderPanel({ moderator: true, queue: [reviewed()], onTakedown });
+    fireEvent.click(screen.getByRole("button", { name: /Kuyruk/ }));
+    fireEvent.click(screen.getByRole("button", { name: /İçeriği kalıcı sil/ }));
+    expect(screen.getByText(/kalıcı olarak silinecek/)).toBeTruthy();
+    expect(onTakedown).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Kalıcı sil" }));
+    await waitFor(() => expect(onTakedown).toHaveBeenCalledWith(expect.objectContaining({ targetId: "post-1" })));
+  });
+
+  it("kullanıcı hedefinde içerik silme sunulmaz", () => {
+    renderPanel({ moderator: true, queue: [report({ status: "reviewed", targetType: "user", targetId: "spammer" })] });
+    fireEvent.click(screen.getByRole("button", { name: /Kuyruk/ }));
+    expect(screen.queryByRole("button", { name: /İçeriği kalıcı sil/ })).toBeNull();
+  });
+
+  it("kuyruk durum süzgeci ve arama çalışır", () => {
+    renderPanel({
+      moderator: true,
+      queue: [
+        report({ id: "r-open", status: "open", details: "Açık olan" }),
+        report({ id: "r-done", status: "actioned", targetOwnerUid: "spammer", details: "Bitmiş olan" }),
+      ],
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Kuyruk/ }));
+    expect(screen.getByText(/Açık olan/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Duruma göre süz"), { target: { value: "actioned" } });
+    expect(screen.queryByText(/Açık olan/)).toBeNull();
+    expect(screen.getByText(/Bitmiş olan/)).toBeTruthy();
+  });
+
+  it("hedef geçmişi kartta gösterilir", async () => {
+    const onFetchHistory = vi.fn(async () => ({ reports: [report(), report({ id: "r2" })], warningCount: 3, ban: null }));
+    renderPanel({ moderator: true, queue: [reviewed()], onFetchHistory });
+    fireEvent.click(screen.getByRole("button", { name: /Kuyruk/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Geçmiş/ }));
+    await waitFor(() => expect(screen.getByText(/aleyhinde/)).toBeTruthy());
+    expect(screen.getByText(/Ban kaydı yok/)).toBeTruthy();
+    expect(onFetchHistory).toHaveBeenCalledWith("spammer");
+  });
+
+  it("itirazlar sekmesi: karar yazar, etkin bansa kaldırma sunar", async () => {
+    const onResolveAppeal = vi.fn(async () => {});
+    const onLiftBan = vi.fn(async () => {});
+    renderPanel({
+      moderator: true,
+      onResolveAppeal,
+      onLiftBan,
+      bans: [{ uid: "spammer", reason: "Spam", reportId: "r", createdAt: Date.now(), createdBy: "mod-1" }],
+      appeals: [{ id: "ap1", uid: "spammer", message: "Yanlış anlaşılma oldu.", createdAt: Date.now(), status: "open" }],
+    });
+    fireEvent.click(screen.getByRole("button", { name: /İtirazlar/ }));
+    expect(screen.getByText(/Yanlış anlaşılma/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Kabul et" }));
+    await waitFor(() => expect(onResolveAppeal).toHaveBeenCalledWith("ap1", "accepted"));
+    fireEvent.click(screen.getByRole("button", { name: /Banı kaldır/ }));
+    await waitFor(() => expect(onLiftBan).toHaveBeenCalledWith("spammer"));
+  });
+
+  it("duyuru sekmesi yayınlar ve siler", async () => {
+    const onCreateAnnouncement = vi.fn(async () => {});
+    const onDeleteAnnouncement = vi.fn(async () => {});
+    renderPanel({
+      moderator: true,
+      onCreateAnnouncement,
+      onDeleteAnnouncement,
+      announcements: [{ id: "ann1", title: "Eski duyuru", body: "Gövde metni", createdBy: "mod-1", createdAt: Date.now() }],
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Duyurular/ }));
+    fireEvent.change(screen.getByLabelText("Başlık"), { target: { value: "Bakım" } });
+    fireEvent.change(screen.getByLabelText("Metin"), { target: { value: "Bu gece kısa bakım var." } });
+    fireEvent.click(screen.getByRole("button", { name: "Yayınla" }));
+    await waitFor(() => expect(onCreateAnnouncement).toHaveBeenCalledWith("Bakım", "Bu gece kısa bakım var."));
+    fireEvent.click(screen.getByRole("button", { name: "Sil" }));
+    await waitFor(() => expect(onDeleteAnnouncement).toHaveBeenCalledWith("ann1"));
+  });
+
+  it("işlem kaydı sekmesi günlüğü listeler", () => {
+    renderPanel({
+      moderator: true,
+      modActions: [{ id: "m1", actorUid: "mod-1", action: "ban", targetOwnerUid: "spammer", detail: "Spam", createdAt: Date.now() }],
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Kayıtlar/ }));
+    expect(screen.getByText("Askıya alma")).toBeTruthy();
+    expect(screen.getByText("Spam")).toBeTruthy();
+  });
+});
+
+describe("ReportsPanel · Yönetim Paneli (admin düzeni)", () => {
+  afterEach(() => cleanup());
+
+  it("admin düzeninde sol menü ve gösterge kartları açılır", () => {
+    renderPanel({
+      admin: true,
+      moderator: true,
+      queue: [report({ targetOwnerUid: "spammer" }), report({ id: "r2", status: "actioned", targetOwnerUid: "spammer" })],
+      bans: [{ uid: "spammer", reason: "Spam", reportId: "r", createdAt: Date.now(), createdBy: "mod-1" }],
+      appeals: [{ id: "ap1", uid: "spammer", message: "İtiraz metni", createdAt: Date.now(), status: "open" }],
+    });
+    expect(screen.getByRole("navigation", { name: "Yönetim menüsü" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Bekleyen Rapor/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Aktif Ban/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Bekleyen İtiraz/ })).toBeTruthy();
+  });
+
+  it("gösterge kartı ilgili görünüme götürür", () => {
+    renderPanel({ admin: true, moderator: true, queue: [report({ targetOwnerUid: "spammer" })] });
+    fireEvent.click(screen.getByRole("button", { name: /Bekleyen Rapor/ }));
+    expect(screen.getByText(/Spam \/ reklam/)).toBeTruthy();
+  });
+
+  it("Kullanıcılar görünümü rapor sahiplerini toplar ve ban rozeti gösterir", async () => {
+    const onFetchHistory = vi.fn(async () => ({ reports: [report()], warningCount: 2, ban: null }));
+    renderPanel({
+      admin: true,
+      moderator: true,
+      onFetchHistory,
+      queue: [report({ targetOwnerUid: "spammer" }), report({ id: "r2", targetOwnerUid: "spammer" })],
+      bans: [{ uid: "spammer", reason: "Spam gerekçesi", reportId: "r", createdAt: Date.now(), createdBy: "mod-1" }],
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Kullanıcılar/ }));
+    expect(screen.getByText(/Aleyhinde/)).toBeTruthy();
+    expect(screen.getByText(/Askıda · kalıcı/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Geçmişi göster/ }));
+    await waitFor(() => expect(onFetchHistory).toHaveBeenCalledWith("spammer"));
+  });
+
+  it("admin olmayan hesapta admin düzeni açılsa bile gösterge paneli görünmez", () => {
+    renderPanel({ admin: true, moderator: false });
+    expect(screen.queryByRole("navigation", { name: "Yönetim menüsü" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Bekleyen Rapor/ })).toBeNull();
   });
 });

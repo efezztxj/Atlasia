@@ -20,6 +20,7 @@ import LandingPage from "./components/LandingPage";
 import RecordsDock from "./components/RecordsDock";
 import RouteEditor from "./components/RouteEditor";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { analytics } from "./lib/analytics";
 import { CollectionsProvider, isCloudAccount } from "./hooks/useCollections";
 import type { WeatherMode, WeatherStatus } from "./utils/mapWeather";
 import { GUIDE_PLACES } from "./data/places";
@@ -45,17 +46,37 @@ import { useFreshness } from "./hooks/useFreshness";
 import { subscribeNotifications, markNotificationRead, markAllRead, type AppNotification } from "./lib/notifications";
 import {
   banUser,
+  createAnnouncement,
+  createAppeal,
+  deleteAnnouncement,
   fetchModeratorAccess,
+  fetchTargetHistory,
   liftBan,
+  logModAction,
+  markWarningRead,
+  notifyReportActioned,
+  resolveAppeal,
   setReportStatus,
   subscribeActiveBans,
+  subscribeAnnouncements,
+  subscribeAppeals,
+  subscribeModActions,
   subscribeModerationQueue,
+  subscribeMyAppeals,
   subscribeMyBan,
   subscribeMyReports,
+  subscribeMyWarnings,
+  takedownReportTarget,
+  warnUser,
+  type Announcement,
+  type Appeal,
+  type AppealStatus,
   type Ban,
   type BanDuration,
+  type ModAction,
   type Report,
   type ReportStatus,
+  type Warning,
 } from "./lib/moderation";
 import NotificationsPanel from "./components/NotificationsPanel";
 import { takePendingInvite, type SocialTarget } from "./utils/inviteLink";
@@ -76,6 +97,8 @@ const MapLayersSheet = lazy(() => import("./components/MapLayersSheet"));
 // Raporlar/moderasyon paneli ayrı parça: kuyruk yalnız ihtiyaç anında yüklenir.
 const ReportsPanel = lazy(() => import("./components/ReportsPanel"));
 const SuspensionNotice = lazy(() => import("./components/SuspensionNotice"));
+const WarningNotice = lazy(() => import("./components/ModerationNotices").then((m) => ({ default: m.WarningNotice })));
+const AnnouncementBanner = lazy(() => import("./components/ModerationNotices").then((m) => ({ default: m.AnnouncementBanner })));
 const MAP_STYLE_KEY = "atlasia.mapStyle.v1";
 
 function initialMapStyle(): BaseMapStyle {
@@ -220,6 +243,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   const [myPlacesOpen, setMyPlacesOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [reportsOpen, setReportsOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
   const [moderator, setModerator] = useState(false);
   const [myReports, setMyReports] = useState<Report[]>([]);
   const [myReportsError, setMyReportsError] = useState<string | null>(null);
@@ -228,6 +252,12 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   const [queueError, setQueueError] = useState<string | null>(null);
   const [bans, setBans] = useState<Ban[]>([]);
   const [myBan, setMyBan] = useState<Ban | null>(null);
+  const [myWarnings, setMyWarnings] = useState<Warning[]>([]);
+  const [myAppeals, setMyAppeals] = useState<Appeal[]>([]);
+  const [appeals, setAppeals] = useState<Appeal[]>([]);
+  const [modActions, setModActions] = useState<ModAction[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [dismissedAnnouncement, setDismissedAnnouncement] = useState<string | null>(() => storageGet("atlasia.announcement.dismissed"));
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [socialTarget, setSocialTarget] = useState<SocialTarget | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -382,6 +412,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
     setStoryPlace(null);
     setStreetPlace(null);
     setNotificationsOpen(false);
+    setLayersOpen(false);
   };
 
   const openRecords = () => { closePanels(); setRecordsOpen(true); };
@@ -452,8 +483,19 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
    *   yazılamaz (Console'da elle). Kural dağıtılmamışsa sorgu `false` döner ve
    *   sekme görünmez (fail-closed).
    */
+  // Moderatör müyüm? Ayarlar'daki Yönetim Paneli girişi buna bakar;
+  // panel açılmadan da bilinmeli (kural fail-closed: belge yoksa false).
   useEffect(() => {
-    if (!reportsOpen || !cloudAccount || !user?.uid) return;
+    if (!cloudAccount || !user?.uid) { setModerator(false); return; }
+    let active = true;
+    void fetchModeratorAccess(user.uid).then((allowed) => {
+      if (active) setModerator(allowed);
+    });
+    return () => { active = false; };
+  }, [cloudAccount, user?.uid]);
+
+  useEffect(() => {
+    if ((!reportsOpen && !adminOpen) || !cloudAccount || !user?.uid) return;
     let active = true;
     setMyReportsError(null);
     const unsub = subscribeMyReports(user.uid, (items) => {
@@ -468,10 +510,10 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
       active = false;
       unsub();
     };
-  }, [reportsOpen, cloudAccount, user?.uid]);
+  }, [reportsOpen, adminOpen, cloudAccount, user?.uid]);
 
   useEffect(() => {
-    if (!reportsOpen || !moderator || !cloudAccount) return;
+    if ((!reportsOpen && !adminOpen) || !moderator || !cloudAccount) return;
     let active = true;
     setQueueLoading(true);
     setQueueError(null);
@@ -488,7 +530,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
       active = false;
       unsub();
     };
-  }, [reportsOpen, moderator, cloudAccount]);
+  }, [reportsOpen, adminOpen, moderator, cloudAccount]);
 
   // Etkin askıya almalar: yalnız moderatörde dinlenir (kural listeyi ona açar).
   useEffect(() => {
@@ -511,20 +553,99 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
     return () => unsub();
   }, [user?.uid, cloudAccount]);
 
+  // Kendi uyarılarım + itirazlarım (kademeli yaptırımın kullanıcı yüzü).
+  useEffect(() => {
+    if (!user?.uid || !cloudAccount) { setMyWarnings([]); setMyAppeals([]); return; }
+    const unsubWarnings = subscribeMyWarnings(user.uid, setMyWarnings, (error) => {
+      console.warn("[Atlasia] Uyarılar okunamadı:", error);
+    });
+    const unsubAppeals = subscribeMyAppeals(user.uid, setMyAppeals, (error) => {
+      console.warn("[Atlasia] İtirazlar okunamadı:", error);
+    });
+    return () => { unsubWarnings(); unsubAppeals(); };
+  }, [user?.uid, cloudAccount]);
+
+  // Moderatör akışları: itiraz kuyruğu + işlem kaydı.
+  useEffect(() => {
+    if (!moderator || !cloudAccount) { setAppeals([]); setModActions([]); return; }
+    const unsubAppeals = subscribeAppeals(setAppeals, (error) => {
+      console.warn("[Atlasia] İtiraz kuyruğu okunamadı:", error);
+    });
+    const unsubActions = subscribeModActions(setModActions, (error) => {
+      console.warn("[Atlasia] İşlem kaydı okunamadı:", error);
+    });
+    return () => { unsubAppeals(); unsubActions(); };
+  }, [moderator, cloudAccount]);
+
+  // Duyurular: giriş yapmış herkese açık okuma (kural da öyle).
+  useEffect(() => {
+    if (!user?.uid || !cloudAccount) { setAnnouncements([]); return; }
+    const unsub = subscribeAnnouncements(setAnnouncements, (error) => {
+      console.warn("[Atlasia] Duyurular okunamadı:", error);
+    });
+    return () => unsub();
+  }, [user?.uid, cloudAccount]);
+
   const handleReportStatus = useCallback(async (reportId: string, status: ReportStatus, note?: string) => {
     if (!user?.uid) throw new Error("Oturum bulunamadı.");
     await setReportStatus(reportId, status, user.uid, note);
-  }, [user?.uid]);
+    void logModAction({ action: "report_status", reportId, detail: status });
+    if (status === "actioned") {
+      const report = queue.find((item) => item.id === reportId);
+      if (report) {
+        // Bildirim kanıtı rapordaki reviewerUid'ye bakar; durum yazıldıktan sonra gönderilir.
+        void notifyReportActioned(report, user.uid).catch((error) => {
+          console.warn("[Atlasia] Rapor sonucu bildirimi gönderilemedi:", error);
+        });
+      }
+    }
+  }, [user?.uid, queue]);
 
   const handleBan = useCallback(async (report: Report, days: BanDuration, reason: string) => {
     const target = report.targetOwnerUid ?? (report.targetType === "user" ? report.targetId : undefined);
     if (!target) throw new Error("Bu raporun sahibi belirlenemedi; ban atılamaz.");
     await banUser({ uid: target, reason, reportId: report.id, days });
+    void logModAction({ action: "ban", targetType: report.targetType, targetId: report.targetId, targetOwnerUid: target, reportId: report.id, detail: reason });
   }, []);
 
   const handleLiftBan = useCallback(async (uid: string) => {
     await liftBan(uid);
+    void logModAction({ action: "lift_ban", targetOwnerUid: uid });
   }, []);
+
+  const handleWarn = useCallback(async (report: Report, reason: string) => {
+    const target = report.targetOwnerUid ?? (report.targetType === "user" ? report.targetId : undefined);
+    if (!target) throw new Error("Bu raporun sahibi belirlenemedi; uyarı gönderilemez.");
+    await warnUser({ uid: target, reason, reportId: report.id });
+  }, []);
+
+  const handleTakedown = useCallback(async (report: Report) => {
+    await takedownReportTarget(report);
+    // İçerik gittiyse rapor da kapanır: durum + raporlayana bildirim.
+    await handleReportStatus(report.id, "actioned", "İçerik kalıcı olarak kaldırıldı.");
+  }, [handleReportStatus]);
+
+  const handleResolveAppeal = useCallback(async (appealId: string, status: Exclude<AppealStatus, "open">) => {
+    await resolveAppeal(appealId, status);
+  }, []);
+
+  const handleCreateAnnouncement = useCallback(async (title: string, body: string) => {
+    await createAnnouncement(title, body);
+  }, []);
+
+  const handleDeleteAnnouncement = useCallback(async (announcementId: string) => {
+    await deleteAnnouncement(announcementId);
+  }, []);
+
+  const handleAppeal = useCallback(async (message: string) => {
+    await createAppeal(message);
+  }, []);
+
+  const handleFetchHistory = useCallback((targetUid: string) => fetchTargetHistory(targetUid), []);
+
+  const activeWarning = myWarnings.find((warning) => !warning.read) ?? null;
+  const myAppeal = myAppeals[0] ?? null;
+  const latestAnnouncement = announcements[0] ?? null;
 
   // Kabul edilen arkadaşlık isteği: karşı taraf benim listeme yazamaz (kural);
   // "friend_accepted" bildirimi gelince kendi listemi ben tamamlarım.
@@ -800,6 +921,11 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
       author: data.author || "Gezgin",
       photo: data.photo,
     });
+    analytics.placeCreated({
+      account: cloudAccount ? "cloud" : "device",
+      category: data.category,
+      hasPhoto: Boolean(data.photo),
+    });
     setDraft(null);
     setCategory(null);
     setPanelOpen(true);
@@ -849,11 +975,11 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
 
   const heroHidden = view.zoom > 3.4;
   // Keşif kartı yalnız ekranı bütünüyle kaplayan katmanlarda gizlenir.
-  // Profil / İzlerim / Topluluk açıldığında kart yerinde kalır (kullanıcı
-  // isteği 2026-10-25): panel kapanınca "kart nerede?" boşluğu oluşmuyor,
-  // kartın genişleme durumu ve sırada bekleyen öneri korunuyor. Masaüstünde
-  // sağdan açılan panel kartı örtmesin diye kart sola kaydırılır (shifted).
-  const dockVisible = !recordsOpen && !storyPlace && !atlasOpen && !settingsOpen && !drawerOpen;
+  // Profil / İzlerim / Topluluk / Atlas AI açıldığında kart yerinde kalır
+  // (kullanıcı isteği 2026-10-25 ve 2026-10-27): panel kapanınca "kart nerede?"
+  // boşluğu oluşmuyor, PC'de Atlas AI açıldığında alt keşif paneli kapanmıyor.
+  // Masaüstünde sağdan açılan panel kartı örtmesin diye kart sola kaydırılır.
+  const dockVisible = !recordsOpen && !storyPlace && !settingsOpen && !drawerOpen;
   useEffect(() => {
     if (!dockVisible) setDiscoverySpace(0);
   }, [dockVisible]);
@@ -887,8 +1013,6 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   const settingsContentProps: SettingsContentProps = {
     theme,
     onTheme: setTheme,
-    baseMap,
-    onBaseMap: setBaseMap,
     installApp,
     mapBounds: mapViewport?.bounds ?? null,
     location: {
@@ -902,13 +1026,12 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
     onAllowLocation: handleAllowLocation,
     onClearLocation: handleClearLocation,
     onShowLocation: handleShowLocation,
-    showLabels: labels,
-    onToggleLabels: () => setLabels((value) => !value),
-    terrainEnabled: terrain,
-    onToggleTerrain: () => setTerrain((value) => !value),
     // Raporlar yalnız bulut hesabında anlamlı (cihaz hesabı Firestore'a yazmaz).
     onOpenReports: cloudAccount
       ? () => { closePanels(); setReportsOpen(true); }
+      : undefined,
+    onOpenAdmin: cloudAccount && moderator
+      ? () => { closePanels(); setAdminOpen(true); }
       : undefined,
   };
 
@@ -1001,12 +1124,6 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         onZoomOut={() => mapRef.current?.zoomOut()}
         onReset={handleReset}
         onLocate={handleLocate}
-        onToggleLabels={() => setLabels((v) => !v)}
-        onToggleTerrain={() => setTerrain((v) => !v)}
-        labels={labels}
-        terrain={terrain}
-        weather={weather}
-        onToggleWeather={toggleWeather}
         onOpenLayers={() => {
           const next = !layersOpen;
           closePanels();
@@ -1036,6 +1153,8 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
           <MapLayersSheet
             open={layersOpen}
             onClose={() => setLayersOpen(false)}
+            baseMap={baseMap}
+            onBaseMap={setBaseMap}
             labels={labels}
             onToggleLabels={() => setLabels((v) => !v)}
             terrain={terrain}
@@ -1181,7 +1300,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         onDelete={handleDelete}
         onAdd={startAdd}
         shifted={feedOpen}
-        shiftedLeft={profileOpen}
+        shiftedLeft={profileOpen || atlasOpen || layersOpen}
         onOpenFeed={() => { closePanels(); setFeedOpen(true); }}
         accuracy={precise?.accuracy ?? null}
         locating={geo.status === "locating" || geo.status === "refining"}
@@ -1252,6 +1371,11 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         route={routeEditorRoute}
         onClose={() => setRouteEditorRoute(null)}
         onSaved={(route, visibility: RouteVisibility) => {
+          analytics.routePublished({
+            account: cloudAccount ? "cloud" : "device",
+            visibility: visibility === "private" ? "private" : "public",
+            stops: route.days.reduce((total, day) => total + day.stops.length, 0),
+          });
           setResumeRoute(route);
           setAtlasOpen(true);
           drawAtlasRoute(route, false);
@@ -1320,6 +1444,45 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
             bans={bans}
             onBan={handleBan}
             onLiftBan={handleLiftBan}
+            onWarn={handleWarn}
+            onTakedown={handleTakedown}
+            appeals={appeals}
+            onResolveAppeal={handleResolveAppeal}
+            modActions={modActions}
+            announcements={announcements}
+            onCreateAnnouncement={handleCreateAnnouncement}
+            onDeleteAnnouncement={handleDeleteAnnouncement}
+            onFetchHistory={handleFetchHistory}
+          />
+        </Suspense>
+      )}
+
+      {adminOpen && moderator && (
+        <Suspense fallback={null}>
+          <ReportsPanel
+            open={adminOpen}
+            admin
+            onClose={() => setAdminOpen(false)}
+            uid={user!.uid}
+            moderator={moderator}
+            myReports={myReports}
+            myReportsError={myReportsError}
+            queue={queue}
+            queueLoading={queueLoading}
+            queueError={queueError}
+            onStatus={handleReportStatus}
+            bans={bans}
+            onBan={handleBan}
+            onLiftBan={handleLiftBan}
+            onWarn={handleWarn}
+            onTakedown={handleTakedown}
+            appeals={appeals}
+            onResolveAppeal={handleResolveAppeal}
+            modActions={modActions}
+            announcements={announcements}
+            onCreateAnnouncement={handleCreateAnnouncement}
+            onDeleteAnnouncement={handleDeleteAnnouncement}
+            onFetchHistory={handleFetchHistory}
           />
         </Suspense>
       )}
@@ -1450,7 +1613,22 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
 
       {myBan && (
         <Suspense fallback={null}>
-          <SuspensionNotice ban={myBan} onSignOut={logout} />
+          <SuspensionNotice ban={myBan} appeal={myAppeal} onAppeal={handleAppeal} onSignOut={logout} />
+        </Suspense>
+      )}
+
+      {!myBan && activeWarning && (
+        <Suspense fallback={null}>
+          <WarningNotice warning={activeWarning} onAcknowledge={markWarningRead} />
+        </Suspense>
+      )}
+
+      {!myBan && latestAnnouncement && dismissedAnnouncement !== latestAnnouncement.id && (
+        <Suspense fallback={null}>
+          <AnnouncementBanner
+            announcement={latestAnnouncement}
+            onDismiss={(id) => { setDismissedAnnouncement(id); storageSet("atlasia.announcement.dismissed", id); }}
+          />
         </Suspense>
       )}
 

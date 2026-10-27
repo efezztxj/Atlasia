@@ -67,7 +67,7 @@ const profile = (uid: string, displayName: string): UserProfile => ({
 function renderTab() {
   const onStatus = vi.fn();
   const onError = vi.fn();
-  render(createElement(FriendsTab, {
+  const props = {
     currentUid: "me",
     currentName: "Ben",
     friends: [],
@@ -75,8 +75,9 @@ function renderTab() {
     isBlocked: () => false,
     onStatus,
     onError,
-  }));
-  return { onStatus, onError };
+  };
+  const rendered = render(createElement(FriendsTab, props));
+  return { ...rendered, props, onStatus, onError };
 }
 
 function input() {
@@ -210,5 +211,101 @@ describe("FriendsTab canlı arama yarışı (#76)", () => {
 
     await settle(h.pending[0], [profile("u-ali", "Ali Veli")]);
     expect(screen.getByText("Ali Veli")).toBeTruthy();
+  });
+
+  it("geçerli yeni ad yazıldığı anda önceki isteği geçersizleştirir (debounce beklenmez)", async () => {
+    renderTab();
+    await typeAndDebounce("al");
+
+    fireEvent.change(input(), { target: { value: "ali" } });
+    await settle(h.pending[0], [profile("u-eski", "Al Eski")]);
+    expect(screen.queryByText("Al Eski")).toBeNull();
+    expect(pushRecentSearch).not.toHaveBeenCalled();
+
+    await act(async () => { vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS); });
+    expect(h.pending.map((item) => item.term)).toEqual(["al", "ali"]);
+    await settle(h.pending[1], [profile("u-ali", "Ali Veli")]);
+    expect(screen.getByText("Ali Veli")).toBeTruthy();
+    expect(pushRecentSearch).toHaveBeenCalledTimes(1);
+  });
+
+  it("görünen eski sonuç, geçerli yeni ad yazıldığı anda temizlenir", async () => {
+    renderTab();
+    await typeAndDebounce("al");
+    await settle(h.pending[0], [profile("u-al", "Al Bir")]);
+    expect(screen.getByText("Al Bir")).toBeTruthy();
+
+    fireEvent.change(input(), { target: { value: "ali" } });
+    expect(screen.queryByText("Al Bir")).toBeNull();
+    await act(async () => { vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS); });
+    expect(h.pending.map((item) => item.term)).toEqual(["al", "ali"]);
+  });
+
+  it("geçerli yeni adın debounce'u dolmadan eski hata görünmez", async () => {
+    const { onError } = renderTab();
+    await typeAndDebounce("al");
+    fireEvent.change(input(), { target: { value: "ali" } });
+    await act(async () => { h.pending[0].reject(new Error("önceki sorgu hatası")); });
+    expect(onError).not.toHaveBeenCalled();
+
+    await act(async () => { vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS); });
+    expect(h.pending.map((item) => item.term)).toEqual(["al", "ali"]);
+    await settle(h.pending[1], [profile("u-ali", "Ali Veli")]);
+    expect(screen.getByText("Ali Veli")).toBeTruthy();
+  });
+
+  it("çipin hızlı hatası debounce ile ikinci istek başlatmaz; açık Ara eylemi yeniden dener", async () => {
+    h.recent = ["ali"];
+    const { onError } = renderTab();
+    fireEvent.click(screen.getByRole("button", { name: "ali" }));
+    expect(h.pending).toHaveLength(1);
+
+    await act(async () => { h.pending[0].reject(new Error("bağlantı kesildi")); });
+    expect(onError).toHaveBeenCalledTimes(1);
+    await act(async () => { vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS); });
+    expect(searchUserProfiles).toHaveBeenCalledTimes(1);
+
+    const form = input().closest("form");
+    expect(form).toBeTruthy();
+    fireEvent.submit(form as HTMLFormElement);
+    expect(searchUserProfiles).toHaveBeenCalledTimes(2);
+  });
+
+  it("al → ali → al dönüşünde eski isteğin finally bloğu yeni arama kilidini açmaz", async () => {
+    renderTab();
+    await typeAndDebounce("al");
+    fireEvent.change(input(), { target: { value: "ali" } });
+    fireEvent.change(input(), { target: { value: "al" } });
+    await act(async () => { vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS); });
+    expect(h.pending.map((item) => item.term)).toEqual(["al", "al"]);
+
+    await settle(h.pending[0], [profile("u-eski", "Al Eski")]);
+    const form = input().closest("form");
+    expect(form).toBeTruthy();
+    fireEvent.submit(form as HTMLFormElement);
+    expect(searchUserProfiles).toHaveBeenCalledTimes(2);
+
+    await settle(h.pending[1], [profile("u-yeni", "Al Yeni")]);
+    expect(screen.getByText("Al Yeni")).toBeTruthy();
+    expect(screen.queryByText("Al Eski")).toBeNull();
+    expect(pushRecentSearch).toHaveBeenCalledTimes(1);
+  });
+
+  it("panel söküldükten sonra bekleyen arama sonuç veya kişisel geçmiş yazmaz", async () => {
+    const { unmount } = renderTab();
+    await typeAndDebounce("ali");
+    unmount();
+    await settle(h.pending[0], [profile("u-ali", "Ali Veli")]);
+    expect(pushRecentSearch).not.toHaveBeenCalled();
+  });
+
+  it("bileşen hesap değişiminde eski arama metnini ve bekleyen sonucu temizler", async () => {
+    const { rerender, props } = renderTab();
+    await typeAndDebounce("ali");
+    rerender(createElement(FriendsTab, { ...props, currentUid: "other" }));
+    expect((input() as HTMLInputElement).value).toBe("");
+    await settle(h.pending[0], [profile("u-eski", "Ali Eski")]);
+    expect(screen.queryByText("Ali Eski")).toBeNull();
+    expect(pushRecentSearch).not.toHaveBeenCalled();
   });
 });

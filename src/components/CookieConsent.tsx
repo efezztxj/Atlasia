@@ -4,6 +4,7 @@ import {
   COOKIE_CONSENT_EVENT,
   COOKIE_PREFERENCES_EVENT,
   readCookieConsent,
+  saveCookieConsent,
   saveEssentialCookieConsent,
   type CookieConsentRecord,
 } from "../lib/cookieConsent";
@@ -67,6 +68,14 @@ export default function CookieConsent() {
     return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [open, saved, privacyOpen, dismiss]);
 
+  const handleSaveWithAnalytics = () => {
+    const { record } = saveCookieConsent({ analytics: true });
+    setSaved(record);
+    setOpen(false);
+    setDetailsOpen(false);
+    restoreFocus();
+  };
+
   const handleSave = () => {
     const { record } = saveEssentialCookieConsent();
     setSaved(record);
@@ -93,8 +102,8 @@ export default function CookieConsent() {
                 Çerez ve cihaz depolaması
               </h2>
               <p className="mt-1 text-[13px] leading-relaxed text-mint/75">
-                Reklam veya analitik çerezi kullanmıyoruz. Yalnız bu bilgilendirmeyi 12 ay hatırlayan zorunlu{" "}
-                <span className="font-semibold text-mint">atlasia_consent</span> çerezi ile tema, harita, oturum ve çevrimdışı önbellek depolaması çalışır.
+                Reklam çerezi kullanmıyoruz. Anonim kullanım ölçümü <span className="font-semibold text-mint">isteğe bağlıdır ve kapalı başlar</span>; açarsan hata ve temel olay sayaçları toplanır — kimlik, konum ve içerik gönderilmez. Zorunlu{" "}
+                <span className="font-semibold text-mint">atlasia_consent</span> çerezi bu tercihi 12 ay hatırlar.
               </p>
             </div>
             {saved && (
@@ -123,6 +132,12 @@ export default function CookieConsent() {
                 ))}
               </ul>
               <p>
+                <strong className="font-semibold text-mint">Anonim ölçüm:</strong> isteğe bağlıdır. Açtığında yalnız
+                şunlar gönderilir: hata türü ve mesajı (e-posta/telefon/konum temizlenir), oturum başına rastgele
+                kimlik, sayfa yolu (sorgu ve hash atılmış) ve sayaç olayları (kayıt, iz, rota, paylaşım). Çerez
+                kullanılmaz; reklam profili çıkarılmaz.
+              </p>
+              <p>
                 <strong className="font-semibold text-mint">Zorunlu çerez:</strong>{" "}
                 atlasia_consent (12 ay, Path=/, SameSite=Lax, HTTPS’de Secure) ve tarayıcı çerezi engellenirse atlasia.cookieConsent.v1 yerel yedeği.
               </p>
@@ -145,6 +160,13 @@ export default function CookieConsent() {
               className="btn-gold min-h-11 w-full rounded-full px-4 text-[13px] font-bold text-[#10241a]"
             >
               Yalnız zorunlularla devam et
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveWithAnalytics}
+              className="min-h-11 w-full rounded-full border border-leaf/30 px-4 text-[13px] font-semibold text-mint transition hover:border-leaf/60"
+            >
+              Anonim ölçümü açarak devam et
             </button>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <button

@@ -99,7 +99,7 @@ export default function AddDiscoveryModal({ draft, uploadPhoto, onClose, onSave 
   };
 
   return (
-    <div className="animate-fade fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 backdrop-blur-sm">
+    <div className="mobile-fullscreen-wrap animate-fade fixed inset-0 z-[55] grid place-items-center bg-black/60 p-4 backdrop-blur-sm md:z-50">
       <button type="button" tabIndex={-1} aria-label="Pencereyi kapat" className="absolute inset-0 cursor-default" onClick={onClose} />
       <form
         ref={panelRef}
@@ -107,22 +107,25 @@ export default function AddDiscoveryModal({ draft, uploadPhoto, onClose, onSave 
         aria-modal="true"
         aria-label="Keşif ekle"
         onSubmit={submit}
-        className="animate-rise thin-scroll relative max-h-[92vh] w-full max-w-[480px] overflow-y-auto rounded-3xl border border-leaf/25 bg-ink-2 p-6 shadow-2xl shadow-black/70"
+        className="mobile-fullscreen animate-rise thin-scroll relative max-h-[92vh] w-full max-w-[480px] overflow-y-auto rounded-3xl border border-leaf/25 bg-ink-2 p-6 shadow-2xl shadow-black/70"
       >
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Kapat"
-          className="absolute top-4 right-4 grid size-8 place-items-center rounded-full text-mint/60 transition hover:bg-white/10 hover:text-white"
-        >
-          <X className="size-4" />
-        </button>
-
-        <p className="text-[12px] font-bold tracking-[0.18em] text-sun uppercase">Yeni iz</p>
-        <h3 id="iz-title" className="font-display mt-1 text-2xl font-semibold tracking-tight text-white">
-          Bu noktaya bir iz bırak
-        </h3>
-        <p className="mt-1.5 text-[13px] text-mint/60">* işaretli alanlar zorunlu.</p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[12px] font-bold tracking-[0.18em] text-sun uppercase">Yeni iz</p>
+            <h3 id="iz-title" className="font-display mt-1 text-2xl font-semibold tracking-tight text-white">
+              Bu noktaya bir iz bırak
+            </h3>
+            <p className="mt-1.5 text-[13px] text-mint/60">* işaretli alanlar zorunlu.</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Kapat"
+            className="grid size-10 shrink-0 place-items-center rounded-full text-mint/60 transition hover:bg-white/10 hover:text-white"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
 
         <div className="mt-3 flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-[12px] text-mint/80">
           <MapPin className="size-4 shrink-0 text-leaf" />

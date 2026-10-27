@@ -18,9 +18,10 @@ import { db } from "./firebase";
  * - group_message   → iki taraf da groups/{targetId} üyesi
  * - report_received → reports/{targetId} (reporterUid == aktör); targetId
  *   içeriğin değil RAPOR belgesinin kimliğidir.
- * blocked / report_actioned / system istemciye kapalıdır (yönetici/sunucu
- * yazımı; bu projede sunucu yok) — tipler yalnız eski kayıtları okumak için
- * union'da durur.
+ * - report_actioned → reports/{targetId} (reviewerUid == aktör == inceleyen
+ *   moderatör, reporterUid == alıcı; durum reviewed/actioned olmalı)
+ * blocked / system istemciye kapalıdır (yönetici/sunucu yazımı; bu projede
+ * sunucu yok) — tipler yalnız eski kayıtları okumak için union'da durur.
  */
 export type NotificationType = "report_received" | "report_actioned" | "blocked" | "group_invite" | "group_message" | "friend_request" | "friend_accepted" | "friend_declined" | "system";
 

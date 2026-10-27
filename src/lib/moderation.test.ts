@@ -7,8 +7,15 @@ import {
   isBanActive,
   normalizeBan,
   normalizeReport,
+  normalizeAnnouncement,
+  normalizeAppeal,
+  normalizeModAction,
+  normalizeWarning,
+  validateAnnouncementInput,
+  validateAppealInput,
   validateBanInput,
   validateReportInput,
+  validateWarningInput,
 } from "./moderation";
 
 const base = {
@@ -131,3 +138,40 @@ function baseBan() {
     createdBy: "mod-1",
   };
 }
+
+describe("kademeli yaptırım sözleşmesi", () => {
+  it("uyarı: gerekçe 10–500, kendisi ve raporsuz uyarı reddedilir", () => {
+    const ok = { uid: "spammer", reason: "Küfürlü yorum tekrarı.", reportId: "report-1" };
+    expect(validateWarningInput(ok, "mod-1")).toBeNull();
+    expect(validateWarningInput({ ...ok, reason: "kısa" }, "mod-1")).toBe("warn/reason-too-short");
+    expect(validateWarningInput({ ...ok, reason: "x".repeat(501) }, "mod-1")).toBe("warn/reason-too-long");
+    expect(validateWarningInput({ ...ok, uid: "mod-1" }, "mod-1")).toBe("warn/self");
+    expect(validateWarningInput({ ...ok, reportId: " " }, "mod-1")).toBe("warn/report-invalid");
+    expect(validateWarningInput(ok, "")).toBe("auth/required");
+  });
+
+  it("itiraz: metin 10–500 olmalı", () => {
+    expect(validateAppealInput("Yanlış anlaşılma oldu.")).toBeNull();
+    expect(validateAppealInput("kısa")).toBe("appeal/too-short");
+    expect(validateAppealInput("x".repeat(501))).toBe("appeal/too-long");
+  });
+
+  it("duyuru: başlık ve gövde zorunlu ve sınırlı", () => {
+    expect(validateAnnouncementInput("Bakım", "Bu gece 01.00'de kısa bakım var.")).toBeNull();
+    expect(validateAnnouncementInput(" ", "metin")).toBe("announcement/title-invalid");
+    expect(validateAnnouncementInput("Başlık", " ")).toBe("announcement/body-invalid");
+    expect(validateAnnouncementInput("x".repeat(121), "metin")).toBe("announcement/title-invalid");
+  });
+
+  it("normalleştiriciler eksik alanlarda güvenli varsayılan verir", () => {
+    const warning = normalizeWarning("w1", { uid: "u1", reason: "Sebep", createdAt: 5 });
+    expect(warning.read).toBe(false);
+    expect(warning.reportId).toBe("");
+    const appeal = normalizeAppeal("a1", { uid: "u1", message: "İtiraz metni", createdAt: 7 });
+    expect(appeal.status).toBe("open");
+    const action = normalizeModAction("m1", { actorUid: "mod", action: "bilinmeyen", createdAt: 9 });
+    expect(action.action).toBe("report_status");
+    const announcement = normalizeAnnouncement("n1", { title: "Duyuru", createdAt: 11 });
+    expect(announcement.body).toBe("");
+  });
+});

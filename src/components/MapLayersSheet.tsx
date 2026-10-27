@@ -1,7 +1,8 @@
-import { Layers, RotateCcw, Tags, CloudSun, Mountain, X } from "lucide-react";
+import { CloudSun, Globe2, Layers, Map, Moon, Mountain, RotateCcw, Tags, X } from "lucide-react";
 import { usePanelAccess } from "../hooks/usePanelAccess";
 import { cn } from "../utils/cn";
 import { RAIN_PALETTE, TEMP_PALETTE, type WeatherMode, type WeatherStatus } from "../utils/mapWeather";
+import type { BaseMapStyle } from "./MapView";
 
 // Windy renk ölçeği tek yerde: Tailwind keyfi sınıfı yerine satır içi (CSS bütçesi).
 const WIND_GRADIENT = "linear-gradient(90deg,#5b6fd6,#3fa0d9,#35c98a,#d8d24a,#e69a3c,#d1567f,#8b3fa8)";
@@ -29,17 +30,25 @@ const MODE_DESCRIPTION: Record<WeatherMode, string> = {
   rain: "Yağış şiddeti · saatlik tahmin",
   temp: "2 m sıcaklık haritası",
 };
+const BASE_MAP_OPTIONS = [
+  { id: "satellite", label: "Uydu", icon: Globe2 },
+  { id: "dark", label: "Karanlık", icon: Moon },
+  { id: "street", label: "Sokak", icon: Map },
+  { id: "topographic", label: "Topoğrafik", icon: Mountain },
+] as const;
 
 /**
- * Katmanlar sayfası (denetim K-03).
+ * Katmanlar sayfası (denetim K-03 & kullanıcı kararı 2026-10-27).
  *
- * Telefonda harita katmanı denetimleri tek bir sayfada toplanır; masaüstünde
- * sağ raydaki düğmeler aynen kalır, bu sayfa aynı anahtarları gösterir.
- * Hava katmanı Windy benzeri rüzgâr akışıdır (`utils/mapWeather.ts`).
+ * Harita altlığı (Uydu, Karanlık, Sokak, Topoğrafik) ve harita gösterimi
+ * (Yer adları, 3B arazi, Hava katmanı) profilden çıkarılıp hem masaüstü
+ * hem telefonda kısayol çubuğundaki "Katmanlar" düğmesine taşındı.
  */
 interface Props {
   open: boolean;
   onClose: () => void;
+  baseMap: BaseMapStyle;
+  onBaseMap: (style: BaseMapStyle) => void;
   labels: boolean;
   onToggleLabels: () => void;
   terrain: boolean;
@@ -115,6 +124,8 @@ function Row({
 export default function MapLayersSheet({
   open,
   onClose,
+  baseMap,
+  onBaseMap,
   labels,
   onToggleLabels,
   terrain,
@@ -132,16 +143,17 @@ export default function MapLayersSheet({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[64] flex items-end justify-center bg-black/40 md:items-center">
+    <div className="mobile-fullscreen-wrap fixed inset-0 z-[64] flex items-end justify-end bg-black/40 md:items-center md:bg-transparent">
       <button type="button" className="absolute inset-0" onClick={onClose} aria-label="Katmanlar sayfasını kapat" />
       <section
+        id="map-layers"
         ref={panelRef as React.RefObject<HTMLElement>}
         role="dialog"
         aria-modal="true"
         aria-labelledby="map-layers-title"
-        className="animate-rise relative mb-[max(10px,env(safe-area-inset-bottom))] w-full max-w-[430px] overflow-hidden rounded-[24px] border border-white/12 bg-[#041d17] shadow-2xl md:mb-0"
+        className="panel-solid mobile-fullscreen animate-rise relative flex max-h-[min(78dvh,710px)] w-full max-w-[430px] flex-col overflow-y-auto rounded-[24px] border border-white/12 bg-ink-2 shadow-2xl md:right-20"
       >
-        <header className="flex items-center justify-between gap-3 px-4 pt-4 pb-2">
+        <header className="flex items-center justify-between gap-3 px-4 pt-2 pb-2 md:pt-4">
           <h2 id="map-layers-title" className="flex items-center gap-2 font-display text-base font-semibold text-mint">
             <Layers className="size-4 text-sun" />Katmanlar
           </h2>
@@ -150,29 +162,57 @@ export default function MapLayersSheet({
           </button>
         </header>
 
-        <div className="mt-1">
-          <Row
-            icon={Tags}
-            title="Yer adları"
-            description="Şehir, ülke ve deniz etiketleri"
-            checked={labels}
-            onToggle={onToggleLabels}
-          />
-          <Row
-            icon={Mountain}
-            title="3B arazi"
-            description="Yükseklik ve kabartma"
-            checked={terrain}
-            onToggle={onToggleTerrain}
-          />
-          <Row
-            icon={CloudSun}
-            title="Hava katmanı"
-            description={MODE_DESCRIPTION[weatherMode]}
-            checked={weather}
-            onToggle={onToggleWeather}
-            hint={WEATHER_HINT[weatherStatus]}
-          />
+        <div className="px-4 pt-2 pb-4">
+          <p className="text-[12px] font-semibold text-mint/70">Harita altlığı</p>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            {BASE_MAP_OPTIONS.map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                type="button"
+                aria-pressed={baseMap === id}
+                onClick={() => onBaseMap(id)}
+                className={cn(
+                  "flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 text-[13px] font-semibold transition",
+                  baseMap === id
+                    ? "border-sun/60 bg-sun/10 text-sun"
+                    : "border-leaf/20 text-mint/65 hover:border-leaf/45 hover:text-mint",
+                )}
+              >
+                <Icon className="size-4" />{label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 text-[11.5px] leading-relaxed text-mint/45">
+            Pinlerin, rota çizgin ve 3B arazi tercihin korunur.
+          </p>
+        </div>
+
+        <div className="border-t border-white/[0.07] pt-3">
+          <p className="px-4 pb-1 text-[12px] font-semibold text-mint/70">Harita gösterimi</p>
+          <div className="mt-1">
+            <Row
+              icon={Tags}
+              title="Yer adları"
+              description="Şehir, ülke ve deniz etiketleri"
+              checked={labels}
+              onToggle={onToggleLabels}
+            />
+            <Row
+              icon={Mountain}
+              title="3B arazi"
+              description="Yükseklik ve kabartma"
+              checked={terrain}
+              onToggle={onToggleTerrain}
+            />
+            <Row
+              icon={CloudSun}
+              title="Hava katmanı"
+              description={MODE_DESCRIPTION[weatherMode]}
+              checked={weather}
+              onToggle={onToggleWeather}
+              hint={WEATHER_HINT[weatherStatus]}
+            />
+          </div>
         </div>
 
         {weather && (
@@ -228,7 +268,7 @@ export default function MapLayersSheet({
           </div>
         )}
 
-        <footer className="mt-2 flex items-center justify-between gap-3 border-t border-white/[0.07] px-3 py-2">
+        <footer className="mt-auto flex items-center justify-between gap-3 border-t border-white/[0.07] px-3 py-2 md:mt-2">
           <button
             type="button"
             onClick={onReset}

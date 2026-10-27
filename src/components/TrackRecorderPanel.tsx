@@ -95,8 +95,7 @@ export default function TrackRecorderPanel({ uid, cloudAccount, onClose, onPrevi
 
   const summary = draft ? summarizeDraft(draft) : null;
 
-  return <section aria-labelledby="track-recorder-title" className="gold-frame glass-panel fixed bottom-[calc(26vh+env(safe-area-inset-bottom))] left-3 z-40 w-[min(370px,calc(100vw-24px))] rounded-[26px] p-5 text-mint md:bottom-7 md:left-6">
-    <span aria-hidden className="sheet-handle mb-3 md:hidden" />
+  return <section aria-labelledby="track-recorder-title" className="mobile-fullscreen gold-frame glass-panel fixed bottom-7 left-6 z-[55] flex w-[370px] flex-col overflow-y-auto rounded-[26px] p-5 text-mint md:z-40 md:block md:overflow-visible">
     <header className="flex items-start justify-between gap-3">
       <div>
         <h2 id="track-recorder-title" className="flex items-center gap-2.5 font-display text-lg font-semibold"><span className="btn-gold grid size-9 place-items-center rounded-full"><Activity className="size-[18px]" strokeWidth={2.2} /></span>Yürüyüş kaydı</h2>

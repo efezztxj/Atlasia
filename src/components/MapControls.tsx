@@ -1,4 +1,4 @@
-import { Activity, CloudSun, Globe2, Layers, Locate, RotateCcw, Sparkles, Tags, ZoomIn, ZoomOut } from "lucide-react";
+import { Activity, Layers, Locate, RotateCcw, Sparkles, ZoomIn, ZoomOut } from "lucide-react";
 import { cn } from "../utils/cn";
 
 interface Props {
@@ -6,15 +6,9 @@ interface Props {
   onZoomOut: () => void;
   onReset: () => void;
   onLocate: () => void;
-  onToggleLabels: () => void;
-  onToggleTerrain: () => void;
-  labels: boolean;
-  terrain: boolean;
-  weather: boolean;
-  onToggleWeather: () => void;
   onToggleTrackRecorder: () => void;
   trackRecorderOpen: boolean;
-  /** Mobilde tek "Katmanlar" düğmesi: yer adları, 3B arazi ve hava katmanı orada. */
+  /** Masaüstü ve telefonda tek "Katmanlar" düğmesi: altlık, yer adları, 3B arazi ve hava katmanı orada. */
   onOpenLayers: () => void;
   layersOpen: boolean;
   onToggleAtlas: () => void;
@@ -48,7 +42,7 @@ function RoundBtn({
   className?: string;
 }) {
   return (
-    <div className={cn("group relative", className)}>
+    <div className={cn("group relative shrink-0", className)}>
       <button
         type="button"
         onClick={onClick}
@@ -80,12 +74,6 @@ export default function MapControls({
   onZoomOut,
   onReset,
   onLocate,
-  onToggleLabels,
-  onToggleTerrain,
-  labels,
-  terrain,
-  weather,
-  onToggleWeather,
   onToggleTrackRecorder,
   trackRecorderOpen,
   onOpenLayers,
@@ -94,7 +82,6 @@ export default function MapControls({
   atlasOpen,
   hiddenOnMobile,
 }: Props) {
-  // Hava katmanı durumu App'te tutulur (Katmanlar sayfası ile tek kaynak).
   return (
     <div
       role="toolbar"
@@ -120,7 +107,7 @@ export default function MapControls({
       <RoundBtn label="Konumuma git" onClick={onLocate}>
         <Locate className="size-[18px]" />
       </RoundBtn>
-      {/* Mobil: tek Katmanlar düğmesi (yer adları, 3B arazi, hava katmanı). */}
+      {/* Masaüstü ve telefonda tek Katmanlar kısayolu: harita altlığı ve gösterim anahtarları. */}
       <RoundBtn
         label={layersOpen ? "Katmanlar sayfasını kapat" : "Katmanlar sayfasını aç"}
         onClick={onOpenLayers}
@@ -128,18 +115,8 @@ export default function MapControls({
         pressed={layersOpen}
         expanded={layersOpen}
         controls="map-layers"
-        className="md:hidden"
       >
         <Layers className="size-[18px]" />
-      </RoundBtn>
-      <RoundBtn label="Yer adları" onClick={onToggleLabels} active={labels} pressed={labels} className="max-md:hidden">
-        <Tags className="size-[18px]" />
-      </RoundBtn>
-      <RoundBtn label="3B arazi" onClick={onToggleTerrain} active={terrain} pressed={terrain} className="max-md:hidden">
-        <Globe2 className="size-[18px]" />
-      </RoundBtn>
-      <RoundBtn label="Hava katmanı" onClick={onToggleWeather} active={weather} pressed={weather} className="max-md:hidden">
-        <CloudSun className="size-[18px]" />
       </RoundBtn>
       <span aria-hidden className="mx-auto my-0.5 h-px w-5 bg-white/15 max-md:hidden" />
       <RoundBtn

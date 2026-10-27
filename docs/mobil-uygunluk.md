@@ -157,11 +157,13 @@ panel kapanınca alt bölgede boşluk kalıyor, kartın genişleme durumu ve sı
 bekleyen öneri sıfırlanıyordu.
 
 - `dockVisible` artık yalnız **ekranı bütünüyle kaplayan** katmanlarda false:
-  kayıtlar, hikâye, Atlas AI, ayarlar, çekmece. Profil / İzlerim / Topluluk
-  kartı gizlemiyor.
-- Masaüstünde sağdan açılan profil paneli kartı örtmesin diye kart sola kayar
-  (`shiftedLeft` → `lg:pr-[540px]`); topluluk paneli solda olduğu için kart
-  sağa kayar (`shifted` → `lg:pl-[420px]`).
+  kayıtlar, hikâye, ayarlar, çekmece. Profil / İzlerim / Topluluk / Atlas AI
+  kartı gizlemiyor (2026-10-27: PC'de Atlas AI açıldığında da alt keşif paneli
+  açık kalır).
+- Masaüstünde sağdan açılan profil ve Atlas AI panelleri kartı örtmesin diye
+  kart sola kayar (`shiftedLeft={profileOpen || atlasOpen}` → `lg:pr-[540px]`,
+  Atlas AI `md:right-20`); topluluk paneli solda olduğu için kart sağa kayar
+  (`shifted` → `lg:pl-[420px]`).
 - Kilit testi: `uiSurface.test.ts` → "keşif kartı kalıcılığı" (üç test).
 
 ### 3.7 Harita kapsülü 3 düğmeye indi, çakışma bitti
@@ -173,9 +175,13 @@ altın Atlas dairesiyle üst üste biniyordu (ekran görüntüsü: 2026-10-25).
 
 - Mobilde kapsül artık **Sıfırla · Konumum · Katmanlar**. Yakınlaştırma
   düğmeleri yalnız masaüstünde (telefonda iki parmakla yakınlaştırma).
-- Kapsülün alt sınırı sabit sayı değil,
-  `calc(var(--mobile-fab-bottom) + 58px)` → eylem çiftinin 46 px boyu + 12 px
-  nefes. Alt yığın kayınca kapsül de kayar; çakışma oluşamaz.
+- Kapsülün alt sınırı hem `.mobile-map-controls` hem `.mobile-bottom-stack-control`
+  üzerinde `max(calc(var(--mobile-fab-bottom, 168px) + 58px), calc(var(--discovery-occupied-space, 0px) + 68px))`
+  tabanına kilitlendi → eylem çiftinin 46 px boyu + 12 px nefes korunur,
+  sonradan gelen `.mobile-bottom-stack-control` kuralı kapsülü tekrar altın
+  Atlas AI düğmesinin üstüne indiremez. Ayrıca masaüstü kısa pencerelerde
+  (`max-height: 800px`) ray düğmeleri `shrink-0` ve kompakt ölçüyle ezilmeden
+  hizalanır.
 - Sıra numarasına dayalı gizleme (`:nth-of-type(n+5)`) kaldırıldı; görünürlük
   artık açık `max-md:hidden` sınıflarıyla yönetiliyor (CSS sırası değişse de
   bozulmaz).
@@ -204,6 +210,32 @@ ikonunda logo kırpılabiliyordu. Ayrı `icons/icon-maskable-512.png` üretildi
 maskable artık bu dosyayı gösteriyor. Kilit testi güncellendi: maskable ayrı
 dosya olmalı. `screenshots` alanı gerçek cihaz görüntüleri gerektirdiği için
 eklenmedi (uydurma görsel konmaz).
+
+### 3.10 Açılan tüm katmanlar telefonda tam ekran (`< 768 px`)
+
+Kullanıcı kararı (2026-10-27): telefonda bir panel, çekmece, sayfa veya pencere
+açıldığında yarım sayfa / yüzen kutu yerine kenardan kenara tam ekran (`100dvh`)
+çalışır.
+
+- `src/index.css` içinde `@media (max-width: 767px)` altında ortak
+  `.mobile-fullscreen`, `.mobile-fullscreen-bleed`, `.mobile-fullscreen-wrap`,
+  `.mobile-safe-top` ve `.mobile-safe-bottom` kuralları tanımlandı (`inset: 0`,
+  `width: 100%`, `max-width: none`, `height: 100dvh`, `border-radius: 0`,
+  `border-width: 0`, `env(safe-area-inset-top/bottom)`).
+- Kapsanan tüm yüzeyler: genişletilmiş Keşfet paneli (`BottomPanel`), Topluluk
+  (`SocialPanel`), Profil (`ProfilePanel` ve onay pencereleri), İzlerim
+  (`MyPlacesPanel`), Atlas AI (`AtlasAssistant`), Keşif menüsü (`Drawer`),
+  Kayıtlarım (`RecordsDock`), Yürüyüş kaydı (`TrackRecorderPanel`), Katmanlar
+  (`MapLayersSheet`), Bildirimler (`NotificationsPanel`), Yer arama
+  (`.mobile-search-sheet` + `SearchBox`), Yer detayı (`PlaceDetails`), Çevre /
+  sokak görünümü (`StreetPeek`), Gruplar ve arkadaşlar (`GroupsPanel`), Yeni iz
+  (`AddDiscoveryModal`), Rota düzenleyici (`RouteEditor`), Hikâye oluşturucu ve
+  görüntüleyici (`StoryComposer`, `StoryViewer`), Geri bildirim ve Rapor
+  (`FeedbackDialog`, `ReportDialog`), Yasal metinler (`LegalNotice`), Karşılama
+  (`Onboarding`), Ayarlar (`.settings-sheet`), Moderasyon/Raporlar ve Uyarı
+  (`WarningNotice`).
+- Harita üstündeki **daraltılmış** keşif kartı (`!open`, `88 px`) ve masaüstü
+  (`md:` ve üstü) yerleşimi aynen korundu (`src/config/mobileFullscreen.test.ts`).
 
 ---
 

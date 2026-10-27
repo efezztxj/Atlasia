@@ -20,11 +20,12 @@ describe("depo hijyeni", () => {
     expect(pkg.description).toContain("Atlasia");
   });
 
-  it("örnek ortam dosyası sekiz boş VITE_ değişkeni içerir ve README belge hedeflerini bağlar", () => {
-    // 7 üretim değişkeni (3 zorunlu Firebase + GEOCODER_URL + APPLE + PHONE + GOOGLE_MAPS_EMBED) + 1 yerel geliştirme (App Check debug token) = 8. T1-AUTH ile VITE_PHONE_AUTH_ENABLED eklendi (varsayılan kapalı).
+  it("örnek ortam dosyası dokuz boş VITE_ değişkeni içerir ve README belge hedeflerini bağlar", () => {
+    // 7 üretim değişkeni (3 zorunlu Firebase + GEOCODER_URL + APPLE + PHONE + GOOGLE_MAPS_EMBED) + 1 yerel geliştirme
+    // (App Check debug token) + 1 ölçüm toplayıcısı (VITE_TELEMETRY_ENDPOINT, boşsa ağ kapalı) = 9.
     const env = readFileSync(".env.example", "utf8");
     const viteVariables = env.split(/\r?\n/).filter((line) => line.startsWith("VITE_"));
-    expect(viteVariables).toHaveLength(8);
+    expect(viteVariables).toHaveLength(9);
     expect(viteVariables.every((line) => /^VITE_[A-Z0-9_]+=$/.test(line))).toBe(true);
 
     const readme = readFileSync("README.md", "utf8");

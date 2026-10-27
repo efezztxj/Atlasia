@@ -1,0 +1,43 @@
+name: Canlı Yapılandırma Doğrulaması
+
+# Cloudflare Pages ortam değişkenleri yalnız panelde görünür ve build log'una
+# API'den erişilemez. Bu iş, yayındaki paketi okuyarak üretimde hangi Firebase
+# yapılandırmasının gerçekten çalıştığını dışarıdan doğrular. Deploy yapmaz,
+# yalnız ölçer; geliştirme projesine bağlıysa iş kırmızıya döner.
+
+on:
+  # workflow_dispatch yalnız varsayılan dalda kayıtlıyken tetiklenebildiği için
+  # dal üzerinde de çalışabilsin diye push tetikleyicisi dar kapsamla eklendi.
+  push:
+    branches: [main, "arena/**"]
+    paths:
+      - "scripts/canli-yapilandirma.mjs"
+      - ".github/workflows/canli-dogrula.yml"
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  dogrula:
+    name: Yayındaki paketi denetle
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+
+      # Bağımlılık yok: betik yalnız Node'un yerleşik fetch'ini kullanır.
+      - name: Canlı yapılandırmayı denetle
+        run: node scripts/canli-yapilandirma.mjs
+        env:
+          ATLASIA_CANLI_BASE: ${{ vars.ATLASIA_CANLI_BASE }}
+          ATLASIA_URETIM_PROJESI: ${{ vars.ATLASIA_URETIM_PROJESI }}
