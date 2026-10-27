@@ -24,6 +24,16 @@ export interface WindSample {
 export interface WindPoint extends WindSample {
   lat: number;
   lng: number;
+  /** Anlık yağış, mm/saat. */
+  precipitation: number;
+  /** 2 m sıcaklık, °C. Veri yoksa null. */
+  temperature: number | null;
+  /** WMO hava kodu. Veri yoksa null. */
+  weatherCode: number | null;
+  /** Saatlik yağış (mm): [0] şimdiki saat, ... [HOURLY_HOURS-1]. */
+  hourly: number[];
+  /** Saatlik sıcaklık (°C), aynı dilimler. Veri yoksa boş dizi. */
+  hourlyTemperature: number[];
 }
 
 export interface WindField {
@@ -39,6 +49,8 @@ export type WindFetcher = (input: RequestInfo | URL, init?: RequestInit) => Prom
 
 export const WIND_GRID_ROWS = 4;
 export const WIND_GRID_COLUMNS = 6;
+/** Saatlik yağış dilimleyicisinin kapsadığı saat sayısı (0 = şimdi). */
+export const HOURLY_HOURS = 13;
 export const WIND_ENDPOINT = "https://api.open-meteo.com/v1/forecast";
 
 const TTL_MS = 10 * 60_000;
@@ -69,7 +81,12 @@ export function windRequestUrl(points: Array<{ lat: number; lng: number }>): str
   const url = new URL(WIND_ENDPOINT);
   url.searchParams.set("latitude", points.map((p) => p.lat.toFixed(3)).join(","));
   url.searchParams.set("longitude", points.map((p) => wrapLng(p.lng).toFixed(3)).join(","));
-  url.searchParams.set("current", "wind_speed_10m,wind_direction_10m");
+  url.searchParams.set(
+    "current",
+    "wind_speed_10m,wind_direction_10m,precipitation,temperature_2m,weather_code",
+  );
+  url.searchParams.set("hourly", "precipitation,temperature_2m");
+  url.searchParams.set("forecast_hours", String(HOURLY_HOURS));
   url.searchParams.set("wind_speed_unit", "ms");
   return url.toString();
 }
@@ -86,7 +103,35 @@ function parsePoints(raw: unknown, points: Array<{ lat: number; lng: number }>):
     const direction = current.wind_direction_10m;
     if (typeof speed !== "number" || !Number.isFinite(speed) || speed < 0) return;
     if (typeof direction !== "number" || !Number.isFinite(direction)) return;
-    out.push({ ...point, ...directionToVector(speed, direction) });
+    const record = entry as {
+      current: Record<string, unknown>;
+      hourly?: { precipitation?: unknown; temperature_2m?: unknown };
+    };
+    // Yağış/sıcaklık rüzgârla aynı yanıtta gelir; gelmezse 0/null kalır ve
+    // katman "veri yok" der — uydurma değer çizmez.
+    const numberOr = (value: unknown, fallback: number): number =>
+      typeof value === "number" && Number.isFinite(value) ? value : fallback;
+    const optionalNumber = (value: unknown): number | null =>
+      typeof value === "number" && Number.isFinite(value) ? value : null;
+    const hourlyRaw = record.hourly?.precipitation;
+    const hourly = Array.isArray(hourlyRaw)
+      ? hourlyRaw.slice(0, HOURLY_HOURS).map((value) => numberOr(value, 0))
+      : [];
+    const tempRaw = record.hourly?.temperature_2m;
+    const hourlyTemperature = Array.isArray(tempRaw)
+      ? tempRaw.slice(0, HOURLY_HOURS)
+        .map((value) => optionalNumber(value))
+        .filter((value): value is number => value !== null)
+      : [];
+    out.push({
+      ...point,
+      ...directionToVector(speed, direction),
+      precipitation: Math.max(0, numberOr(current.precipitation, 0)),
+      temperature: optionalNumber(current.temperature_2m),
+      weatherCode: optionalNumber(current.weather_code),
+      hourly,
+      hourlyTemperature,
+    });
   });
   return out;
 }
@@ -156,6 +201,34 @@ export function sampleWind(field: WindField, lat: number, lng: number): WindSamp
   const su = u / totalWeight;
   const sv = v / totalWeight;
   return { u: su, v: sv, speed: Math.sqrt(su * su + sv * sv) };
+}
+
+/**
+ * Bir ızgara noktasının `hourOffset` saat sonraki yağışı (mm/saat).
+ * Saatlik veri yoksa anlık yağışa düşer; ikisi de yoksa 0.
+ */
+export function precipitationAt(point: WindPoint, hourOffset = 0): number {
+  const offset = Math.max(0, Math.min(HOURLY_HOURS - 1, Math.round(hourOffset)));
+  const value = point.hourly[offset];
+  if (typeof value === "number" && Number.isFinite(value)) return Math.max(0, value);
+  const current = point.precipitation;
+  return typeof current === "number" && Number.isFinite(current) ? Math.max(0, current) : 0;
+}
+
+/**
+ * Bir ızgara noktasının `hourOffset` saat sonraki sıcaklığı (°C).
+ * Saatlik veri yoksa anlık sıcaklığa düşer; o da yoksa null.
+ */
+export function temperatureAt(point: WindPoint, hourOffset = 0): number | null {
+  const offset = Math.max(0, Math.min(HOURLY_HOURS - 1, Math.round(hourOffset)));
+  const value = point.hourlyTemperature[offset];
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  return point.temperature;
+}
+
+/** Alanın seçili saatteki en yüksek yağışı (mm/saat) — lejant/karar metni için. */
+export function maxPrecipitation(field: WindField, hourOffset = 0): number {
+  return field.points.reduce((max, point) => Math.max(max, precipitationAt(point, hourOffset)), 0);
 }
 
 export function clearWindCache(): void {

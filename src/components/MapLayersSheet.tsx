@@ -1,12 +1,35 @@
 import { CloudSun, Globe2, Layers, Map, Moon, Mountain, RotateCcw, Tags, X } from "lucide-react";
 import { usePanelAccess } from "../hooks/usePanelAccess";
 import { cn } from "../utils/cn";
-import type { WeatherStatus } from "../utils/mapWeather";
+import { RAIN_PALETTE, TEMP_PALETTE, type WeatherMode, type WeatherStatus } from "../utils/mapWeather";
 import type { BaseMapStyle } from "./MapView";
 
 // Windy renk ölçeği tek yerde: Tailwind keyfi sınıfı yerine satır içi (CSS bütçesi).
 const WIND_GRADIENT = "linear-gradient(90deg,#5b6fd6,#3fa0d9,#35c98a,#d8d24a,#e69a3c,#d1567f,#8b3fa8)";
 
+/** Lejant, çizimdeki paletlerden üretilir — iki yerde renk tutmak yok. */
+const RAIN_GRADIENT = `linear-gradient(90deg,${RAIN_PALETTE.slice(1).map((entry) => entry.color).join(",")})`;
+const TEMP_GRADIENT = `linear-gradient(90deg,${TEMP_PALETTE.map((entry) => entry.color).join(",")})`;
+
+// Segment yalnız metin: her yeni ikon lazyChunk'ı değil `iconsVendor` bütçesini
+// büyütüyor (bkz. scripts/bundle-budget.mjs). Üç kelime zaten kısa.
+const MODES: Array<{ id: WeatherMode; label: string }> = [
+  { id: "wind", label: "Rüzgâr" },
+  { id: "rain", label: "Yağış" },
+  { id: "temp", label: "Sıcaklık" },
+];
+
+const LEGENDS: Record<WeatherMode, { gradient: string; ticks: string[] }> = {
+  wind: { gradient: WIND_GRADIENT, ticks: ["0", "18", "36", "54", "72+ km/sa"] },
+  rain: { gradient: RAIN_GRADIENT, ticks: ["0", "1", "3", "8", "15+ mm/sa"] },
+  temp: { gradient: TEMP_GRADIENT, ticks: ["-5", "5", "14", "22", "30+ °C"] },
+};
+
+const MODE_DESCRIPTION: Record<WeatherMode, string> = {
+  wind: "Rüzgâr akışı ve hız ısı haritası",
+  rain: "Yağış şiddeti · saatlik tahmin",
+  temp: "2 m sıcaklık haritası",
+};
 const BASE_MAP_OPTIONS = [
   { id: "satellite", label: "Uydu", icon: Globe2 },
   { id: "dark", label: "Karanlık", icon: Moon },
@@ -33,6 +56,10 @@ interface Props {
   weather: boolean;
   onToggleWeather: () => void;
   weatherStatus: WeatherStatus;
+  weatherMode: WeatherMode;
+  onWeatherMode: (mode: WeatherMode) => void;
+  weatherHour: number;
+  onWeatherHour: (hour: number) => void;
   onReset: () => void;
 }
 
@@ -106,6 +133,10 @@ export default function MapLayersSheet({
   weather,
   onToggleWeather,
   weatherStatus,
+  weatherMode,
+  onWeatherMode,
+  weatherHour,
+  onWeatherHour,
   onReset,
 }: Props) {
   const panelRef = usePanelAccess(open, onClose, true);
@@ -176,7 +207,7 @@ export default function MapLayersSheet({
             <Row
               icon={CloudSun}
               title="Hava katmanı"
-              description="Rüzgâr akışı ve hız ısı haritası"
+              description={MODE_DESCRIPTION[weatherMode]}
               checked={weather}
               onToggle={onToggleWeather}
               hint={WEATHER_HINT[weatherStatus]}
@@ -186,10 +217,54 @@ export default function MapLayersSheet({
 
         {weather && (
           <div className="px-4 pb-1">
-            <div className="h-2 w-full rounded-full" style={{ backgroundImage: WIND_GRADIENT }} />
-            <div className="mt-1 flex justify-between text-[10px] font-semibold tracking-wide text-mint/55">
-              <span>0</span><span>18</span><span>36</span><span>54</span><span>72+ km/sa</span>
+            <div role="group" aria-label="Hava katmanı ölçümü" className="flex gap-1 rounded-full bg-white/[0.05] p-1">
+              {MODES.map(({ id, label }) => (
+                <button
+                  key={id}
+                  type="button"
+                  aria-pressed={weatherMode === id}
+                  onClick={() => onWeatherMode(id)}
+                  className={cn(
+                    "flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded-full px-2 text-[12px] font-semibold transition",
+                    weatherMode === id ? "bg-sun text-ink" : "text-mint/70 hover:bg-white/5",
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
+
+            <div className="mt-3 h-2 w-full rounded-full" style={{ backgroundImage: LEGENDS[weatherMode].gradient }} />
+            <div className="mt-1 flex justify-between text-[10px] font-semibold tracking-wide text-mint/55">
+              {LEGENDS[weatherMode].ticks.map((tick) => <span key={tick}>{tick}</span>)}
+            </div>
+
+            {weatherMode !== "wind" && (
+              <label className="mt-3 block">
+                <span className="flex items-baseline justify-between text-[11px] font-semibold text-mint/70">
+                  <span>Tahmin saati</span>
+                  <span className="text-sun">
+                    {weatherHour === 0 ? "şimdi" : `+${weatherHour} sa`}
+                  </span>
+                </span>
+                <input
+                  type="range"
+                  min={0}
+                  max={12}
+                  step={1}
+                  value={weatherHour}
+                  onChange={(event) => onWeatherHour(Number(event.target.value))}
+                  aria-label="Tahmin saati (saat sonra)"
+                  className="mt-1.5 h-8 w-full accent-[#f3c870]"
+                />
+              </label>
+            )}
+
+            {weatherMode === "rain" && (
+              <p className="mt-1 text-[11px] leading-relaxed text-mint/50">
+                Rotada yağmur riski taşıyan duraklar altın halkayla işaretlenir.
+              </p>
+            )}
           </div>
         )}
 

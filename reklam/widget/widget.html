@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="tr" data-tema="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Atlasia · Hafta sonu hava + rota</title>
+<meta name="description" content="Bu hafta sonu hava nasıl, hangi gün gitmeli, hangi rota? Ücretsiz, gömülebilir kutu." />
+<style>
+  :root{
+    --font: ui-sans-serif,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    --gold:#b8801f;
+    --mint:#1f8f6c;
+    --ink:#0f1a17;
+    --muted:#5b6b66;
+    --line:rgba(15,26,23,.12);
+    --bg:#ffffff;
+    --bg2:#f6f7f4;
+    --shadow:0 1px 2px rgba(15,26,23,.06), 0 8px 24px -12px rgba(15,26,23,.18);
+    --bar:#dfe5df;
+  }
+  html[data-tema="dark"]{
+    --gold:#f3c870;
+    --mint:#7ee0b8;
+    --ink:#f1f0e9;
+    --muted:rgba(222,240,235,.60);
+    --line:rgba(255,255,255,.10);
+    --bg:#020d17;
+    --bg2:#061819;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 18px 40px -20px rgba(0,0,0,.7);
+    --bar:rgba(255,255,255,.12);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:transparent;
+    color:var(--ink);
+    font-family:var(--font);
+    font-size:14px;
+    line-height:1.45;
+    -webkit-font-smoothing:antialiased;
+  }
+  .card{
+    background:var(--bg);
+    border:1px solid var(--line);
+    border-radius:14px;
+    box-shadow:var(--shadow);
+    padding:16px 16px 14px;
+    max-width:460px;
+    margin:0 auto;
+  }
+  header{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .brand{display:flex;align-items:center;gap:8px;font-size:10.5px;letter-spacing:.20em;
+    text-transform:uppercase;font-weight:700;color:var(--muted)}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--mint);flex:none}
+  .q{font-size:20px;line-height:1.16;letter-spacing:-.03em;font-weight:700;margin:12px 0 0;
+    color:var(--ink)}
+  .q em{font-style:normal;color:var(--gold)}
+  .sub{margin:6px 0 0;font-size:12.5px;color:var(--muted)}
+
+  .hero{
+    margin-top:12px;padding:12px 13px;border-radius:11px;
+    background:var(--bg2);border:1px solid var(--line);
+    display:flex;align-items:center;gap:12px;
+  }
+  .hero .ic{font-size:26px;line-height:1;flex:none;filter:saturate(.9)}
+  .hero .txt{min-width:0}
+  .hero .day{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);
+    font-weight:700}
+  .hero .big{font-size:17px;font-weight:700;letter-spacing:-.02em;margin-top:2px}
+  .hero .big span{font-weight:600;color:var(--muted);font-size:13px;letter-spacing:0}
+  .verdict{margin:8px 0 0;font-size:12.5px;color:var(--muted)}
+
+  .strip{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px;margin-top:12px}
+  .d{border:1px solid var(--line);border-radius:9px;padding:8px 4px 7px;text-align:center}
+  .d[aria-current="true"]{border-color:var(--gold);background:color-mix(in srgb, var(--gold) 12%, transparent)}
+  .d .n{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  .d .t{font-size:14px;font-weight:700;margin-top:3px;letter-spacing:-.02em}
+  .d .r{font-size:10px;color:var(--muted);margin-top:2px;display:flex;align-items:center;
+    justify-content:center;gap:3px}
+  .d .bar{height:2px;border-radius:2px;background:var(--bar);margin-top:6px;overflow:hidden}
+  .d .bar i{display:block;height:100%;border-radius:2px;background:var(--mint)}
+  .d .bar i.mid{background:var(--gold)}
+  .d .bar i.high{background:#c0503a}
+
+  .rota{margin-top:12px;padding-top:11px;border-top:1px dashed var(--line)}
+  .rota .lab{font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);
+    font-weight:700}
+  .rota .path{margin-top:5px;font-size:13px;font-weight:600;letter-spacing:-.01em}
+  .rota .meta{margin-top:3px;font-size:11.5px;color:var(--muted)}
+
+  .cta{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:13px}
+  .btn{
+    display:inline-flex;align-items:center;gap:7px;text-decoration:none;
+    background:var(--ink);color:var(--bg);
+    padding:10px 14px;border-radius:9px;font-size:12.5px;font-weight:700;letter-spacing:-.01em;
+    border:1px solid transparent;transition:.15s;white-space:nowrap;
+  }
+  html[data-tema="dark"] .btn{background:var(--gold);color:#0b120e}
+  .btn:hover{transform:translateY(-1px)}
+  .btn:focus-visible{outline:2px solid var(--mint);outline-offset:2px}
+  .note{font-size:10px;color:var(--muted);text-align:right;line-height:1.35}
+
+  .skel{height:210px;display:flex;align-items:center;justify-content:center;
+    font-size:12px;color:var(--muted)}
+  .err{margin-top:10px;font-size:11.5px;color:var(--muted);border-left:2px solid var(--gold);
+    padding-left:8px}
+  [hidden]{display:none!important}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="card" id="card">
+  <header>
+    <div class="brand"><span class="dot" aria-hidden="true"></span>Atlasia · hafta sonu</div>
+    <div class="brand" id="flag" hidden style="color:var(--gold)">örnek veri</div>
+  </header>
+
+  <h1 class="q" id="q">Bu hafta sonu <em>nereye?</em></h1>
+  <p class="sub" id="sub" aria-live="polite">Hava yükleniyor…</p>
+
+  <div id="body">
+    <div class="skel">Tahmin getiriliyor…</div>
+  </div>
+
+  <div class="cta">
+    <a class="btn" id="cta" href="#" rel="noopener">
+      Rotanı çiz <span aria-hidden="true">→</span>
+    </a>
+    <div class="note">Hava: <a href="https://open-meteo.com/" target="_blank" rel="noopener" style="color:inherit">Open-Meteo</a> · CC BY 4.0<br>örnek rota, gerçek hava</div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var Q = new URLSearchParams(location.search);
+
+  /* ---------- şehirler ---------- */
+  var CITIES = {
+    izmir:      { ad: "İzmir",      lat: 38.4237, lng: 27.1428, ek: "de", rota: { path: "Kemeraltı → Kızlarağası Hanı → Agora", km: 2.4 } },
+    istanbul:   { ad: "İstanbul",   lat: 41.0082, lng: 28.9784, ek: "da", rota: { path: "Balat → Fener → Ayvansaray", km: 2.1 } },
+    kapadokya:  { ad: "Kapadokya",  lat: 38.6431, lng: 34.8289, ek: "da", rota: { path: "Göreme → Uçhisar Kalesi → Güvercinlik", km: 5.6 } },
+    efes:       { ad: "Selçuk",     lat: 37.9411, lng: 27.3417, ek: "ta", rota: { path: "Efes → Meryem Ana Evi → Selçuk Kalesi", km: 4.2 } },
+    pamukkale:  { ad: "Pamukkale",  lat: 37.9203, lng: 29.1206, ek: "de", rota: { path: "Travertenler → Hierapolis → Kleopatra Havuzu", km: 3.0 } },
+    ankara:     { ad: "Ankara",     lat: 39.9334, lng: 32.8597, ek: "da", rota: { path: "Hamamönü → Ankara Kalesi → Kaleiçi", km: 2.6 } },
+    antalya:    { ad: "Antalya",    lat: 36.8841, lng: 30.7056, ek: "da", rota: { path: "Kaleiçi → Hadrianus Kapısı → Yat Limanı", km: 1.8 } },
+    bodrum:     { ad: "Bodrum",     lat: 37.0344, lng: 27.4305, ek: "da", rota: { path: "Bodrum Kalesi → Marina → Bardakçı", km: 2.2 } }
+  };
+
+  var key = (Q.get("sehir") || Q.get("city") || "izmir").toLowerCase();
+  var city = CITIES[key] || CITIES.izmir;
+  var tema = (Q.get("tema") || "auto").toLowerCase();
+  var utm = (Q.get("utm") || "genel").replace(/[^a-z0-9_-]/gi, "").slice(0, 40) || "genel";
+
+  if (tema === "auto") {
+    var dark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    document.documentElement.dataset.tema = dark ? "dark" : "light";
+  } else {
+    document.documentElement.dataset.tema = tema === "light" ? "light" : "dark";
+  }
+
+  document.getElementById("q").innerHTML = "Bu hafta sonu <em>" + esc(city.ad) + "</em>'" + city.ek + " hava nasıl?";
+  document.title = "Bu hafta sonu " + city.ad + "'" + city.ek + " hava nasıl? · Atlasia";
+
+  var CTA = "https://atlasia.pages.dev/?utm_source=widget&utm_medium=embed&utm_campaign=hafta-sonusu&utm_content=" + encodeURIComponent(utm);
+  document.getElementById("cta").href = CTA;
+
+  var GUN = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
+  var GUN_K = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
+  var ICONS = {
+    clear: "☀️", partly: "⛅", cloudy: "☁️", fog: "🌫️", drizzle: "🌦️",
+    rain: "🌧️", heavy: "⛈️", snow: "🌨️", storm: "⚡"
+  };
+
+  /* Ürünle aynı eşikler: src/utils/weather.ts → rainRisk (30 / 60) */
+  function riskOf(pct) { return pct >= 60 ? "high" : pct >= 30 ? "mid" : "low"; }
+  function bucket(code) {
+    if (code <= 1) return "clear";
+    if (code <= 3) return "partly";
+    if (code === 45 || code === 48) return "fog";
+    if (code >= 51 && code <= 57) return "drizzle";
+    if (code >= 61 && code <= 67) return "rain";
+    if (code >= 71 && code <= 77) return "snow";
+    if (code >= 80 && code <= 82) return "heavy";
+    if (code >= 85 && code <= 86) return "snow";
+    return "storm";
+  }
+  function label(code) {
+    var b = bucket(code);
+    return { clear: "Açık", partly: "Parçalı bulutlu", cloudy: "Kapalı", fog: "Sisli",
+      drizzle: "Çisenti", rain: "Yağmur", heavy: "Sağanak", snow: "Kar", storm: "Fırtına" }[b];
+  }
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  /* 0 = en iyi. Yağış, sıcaklık ve rüzgâr cezalı. */
+  function score(d) {
+    var s = d.pct * 1.0 + d.mm * 6;
+    if (d.code >= 95) s += 30;
+    if (d.tMax > 32) s += (d.tMax - 32) * 3;
+    if (d.tMax < 6) s += (6 - d.tMax) * 3;
+    if (d.wind > 40) s += (d.wind - 40) * 0.8;
+    return s;
+  }
+  function verdictFor(sc, pct) {
+    if (pct >= 60) return "Yağmur ihtimali yüksek. Açık alanları kısalt, kapalı mola ekle.";
+    if (pct >= 30) return "Fena değil. Şemsiyeyi yanına al, rotayı esnek tut.";
+    if (sc < 12) return "Gitmek için iyi gün. Kalabalık da az olur.";
+    return "Uygun görünüyor. Sabah erken başlarsan daha rahat.";
+  }
+
+  function render(days) {
+    /* Hafta sonu: yakın 7 gün içindeki Cumartesi/Pazar; yoksa ilk 2 gün. */
+    var weekend = days.filter(function (d) { return d.dow === 0 || d.dow === 6; });
+    var pool = weekend.length ? weekend : days.slice(0, 2);
+    var best = pool.slice().sort(function (a, b) { return score(a) - score(b); })[0];
+    var sc = score(best);
+    var isWeekend = weekend.length > 0;
+
+    document.getElementById("sub").textContent = isWeekend
+      ? city.ad + " · en iyi gün " + GUN[best.dow].toLowerCase() + " · " + label(best.code).toLowerCase()
+      : city.ad + " · hafta sonu tahmini yok, en yakın gün";
+
+    var strip = days.slice(0, 5).map(function (d) {
+      var r = riskOf(d.pct);
+      return '<div class="d" aria-current="' + (d.iso === best.iso) + '">'
+        + '<div class="n">' + GUN_K[d.dow] + "</div>"
+        + '<div class="t">' + Math.round(d.tMax) + "°</div>"
+        + '<div class="r">' + ICONS[bucket(d.code)] + " %" + Math.round(d.pct) + "</div>"
+        + '<div class="bar" aria-hidden="true"><i class="' + (r === "high" ? "high" : r === "mid" ? "mid" : "") + '" style="width:' + Math.max(4, Math.min(100, d.pct)) + '%"></i></div>'
+        + "</div>";
+    }).join("");
+
+    document.getElementById("body").innerHTML =
+      '<div class="hero">'
+      + '<div class="ic" aria-hidden="true">' + ICONS[bucket(best.code)] + "</div>"
+      + '<div class="txt">'
+      + '<div class="day">' + GUN[best.dow] + " · " + best.iso.slice(8, 10) + "." + best.iso.slice(5, 7) + "</div>"
+      + '<div class="big">' + Math.round(best.tMax) + "° <span>/ " + Math.round(best.tMin) + "° · %" + Math.round(best.pct) + " yağış</span></div>"
+      + "</div></div>"
+      + '<p class="verdict">' + esc(verdictFor(sc, best.pct)) + "</p>"
+      + '<div class="strip">' + strip + "</div>"
+      + '<div class="rota">'
+      + '<div class="lab">bu gün için rota</div>'
+      + '<div class="path">' + esc(city.rota.path) + "</div>"
+      + '<div class="meta">' + city.rota.km.toFixed(1).replace(".", ",") + " km · yürüyerek · " + Math.round(city.rota.km * 15) + " dk</div>"
+      + "</div>";
+
+    postHeight();
+  }
+
+  function postHeight() {
+    if (window.parent === window) return;
+    try {
+      window.parent.postMessage({
+        type: "atlasia-widget-height",
+        height: Math.ceil(document.getElementById("card").getBoundingClientRect().height + 16)
+      }, "*");
+    } catch (e) { /* yoksay */ }
+  }
+
+  /* ---------- örnek veri (çevrimdışı / kota / engel) ---------- */
+  function demoDays(reason) {
+    var out = [];
+    var base = new Date();
+    var seed = [0.10, 0.65, 0.25, 0.05, 0.45, 0.80, 0.15];
+    for (var i = 0; i < 7; i += 1) {
+      var dt = new Date(base.getTime() + i * 86400000);
+      var p = Math.round(seed[i] * 100);
+      out.push({
+        iso: dt.toISOString().slice(0, 10),
+        dow: dt.getDay(),
+        tMax: 23 - (i % 3),
+        tMin: 14 - (i % 2),
+        pct: p,
+        mm: p >= 60 ? 4.2 : p >= 30 ? 1.1 : 0,
+        wind: 14,
+        code: p >= 60 ? 61 : p >= 30 ? 2 : 1
+      });
+    }
+    var flag = document.getElementById("flag");
+    flag.hidden = false;
+    flag.title = reason;
+    return out;
+  }
+
+  var TTL = 30 * 60 * 1000; /* 30 dk: aynı sekmede tekrar istek yok */
+  function cacheKey() { return "atlasia-wx:" + city.lat.toFixed(2) + "," + city.lng.toFixed(2); }
+  function readCache() {
+    try {
+      var raw = sessionStorage.getItem(cacheKey());
+      if (!raw) return null;
+      var o = JSON.parse(raw);
+      if (!o || !o.at || Date.now() - o.at > TTL || !o.days) return null;
+      return o.days;
+    } catch (e) { return null; }
+  }
+  function writeCache(days) {
+    try { sessionStorage.setItem(cacheKey(), JSON.stringify({ at: Date.now(), days: days })); }
+    catch (e) { /* gizli mod / kota: sessizce geç */ }
+  }
+
+  function load() {
+    var cached = readCache();
+    if (cached) { render(cached); return; }
+    var url = "https://api.open-meteo.com/v1/forecast?latitude=" + city.lat + "&longitude=" + city.lng
+      + "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,wind_speed_10m_max"
+      + "&timezone=auto&forecast_days=7";
+
+    var ctrl = new AbortController();
+    var timer = setTimeout(function () { ctrl.abort(); }, 6000);
+
+    fetch(url, { signal: ctrl.signal })
+      .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+      .then(function (j) {
+        clearTimeout(timer);
+        var d = j && j.daily;
+        if (!d || !d.time || !d.time.length) throw new Error("boş yanıt");
+        var days = d.time.map(function (t, i) {
+          var dt = new Date(t + "T12:00:00");
+          return {
+            iso: t,
+            dow: dt.getDay(),
+            tMax: num(d.temperature_2m_max[i], 20),
+            tMin: num(d.temperature_2m_min[i], 12),
+            pct: num(d.precipitation_probability_max && d.precipitation_probability_max[i], 0),
+            mm: num(d.precipitation_sum && d.precipitation_sum[i], 0),
+            wind: num(d.wind_speed_10m_max && d.wind_speed_10m_max[i], 0),
+            code: num(d.weather_code[i], 2)
+          };
+        });
+        writeCache(days);
+        render(days);
+      })
+      .catch(function (e) {
+        clearTimeout(timer);
+        render(demoDays("Canlı tahmin alınamadı (" + (e && e.message ? e.message : "ağ") + "). Örnek veri gösteriliyor."));
+      });
+  }
+
+  function num(v, d) { return typeof v === "number" && isFinite(v) ? v : d; }
+
+  load();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(postHeight);
+  window.addEventListener("resize", postHeight);
+})();
+</script>
+</body>
+</html>

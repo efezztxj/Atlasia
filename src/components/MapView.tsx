@@ -12,7 +12,7 @@ import openFreeMapDarkStyle from "../data/openFreeMapDarkStyle.json";
 import type { PlaceViewport } from "../lib/firestoreData";
 import type { Place, RouteLeg, ViewState } from "../types";
 import { shouldAdvanceSpin } from "../utils/mapLifecycle";
-import type { WeatherLayerHandle } from "../utils/mapWeather";
+import type { WeatherLayerHandle, WeatherMode, WeatherStopMark } from "../utils/mapWeather";
 import { attachMapResume } from "../lib/mapResume";
 
 maplibregl.setWorkerUrl(maplibreWorkerUrl);
@@ -597,6 +597,16 @@ export default function MapView({
     let weatherWanted = false;
     let weatherDisposed = false;
     let weatherLayer: WeatherLayerHandle | null = null;
+    // Katman henüz kurulmamışken gelen seçimler kaybolmasın: istek burada tutulur.
+    let weatherMode: WeatherMode = "wind";
+    let weatherHour = 0;
+    let weatherStops: WeatherStopMark[] = [];
+    const applyWeatherSelection = () => {
+      if (!weatherLayer) return;
+      weatherLayer.setMode(weatherMode);
+      weatherLayer.setHour(weatherHour);
+      weatherLayer.setStops(weatherStops);
+    };
     const onWeatherToggle = (event: Event) => {
       weatherWanted = (event as CustomEvent<boolean>).detail === true;
       if (weatherLayer) { weatherLayer.setEnabled(weatherWanted); return; }
@@ -604,10 +614,25 @@ export default function MapView({
       void import("../utils/mapWeather").then(({ createWeatherLayer }) => {
         if (weatherDisposed) return;
         weatherLayer ??= createWeatherLayer(map);
+        applyWeatherSelection();
         weatherLayer.setEnabled(weatherWanted);
       }, () => window.dispatchEvent(new CustomEvent("atlasia:weather-unavailable")));
     };
+    const onWeatherMode = (event: Event) => {
+      const detail = (event as CustomEvent<{ mode?: WeatherMode; hour?: number }>).detail;
+      if (!detail) return;
+      if (detail.mode) weatherMode = detail.mode;
+      if (typeof detail.hour === "number") weatherHour = detail.hour;
+      applyWeatherSelection();
+    };
+    const onWeatherStops = (event: Event) => {
+      const detail = (event as CustomEvent<WeatherStopMark[]>).detail;
+      weatherStops = Array.isArray(detail) ? detail : [];
+      if (weatherLayer) weatherLayer.setStops(weatherStops);
+    };
     window.addEventListener("atlasia:weather-toggle", onWeatherToggle);
+    window.addEventListener("atlasia:weather-mode", onWeatherMode);
+    window.addEventListener("atlasia:weather-stops", onWeatherStops);
     map.once("style.load", () => setReady(true));
     if (map.isStyleLoaded()) setReady(true);
 
@@ -673,6 +698,8 @@ export default function MapView({
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("atlasia:weather-toggle", onWeatherToggle);
+      window.removeEventListener("atlasia:weather-mode", onWeatherMode);
+      window.removeEventListener("atlasia:weather-stops", onWeatherStops);
       weatherDisposed = true;
       weatherLayer?.destroy();
       markers.forEach((value) => value.marker.remove());
