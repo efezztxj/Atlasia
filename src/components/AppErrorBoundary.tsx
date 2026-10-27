@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Compass, RefreshCcw, TriangleAlert } from "lucide-react";
+import { getTelemetry } from "../lib/telemetry";
 
 interface Props { children: ReactNode; }
 interface State { failed: boolean; }
@@ -13,6 +14,8 @@ export default class AppErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error("[Atlasia] Beklenmeyen arayüz hatası:", error, info.componentStack);
+    // Ölçüm: bileşen yığını gönderilmez (PII taşıyabilir), yalnız sınır adı.
+    getTelemetry().captureError(error, { source: "AppErrorBoundary", boundary: "root" });
   }
 
   private reload = () => {

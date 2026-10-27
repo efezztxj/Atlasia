@@ -20,6 +20,7 @@ import LandingPage from "./components/LandingPage";
 import RecordsDock from "./components/RecordsDock";
 import RouteEditor from "./components/RouteEditor";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { analytics } from "./lib/analytics";
 import { CollectionsProvider, isCloudAccount } from "./hooks/useCollections";
 import type { WeatherStatus } from "./utils/mapWeather";
 import { GUIDE_PLACES } from "./data/places";
@@ -885,6 +886,11 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
       author: data.author || "Gezgin",
       photo: data.photo,
     });
+    analytics.placeCreated({
+      account: cloudAccount ? "cloud" : "device",
+      category: data.category,
+      hasPhoto: Boolean(data.photo),
+    });
     setDraft(null);
     setCategory(null);
     setPanelOpen(true);
@@ -1333,6 +1339,11 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         route={routeEditorRoute}
         onClose={() => setRouteEditorRoute(null)}
         onSaved={(route, visibility: RouteVisibility) => {
+          analytics.routePublished({
+            account: cloudAccount ? "cloud" : "device",
+            visibility: visibility === "private" ? "private" : "public",
+            stops: route.days.reduce((total, day) => total + day.stops.length, 0),
+          });
           setResumeRoute(route);
           setAtlasOpen(true);
           drawAtlasRoute(route, false);

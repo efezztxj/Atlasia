@@ -9,6 +9,7 @@ import UpdateNotice from "./components/UpdateNotice";
 import { captureInviteFromLocation } from "./utils/inviteLink";
 import { initAccessibilityPrefs } from "./hooks/useAccessibilityPrefs";
 import { initTheme } from "./hooks/useTheme";
+import { startTelemetry } from "./lib/telemetryBootstrap";
 
 // Davet bağlantısı giriş ekranından önce yakalanır; girişten sonra açılır.
 captureInviteFromLocation();
@@ -16,6 +17,10 @@ captureInviteFromLocation();
 // Kalıcı görünüm tercihlerini ilk boyamadan önce uygula.
 initTheme();
 initAccessibilityPrefs();
+
+// Ölçüm katmanı (P0-2 hata izleme, P0-3 analitik). Uç nokta tanımlı değilse ve
+// çerez onayı yoksa ağa hiçbir şey gitmez; bkz. lib/telemetryBootstrap.ts.
+startTelemetry({ endpoint: import.meta.env.VITE_TELEMETRY_ENDPOINT ?? null });
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

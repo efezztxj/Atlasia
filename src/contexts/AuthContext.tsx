@@ -12,6 +12,7 @@ import {
 } from "../lib/auth";
 import { AccountError, type AtlasAccount, type AuthBackend, type SignupDetails } from "../lib/accountTypes";
 import { registerDeviceAccount, restoreDeviceSession, signInDeviceAccount, signOutDeviceAccount, updateDeviceProfile } from "../lib/deviceAccounts";
+import { analytics } from "../lib/analytics";
 
 export interface SignupResult {
   recoveryCode?: string;
@@ -104,9 +105,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ++generation.current;
     if (authBackend === "device") {
       setUser(await signInDeviceAccount(email, password));
+      analytics.signIn({ account: "device" });
     } else {
       const credential = await signInEmail(email, password);
       setUser(toFirebaseAccount(credential.user));
+      analytics.signIn({ account: "cloud" });
     }
     setChecking(false);
   };
@@ -121,11 +124,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           ++generation.current;
           setUser(await created.finish());
           setChecking(false);
+          analytics.signUp({ account: "device" });
         },
       };
     }
     const credential = await registerEmail(details);
     setUser(toFirebaseAccount(credential.user));
+    analytics.signUp({ account: "cloud" });
     return {};
   };
 

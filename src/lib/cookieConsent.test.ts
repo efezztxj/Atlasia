@@ -1,23 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { storageRemove } from "../utils/storage";
-import {
-  COOKIE_CONSENT_EVENT,
-  COOKIE_CONSENT_MAX_AGE_SECONDS,
-  COOKIE_CONSENT_NAME,
-  COOKIE_CONSENT_STORAGE_KEY,
-  COOKIE_CONSENT_VERSION,
-  COOKIE_PREFERENCES_EVENT,
-  expireCookie,
-  formatConsentDate,
-  formatCookieHeader,
-  hasCookieConsent,
-  openCookiePreferences,
-  parseCookieConsent,
-  readCookieConsent,
-  readRawCookie,
-  saveEssentialCookieConsent,
-} from "./cookieConsent";
+import { COOKIE_CONSENT_EVENT, COOKIE_CONSENT_MAX_AGE_SECONDS, COOKIE_CONSENT_NAME, COOKIE_CONSENT_STORAGE_KEY, COOKIE_CONSENT_VERSION, COOKIE_PREFERENCES_EVENT, expireCookie, formatConsentDate, formatCookieHeader, hasCookieConsent, openCookiePreferences, parseCookieConsent, readCookieConsent, readRawCookie, saveCookieConsent, saveEssentialCookieConsent } from "./cookieConsent";
 
 function clearTestConsent() {
   expireCookie(COOKIE_CONSENT_NAME, false);
@@ -175,5 +159,33 @@ describe("hasCookieConsent kapısı ve yardımcı olaylar", () => {
     expect(listener).toHaveBeenCalledOnce();
     expect(formatConsentDate("2026-10-25T10:00:00.000Z")).toContain("2026");
     expect(formatConsentDate("bozuk")).toBe("");
+  });
+});
+
+describe("saveCookieConsent · açık rıza", () => {
+  it("varsayılan yalnız zorunlu: analitik ve pazarlama kapalı", () => {
+    const { record } = saveCookieConsent({}, new Date("2026-10-27T10:00:00.000Z"));
+    expect(record.analytics).toBe(false);
+    expect(record.marketing).toBe(false);
+    expect(record.updatedAt).toBe("2026-10-27T10:00:00.000Z");
+  });
+
+  it("analitik tercihi kalıcılaşır ve kapıyı açar", () => {
+    const { record } = saveCookieConsent({ analytics: true }, new Date("2026-10-27T10:00:00.000Z"));
+    expect(record.analytics).toBe(true);
+    expect(hasCookieConsent(record, "analytics")).toBe(true);
+    expect(hasCookieConsent(record, "marketing")).toBe(false);
+  });
+
+  it("pazarlama analitikten bağımsız", () => {
+    const { record } = saveCookieConsent({ analytics: false, marketing: true });
+    expect(hasCookieConsent(record, "analytics")).toBe(false);
+    expect(hasCookieConsent(record, "marketing")).toBe(true);
+  });
+
+  it("saveEssentialCookieConsent hâlâ yalnız zorunlu yazar (geriye uyum)", () => {
+    const { record } = saveEssentialCookieConsent();
+    expect(record.analytics).toBe(false);
+    expect(record.marketing).toBe(false);
   });
 });
