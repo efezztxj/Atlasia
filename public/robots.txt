@@ -1,2 +1,7 @@
+# Atlasia — herkese açık tanıtım ve uygulama kabuğu.
 User-agent: *
 Allow: /
+# Kişisel ekranlar ve hesap akışları indekslenmez (SPA içinde istemci tarafında).
+Disallow: /uygulama/?tab=profil
+
+Sitemap: https://atlasia.pages.dev/sitemap.xml
