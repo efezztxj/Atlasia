@@ -6,7 +6,16 @@ vi.mock("./windField", async (importOriginal) => {
   return { ...actual, fetchWindField: (...args: unknown[]) => fetchWindField(...args) };
 });
 
-import { advanceLngLat, createWeatherLayer, paletteIndex, particleBudget, windColor } from "./mapWeather";
+import {
+  advanceLngLat,
+  createWeatherLayer,
+  isWet,
+  paletteIndex,
+  particleBudget,
+  rainColor,
+  temperatureColor,
+  windColor,
+} from "./mapWeather";
 
 /**
  * Denetim 2026-10-25: Windy benzeri hava katmanı.
@@ -18,7 +27,17 @@ const FIELD = {
   rows: 1,
   columns: 1,
   at: 0,
-  points: [{ lat: 38.5, lng: 27, u: 8, v: 0, speed: 8 }],
+  points: [{
+    lat: 38.5,
+    lng: 27,
+    u: 8,
+    v: 0,
+    speed: 8,
+    precipitation: 0.4,
+    temperature: 21,
+    weatherCode: 61,
+    hourly: [0.4, 1.6, 5.2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  }],
 };
 
 interface FakeCtx {
@@ -200,5 +219,104 @@ describe("hava katmanı yaşam döngüsü", () => {
     layer.setEnabled(true);
     await flush();
     expect(host.appendChild).not.toHaveBeenCalled();
+  });
+});
+
+describe("yağış ve sıcaklık ölçümleri", () => {
+  it("yağış rengi şiddetle bantlanır; kuru hava şeffaf", () => {
+    expect(rainColor(0)).toBe("transparent");
+    expect(rainColor(0.1)).toBe("transparent");
+    expect(rainColor(0.5)).toBe("#2f7fd0");
+    expect(rainColor(2)).toBe("#3fa0d9");
+    expect(rainColor(6)).toBe("#35c98a");
+    expect(rainColor(40)).toBe("#8b3fa8");
+    expect(isWet(0.14)).toBe(false);
+    expect(isWet(0.15)).toBe(true);
+    expect(isWet(Number.NaN)).toBe(false);
+  });
+
+  it("sıcaklık rengi ölçeklenir, veri yoksa null döner", () => {
+    expect(temperatureColor(-10)).toBe("#4a63c8");
+    expect(temperatureColor(0)).toBe("#3fa0d9");
+    expect(temperatureColor(20)).toBe("#d8d24a");
+    expect(temperatureColor(35)).toBe("#d1567f");
+    expect(temperatureColor(null)).toBeNull();
+    expect(temperatureColor(Number.NaN)).toBeNull();
+  });
+});
+
+describe("hava katmanı ölçüm modları", () => {
+  it("yağış modu parçacık tuvalini gizler, rüzgâr geri açınca gösterir", async () => {
+    fetchWindField.mockResolvedValue(FIELD);
+    const { layer, appended } = setup();
+    layer.setEnabled(true);
+    await flush();
+    // appendChild sırası: [ısı, parçacık] — tuval nesnesi stil taşıyan asıl öğedir.
+    const particleCanvas = appended[1] as unknown as { style: Record<string, string> };
+    // Katman kurulurken mod uygulanır: rüzgâr varsayılanı görünür.
+    expect(particleCanvas.style.display).toBe("block");
+
+    layer.setMode("rain");
+    expect(particleCanvas.style.display).toBe("none");
+
+    layer.setMode("wind");
+    expect(particleCanvas.style.display).toBe("block");
+    layer.destroy();
+  });
+
+  it("yağış modunda kuru nokta leke çizmez, seçili saat yağışlıysa çizer", async () => {
+    fetchWindField.mockResolvedValue(FIELD);
+    const { layer, canvases } = setup();
+    layer.setEnabled(true);
+    await flush();
+    const heatCtx = canvases[0].ctx as unknown as { createRadialGradient: ReturnType<typeof vi.fn> };
+
+    // 0. saat: 0,4 mm — yağış var.
+    layer.setMode("rain");
+    const afterNow = heatCtx.createRadialGradient.mock.calls.length;
+    expect(afterNow).toBeGreaterThan(0);
+
+    // 5. saat: 0 mm — leke çizilmemeli (gradient üretilmez).
+    layer.setHour(5);
+    const afterDry = heatCtx.createRadialGradient.mock.calls.length;
+    layer.setHour(2);
+    expect(heatCtx.createRadialGradient.mock.calls.length).toBeGreaterThan(afterDry);
+    layer.destroy();
+  });
+
+  it("saat dilimi 0–12 aralığına kırpılır", async () => {
+    fetchWindField.mockResolvedValue(FIELD);
+    const { layer, canvases } = setup();
+    layer.setEnabled(true);
+    await flush();
+    const heatCtx = canvases[0].ctx as unknown as { createRadialGradient: ReturnType<typeof vi.fn> };
+    layer.setMode("rain");
+    const base = heatCtx.createRadialGradient.mock.calls.length;
+    layer.setHour(99);
+    // 12. saat kuru: leke yok → sayaç artmaz, çökmez.
+    expect(heatCtx.createRadialGradient.mock.calls.length).toBe(base);
+    layer.setHour(-4);
+    expect(heatCtx.createRadialGradient.mock.calls.length).toBeGreaterThan(base);
+    layer.destroy();
+  });
+
+  it("rota durakları yalnız yağış modunda halkayla işaretlenir", async () => {
+    fetchWindField.mockResolvedValue(FIELD);
+    const { layer, canvases } = setup();
+    layer.setEnabled(true);
+    await flush();
+    const heatCtx = canvases[0].ctx as unknown as { arc: ReturnType<typeof vi.fn> };
+    const radii = () => heatCtx.arc.mock.calls.map((call) => call[2]);
+    layer.setStops([
+      { lat: 38.5, lng: 27, rainy: true },
+      { lat: 38.4, lng: 27.2, rainy: false },
+    ]);
+    // Rüzgâr modunda halka yok (leke yarıçapı en az 70 px, halka sabit 13).
+    expect(radii()).not.toContain(13);
+    layer.setMode("rain");
+    // Yalnız yağmurlu durak: bir halka (r=13) + bir nokta (r=4.5).
+    expect(radii()).toContain(13);
+    expect(radii()).toContain(4.5);
+    layer.destroy();
   });
 });

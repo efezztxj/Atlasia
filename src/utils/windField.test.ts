@@ -3,7 +3,10 @@ import {
   clearWindCache,
   directionToVector,
   fetchWindField,
+  HOURLY_HOURS,
   kmh,
+  maxPrecipitation,
+  precipitationAt,
   sampleWind,
   vectorToDirection,
   windRequestUrl,
@@ -39,7 +42,10 @@ describe("rüzgâr vektörü", () => {
 describe("istek URL'i", () => {
   it("çoklu konum, m/s birimi ve sarılmış boylam kullanır", () => {
     const url = new URL(windRequestUrl([{ lat: 38.5, lng: 190 }, { lat: 39, lng: 27 }]));
-    expect(url.searchParams.get("current")).toBe("wind_speed_10m,wind_direction_10m");
+    expect(url.searchParams.get("current"))
+      .toBe("wind_speed_10m,wind_direction_10m,precipitation,temperature_2m,weather_code");
+    expect(url.searchParams.get("hourly")).toBe("precipitation");
+    expect(url.searchParams.get("forecast_hours")).toBe("13");
     expect(url.searchParams.get("wind_speed_unit")).toBe("ms");
     expect(url.searchParams.get("longitude")).toBe("-170.000,27.000");
   });
@@ -78,6 +84,55 @@ describe("fetchWindField", () => {
   });
 });
 
+describe("yağış ve sıcaklık alanları", () => {
+  const payload = [
+    {
+      current: { wind_speed_10m: 4, wind_direction_10m: 180, precipitation: 0.6, temperature_2m: 21.5, weather_code: 61 },
+      hourly: { precipitation: [0.6, 1.2, 4.8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+    },
+  ];
+
+  it("anlık yağış, sıcaklık ve hava kodu ayrıştırılır", async () => {
+    const fetcher = vi.fn(async () => new Response(JSON.stringify(payload), { status: 200 }));
+    const field = await fetchWindField(bounds, fetcher, 1);
+    const point = field?.points[0];
+    expect(point?.precipitation).toBeCloseTo(0.6, 6);
+    expect(point?.temperature).toBeCloseTo(21.5, 6);
+    expect(point?.weatherCode).toBe(61);
+    expect(point?.hourly).toHaveLength(HOURLY_HOURS);
+  });
+
+  it("saatlik dilim seçilir, aralık dışı sınırlanır", async () => {
+    const fetcher = vi.fn(async () => new Response(JSON.stringify(payload), { status: 200 }));
+    const point = (await fetchWindField(bounds, fetcher, 1))!.points[0];
+    expect(precipitationAt(point, 0)).toBeCloseTo(0.6, 6);
+    expect(precipitationAt(point, 2)).toBeCloseTo(4.8, 6);
+    // Aralık dışı: en yakın uca kırpılır, taşmaz.
+    expect(precipitationAt(point, 99)).toBe(0);
+    expect(precipitationAt(point, -5)).toBeCloseTo(0.6, 6);
+  });
+
+  it("saatlik veri yoksa anlık yağışa düşer", async () => {
+    const fetcher = vi.fn(async () => new Response(JSON.stringify([
+      { current: { wind_speed_10m: 2, wind_direction_10m: 0, precipitation: 1.5 } },
+    ]), { status: 200 }));
+    const field = await fetchWindField(bounds, fetcher, 1);
+    const point = field!.points[0];
+    expect(point.hourly).toEqual([]);
+    expect(precipitationAt(point, 5)).toBeCloseTo(1.5, 6);
+    expect(point.temperature).toBeNull();
+    expect(maxPrecipitation(field!, 0)).toBeCloseTo(1.5, 6);
+  });
+
+  it("yağış alanı gelmezse 0 sayılır, sıcaklık null kalır (uydurma yok)", async () => {
+    const fetcher = vi.fn(async () => response(Array.from({ length: 24 }, () => ({ speed: 3, direction: 90 }))));
+    const field = await fetchWindField(bounds, fetcher, 1);
+    expect(field?.points[0].precipitation).toBe(0);
+    expect(field?.points[0].temperature).toBeNull();
+    expect(maxPrecipitation(field!, 0)).toBe(0);
+  });
+});
+
 describe("sampleWind", () => {
   const field: WindField = {
     bounds,
@@ -85,8 +140,8 @@ describe("sampleWind", () => {
     columns: 2,
     at: 0,
     points: [
-      { lat: 38, lng: 26, u: 10, v: 0, speed: 10 },
-      { lat: 38, lng: 28, u: 0, v: 10, speed: 10 },
+      { lat: 38, lng: 26, u: 10, v: 0, speed: 10, precipitation: 0, temperature: 18, weatherCode: 1, hourly: [] },
+      { lat: 38, lng: 28, u: 0, v: 10, speed: 10, precipitation: 2.4, temperature: 12, weatherCode: 61, hourly: [2.4] },
     ],
   };
 

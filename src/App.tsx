@@ -21,7 +21,7 @@ import RecordsDock from "./components/RecordsDock";
 import RouteEditor from "./components/RouteEditor";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { CollectionsProvider, isCloudAccount } from "./hooks/useCollections";
-import type { WeatherStatus } from "./utils/mapWeather";
+import type { WeatherMode, WeatherStatus } from "./utils/mapWeather";
 import { GUIDE_PLACES } from "./data/places";
 import { parseShortcutTab, stripShortcutParam } from "./utils/appShortcut";
 import { formatAccuracy, useGeolocation } from "./hooks/useGeolocation";
@@ -103,6 +103,18 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   // Adım 11: her günün bacağı varsa rota mod ayrımlı çizilir (patika kesikli,
   // yol düz); yoksa durak durak düz çizgiye düşer.
   const drawAtlasRoute = (route: AtlasRoute, preview: boolean) => {
+    // Rota + yağış: durakların varış havası planlayıcıda zaten hesaplanmış
+    // (`stop.weather`). Hava katmanı bunu ek ağ isteği olmadan işaretler.
+    // Önizlemede işaret yok — kullanıcı henüz onaylamadı.
+    window.dispatchEvent(new CustomEvent("atlasia:weather-stops", {
+      detail: preview
+        ? []
+        : route.days.flatMap((day) => day.stops).map((stop) => ({
+          lat: stop.lat,
+          lng: stop.lng,
+          rainy: stop.weather?.risk === "rainy",
+        })),
+    }));
     const legs = routeDrawLegs(route);
     if (legs) {
       mapRef.current?.drawRouteLegs(legs, preview);
@@ -180,6 +192,10 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   // Hava katmanı tek kaynaktan yönetilir: Katmanlar sayfası + sağ ray düğmesi.
   const [weather, setWeather] = useState(false);
   const [weatherStatus, setWeatherStatus] = useState<WeatherStatus>("empty");
+  // Hava katmanının ölçümü ve tahmin saati: Katmanlar sayfasından seçilir,
+  // MapView'a `atlasia:weather-mode` olayıyla taşınır (katman geç açılsa da uygulanır).
+  const [weatherMode, setWeatherMode] = useState<WeatherMode>("wind");
+  const [weatherHour, setWeatherHour] = useState(0);
   const [layersOpen, setLayersOpen] = useState(false);
   const [baseMap, setBaseMap] = useState<BaseMapStyle>(initialMapStyle);
   const [view, setView] = useState<ViewState>({ zoom: 2, lng: 30, lat: 30 });
@@ -385,6 +401,12 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
       window.removeEventListener("atlasia:weather-status", status);
     };
   }, []);
+
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("atlasia:weather-mode", {
+      detail: { mode: weatherMode, hour: weatherHour },
+    }));
+  }, [weatherMode, weatherHour]);
 
   const toggleWeather = useCallback(() => {
     setWeather((current) => {
@@ -1021,6 +1043,10 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
             weather={weather}
             onToggleWeather={toggleWeather}
             weatherStatus={weatherStatus}
+            weatherMode={weatherMode}
+            onWeatherMode={setWeatherMode}
+            weatherHour={weatherHour}
+            onWeatherHour={setWeatherHour}
             onReset={handleReset}
           />
         </Suspense>

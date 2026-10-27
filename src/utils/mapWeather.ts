@@ -17,10 +17,31 @@
  */
 import type { Map as MapLibreMap } from "maplibre-gl";
 import { debounce } from "./geoGrid";
-import { fetchWindField, sampleWind, type WindField, type WindSample } from "./windField";
+import {
+  fetchWindField,
+  precipitationAt,
+  sampleWind,
+  type WindField,
+  type WindPoint,
+  type WindSample,
+} from "./windField";
+
+/** Hava katmanının gösterdiği ölçüm. Tek tuval, üç anlam. */
+export type WeatherMode = "wind" | "rain" | "temp";
+
+/** Rotada yağmur riski taşıyan durak (rota + yağış bağlantısı). */
+export interface WeatherStopMark {
+  lat: number;
+  lng: number;
+  rainy: boolean;
+}
 
 export interface WeatherLayerHandle {
   setEnabled(enabled: boolean): void;
+  setMode(mode: WeatherMode): void;
+  /** Saatlik yağış dilimi: 0 = şimdi, 12 = 12 saat sonra. */
+  setHour(offset: number): void;
+  setStops(stops: WeatherStopMark[]): void;
   destroy(): void;
 }
 
@@ -41,6 +62,41 @@ const PALETTE: Array<{ maxKmh: number; color: string }> = [
 export function windColor(speedMs: number): string {
   const speed = Number.isFinite(speedMs) ? Math.max(0, speedMs) * 3.6 : 0;
   return (PALETTE.find((entry) => speed < entry.maxKmh) ?? PALETTE[PALETTE.length - 1]).color;
+}
+
+/** Yağış şiddeti (mm/saat) → renk. 0.15 altı "kuru" sayılır, çizilmez. */
+export const RAIN_PALETTE: Array<{ maxMm: number; color: string }> = [
+  { maxMm: 0.15, color: "transparent" },
+  { maxMm: 1, color: "#2f7fd0" },
+  { maxMm: 3, color: "#3fa0d9" },
+  { maxMm: 8, color: "#35c98a" },
+  { maxMm: 15, color: "#d8d24a" },
+  { maxMm: Number.POSITIVE_INFINITY, color: "#8b3fa8" },
+];
+
+export function rainColor(mmPerHour: number): string {
+  const value = Number.isFinite(mmPerHour) ? Math.max(0, mmPerHour) : 0;
+  return (RAIN_PALETTE.find((entry) => value < entry.maxMm) ?? RAIN_PALETTE[RAIN_PALETTE.length - 1]).color;
+}
+
+/** Sıcaklık (°C) → renk. Veri yoksa null (nokta çizilmez). */
+export const TEMP_PALETTE: Array<{ maxC: number; color: string }> = [
+  { maxC: -5, color: "#4a63c8" },
+  { maxC: 5, color: "#3fa0d9" },
+  { maxC: 14, color: "#35c98a" },
+  { maxC: 22, color: "#d8d24a" },
+  { maxC: 30, color: "#e69a3c" },
+  { maxC: Number.POSITIVE_INFINITY, color: "#d1567f" },
+];
+
+export function temperatureColor(celsius: number | null): string | null {
+  if (celsius === null || !Number.isFinite(celsius)) return null;
+  return (TEMP_PALETTE.find((entry) => celsius < entry.maxC) ?? TEMP_PALETTE[TEMP_PALETTE.length - 1]).color;
+}
+
+/** Yağış yoksa leke çizilmesin: eşik `RAIN_PALETTE[0].maxMm` ile aynı. */
+export function isWet(mmPerHour: number): boolean {
+  return Number.isFinite(mmPerHour) && mmPerHour >= RAIN_PALETTE[0].maxMm;
 }
 
 export function paletteIndex(speedMs: number): number {
@@ -135,6 +191,9 @@ export function createWeatherLayer(map: MapLibreMap): WeatherLayerHandle {
   let run = 0;
   let controller: AbortController | null = null;
   let status: WeatherStatus = "empty";
+  let mode: WeatherMode = "wind";
+  let hourOffset = 0;
+  let stops: WeatherStopMark[] = [];
 
   const reducedMotion = () => typeof window !== "undefined"
     && typeof window.matchMedia === "function"
@@ -175,6 +234,23 @@ export function createWeatherLayer(map: MapLibreMap): WeatherLayerHandle {
     return { width, height };
   };
 
+  /** Seçili moda göre nokta rengi; çizilmeyecekse null. */
+  const pointColor = (point: WindPoint): string | null => {
+    if (mode === "rain") {
+      const mm = precipitationAt(point, hourOffset);
+      return isWet(mm) ? rainColor(mm) : null;
+    }
+    if (mode === "temp") return temperatureColor(point.temperature);
+    return windColor(point.speed);
+  };
+
+  /** Yağış modunda yoğunluk arttıkça leke koyulaşır. */
+  const pointAlpha = (point: WindPoint): number => {
+    if (mode !== "rain") return HEAT_ALPHA;
+    const mm = precipitationAt(point, hourOffset);
+    return Math.min(0.85, 0.2 + mm * 0.06);
+  };
+
   const drawHeat = () => {
     if (!heat || !field) return;
     const { width, height } = size();
@@ -195,10 +271,13 @@ export function createWeatherLayer(map: MapLibreMap): WeatherLayerHandle {
     for (const point of projected) {
       const { x, y } = point.screen;
       if (x < -radius || y < -radius || x > width + radius || y > height + radius) continue;
+      // Ölçüm seçimi tek yerde: mod değişince yalnız `needsHeat` işaretlenir.
+      const color = pointColor(point);
+      if (!color) continue;
+      const alpha = pointAlpha(point);
       const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
-      const color = windColor(point.speed);
-      gradient.addColorStop(0, hexToRgba(color, HEAT_ALPHA));
-      gradient.addColorStop(0.55, hexToRgba(color, HEAT_ALPHA * 0.55));
+      gradient.addColorStop(0, hexToRgba(color, alpha));
+      gradient.addColorStop(0.55, hexToRgba(color, alpha * 0.55));
       gradient.addColorStop(1, hexToRgba(color, 0));
       ctx.fillStyle = gradient;
       ctx.beginPath();
@@ -206,6 +285,23 @@ export function createWeatherLayer(map: MapLibreMap): WeatherLayerHandle {
       ctx.fill();
     }
     ctx.globalCompositeOperation = "source-over";
+    // Rota + yağış: rotadaki yağmurlu duraklar halkayla işaretlenir (yalnız yağış modunda).
+    if (mode === "rain") {
+      for (const stop of stops) {
+        if (!stop.rainy) continue;
+        const { x, y } = map.project([stop.lng, stop.lat]);
+        if (x < -40 || y < -40 || x > width + 40 || y > height + 40) continue;
+        ctx.beginPath();
+        ctx.arc(x, y, 13, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(243,200,112,0.95)";
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(x, y, 4.5, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(243,200,112,0.95)";
+        ctx.fill();
+      }
+    }
     needsHeat = false;
     lastHeatAt = typeof performance !== "undefined" ? performance.now() : Date.now();
   };
@@ -301,7 +397,9 @@ export function createWeatherLayer(map: MapLibreMap): WeatherLayerHandle {
     const host = map.getCanvasContainer();
     const width = Math.max(1, host.clientWidth);
     const height = Math.max(1, host.clientHeight);
-    if (!document.hidden) {
+    // Parçacık animasyonu yalnız rüzgâr modunda anlamlı: yağış/sıcaklıkta
+    // gereksiz kare harcamamak için döngü çizim yapmadan devam eder.
+    if (!document.hidden && mode === "wind") {
       if (reducedMotion()) drawArrows(width, height);
       else step(now, width, height);
     }
@@ -344,6 +442,17 @@ export function createWeatherLayer(map: MapLibreMap): WeatherLayerHandle {
     }
   }, REFRESH_DEBOUNCE_MS);
 
+  /** Moda göre hangi tuvalin görüneceğini ayarlar; ikisi de hep takılı kalır. */
+  const applyMode = () => {
+    if (particles) {
+      particles.canvas.style.display = mode === "wind" ? "block" : "none";
+      if (mode !== "wind") particles.ctx.clearRect(0, 0, particles.canvas.width, particles.canvas.height);
+    }
+    list = [];
+    needsHeat = true;
+    if (enabled) drawHeat();
+  };
+
   const onMove = () => { needsHeat = true; };
   const onResize = () => { needsHeat = true; sizedWidth = 0; sizedHeight = 0; size(); };
   const onMoveEnd = () => { needsHeat = true; void refresh(); };
@@ -357,6 +466,7 @@ export function createWeatherLayer(map: MapLibreMap): WeatherLayerHandle {
     map.on("moveend", onMoveEnd);
     map.on("resize", onResize);
     lastFrameAt = 0;
+    applyMode();
     frame = requestAnimationFrame(loop);
   };
 
@@ -389,6 +499,25 @@ export function createWeatherLayer(map: MapLibreMap): WeatherLayerHandle {
         detach();
         status = "empty";
       }
+    },
+    setMode(next) {
+      if (disposed || mode === next) return;
+      mode = next;
+      applyMode();
+    },
+    setHour(offset) {
+      if (disposed) return;
+      const next = Math.max(0, Math.min(12, Math.round(offset)));
+      if (hourOffset === next) return;
+      hourOffset = next;
+      needsHeat = true;
+      if (enabled) drawHeat();
+    },
+    setStops(next) {
+      if (disposed) return;
+      stops = next;
+      needsHeat = true;
+      if (enabled) drawHeat();
     },
     destroy() {
       if (disposed) return;
