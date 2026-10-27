@@ -8,6 +8,7 @@ import {
   maxPrecipitation,
   precipitationAt,
   sampleWind,
+  temperatureAt,
   vectorToDirection,
   windRequestUrl,
   type WindField,
@@ -44,7 +45,7 @@ describe("istek URL'i", () => {
     const url = new URL(windRequestUrl([{ lat: 38.5, lng: 190 }, { lat: 39, lng: 27 }]));
     expect(url.searchParams.get("current"))
       .toBe("wind_speed_10m,wind_direction_10m,precipitation,temperature_2m,weather_code");
-    expect(url.searchParams.get("hourly")).toBe("precipitation");
+    expect(url.searchParams.get("hourly")).toBe("precipitation,temperature_2m");
     expect(url.searchParams.get("forecast_hours")).toBe("13");
     expect(url.searchParams.get("wind_speed_unit")).toBe("ms");
     expect(url.searchParams.get("longitude")).toBe("-170.000,27.000");
@@ -112,6 +113,25 @@ describe("yağış ve sıcaklık alanları", () => {
     expect(precipitationAt(point, -5)).toBeCloseTo(0.6, 6);
   });
 
+  it("saatlik sıcaklık ayrıştırılır, yoksa anlık değere düşer", async () => {
+    const withHourly = vi.fn(async () => new Response(JSON.stringify([{
+      current: { wind_speed_10m: 2, wind_direction_10m: 0, temperature_2m: 20 },
+      hourly: { precipitation: new Array(13).fill(0), temperature_2m: [20, 21.5, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33] },
+    }]), { status: 200 }));
+    const point = (await fetchWindField(bounds, withHourly, 1))!.points[0];
+    expect(temperatureAt(point, 0)).toBeCloseTo(20, 6);
+    expect(temperatureAt(point, 4)).toBeCloseTo(25, 6);
+    expect(temperatureAt(point, 99)).toBeCloseTo(33, 6);
+    expect(temperatureAt(point, -3)).toBeCloseTo(20, 6);
+
+    const noHourly = vi.fn(async () => new Response(JSON.stringify([
+      { current: { wind_speed_10m: 2, wind_direction_10m: 0, temperature_2m: 14 } },
+    ]), { status: 200 }));
+    const fallback = (await fetchWindField({ ...bounds, west: 27 }, noHourly, 1))!.points[0];
+    expect(fallback.hourlyTemperature).toEqual([]);
+    expect(temperatureAt(fallback, 6)).toBeCloseTo(14, 6);
+  });
+
   it("saatlik veri yoksa anlık yağışa düşer", async () => {
     const fetcher = vi.fn(async () => new Response(JSON.stringify([
       { current: { wind_speed_10m: 2, wind_direction_10m: 0, precipitation: 1.5 } },
@@ -140,8 +160,8 @@ describe("sampleWind", () => {
     columns: 2,
     at: 0,
     points: [
-      { lat: 38, lng: 26, u: 10, v: 0, speed: 10, precipitation: 0, temperature: 18, weatherCode: 1, hourly: [] },
-      { lat: 38, lng: 28, u: 0, v: 10, speed: 10, precipitation: 2.4, temperature: 12, weatherCode: 61, hourly: [2.4] },
+      { lat: 38, lng: 26, u: 10, v: 0, speed: 10, precipitation: 0, temperature: 18, weatherCode: 1, hourly: [], hourlyTemperature: [] },
+      { lat: 38, lng: 28, u: 0, v: 10, speed: 10, precipitation: 2.4, temperature: 12, weatherCode: 61, hourly: [2.4], hourlyTemperature: [12] },
     ],
   };
 

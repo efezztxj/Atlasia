@@ -21,6 +21,7 @@ import {
   fetchWindField,
   precipitationAt,
   sampleWind,
+  temperatureAt,
   type WindField,
   type WindPoint,
   type WindSample,
@@ -240,7 +241,7 @@ export function createWeatherLayer(map: MapLibreMap): WeatherLayerHandle {
       const mm = precipitationAt(point, hourOffset);
       return isWet(mm) ? rainColor(mm) : null;
     }
-    if (mode === "temp") return temperatureColor(point.temperature);
+    if (mode === "temp") return temperatureColor(temperatureAt(point, hourOffset));
     return windColor(point.speed);
   };
 
