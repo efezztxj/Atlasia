@@ -267,10 +267,10 @@ export default function ReportsPanel({
     <div className={admin ? "fixed inset-0 z-[68] flex bg-[#041d17]" : "fixed inset-0 z-[68] flex justify-end bg-black/40"}>
       {!admin && <button type="button" className="absolute inset-0" onClick={onClose} aria-label="Raporlar panelini kapat" />}
       {admin && moderator && (
-        <nav aria-label="Yönetim menüsü" className="flex w-14 shrink-0 flex-col border-r border-white/10 bg-[#03130e] py-3 md:w-[220px]">
+        <nav aria-label="Yönetim menüsü" className="flex w-14 shrink-0 flex-col border-r border-white/10 bg-ink py-3 md:w-[220px]">
           <p className="px-3 pb-3 text-center font-display text-[13px] font-bold tracking-wide text-mint md:px-4 md:text-left">
             🌍<span className="hidden md:inline"> ATLASİA</span>
-            <span className="mt-0.5 hidden text-[9px] font-semibold tracking-[0.2em] text-mint/45 md:block">YÖNETİM</span>
+            <span className="mt-0.5 hidden text-[10px] font-semibold tracking-[0.2em] text-mint/45 md:block">YÖNETİM</span>
           </p>
           {tabs.map(([id, label]) => (
             <button
@@ -287,7 +287,7 @@ export default function ReportsPanel({
               <span className="hidden md:inline">{label}</span>
             </button>
           ))}
-          <p className="mt-auto hidden px-4 pt-4 text-[10.5px] leading-relaxed text-mint/40 md:block">
+          <p className="mt-auto hidden px-4 pt-4 text-[10px] leading-relaxed text-mint/40 md:block">
             Yetki sunucu kurallarındadır; bu ekran yalnız arayüzdür.
           </p>
         </nav>
@@ -341,7 +341,7 @@ export default function ReportsPanel({
         <div className="thin-scroll flex-1 overflow-y-auto px-4 py-4">
           {tab === "dash" && moderator ? (
             <div>
-              <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
                 {[
                   { label: "Bekleyen Rapor", value: openCount, target: "queue" as Tab, tone: "border-sun/30 bg-sun/10 text-sun" },
                   { label: "Kuyruktaki Rapor", value: queue.length, target: "queue" as Tab, tone: "border-white/15 bg-white/[0.05] text-mint" },
@@ -354,22 +354,22 @@ export default function ReportsPanel({
                     key={card.label}
                     type="button"
                     onClick={() => setTab(card.target)}
-                    className={cn("rounded-2xl border p-4 text-left transition hover:brightness-125", card.tone)}
+                    className={cn("rounded-2xl border p-4 text-left transition", card.tone)}
                   >
                     <span className="block font-display text-3xl font-bold">{card.value}</span>
-                    <span className="mt-1 block text-[12px] font-semibold opacity-85">{card.label} →</span>
+                    <span className="mt-1 block text-[12px] font-semibold opacity-80">{card.label} →</span>
                   </button>
                 ))}
               </div>
 
               <h3 className="mt-5 mb-2 text-[13px] font-semibold text-mint">Son işlemler</h3>
               {modActions.length === 0 ? (
-                <p className="text-[12.5px] text-mint/60">Henüz işlem kaydı yok.</p>
+                <p className="text-[13px] text-mint/60">Henüz işlem kaydı yok.</p>
               ) : (
                 <ul className="space-y-2">
                   {modActions.slice(0, 5).map((action) => (
                     <li key={action.id} className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-                      <p className="text-[12.5px] font-semibold text-mint">{ACTION_LABEL[action.action] ?? action.action}
+                      <p className="text-[13px] font-semibold text-mint">{ACTION_LABEL[action.action] ?? action.action}
                         <span className="ml-2 font-mono text-[11px] font-normal text-mint/45">{relativeTime(action.createdAt)}</span>
                       </p>
                       {action.detail && <p className="mt-0.5 text-[12px] leading-relaxed text-mint/70">{action.detail}</p>}
@@ -377,7 +377,7 @@ export default function ReportsPanel({
                   ))}
                 </ul>
               )}
-              <p className="mt-4 text-[11.5px] leading-relaxed text-mint/50">
+              <p className="mt-4 text-[12px] leading-relaxed text-mint/50">
                 Yaptırım merdiveni: uyarı → içerik kaldırma → askıya alma. Karar öncesi hedefin geçmişini Kuyruk kartındaki “Geçmiş” ile gör.
               </p>
             </div>
@@ -398,7 +398,7 @@ export default function ReportsPanel({
                     <button
                       type="button"
                       onClick={() => void toggleHistory(row.uid)}
-                      className="mt-2 flex min-h-9 items-center gap-1.5 rounded-full border border-white/15 px-3 text-[11.5px] text-mint/85"
+                      className="mt-2 flex min-h-9 items-center gap-1.5 rounded-full border border-white/15 px-3 text-[12px] text-mint/85"
                     >
                       <History className="size-3.5" />Geçmişi göster
                     </button>
@@ -428,7 +428,7 @@ export default function ReportsPanel({
                         <p className="font-mono text-[11px] text-mint/45">kullanıcı: {appeal.uid.slice(0, 8)}… · {relativeTime(appeal.createdAt)}</p>
                         <span className="rounded-full border border-white/15 px-2 py-0.5 text-[11px] font-semibold text-mint/80">{APPEAL_STATUS_LABEL[appeal.status]}</span>
                       </div>
-                      <p className="mt-2 text-[12.5px] leading-relaxed text-mint/80">{appeal.message}</p>
+                      <p className="mt-2 text-[13px] leading-relaxed text-mint/80">{appeal.message}</p>
                       <div className="mt-3 flex flex-wrap gap-2">
                         {(["seen", "accepted", "rejected"] as const).map((status) => (
                           <button
@@ -436,7 +436,7 @@ export default function ReportsPanel({
                             type="button"
                             disabled={busyId === appeal.id || appeal.status === status}
                             onClick={() => void run(appeal.id, () => onResolveAppeal(appeal.id, status), "İtiraz güncellenemedi.")}
-                            className="min-h-9 rounded-full border border-white/15 px-3 text-[11.5px] text-mint/85 disabled:opacity-40"
+                            className="min-h-9 rounded-full border border-white/15 px-3 text-[12px] text-mint/85 disabled:opacity-40"
                           >
                             {status === "seen" ? "Görüldü" : status === "accepted" ? "Kabul et" : "Reddet"}
                           </button>
@@ -446,7 +446,7 @@ export default function ReportsPanel({
                             type="button"
                             disabled={busyId === appeal.id}
                             onClick={() => void run(appeal.id, () => onLiftBan(appeal.uid), "Askı kaldırılamadı.")}
-                            className="min-h-9 rounded-full border border-red-300/30 px-3 text-[11.5px] font-semibold text-red-200 disabled:opacity-40"
+                            className="min-h-9 rounded-full border border-red-300/30 px-3 text-[12px] font-semibold text-red-200 disabled:opacity-40"
                           >
                             Banı kaldır
                           </button>
@@ -464,7 +464,7 @@ export default function ReportsPanel({
               <ul className="space-y-2">
                 {modActions.map((action) => (
                   <li key={action.id} className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-                    <p className="text-[12.5px] font-semibold text-mint">{ACTION_LABEL[action.action] ?? action.action}</p>
+                    <p className="text-[13px] font-semibold text-mint">{ACTION_LABEL[action.action] ?? action.action}</p>
                     <p className="mt-0.5 font-mono text-[11px] text-mint/45">
                       {relativeTime(action.createdAt)} · yapan: {action.actorUid.slice(0, 8)}…
                       {action.targetOwnerUid ? ` · hedef: ${action.targetOwnerUid.slice(0, 8)}…` : ""}
@@ -508,7 +508,7 @@ export default function ReportsPanel({
                 <button
                   type="submit"
                   disabled={busyId === "announce-new" || !annTitle.trim() || !annBody.trim()}
-                  className="mt-3 min-h-10 w-full rounded-full bg-leaf px-4 text-[12.5px] font-semibold text-ink disabled:opacity-40"
+                  className="mt-3 min-h-10 w-full rounded-full bg-leaf px-4 text-[13px] font-semibold text-ink disabled:opacity-40"
                 >
                   {busyId === "announce-new" ? "Yayınlanıyor…" : "Yayınla"}
                 </button>
@@ -518,7 +518,7 @@ export default function ReportsPanel({
                   <li key={announcement.id} className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <p className="text-[12.5px] font-semibold text-mint">{announcement.title}</p>
+                        <p className="text-[13px] font-semibold text-mint">{announcement.title}</p>
                         <p className="mt-0.5 text-[12px] leading-relaxed text-mint/70">{announcement.body}</p>
                         <p className="mt-1 font-mono text-[11px] text-mint/45">{relativeTime(announcement.createdAt)}</p>
                       </div>
@@ -526,7 +526,7 @@ export default function ReportsPanel({
                         type="button"
                         disabled={busyId === announcement.id}
                         onClick={() => void run(announcement.id, () => onDeleteAnnouncement(announcement.id), "Duyuru silinemedi.")}
-                        className="min-h-9 shrink-0 rounded-full border border-white/15 px-3 text-[11.5px] text-mint/85 disabled:opacity-40"
+                        className="min-h-9 shrink-0 rounded-full border border-white/15 px-3 text-[12px] text-mint/85 disabled:opacity-40"
                       >
                         Sil
                       </button>
@@ -587,9 +587,9 @@ export default function ReportsPanel({
                         #{report.id.slice(0, 10)} · {relativeTime(report.createdAt)}
                         {tab === "queue" && report.reporterUid ? ` · raporlayan: ${report.reporterUid.slice(0, 8)}` : ""}
                       </p>
-                      {report.details && <p className="mt-2 text-[12.5px] leading-relaxed text-mint/75">{report.details}</p>}
+                      {report.details && <p className="mt-2 text-[13px] leading-relaxed text-mint/75">{report.details}</p>}
                       {report.resolution && (
-                        <p className="mt-2 rounded-lg bg-leaf/[0.08] px-2.5 py-1.5 text-[12px] leading-relaxed text-leaf/90">
+                        <p className="mt-2 rounded-lg bg-leaf/10 px-2.5 py-1.5 text-[12px] leading-relaxed text-leaf/90">
                           Moderatör notu: {report.resolution}
                         </p>
                       )}
@@ -650,13 +650,13 @@ export default function ReportsPanel({
 
                       {tab === "queue" && ownerUid && ownerUid !== uid && (
                         <div className="mt-3 space-y-2">
-                          <div className="rounded-xl border border-sun/25 bg-sun/[0.05] p-2.5">
+                          <div className="rounded-xl border border-sun/25 bg-sun/10 p-2.5">
                             {warnEligible ? (
                               <>
                                 <button
                                   type="button"
                                   onClick={() => { setWarnFor(warnFor === report.id ? null : report.id); setWarnReason(""); }}
-                                  className="text-[11.5px] font-semibold text-sun"
+                                  className="text-[12px] font-semibold text-sun"
                                 >
                                   {warnFor === report.id ? "Vazgeç" : "Uyarı gönder"}
                                 </button>
@@ -671,7 +671,7 @@ export default function ReportsPanel({
                                       maxLength={WARNING_REASON_MAX}
                                       rows={2}
                                       onChange={(event) => setWarnReason(event.target.value)}
-                                      className="w-full rounded-xl border border-white/12 bg-ink px-3 py-2 text-[12.5px] text-mint outline-none focus:border-sun/50"
+                                      className="w-full rounded-xl border border-white/12 bg-ink px-3 py-2 text-[13px] text-mint outline-none focus:border-sun/50"
                                     />
                                     <button
                                       type="button"
@@ -690,17 +690,17 @@ export default function ReportsPanel({
                           </div>
 
                           {report.targetType !== "user" && (
-                            <div className="rounded-xl border border-red-300/20 bg-red-400/[0.04] p-2.5">
+                            <div className="rounded-xl border border-red-300/20 bg-red-400/10 p-2.5">
                               {takedownFor === report.id ? (
                                 <>
-                                  <p className="text-[11.5px] leading-relaxed text-red-200">Bu içerik <strong>kalıcı olarak silinecek</strong>. Geri alınamaz; kanıt yalnız işlem kaydında kalır.</p>
+                                  <p className="text-[12px] leading-relaxed text-red-200">Bu içerik <strong>kalıcı olarak silinecek</strong>. Geri alınamaz; kanıt yalnız işlem kaydında kalır.</p>
                                   <div className="mt-2 flex gap-2">
-                                    <button type="button" onClick={() => setTakedownFor(null)} className="min-h-9 flex-1 rounded-full border border-white/15 px-3 text-[11.5px] text-mint/85">Vazgeç</button>
+                                    <button type="button" onClick={() => setTakedownFor(null)} className="min-h-9 flex-1 rounded-full border border-white/15 px-3 text-[12px] text-mint/85">Vazgeç</button>
                                     <button
                                       type="button"
                                       disabled={busyId === report.id}
                                       onClick={() => void run(report.id, async () => { await onTakedown(report); setTakedownFor(null); }, "İçerik silinemedi.")}
-                                      className="flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded-full bg-red-300/90 px-3 text-[11.5px] font-semibold text-ink disabled:opacity-40"
+                                      className="flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded-full bg-red-300/90 px-3 text-[12px] font-semibold text-ink disabled:opacity-40"
                                     >
                                       <Trash2 className="size-3.5" />Kalıcı sil
                                     </button>
@@ -710,7 +710,7 @@ export default function ReportsPanel({
                                 <button
                                   type="button"
                                   onClick={() => setTakedownFor(report.id)}
-                                  className="flex items-center gap-1.5 text-[11.5px] font-semibold text-red-200"
+                                  className="flex items-center gap-1.5 text-[12px] font-semibold text-red-200"
                                 >
                                   <Trash2 className="size-3.5" />İçeriği kalıcı sil
                                 </button>
@@ -718,17 +718,17 @@ export default function ReportsPanel({
                             </div>
                           )}
 
-                          <div className="rounded-xl border border-red-300/20 bg-red-400/[0.06] p-2.5">
+                          <div className="rounded-xl border border-red-300/20 bg-red-400/10 p-2.5">
                             {activeBan ? (
                               <div className="flex flex-wrap items-center justify-between gap-2">
-                                <p className="text-[11.5px] leading-relaxed text-red-200">
+                                <p className="text-[12px] leading-relaxed text-red-200">
                                   Askıda: {activeBan.expiresAt ? new Date(activeBan.expiresAt).toLocaleDateString("tr-TR") : "kalıcı"} · {activeBan.reason}
                                 </p>
                                 <button
                                   type="button"
                                   disabled={busyId === report.id}
                                   onClick={() => void run(report.id, () => onLiftBan(ownerUid), "Askı kaldırılamadı.")}
-                                  className="min-h-9 rounded-full border border-white/15 px-3 text-[11.5px] text-mint/85 disabled:opacity-40"
+                                  className="min-h-9 rounded-full border border-white/15 px-3 text-[12px] text-mint/85 disabled:opacity-40"
                                 >
                                   Banı kaldır
                                 </button>
@@ -738,7 +738,7 @@ export default function ReportsPanel({
                                 <button
                                   type="button"
                                   onClick={() => { setBanFor(banFor === report.id ? null : report.id); setBanReason(""); }}
-                                  className="flex items-center gap-1.5 text-[11.5px] font-semibold text-red-200"
+                                  className="flex items-center gap-1.5 text-[12px] font-semibold text-red-200"
                                 >
                                   <BanIcon className="size-3.5" />{banFor === report.id ? "Vazgeç" : "Hesabı askıya al"}
                                 </button>
@@ -764,7 +764,7 @@ export default function ReportsPanel({
                                       maxLength={BAN_REASON_MAX}
                                       rows={2}
                                       onChange={(event) => setBanReason(event.target.value)}
-                                      className="w-full rounded-xl border border-white/12 bg-ink px-3 py-2 text-[12.5px] text-mint outline-none focus:border-red-300/50"
+                                      className="w-full rounded-xl border border-white/12 bg-ink px-3 py-2 text-[13px] text-mint outline-none focus:border-red-300/50"
                                     />
                                     <button
                                       type="button"
@@ -803,7 +803,7 @@ export default function ReportsPanel({
                             maxLength={500}
                             rows={2}
                             onChange={(event) => setNote(event.target.value)}
-                            className="mt-1 w-full rounded-xl border border-white/12 bg-ink px-3 py-2 text-[12.5px] text-mint outline-none focus:border-sun/50"
+                            className="mt-1 w-full rounded-xl border border-white/12 bg-ink px-3 py-2 text-[13px] text-mint outline-none focus:border-sun/50"
                           />
                           <div className="mt-2 flex justify-end gap-2">
                             <button type="button" onClick={() => setNoteFor(null)} className="min-h-9 rounded-full px-3 text-[12px] text-mint/60">Vazgeç</button>
