@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Atlasia · Hafta Sonu Widget'ı — demo ve gömme kodu</title>
+<style>
+  :root{
+    --ink:#020d17; --ink2:#061819;
+    --mint:#7ee0b8; --gold:#f3c870; --cream:#f1f0e9;
+    --line:rgba(255,255,255,.10);
+    --muted:rgba(222,240,235,.56);
+    --font: ui-sans-serif,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--ink);color:var(--cream);line-height:1.55;font-family:var(--font);
+    background-image:
+      radial-gradient(1100px 620px at 86% -6%, rgba(243,200,112,.12), transparent 62%),
+      radial-gradient(900px 520px at 0% 30%, rgba(126,224,184,.06), transparent 60%);
+    background-attachment:fixed;
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:0 22px}
+  a{color:inherit}
+  header{padding:58px 0 30px;border-bottom:1px solid var(--line)}
+  .eyebrow{display:flex;align-items:center;gap:12px;font-size:10px;letter-spacing:.32em;
+    text-transform:uppercase;color:var(--gold);font-weight:700}
+  .eyebrow::before{content:"";width:34px;height:1px;background:var(--gold)}
+  h1{margin:20px 0 0;font-size:clamp(40px,7.6vw,84px);line-height:.9;letter-spacing:-.05em;font-weight:700}
+  h1 em{font-style:normal;color:var(--gold)}
+  .lede{margin:22px 0 0;max-width:640px;font-size:16.5px;color:rgba(241,240,233,.72)}
+  .lede b{color:var(--cream)}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}
+  .pill{border:1px solid var(--line);padding:6px 12px;font-size:11px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--muted)}
+  .pill b{color:var(--mint);letter-spacing:0}
+
+  .sec{display:flex;align-items:baseline;gap:14px;margin:52px 0 20px;font-size:11px;
+    letter-spacing:.3em;text-transform:uppercase;color:var(--gold);font-weight:700}
+  .sec::after{content:"";flex:1;height:1px;background:var(--line)}
+
+  .demo-grid{display:grid;gap:18px;grid-template-columns:1fr}
+  @media(min-width:880px){.demo-grid{grid-template-columns:1fr 1fr}}
+  .pane{border:1px solid var(--line);overflow:hidden;background:#fff}
+  .pane.dark{background:#03121c}
+  .pane-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;
+    font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#5b6b66;
+    border-bottom:1px solid rgba(0,0,0,.08);background:#f6f7f4}
+  .pane.dark .pane-head{background:#061819;color:var(--muted);border-color:var(--line)}
+  /* sahte blog sayfası */
+  .blog{padding:18px 16px 22px;color:#16221e;font-family:Georgia,"Times New Roman",serif}
+  .blog .kicker{font-family:var(--font);font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;
+    color:#8a7a4e;font-weight:700}
+  .blog h2{margin:6px 0 8px;font-size:21px;line-height:1.2;letter-spacing:-.02em}
+  .blog p{margin:0 0 12px;font-size:13px;line-height:1.6;color:#3f4a45}
+  .pane.dark .blog{color:var(--cream)}
+  .pane.dark .blog p{color:rgba(241,240,233,.62)}
+
+  iframe{display:block;width:100%;border:0;background:transparent}
+
+  pre{margin:0;background:#03121c;border:1px solid var(--line);padding:18px 16px;overflow:auto;
+    font-size:12.5px;line-height:1.6;color:#cfe6dd;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  pre .t{color:var(--gold)}
+  pre .a{color:var(--mint)}
+  .copy{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px}
+  .copy small{color:var(--muted);font-size:12px}
+  button{font:inherit;font-size:12px;font-weight:700;cursor:pointer;border:1px solid var(--gold);
+    background:var(--gold);color:#0b120e;padding:9px 16px;letter-spacing:-.01em}
+  button.ghost{background:transparent;color:var(--muted);border-color:var(--line)}
+  button:hover{filter:brightness(1.05)}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  td code{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--mint)}
+  tr:last-child td{border-bottom:0}
+
+  .warn{border-left:2px solid #e87a60;padding:2px 0 2px 14px;color:rgba(241,240,233,.72);
+    font-size:14px;max-width:760px;margin:0 0 14px}
+  .warn b{color:#e87a60}
+  footer{margin-top:60px;padding:28px 0 64px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+  footer b{color:var(--cream)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="eyebrow">Atlasia · fikir #5 · çalışan sürüm</div>
+    <h1>Hava widget'ı.<br><em>Reklamsız dağıtım.</em></h1>
+    <p class="lede">
+      Bir gezi blogu, hostel ya da yerel haber sitesi kendi sayfasına bu kutuyu gömüyor:
+      <b>"Bu hafta sonu nereye?"</b> Kutu cevabı veriyor — hangi gün, kaç derece, yağış yüzde kaç,
+      hangi rota. Altında tek bir bağlantı: <b>Rotanı çiz</b>. Sen reklam vermiyorsun;
+      <b>başkasının sayfasında duruyorsun.</b>
+    </p>
+    <div class="pills">
+      <span class="pill">maliyet <b>₺0</b></span>
+      <span class="pill">anahtar <b>gerekmiyor</b></span>
+      <span class="pill">sunucu <b>yok</b></span>
+      <span class="pill">8 şehir</span>
+      <span class="pill">tek dosya <b>~14 KB</b></span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="sec">Gerçek hâli · iki tema</div>
+  <div class="demo-grid">
+    <div class="pane">
+      <div class="pane-head"><span>açık zemin · gezi blogu</span><span>tema=light</span></div>
+      <div class="blog">
+        <div class="kicker">İzmir · 3 gün</div>
+        <h2>Hafta sonu İzmir: kalabalığa girmeden</h2>
+        <p>Kemeraltı'na gündüz girmeyin. Aynı yerler, aynı güzergâh, sabah 8'de bomboş —
+        ve hava da bunu destekliyorsa tadından yenmez. Aşağıdaki kutuya baktım, karar verdim.</p>
+        <iframe src="widget.html?sehir=izmir&tema=light&utm=demo-blog" title="Atlasia hafta sonu hava ve rota" loading="lazy" height="400"></iframe>
+        <p style="margin-top:14px">Rotayı uygulamada açtığınızda durakların varış saatine göre hava
+        ayrı ayrı gösteriliyor. Yağmur geliyorsa sıra değişiyor.</p>
+      </div>
+    </div>
+
+    <div class="pane dark">
+      <div class="pane-head"><span>koyu zemin · hostel sitesi</span><span>tema=dark</span></div>
+      <div class="blog">
+        <div class="kicker" style="color:var(--gold)">Kapadokya · bu hafta</div>
+        <h2>Balon var mı, yok mu? Hafta sonu kararı</h2>
+        <p>Kapadokya'da plan yapmak hava tahmini yapmak demek. Vadiler güzel ama ıslaksa
+        yürüyüş bitiyor. Kutuyu sayfaya koyduk, her sabah kendini yeniliyor.</p>
+        <iframe src="widget.html?sehir=kapadokya&tema=dark&utm=demo-hostel" title="Atlasia hafta sonu hava ve rota" loading="lazy" height="400"></iframe>
+        <p style="margin-top:14px">Göreme → Uçhisar hattı yağmurda bile yürünür; Güvercinlik
+        Vadisi'ni kuru bir güne bırakın.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">Gömme kodu · 4 satır</div>
+  <pre id="code"><span class="t">&lt;iframe</span>
+  <span class="a">src</span>="https://atlasia.pages.dev/widget.html?sehir=izmir&amp;tema=light&amp;utm=blog-adi"
+  <span class="a">title</span>="Atlasia hafta sonu hava ve rota"
+  <span class="a">loading</span>="lazy" <span class="a">width</span>="100%" <span class="a">height</span>="410"
+  <span class="a">style</span>="border:0;max-width:460px;margin:0 auto;display:block"<span class="t">&gt;&lt;/iframe&gt;</span></pre>
+  <div class="copy">
+    <small>Kutu kendi yüksekliğini <code>postMessage</code> ile bildiriyor; isteyen otomatik boyutlandırır.</small>
+    <div>
+      <button id="btnCopy">Kodu kopyala</button>
+      <button class="ghost" id="btnAuto">Otomatik boy</button>
+    </div>
+  </div>
+  <pre id="code2" hidden style="margin-top:10px"><span class="t">&lt;script&gt;</span>
+window.addEventListener("<span class="a">message</span>", function (e) {
+  if (!e.data || e.data.type !== "<span class="a">atlasia-widget-height</span>") return;
+  document.querySelectorAll("<span class="a">iframe[src*='widget.html']</span>")
+    .forEach(function (f) { f.style.height = e.data.height + "px"; });
+});
+<span class="t">&lt;/script&gt;</span></pre>
+
+  <div class="sec">Parametreler</div>
+  <table>
+    <tr><th>Parametre</th><th>Ne yapar</th><th>Örnek</th></tr>
+    <tr><td><code>sehir</code></td><td>Şehir seçer. Desteklenen: izmir, istanbul, kapadokya, efes, pamukkale, ankara, antalya, bodrum</td><td><code>?sehir=kapadokya</code></td></tr>
+    <tr><td><code>tema</code></td><td><code>light</code>, <code>dark</code> ya da <code>auto</code> (kullanıcının sistem teması)</td><td><code>?tema=auto</code></td></tr>
+    <tr><td><code>utm</code></td><td>Tıklamayı hangi sitenin getirdiğini ayırır → <code>utm_content</code></td><td><code>?utm=hostel-kadikoy</code></td></tr>
+  </table>
+
+  <div class="sec">Dürüst taraf</div>
+  <p class="warn">
+    <b>Rotayı ürün hesaplamıyor.</b> Kutudaki "Kemeraltı → Kızlarağası → Agora" gibi satırlar
+    elle seçilmiş örnekler; <code>optimizeForRain</code> çıktısı değil. Widget'ın işi tıklama
+    getirmek, rota motoru olmak değil. Gerçek motoru bağlamak ayrı bir iş ve o zaman
+    her tıklama bir Firebase okuması demek olur.
+  </p>
+  <p class="warn">
+    <b>Canlı tahmin gelmezse</b> kutu örnek veriyle açılıyor ve sağ üstte
+    <span style="color:var(--gold)">örnek veri</span> yazıyor. Sessizce uydurmuyor.
+  </p>
+
+  <footer>
+    <p><b>Dosyalar:</b> <code>reklam/widget/widget.html</code> (kutu) · <code>reklam/widget/index.html</code> (bu sayfa) · <code>reklam/widget/README.md</code> (yayına alma + 20 site listesi + teklif metni)</p>
+    <p><b>Sözleşme:</b> eşikler ürünle aynı — yağış olasılığı %30 "olası", %60 "yağmurlu"
+    (<code>src/utils/weather.ts</code> → <code>rainRisk</code>). Veri Open-Meteo, anahtarsız, ücretsiz.</p>
+    <p style="color:rgba(222,240,235,.38)">Yayına almak için tek dosya <code>public/widget.html</code> olarak kopyalanmalı — bu ürün koduna dokunur, onay ister.</p>
+  </footer>
+</div>
+
+<script>
+  var raw = '<iframe src="https://atlasia.pages.dev/widget.html?sehir=izmir&tema=light&utm=blog-adi" title="Atlasia hafta sonu hava ve rota" loading="lazy" width="100%" height="410" style="border:0;max-width:460px;margin:0 auto;display:block"></iframe>';
+  document.getElementById('btnCopy').addEventListener('click', function () {
+    var b = this;
+    navigator.clipboard.writeText(raw).then(function () {
+      b.textContent = 'Kopyalandı ✓';
+      setTimeout(function () { b.textContent = 'Kodu kopyala'; }, 1600);
+    }).catch(function () {
+      b.textContent = 'Kopyalanamadı';
+      setTimeout(function () { b.textContent = 'Kodu kopyala'; }, 1600);
+    });
+  });
+  document.getElementById('btnAuto').addEventListener('click', function () {
+    document.getElementById('code2').hidden = false;
+    this.textContent = 'Aşağıda ↓';
+  });
+  // demo iframe'lerini otomatik boyutlandır
+  window.addEventListener('message', function (e) {
+    if (!e.data || e.data.type !== 'atlasia-widget-height') return;
+    Array.prototype.forEach.call(document.querySelectorAll("iframe[src*='widget.html']"), function (f) {
+      if (f.contentWindow === e.source) f.style.height = e.data.height + 'px';
+    });
+  });
+</script>
+</body>
+</html>
