@@ -270,3 +270,49 @@ describe("ReportsPanel · kademeli yaptırım ve ayrıcalıklı görünümler", 
     expect(screen.getByText("Spam")).toBeTruthy();
   });
 });
+
+describe("ReportsPanel · Yönetim Paneli (admin düzeni)", () => {
+  afterEach(() => cleanup());
+
+  it("admin düzeninde sol menü ve gösterge kartları açılır", () => {
+    renderPanel({
+      admin: true,
+      moderator: true,
+      queue: [report({ targetOwnerUid: "spammer" }), report({ id: "r2", status: "actioned", targetOwnerUid: "spammer" })],
+      bans: [{ uid: "spammer", reason: "Spam", reportId: "r", createdAt: Date.now(), createdBy: "mod-1" }],
+      appeals: [{ id: "ap1", uid: "spammer", message: "İtiraz metni", createdAt: Date.now(), status: "open" }],
+    });
+    expect(screen.getByRole("navigation", { name: "Yönetim menüsü" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Bekleyen Rapor/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Aktif Ban/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Bekleyen İtiraz/ })).toBeTruthy();
+  });
+
+  it("gösterge kartı ilgili görünüme götürür", () => {
+    renderPanel({ admin: true, moderator: true, queue: [report({ targetOwnerUid: "spammer" })] });
+    fireEvent.click(screen.getByRole("button", { name: /Bekleyen Rapor/ }));
+    expect(screen.getByText(/Spam \/ reklam/)).toBeTruthy();
+  });
+
+  it("Kullanıcılar görünümü rapor sahiplerini toplar ve ban rozeti gösterir", async () => {
+    const onFetchHistory = vi.fn(async () => ({ reports: [report()], warningCount: 2, ban: null }));
+    renderPanel({
+      admin: true,
+      moderator: true,
+      onFetchHistory,
+      queue: [report({ targetOwnerUid: "spammer" }), report({ id: "r2", targetOwnerUid: "spammer" })],
+      bans: [{ uid: "spammer", reason: "Spam gerekçesi", reportId: "r", createdAt: Date.now(), createdBy: "mod-1" }],
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Kullanıcılar/ }));
+    expect(screen.getByText(/Aleyhinde/)).toBeTruthy();
+    expect(screen.getByText(/Askıda · kalıcı/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Geçmişi göster/ }));
+    await waitFor(() => expect(onFetchHistory).toHaveBeenCalledWith("spammer"));
+  });
+
+  it("admin olmayan hesapta admin düzeni açılsa bile gösterge paneli görünmez", () => {
+    renderPanel({ admin: true, moderator: false });
+    expect(screen.queryByRole("navigation", { name: "Yönetim menüsü" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Bekleyen Rapor/ })).toBeNull();
+  });
+});

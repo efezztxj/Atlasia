@@ -227,6 +227,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   const [myPlacesOpen, setMyPlacesOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [reportsOpen, setReportsOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
   const [moderator, setModerator] = useState(false);
   const [myReports, setMyReports] = useState<Report[]>([]);
   const [myReportsError, setMyReportsError] = useState<string | null>(null);
@@ -459,8 +460,19 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
    *   yazılamaz (Console'da elle). Kural dağıtılmamışsa sorgu `false` döner ve
    *   sekme görünmez (fail-closed).
    */
+  // Moderatör müyüm? Ayarlar'daki Yönetim Paneli girişi buna bakar;
+  // panel açılmadan da bilinmeli (kural fail-closed: belge yoksa false).
   useEffect(() => {
-    if (!reportsOpen || !cloudAccount || !user?.uid) return;
+    if (!cloudAccount || !user?.uid) { setModerator(false); return; }
+    let active = true;
+    void fetchModeratorAccess(user.uid).then((allowed) => {
+      if (active) setModerator(allowed);
+    });
+    return () => { active = false; };
+  }, [cloudAccount, user?.uid]);
+
+  useEffect(() => {
+    if ((!reportsOpen && !adminOpen) || !cloudAccount || !user?.uid) return;
     let active = true;
     setMyReportsError(null);
     const unsub = subscribeMyReports(user.uid, (items) => {
@@ -475,10 +487,10 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
       active = false;
       unsub();
     };
-  }, [reportsOpen, cloudAccount, user?.uid]);
+  }, [reportsOpen, adminOpen, cloudAccount, user?.uid]);
 
   useEffect(() => {
-    if (!reportsOpen || !moderator || !cloudAccount) return;
+    if ((!reportsOpen && !adminOpen) || !moderator || !cloudAccount) return;
     let active = true;
     setQueueLoading(true);
     setQueueError(null);
@@ -495,7 +507,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
       active = false;
       unsub();
     };
-  }, [reportsOpen, moderator, cloudAccount]);
+  }, [reportsOpen, adminOpen, moderator, cloudAccount]);
 
   // Etkin askıya almalar: yalnız moderatörde dinlenir (kural listeyi ona açar).
   useEffect(() => {
@@ -1001,6 +1013,9 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
     onOpenReports: cloudAccount
       ? () => { closePanels(); setReportsOpen(true); }
       : undefined,
+    onOpenAdmin: cloudAccount && moderator
+      ? () => { closePanels(); setAdminOpen(true); }
+      : undefined,
   };
 
   return (
@@ -1401,6 +1416,36 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
           <ReportsPanel
             open={reportsOpen}
             onClose={() => setReportsOpen(false)}
+            uid={user!.uid}
+            moderator={moderator}
+            myReports={myReports}
+            myReportsError={myReportsError}
+            queue={queue}
+            queueLoading={queueLoading}
+            queueError={queueError}
+            onStatus={handleReportStatus}
+            bans={bans}
+            onBan={handleBan}
+            onLiftBan={handleLiftBan}
+            onWarn={handleWarn}
+            onTakedown={handleTakedown}
+            appeals={appeals}
+            onResolveAppeal={handleResolveAppeal}
+            modActions={modActions}
+            announcements={announcements}
+            onCreateAnnouncement={handleCreateAnnouncement}
+            onDeleteAnnouncement={handleDeleteAnnouncement}
+            onFetchHistory={handleFetchHistory}
+          />
+        </Suspense>
+      )}
+
+      {adminOpen && moderator && (
+        <Suspense fallback={null}>
+          <ReportsPanel
+            open={adminOpen}
+            admin
+            onClose={() => setAdminOpen(false)}
             uid={user!.uid}
             moderator={moderator}
             myReports={myReports}
