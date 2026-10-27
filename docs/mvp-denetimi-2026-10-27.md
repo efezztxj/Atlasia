@@ -27,23 +27,25 @@ Testi olmayan kaynak dosya: **42** (27'si bileşen).
 
 ---
 
-## 2. EN ACİL: CSS bütçesinde 26 bayt kaldı
+## 2. EN ACİL: CSS bütçesinde 143 bayt kaldı
 
-`Toplam CSS: 224.335 B ham / 35.074 B gzip (bütçe 35.100)`
+`Toplam CSS: 224.075 B ham / 34.957 B gzip (bütçe 35.100)`
 
-Bu, **tek bir yeni CSS sınıfının build'i kıracağı** anlamına gelir. Şu an herhangi bir arayüz işi (yeni buton stili, boşluk düzeltmesi, yeni panel) CI'da kırmızı verir. JS'te de pay 5,3 KB.
+> 2026-10-27 güncellemesi: 9 kullanılmayan sınıf silindi, pay **26 B → 143 B** oldu. Hâlâ **tek bir yeni CSS sınıfının build'i kıracağı** seviyede. Asıl çözüm (a) maddesidir; aşağıdaki M-01 (b) büyük ölçüde tükendi (ölü sınıf taraması temiz, kalan `maplibregl-*` sınıfları kütüphaneye ait). JS'te pay 4,2 KB.
 
 **Maddeler:**
 
-- **M-01 · P0 — CSS bütçesini aç.** İki yol var, ikisi de 1 saatlik iş:
-  - (a) `map-vendor` CSS'i (83 KB ham / 10,5 KB gzip) yalnız harita yüklenirken çekilsin: `MapView` lazy olduğu için `maplibre-gl/dist/maplibre-gl.css` importu `index.css`'ten `MapView.tsx`'e taşınır. Kazanç ≈ 10 KB gzip.
-  - (b) Kullanılmayan kuralları sil: `.auth-access-security`, `.auth-access-top`, `.auth-access-wordmark`, `.auth-error` (hiçbir `.tsx`'te geçmiyor).
+- **M-01 · P0 — CSS bütçesini aç.** ~~(b) ölü kural silme~~ **yapıldı** (9 sınıf, +117 B). Kalan yol:
+  - (a) **hâlâ açık** — `map-vendor` CSS'i (83 KB ham / 10,5 KB gzip) yalnız harita yüklenirken çekilsin: `MapView` lazy olduğu için `maplibre-gl/dist/maplibre-gl.css` importu `index.css`'ten `MapView.tsx`'e taşınır. Kazanç ≈ 10 KB gzip → pay ~%30.
 - **M-02 · P0 — Eşikleri gerçek ölçüme sabitle.** Bütçe ölçümün hemen üstünde tutulmaya devam ederse her iş kırılır; CSS eşiğini (a) uygulandıktan sonra **28.000**'e, JS'i **895.000**'e çek. Amaç: pay ≥ %2.
 - **M-03 · P1 — Bütçeyi "sadece toplam" olmaktan çıkar.** `initialGzipBytes` zaten var; **route bazlı** ölçüm ekle: açılış sayfası ≤ 250 KB, uygulama kabuğu ≤ 700 KB.
 
 ---
 
-## 3. Ölçüm katmanı — 3 olay tanımlı ama hiç çağrılmıyor
+## 3. Ölçüm katmanı — ~~3 olay tanımlı ama hiç çağrılmıyor~~ **kapandı (2026-10-27)**
+
+> `analytics.share` (AtlasAssistant: native/clipboard), `analytics.offlinePack` (OfflinePackage: indirme + silme), `analytics.reportCreated` (ReportDialog) artık gerçek akışlara bağlı. Kalan iş: **M-07** olay şeması testi ve `docs/olcum-ve-hata-izleme.md` olay tablosunun bu 3 olayla güncellenmesi.
+
 
 Geçen turda eklenen `analytics` API'sinin çağrı sayımı:
 
@@ -187,7 +189,7 @@ Her satır: **durum · kanıt · eksik.**
 
 ---
 
-## 7. Öncelik sırası (önerilen sıra)
+## 7. Öncelik sırası (ilk öneri — arşiv; yerini §10 aldı)
 
 ### Sprint 1 — "Kırılmasın" (2-3 gün)
 1. **M-01** CSS bütçesini aç (map-vendor CSS'i lazy yap) → **M-02** eşikleri düzelt
@@ -230,3 +232,68 @@ Her satır: **durum · kanıt · eksik.**
 ## 9. Tek cümle
 
 Kod sağlam (1.087 test, 0 tip/lint hatası); **ama CSS bütçesinde 26 bayt kaldı, 3 ölçüm olayı hiç çağrılmıyor, yasal metin taslak, fotoğraflar belge içinde ve pilot bölge seçilmedi** — MVP'yi "profesyonel" yapan fark tam olarak bu beş madde.
+
+---
+
+## 10. Revize sıra (2026-10-27, site turu sonrası)
+
+**Neden değişti:** İlk sıra "kod yazma kolaylığına" göreydi. Site turunda Sprint 1'in dört maddesi (M-01b, M-31, M-04/05/06) ve site yüzeyi (yasal erişim, SSS, sitemap/robots, JSON-LD) kapandı. Darboğaz artık **kod değil, kanıt ve uyum**: yayınlanmamış site profesyonel sayılmaz, CSS payı hâlâ 143 B, yasal metin taslak, pilot bölge belirsiz.
+
+**Yeni sıralama ölçütü — bir sonraki adımı bloke eden şey:**
+1. Yayına çıkma (yoksa hiçbir madde kullanıcıya ulaşmaz)
+2. Her arayüz işini kıran bütçe (yoksa hiçbir CSS işi yapılamaz)
+3. Yasal/ürün riski (yanlış metin yayında kalırsa geri dönüşü pahalı)
+4. Kanıt altyapısı (E2E, a11y, route bütçesi — kalıcı hız)
+
+### Parti A — Yayın kapısı (≈0,5 gün · kilit: onayın)
+
+| # | İş | Neden bu sırada | Efor | Kilit |
+|---|---|---|---|---|
+| A1 | PR #118 merge → deploy → `npm run dogrula:canli`, `/sitemap.xml`, `/robots.txt`, `/uygulama/` 200 kontrolü | Deploy edilmemiş iyileştirme yok hükmünde | 20 dk | **senin "deploy" onayın** |
+| A2 | Search Console'a sitemap gönderimi + `_headers`/`_redirects` canlı doğrulaması | Robots/sitemap ancak yayında iş görür | 15 dk | **hesap erişimi sende** |
+| A3 | Canlı doğrulama: JSON-LD, manifest sürümü, `?deploy=` cache busting | Eski service worker yeni kabuğu gölgelemesin | 15 dk | — |
+
+### Parti B — Kırılganlık (≈1,5 gün · kilit yok, ben yaparım)
+
+| # | İş | Neden bu sırada | Efor | Kilit |
+|---|---|---|---|---|
+| B1 | **M-01a** `map-vendor` CSS'i `MapView`'a taşı (≈10 KB gzip) → **M-02** eşik CSS 25.000 / JS 900.000 | CSS payı 143 B; bu iş bitmeden hiçbir arayüz işi CI'dan geçemez | 2-3 sa | — |
+| B2 | **M-14** Apple butonu: bayrak kapalıyken gizle (ölü buton bırakma) | 15 dakikada görünür profesyonellik kazancı | 15 dk | — |
+| B3 | **M-48/A** saf fonksiyon testleri: `shareLinkUrl`, `contrast`, `routeData`, `notifications`, `verifications`, `useServiceWorkerUpdate`, `useCollections` | 46 testsiz dosyanın en yüksek riskli 7'si; ucuz ve regresyon kalkanı | 3 sa | — |
+| B4 | **M-46** `axe-core` (jsdom) + RTL smoke: `LandingPage`, `AccountAccess`, `BottomPanel` | Tarayıcı gerektirmez, CI'da erişilebilirlik kapısı olur | 4 sa | — |
+| B5 | **M-07** olay şeması testi + `docs/olcum-ve-hata-izleme.md` tablosuna yeni 3 olay | Bağlanan ölçüm belgelenmezse 6 ayda unutulur | 1 sa | — |
+
+### Parti C — Uyum ve ürün kararı (ben 0,5 gün + senin girdin)
+
+| # | İş | Neden bu sırada | Efor | Kilit |
+|---|---|---|---|---|
+| C1 | **M-53** 17 placeholder'ı **tek kurumsal künye bloğuna** indir (şirket, adres, veri sorumlusu, iletişim), kalan metni hukuk onayına hazır hâle getir | Landing'den açılan yasal pencere taslak metin gösteriyorsa, yasal erişim eklemek riski artırır | 2 sa | **künye bilgisi + hukukçu onayı** |
+| C2 | **M-51** `src/config/pilotRegion.ts` sabiti + landing/onboarding kapsam cümlesi (Efes fixture'ı ile tutarlı) | Pilot bölge, SSS ve kapsam metnini doğrudan belirliyor | 2 sa | **hangi şehir/alan?** |
+| C3 | **M-23** fotoğraf mimarisi kararı (Blaze/Storage ya da 60-80 KB sıkıştırma) | Karar yoksa içerik üretimi durur | 1 sa + 1 gün | **senin kararın** |
+| C4 | **M-10** misafir gezinme kararı | Hesapsız keşif mimariyi değiştirir; erken karar sonradan dönüşü ucuzlatır | 30 dk | **senin kararın** |
+
+### Parti D — Kanıt altyapısı (≈2-3 gün · çoğu CI'da)
+
+| # | İş | Neden bu sırada | Efor |
+|---|---|---|---|
+| D1 | **M-49** 5 Playwright senaryosu (yalnız CI — bu ortamda tarayıcı yok: `libnss3.so` eksik) | Uçtan uca akışın tek gerçek kanıtı | 1 gün |
+| D2 | **M-03** route bazlı bütçe + Lighthouse CI | Bütçe "toplam" olmaktan çıkıp sayfa bazlı olur | 3 sa |
+| D3 | **M-18** hata şeridi + **M-19** iskeletler | Kullanıcının gördüğü kalite | 4 sa |
+| D4 | **M-57** bağımlılık PR'ları, **M-58** yedek tatbikatı | Operasyon disiplini | 3 sa |
+
+### Eski sıradan ne değişti
+
+| Madde | Eski yer | Yeni yer | Gerekçe |
+|---|---|---|---|
+| M-01a (map-vendor lazy) | Sprint 1 · 1 | **B1** (korundu) | Hâlâ tek gerçek blokaj |
+| M-31, M-04/05/06 | Sprint 1 · 2-3 | **kapandı** | Site turunda yapıldı |
+| M-48 (testsiz dosyalar) | Sprint 3 · 12 | **B3/B4** (öne alındı) | 46 dosya; en yüksek getiri/efor oranı |
+| M-46 (axe) | Sprint 3 · 11 | **B4** (öne alındı) | Tarayıcısız, jsdom'da koşuyor |
+| M-49 (E2E) | Sprint 3 · 11 | **D1** (CI'ya) | Bu ortamda koşamıyor; CI'da anlamlı |
+| M-53 (yasal) | Sprint 2 · 7 | **C1** (paralel) | Kod işini bloke etmiyor, hukuk girdisi bekliyor |
+| M-51 (pilot bölge) | Sprint 4 · 15 | **C2** (öne alındı) | Landing/SSS metnini belirliyor |
+| M-23 (fotoğraf) | Sprint 2 · 8 | **C3** | Karar; uygulaması ayrı iş |
+
+### Yeni tek cümle
+
+Kod tarafı bitti sayılır (**142 dosya / 1110 test, 0 tip/lint hatası, bütçe içinde**); profesyonel eşiği geçmek için sırayla **yayın (A) → CSS payı + test/a11y ağı (B) → künye ve pilot bölge (C) → E2E/Lighthouse kanıtı (D)** gerekiyor.
