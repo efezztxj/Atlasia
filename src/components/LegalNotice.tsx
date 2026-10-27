@@ -30,7 +30,7 @@ export default function LegalNotice({ type, onClose }: LegalNoticeProps) {
     ? <li key={section.title}><LegalSectionContent section={section} /></li>
     : <LegalSectionContent key={section.title} section={section} />);
 
-  return <div className="fixed inset-0 z-[100] grid place-items-center bg-black/75 p-4">
+  return <div className="mobile-fullscreen-wrap fixed inset-0 z-[100] grid place-items-center bg-black/75 p-4">
     <button type="button" className="absolute inset-0" onClick={onClose} aria-label={`${document.shortTitle} penceresini kapat`} />
     <aside
       ref={ref}
@@ -40,12 +40,14 @@ export default function LegalNotice({ type, onClose }: LegalNoticeProps) {
       aria-describedby="account-legal-review"
       data-legal-source={LEGAL_SOURCE}
       data-legal-version={LEGAL_VERSION}
-      className="relative flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-3xl border border-white/15 bg-ink-2 shadow-2xl"
+      className="mobile-fullscreen-bleed relative flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-3xl border border-white/15 bg-ink-2 shadow-2xl"
     >
-      <header className="shrink-0 border-b border-white/10 px-6 pt-6 pb-5 sm:px-7 sm:pt-7">
-        <button type="button" onClick={onClose} aria-label="Açıklamayı kapat" className="absolute right-4 top-4 grid size-11 place-items-center rounded-full text-mint/80 transition hover:bg-white/10 hover:text-white"><X size={19} /></button>
-        <p className="pr-12 text-[11px] font-semibold tracking-[0.15em] text-sun uppercase">Sürüm {LEGAL_VERSION}</p>
-        <h2 id="account-legal-title" className="font-display mt-2 pr-12 text-2xl leading-tight">{document.title}</h2>
+      <header className="mobile-safe-top shrink-0 border-b border-white/10 px-6 pt-6 pb-5 sm:px-7 sm:pt-7">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-[11px] font-semibold tracking-[0.15em] text-sun uppercase">Sürüm {LEGAL_VERSION}</p>
+          <button type="button" onClick={onClose} aria-label="Açıklamayı kapat" className="grid size-11 shrink-0 place-items-center rounded-full text-mint/80 transition hover:bg-white/10 hover:text-white"><X size={19} /></button>
+        </div>
+        <h2 id="account-legal-title" className="font-display mt-1 text-2xl leading-tight">{document.title}</h2>
         <p id="account-legal-review" role="status" className="mt-3 inline-flex rounded-full border border-amber-200/20 bg-amber-100/10 px-3 py-1.5 text-[11px] font-semibold text-amber-100">{LEGAL_REVIEW_NOTICE}</p>
         <p className="mt-3 text-[12px] text-mint/70">{document.updatedLine}</p>
       </header>
@@ -57,7 +59,7 @@ export default function LegalNotice({ type, onClose }: LegalNoticeProps) {
           : <div className="space-y-6">{sections}</div>}
       </div>
 
-      <footer className="shrink-0 border-t border-white/10 bg-ink-2 px-6 py-4 sm:px-7">
+      <footer className="mobile-safe-bottom shrink-0 border-t border-white/10 bg-ink-2 px-6 py-4 sm:px-7">
         <button type="button" onClick={onClose} className="min-h-11 w-full rounded-full bg-sun px-6 text-sm font-semibold text-ink">Okudum</button>
       </footer>
     </aside>

@@ -52,11 +52,11 @@ export default function Drawer({ open, onClose, places, category, onCategory, on
         // Kapalı çekmecenin düğmeleri Tab sırasından çıkar (ekran dışında görünmez odak olmasın).
         inert={!open}
         className={cn(
-          "fixed top-0 right-0 bottom-[calc(70px+env(safe-area-inset-bottom))] z-40 flex w-full max-w-[400px] flex-col border-l border-sun/30 bg-ink-2/95 shadow-2xl shadow-black/70 transition-transform duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] md:bottom-0",
+          "mobile-fullscreen-bleed fixed inset-y-0 right-0 z-[55] flex w-full max-w-[400px] flex-col border-l border-sun/30 bg-ink-2/95 shadow-2xl shadow-black/70 transition-transform duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] md:z-40",
           open ? "translate-x-0" : "translate-x-full",
         )}
       >
-        <div className="flex items-start justify-between p-6 pb-3">
+        <div className="mobile-safe-top flex items-start justify-between p-6 pb-3">
           <div>
             <p className="text-[11px] font-bold tracking-[0.2em] text-sun uppercase">Keşfet</p>
             <h3 className="font-display mt-1 text-2xl font-semibold tracking-tight text-white">

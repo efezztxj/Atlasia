@@ -162,21 +162,22 @@ describe("küçük ekran yerleşimi (≈360×640)", () => {
 describe("keşif kartı kalıcılığı", () => {
   const dockLine = /const dockVisible = ([^;]+);/.exec(app)?.[1] ?? "";
 
-  it("profil, izlerim ve topluluk açıkken keşif kartı gizlenmiyor", () => {
-    // Kullanıcı isteği 2026-10-25: sekmeye basınca kart kaybolmasın.
-    for (const flag of ["profileOpen", "myPlacesOpen", "feedOpen"]) {
+  it("profil, izlerim, topluluk ve Atlas AI açıkken keşif kartı gizlenmiyor", () => {
+    // Kullanıcı isteği 2026-10-25 ve 2026-10-27: sekmeye veya PC'de Atlas AI'a
+    // basınca alt keşif paneli kaybolmasın.
+    for (const flag of ["profileOpen", "myPlacesOpen", "feedOpen", "atlasOpen"]) {
       expect(dockLine).not.toContain(flag);
     }
   });
 
   it("yalnız ekranı bütünüyle kaplayan katmanlar kartı gizliyor", () => {
-    for (const flag of ["recordsOpen", "storyPlace", "atlasOpen", "settingsOpen", "drawerOpen"]) {
+    for (const flag of ["recordsOpen", "storyPlace", "settingsOpen", "drawerOpen"]) {
       expect(dockLine).toContain(flag);
     }
   });
 
-  it("masaüstünde sağdan açılan profil paneli kartı örtmüyor", () => {
-    expect(app).toContain("shiftedLeft={profileOpen}");
+  it("masaüstünde sağdan açılan profil ve Atlas AI paneli kartı örtmüyor", () => {
+    expect(app).toContain("shiftedLeft={profileOpen || atlasOpen}");
     expect(bottomPanel).toContain("shiftedLeft");
     expect(bottomPanel).toContain("lg:pr-[540px]");
   });
@@ -194,8 +195,12 @@ describe("mobil harita kapsülü", () => {
     expect(mapControls).toMatch(/label=\{layersOpen \?/);
   });
 
-  it("kapsül eylem çiftinin üstüne bağlı, sabit sayıya değil", () => {
+  it("kapsül eylem çiftinin üstüne bağlı, sabit sayıya değil ve alt yığın kuralı Atlas AI üstüne bindirmez", () => {
     expect(css).toContain("bottom: calc(var(--mobile-fab-bottom, 168px) + 58px)");
+    const stackBlock = block(".mobile-bottom-stack-control");
+    expect(stackBlock).toContain("calc(var(--mobile-fab-bottom, 168px) + 58px)");
+    expect(stackBlock).toContain("calc(var(--discovery-occupied-space, 0px) + 68px)");
+    expect(stackBlock).not.toContain("--mobile-stack-base, 132px");
     // Sıra numarasına dayalı gizleme geri gelmesin.
     expect(css).not.toContain(".mobile-map-controls > div:nth-of-type(n + 5)");
   });
@@ -229,7 +234,8 @@ describe("masaüstü harita kontrolleri", () => {
     expect(mapControls).not.toContain("md:bottom-24");
   });
 
-  it("ray Atlas AI ve yürüyüş kaydı eylemlerini taşır", () => {
+  it("ray Atlas AI ve yürüyüş kaydı eylemlerini taşır ve düğmeler dar pencerede üst üste binmez", () => {
+    expect(mapControls).toContain("group relative shrink-0");
     expect(mapControls).toContain("onToggleTrackRecorder");
     expect(mapControls).toContain("onToggleAtlas");
     expect(mapControls).toContain('controls="atlas-assistant"');

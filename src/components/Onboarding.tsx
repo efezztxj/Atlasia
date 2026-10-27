@@ -33,25 +33,26 @@ export default function Onboarding({ onNearby, onRoute, onLeave, onClose }: Prop
   };
 
   return (
-    <div className="animate-fade fixed inset-0 z-[90] grid place-items-center bg-black/75 p-4">
+    <div className="mobile-fullscreen-wrap animate-fade fixed inset-0 z-[90] grid place-items-center bg-black/75 p-4">
       <div
         ref={panelRef as React.RefObject<HTMLDivElement>}
         role="dialog"
         aria-modal="true"
         aria-labelledby="onb-title"
-        className="panel-solid animate-rise relative w-full max-w-[460px] rounded-3xl border border-leaf/25 p-6 shadow-2xl shadow-black/70 sm:p-7"
+        className="panel-solid mobile-fullscreen animate-rise relative flex w-full max-w-[460px] flex-col justify-center overflow-y-auto rounded-3xl border border-leaf/25 p-6 shadow-2xl shadow-black/70 md:block sm:p-7"
       >
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Karşılamayı kapat"
-          className="absolute top-4 right-4 grid size-11 place-items-center rounded-full text-mint/60 transition hover:bg-white/[0.07] hover:text-white"
-        >
-          <X className="size-5" />
-        </button>
-
-        <p className="text-[12px] font-bold tracking-[0.18em] text-sun uppercase">Atlasia</p>
-        <h2 id="onb-title" className="font-display mt-2 text-[27px] leading-tight font-semibold text-mint">
+        <div className="flex items-center justify-between">
+          <p className="text-[12px] font-bold tracking-[0.18em] text-sun uppercase">Atlasia</p>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Karşılamayı kapat"
+            className="grid size-11 place-items-center rounded-full text-mint/60 transition hover:bg-white/[0.07] hover:text-white"
+          >
+            <X className="size-5" />
+          </button>
+        </div>
+        <h2 id="onb-title" className="font-display mt-1 text-[27px] leading-tight font-semibold text-mint">
           Nereden başlayalım?
         </h2>
         <p className="mt-2 text-[15px] leading-relaxed text-mint/65">

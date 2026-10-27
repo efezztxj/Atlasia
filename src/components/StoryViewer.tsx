@@ -111,7 +111,7 @@ export default function StoryViewer({
   const photo = mediaUrl(story.photo);
 
   return (
-    <div className="animate-fade fixed inset-0 z-[70] grid place-items-center bg-black/80 p-4 backdrop-blur-sm">
+    <div className="mobile-fullscreen-wrap animate-fade fixed inset-0 z-[70] grid place-items-center bg-black/80 p-4 backdrop-blur-sm">
       <button type="button" tabIndex={-1} aria-label="Hikâyeyi kapat" className="absolute inset-0 cursor-default" onClick={onClose} />
 
       <div
@@ -119,7 +119,7 @@ export default function StoryViewer({
         role="dialog"
         aria-modal="true"
         aria-label="Hikâye"
-        className="animate-rise relative flex aspect-[9/16] max-h-[86vh] w-full max-w-[380px] flex-col overflow-hidden rounded-[28px] ring-1 ring-white/15"
+        className="mobile-fullscreen-bleed animate-rise relative flex aspect-[9/16] max-h-[86vh] w-full max-w-[380px] flex-col overflow-hidden rounded-[28px] ring-1 ring-white/15"
         onMouseDown={() => setPaused(true)}
         onMouseUp={() => setPaused(false)}
         onMouseLeave={() => setPaused(false)}
@@ -138,7 +138,7 @@ export default function StoryViewer({
         <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-black/45" />
 
         {/* İlerleme çizgileri */}
-        <div className="relative z-10 flex gap-1 p-3">
+        <div className="mobile-safe-top relative z-10 flex gap-1 p-3">
           {stories.map((s, i) => (
             <span key={s.id} className="h-[3px] flex-1 overflow-hidden rounded-full bg-white/25">
               <span
@@ -202,7 +202,7 @@ export default function StoryViewer({
         </div>
 
         {/* Alt bilgi */}
-        <div className="relative z-10 p-4">
+        <div className="mobile-safe-bottom relative z-10 p-4">
           {story.placeLabel && (
             <button
               onClick={() => onGoTo(story)}

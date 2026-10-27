@@ -41,10 +41,9 @@ export default function MyPlacesPanel({ places, onClose, onPlace, onDelete }: Pr
       role="dialog"
       aria-modal="false"
       aria-labelledby="my-places-title"
-      className="atlas-sheet gold-frame fixed inset-x-3 top-[76px] bottom-[calc(64px+env(safe-area-inset-bottom))] z-[45] flex flex-col overflow-hidden rounded-[26px] bg-[#031c16] md:hidden"
+      className="atlas-sheet mobile-fullscreen fixed inset-0 z-[55] flex flex-col overflow-hidden bg-[#031c16] md:hidden"
     >
-      <span aria-hidden className="sheet-handle mt-2.5 shrink-0" />
-      <header className="flex shrink-0 items-center justify-between gap-3 px-4 pt-3 pb-2">
+      <header className="flex shrink-0 items-center justify-between gap-3 px-4 pb-2">
         <div className="min-w-0">
           <h2 id="my-places-title" className="font-display text-lg font-semibold">İzlerim</h2>
           <p className="mt-0.5 text-[12px] text-mint/70">Haritaya bıraktığın izler</p>

@@ -82,7 +82,7 @@ export default function StoryComposer({
   const preview = mediaUrl(photo ?? undefined);
 
   return (
-    <div className="animate-fade fixed inset-0 z-[70] grid place-items-center bg-black/70 p-4 backdrop-blur-sm">
+    <div className="mobile-fullscreen-wrap animate-fade fixed inset-0 z-[70] grid place-items-center bg-black/70 p-4 backdrop-blur-sm">
       <button type="button" tabIndex={-1} aria-label="Pencereyi kapat" className="absolute inset-0 cursor-default" onClick={onClose} />
 
       <form
@@ -91,31 +91,32 @@ export default function StoryComposer({
         aria-modal="true"
         aria-label="Hikâye oluştur"
         onSubmit={submit}
-        className="animate-rise thin-scroll relative max-h-[94vh] w-full max-w-[400px] overflow-y-auto rounded-3xl border border-leaf/25 bg-ink-2 shadow-2xl shadow-black/70"
+        className="mobile-fullscreen-bleed mobile-safe-bottom animate-rise thin-scroll relative max-h-[94vh] w-full max-w-[400px] overflow-y-auto rounded-3xl border border-leaf/25 bg-ink-2 shadow-2xl shadow-black/70"
       >
         {/* Önizleme */}
         <div className={cn("relative aspect-[16/11] w-full overflow-hidden", STORY_ACCENTS[accent].bg)}>
           {preview && <img src={preview} alt="" className="absolute inset-0 size-full object-cover" />}
           <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-black/25" />
 
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Kapat"
-            className="absolute top-3 right-3 z-10 grid size-8 place-items-center rounded-full bg-black/40 text-white/85 transition hover:bg-black/65 hover:text-white"
-          >
-            <X className="size-4" />
-          </button>
-
-          {photo && (
+          <div className="mobile-safe-top relative z-10 flex items-center justify-between px-3 pt-3">
+            {photo ? (
+              <button
+                type="button"
+                onClick={() => setPhoto(null)}
+                className="rounded-full bg-black/40 px-3 py-1.5 text-[11px] font-medium text-white/90 transition hover:bg-black/65"
+              >
+                Fotoğrafı kaldır
+              </button>
+            ) : <span />}
             <button
               type="button"
-              onClick={() => setPhoto(null)}
-              className="absolute top-3 left-3 z-10 rounded-full bg-black/40 px-3 py-1.5 text-[11px] font-medium text-white/90 transition hover:bg-black/65"
+              onClick={onClose}
+              aria-label="Kapat"
+              className="grid size-9 place-items-center rounded-full bg-black/40 text-white/85 transition hover:bg-black/65 hover:text-white"
             >
-              Fotoğrafı kaldır
+              <X className="size-4" />
             </button>
-          )}
+          </div>
 
           <p className="font-display absolute inset-x-5 bottom-4 line-clamp-3 text-[19px] leading-snug font-semibold text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.6)]">
             {text.trim() || "Şu an nerede, ne görüyorsun?"}

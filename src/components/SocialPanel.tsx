@@ -358,10 +358,8 @@ export default function SocialPanel({
     <>
       <section
         className={cn(
-          "social-panel gold-frame animate-rise fixed z-50 flex flex-col overflow-hidden bg-[#021915]/92 md:z-40",
-          // Mobil: tam ekran (üstte 6px + safe-area, alta kadar opak). #78.
-          // Masaüstü: #78 öncesi yerleşim; lg değerleri 560f37e'deki hizalama.
-          "inset-x-0 top-[calc(6px+env(safe-area-inset-top))] bottom-0 h-auto rounded-t-[24px] rounded-b-none pb-0 max-md:bg-[#021915] md:top-auto md:bottom-0 md:h-[82dvh] md:rounded-b-none",
+          "social-panel mobile-fullscreen-bleed gold-frame animate-rise fixed z-50 flex flex-col overflow-hidden bg-[#021915]/92 md:z-40",
+          "inset-0 h-auto pb-0 max-md:bg-[#021915] md:inset-x-0 md:top-auto md:bottom-0 md:h-[82dvh] md:rounded-t-[24px] md:rounded-b-none",
           "lg:inset-x-auto lg:bottom-7 lg:left-6 lg:h-[min(64vh,600px)] lg:w-[380px] lg:rounded-[26px] lg:pb-0",
         )}
         aria-label="İzler"
@@ -373,7 +371,7 @@ export default function SocialPanel({
           onPointerMove={movePanelDrag}
           onPointerUp={endPanelDrag}
           onPointerCancel={endPanelDrag}
-          className="shrink-0 cursor-grab touch-none select-none active:cursor-grabbing"
+          className="mobile-safe-top shrink-0 cursor-grab touch-none select-none active:cursor-grabbing"
           title="Aşağı kaydırarak küçült"
         >
         <span aria-hidden className="sheet-handle mt-2.5 lg:hidden" />

@@ -31,7 +31,7 @@ export default function StreetPeek({ place, onClose, corner = "right" }: Props) 
     <aside
       aria-label={`${place.title} çevre görünümü`}
       className={cn(
-        "pointer-events-auto fixed bottom-[calc(82px+env(safe-area-inset-bottom))] z-[60] overflow-hidden rounded-2xl border border-leaf/20 bg-ink-2 shadow-xl md:bottom-4",
+        "mobile-fullscreen-bleed pointer-events-auto fixed bottom-4 z-[66] flex flex-col overflow-hidden rounded-2xl border border-leaf/20 bg-ink-2 shadow-xl",
         wide
           ? "right-4 h-[min(50dvh,400px)] w-[min(94vw,560px)]"
           : corner === "left"
@@ -39,11 +39,11 @@ export default function StreetPeek({ place, onClose, corner = "right" }: Props) 
             : "right-4 h-[250px] w-[300px] md:right-8",
       )}
     >
-      <header className="flex h-11 items-center justify-between px-3 text-[13px]">
+      <header className="mobile-safe-top flex min-h-11 shrink-0 items-center justify-between px-3 py-1 text-[13px]">
         <span className="flex items-center gap-2"><Map size={15} className="text-sun" />{embedKey ? "Sokak görünümü" : "Çevre haritası"}</span>
         <div className="flex">
           <button type="button" aria-label="Görünümü yeniden yükle" onClick={() => setReload((n) => n + 1)} className="grid size-9 place-items-center"><RotateCcw size={14} /></button>
-          <button type="button" aria-label={wide ? "Küçült" : "Büyüt"} onClick={() => setWide(!wide)} className="grid size-9 place-items-center">
+          <button type="button" aria-label={wide ? "Küçült" : "Büyüt"} onClick={() => setWide(!wide)} className="hidden size-9 place-items-center md:grid">
             {wide ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
           </button>
           <button type="button" aria-label="Çevre görünümünü kapat" onClick={onClose} className="grid size-9 place-items-center">
@@ -51,7 +51,7 @@ export default function StreetPeek({ place, onClose, corner = "right" }: Props) 
           </button>
         </div>
       </header>
-      <div className="relative h-[calc(100%-88px)] bg-[#182b23]">
+      <div className="relative min-h-0 flex-1 bg-[#182b23]">
       {!loaded && <div className="absolute inset-0 grid place-content-center px-4 text-center text-[13px] text-mint"><p>{late ? "Harita gecikiyor. Yeniden yüklemeyi deneyebilirsin." : "Çevre haritası yükleniyor..."}</p></div>}
       <iframe
         key={`${place.id}-${reload}`}
@@ -64,7 +64,7 @@ export default function StreetPeek({ place, onClose, corner = "right" }: Props) 
         allowFullScreen
       />
       </div>
-      <footer className="flex min-h-11 items-center justify-between gap-2 px-3 text-[12px]"><span className="truncate text-mint/70">{embedKey ? place.title : "© OpenStreetMap katkıda bulunanlar"}</span><a href={panorama} target="_blank" rel="noreferrer" className="flex shrink-0 items-center gap-1.5 text-sun">Sokak görünümü <ExternalLink size={13} /></a></footer>
+      <footer className="mobile-safe-bottom flex min-h-11 shrink-0 items-center justify-between gap-2 px-3 py-1 text-[12px]"><span className="truncate text-mint/70">{embedKey ? place.title : "© OpenStreetMap katkıda bulunanlar"}</span><a href={panorama} target="_blank" rel="noreferrer" className="flex shrink-0 items-center gap-1.5 text-sun">Sokak görünümü <ExternalLink size={13} /></a></footer>
     </aside>
   );
 }

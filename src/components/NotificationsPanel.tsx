@@ -31,15 +31,15 @@ export default function NotificationsPanel({ notifications, unreadCount, onClose
   return (
     <aside ref={panelRef} aria-label="Bildirimler" className="mobile-notifications fixed inset-0 z-[60] flex justify-end bg-black/35 md:inset-auto md:right-4 md:top-[88px] md:bg-transparent">
       <button type="button" aria-label="Bildirimleri kapat" onClick={onClose} className="absolute inset-0 md:hidden" />
-      <div className="relative flex h-dvh w-full max-w-[360px] flex-col overflow-hidden border border-leaf/20 bg-[#041d17] md:h-[min(70dvh,520px)] md:rounded-[22px] md:shadow-2xl max-md:ml-auto">
-        <header className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+      <div className="mobile-fullscreen-bleed relative flex h-dvh w-full max-w-[360px] flex-col overflow-hidden border border-leaf/20 bg-[#041d17] md:h-[min(70dvh,520px)] md:rounded-[22px] md:shadow-2xl">
+        <header className="mobile-safe-top flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
           <h2 className="flex items-center gap-2 font-display text-base font-semibold"><Bell className="size-4 text-sun" />Bildirimler {unreadCount > 0 && <span className="rounded-full bg-sun px-2 py-0.5 text-[11px] text-ink">{unreadCount} yeni</span>}</h2>
           <div className="flex items-center gap-1">
             {unreadCount > 0 && <button type="button" onClick={onMarkAllRead} className="flex min-h-8 items-center gap-1 rounded-full border border-white/10 px-3 text-[11px] text-mint/80"><Check size={12} />Okundu</button>}
             <button type="button" onClick={onClose} aria-label="Kapat" className="grid size-9 place-items-center rounded-full hover:bg-white/5"><X size={16} /></button>
           </div>
         </header>
-        <div className="thin-scroll flex-1 overflow-y-auto p-2">
+        <div className="mobile-safe-bottom thin-scroll flex-1 overflow-y-auto p-2">
           {notifications.length === 0 ? (
             <div className="p-4 text-center">
               <p className="text-[14px] font-medium">Şimdilik yeni bildirimin yok.</p>
