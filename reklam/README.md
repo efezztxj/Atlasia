@@ -375,5 +375,5 @@ Bu akış **izleyiciyi ziyaretçi, ziyaretçiyi kullanıcı** yapmıyor. Minimum
 | [`reels/04-aciklama.md`](reels/04-aciklama.md) | 04 videosunun Instagram açıklaması (3 varyant + hashtag + hazır cevaplar) |
 | [`pano.html`](pano.html) | Görsel pano — telefonda/ekranda bakılacak hâli |
 
-Üç senaryonun sonunda **kuyruğa hazır JSON** var; video `public/social/` içine
+Senaryoların sonunda **kuyruğa hazır JSON** var; video `public/social/` içine
 girince [`social/queue`](../social/queue/) mantığıyla otomatik yayınlanabilir.

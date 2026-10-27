@@ -1,6 +1,6 @@
 # reklam/video — sesli reklam filmleri
 
-İki film, ortak görsel kit ([`atlasia_kit.py`](atlasia_kit.py)):
+Dört film, ortak görsel kit ([`atlasia_kit.py`](atlasia_kit.py)):
 
 | # | Dosya | Süre | Üretici |
 |---|---|---|---|
@@ -11,6 +11,7 @@
 
 Her film **farklı bir konu** anlatır: turist gibi gezmek · karar yorgunluğu · çevrimdışı ·
 hava. Ortak olan ton ve tipografi, içerik değil. Konu listesi: [`../reels/00-konseptler.md`](../reels/00-konseptler.md)
+
 
 ## 04 — "4.000 fotoğraf"
 
@@ -92,8 +93,6 @@ Bu, reklamı "stok video + yazı"dan çıkarıp **kendi grafik diline** sokuyor.
 `atlasia_kit.py` şunları taşır: temiz kırpım (`clean_square`/`clean_wide`),
 metin katmanı + gölge, rozet, ürün kartı + rota çizimi, durak çipi, galeri duvarı,
 vignette/scrim, `encode_video`. Yeni bir reklam eklerken sadece beat karelerini yaz.
-
-
 ---
 
 ## 06 — "Sinyal yok" (çevrimdışı)
