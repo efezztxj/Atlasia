@@ -106,14 +106,22 @@ export function expireCookie(name: string, isSecure = isHttpsOrigin()): void {
   }
 }
 
-export function saveEssentialCookieConsent(now = new Date()): {
+/**
+ * Tercihleri yazar. Varsayılan "yalnız zorunlu"dur: analitik ve pazarlama
+ * **açık rıza** olmadan asla `true` olmaz (KVKK). Onay kaydı hem çereze hem
+ * yerel depoya yazılır; çerez engelliyse yerel yedek devreye girer.
+ */
+export function saveCookieConsent(
+  preferences: { analytics?: boolean; marketing?: boolean } = {},
+  now = new Date(),
+): {
   record: CookieConsentRecord;
   cookieWritten: boolean;
 } {
   const record: CookieConsentRecord = {
     version: COOKIE_CONSENT_VERSION,
-    analytics: false,
-    marketing: false,
+    analytics: preferences.analytics === true,
+    marketing: preferences.marketing === true,
     updatedAt: now.toISOString(),
   };
 
@@ -135,6 +143,11 @@ export function saveEssentialCookieConsent(now = new Date()): {
   }
 
   return { record, cookieWritten };
+}
+
+/** Geriye dönük uyumluluk: yalnız zorunlu çerezlerle kaydetme. */
+export function saveEssentialCookieConsent(now = new Date()) {
+  return saveCookieConsent({}, now);
 }
 
 export function openCookiePreferences(): void {

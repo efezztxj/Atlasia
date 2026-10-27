@@ -9,6 +9,8 @@
 
 Atlasia'nın **mühendislik kalitesi MVP'nin çok üstünde** (46.442 satır, 142 kaynak dosya, 136 test dosyası / 1.033 test, 1.326 satır Firestore kuralı, CI'da tip+lint+test+build+bütçe+rules emülatörü). Buna karşılık ürünü **"profesyonel bir site"** yapan şey kod değil; **hukuk, ölçülebilirlik, veri mimarisi ve saha kanıtı**. Bugün üçü de eksik: yasal metinlerde `[TARİH] [AD SOYAD] [E-POSTA] [ŞEHİR]` duruyor, üretimde **hiç hata izleme ve hiç analitik yok**, fotoğraflar Firestore belgesinin içinde base64 olarak duruyor (180.000 karakter sınırı). Bu üçü kapanmadan site "çalışan bir demo"; kapandığında "işletilebilir bir ürün" olur.
 
+**İlerleme (2026-10-27):** P0-2 ve P0-3 **kodda tamam** — `src/lib/telemetry.ts`, `src/lib/analytics.ts`, `src/lib/telemetryBootstrap.ts` + çerez bandında anonim ölçüm opt-in'i (`saveCookieConsent`). Aktif olması için tek adım: Cloudflare'de `VITE_TELEMETRY_ENDPOINT`. Ayrıntı: `docs/olcum-ve-hata-izleme.md`.
+
 **Karar:** MVP'den çıkış ≈ **4 hafta** (P0: 9-12 iş günü, P1: 11-14 iş günü) + **4 haftalık davetli pilot**. Aşağıdaki **G1–G6 kapıları** yeşil olmadan genel açılış yok.
 
 ---
@@ -124,8 +126,8 @@ Bir **topluluk** uygulaması için 28 nokta = boş dünya. Topluluk yoğunlukla 
 | ID | Sorun (kanıt) | Yapılacak | Kabul kriteri | Emek |
 |---|---|---|---|---|
 | **P0-1** | `src/content/legal.ts:20-21` → `"Taslak · Künye ve avukat onayı bekliyor"`, `[TARİH] [AD SOYAD / UNVAN] [E-POSTA] [ŞEHİR]` **17 yerde** | Gerçek veri sorumlusu, iletişim, şehir, sürüm tarihi; KVKK aydınlatma + açık rıza + kullanım koşulları avukat onayı | Canlıda `[` karakteri içeren yasal metin **yok**; `LEGAL_PLACEHOLDERS` boş dizi; test bunu kilitler | 2-3 iş günü (avukat dahil) |
-| **P0-2** | Üretimde hata görünürlüğü yok: `AppErrorBoundary.componentDidCatch` yalnız `console.error` | Hata izleme (Sentry/GlitchTip benzeri, KVKK uyumlu: PII kapalı) + kaynak haritası yükleme | Bilerek atılan hata panele **30 sn içinde** düşüyor; kullanıcı kimliği/konum gönderilmiyor | 1 iş günü |
-| **P0-3** | Analitik yok → pilot KPI'ları (AY-18) ölçülemez | Çerezsiz/izinli hafif analitik (sayfa görüntüleme, kayıt, iz→yayın, çökme) | 6 temel olay panelde görünüyor; çerez onayı "hayır" diyende **hiçbir istek gitmiyor** | 1-1,5 iş günü |
+| **P0-2** ✅ *kod tamam* | Üretimde hata görünürlüğü yok: `AppErrorBoundary.componentDidCatch` yalnız `console.error` | Hata izleme (Sentry/GlitchTip benzeri, KVKK uyumlu: PII kapalı) + kaynak haritası yükleme | Bilerek atılan hata panele **30 sn içinde** düşüyor; kullanıcı kimliği/konum gönderilmiyor | 1 iş günü |
+| **P0-3** ✅ *kod tamam* | Analitik yok → pilot KPI'ları (AY-18) ölçülemez | Çerezsiz/izinli hafif analitik (sayfa görüntüleme, kayıt, iz→yayın, çökme) | 6 temel olay panelde görünüyor; çerez onayı "hayır" diyende **hiçbir istek gitmiyor** | 1-1,5 iş günü |
 | **P0-4** | Fotoğraf mimarisi: belge içi base64, 180 KB sınır, Storage kapalı | **Karar:** (a) Storage'ı aç (Blaze gerekir) veya (b) sıkılaştır: 60-80 KB hedef, sunucu tarafı yeniden sıkıştırma yok, ileride CDN | (a) seçilirse: yükleme → URL → `<img srcset>`; (b) seçilirse: akış sayfası indirmesi **< 800 kB** | 3-5 iş günü |
 | **P0-5** | Canlı yapılandırma kanıtı yok: Rules sürümü, indeksler, App Check `Enforce`, `atlasia-dev` projesi üretim olarak kullanılıyor | Console teyidi + `ATLASIA_URETIM_PROJESI` + `ATLASIA_PROD_ENV_POLICY=enforce` + `npm run dogrula:canli` haftalık | `dogrula:canli` yeşil; Rules yayın zaman damgası kayda geçti; App Check Enforce açık | 0,5 iş günü (senin panel işin) |
 | **P0-6** | Cihaz kanıtı yok: iOS Safari + Android Chrome matrisi boş (TASK-016) | Gerçek cihazda 8 senaryo: giriş, konum, iz→yayın, çevrimdışı, harita, tema, hesap silme, PWA kurulumu | Her satırda SHA + tarih + tarayıcı + sonuç | 1-2 iş günü |
