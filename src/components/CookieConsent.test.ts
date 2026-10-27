@@ -123,8 +123,6 @@ describe("CookieConsent", () => {
         createElement(SettingsContent, {
           theme: "light",
           onTheme: vi.fn(),
-          baseMap: "satellite",
-          onBaseMap: vi.fn(),
           installApp: {
             installed: false,
             canPrompt: false,
@@ -144,10 +142,6 @@ describe("CookieConsent", () => {
           onAllowLocation: vi.fn(),
           onShowLocation: vi.fn(),
           onClearLocation: vi.fn(),
-          showLabels: true,
-          onToggleLabels: vi.fn(),
-          terrainEnabled: false,
-          onToggleTerrain: vi.fn(),
           mapBounds: null,
         }),
         createElement(CookieConsent),

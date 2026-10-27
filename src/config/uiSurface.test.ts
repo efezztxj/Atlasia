@@ -176,8 +176,8 @@ describe("keşif kartı kalıcılığı", () => {
     }
   });
 
-  it("masaüstünde sağdan açılan profil ve Atlas AI paneli kartı örtmüyor", () => {
-    expect(app).toContain("shiftedLeft={profileOpen || atlasOpen}");
+  it("masaüstünde sağdan açılan profil, Atlas AI ve Katmanlar paneli kartı örtmüyor", () => {
+    expect(app).toContain("shiftedLeft={profileOpen || atlasOpen || layersOpen}");
     expect(bottomPanel).toContain("shiftedLeft");
     expect(bottomPanel).toContain("lg:pr-[540px]");
   });
@@ -225,6 +225,14 @@ describe("profil sadeleşmesi", () => {
     expect(profile).not.toContain("Değişiklikleri kaydet");
     expect(profile).toContain("Kaydet");
   });
+  it("harita altlığı ve gösterimi profilden kalkıp Katmanlar kısayoluna taşındı", () => {
+    const settingsPanel = read("src/components/SettingsPanel.tsx");
+    const layersSheet = read("src/components/MapLayersSheet.tsx");
+    expect(settingsPanel).not.toContain("Harita altlığı");
+    expect(settingsPanel).not.toContain("Harita gösterimi");
+    expect(layersSheet).toContain("Harita altlığı");
+    expect(layersSheet).toContain("Harita gösterimi");
+  });
 });
 
 describe("masaüstü harita kontrolleri", () => {
@@ -234,8 +242,14 @@ describe("masaüstü harita kontrolleri", () => {
     expect(mapControls).not.toContain("md:bottom-24");
   });
 
-  it("ray Atlas AI ve yürüyüş kaydı eylemlerini taşır ve düğmeler dar pencerede üst üste binmez", () => {
+  it("ray Katmanlar, Atlas AI ve yürüyüş kaydı eylemlerini taşır ve düğmeler dar pencerede üst üste binmez", () => {
     expect(mapControls).toContain("group relative shrink-0");
+    expect(mapControls).toContain('controls="map-layers"');
+    const layersBtnBlock = mapControls.slice(
+      mapControls.indexOf("onClick={onOpenLayers}") - 140,
+      mapControls.indexOf("onClick={onOpenLayers}") + 220,
+    );
+    expect(layersBtnBlock).not.toContain("md:hidden");
     expect(mapControls).toContain("onToggleTrackRecorder");
     expect(mapControls).toContain("onToggleAtlas");
     expect(mapControls).toContain('controls="atlas-assistant"');
