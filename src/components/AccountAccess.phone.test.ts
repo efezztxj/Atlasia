@@ -31,11 +31,18 @@ describe("T1-AUTH telefon bayrağı", () => {
   });
 
   it("Firebase yokken gösterilen notta SMS'ten etkin yöntem gibi söz etmez", () => {
-    expect(accountAccess).toContain('<p className="auth-provider-note">Google ve Apple bağlantısı henüz etkin değil.');
+    // Apple bayrağı kapalıyken notta Apple geçmez; bayrak açıldığında cümle Apple'ı da kapsar.
+    expect(accountAccess).toContain('{APPLE_AUTH_ENABLED ? "Google ve Apple bağlantısı henüz etkin değil." : "Google bağlantısı henüz etkin değil."}');
     expect(accountAccess).not.toContain("Google, Apple ve SMS bağlantısı henüz etkin değil");
     // auth.ts not-configured mesajı da SMS içermemeli
     expect(authTs).not.toContain("Google, Apple ve SMS girişi");
     expect(authTs).toContain("Google ve Apple girişi için sağlayıcı bağlantısı henüz kurulmamış");
+  });
+
+  it("Apple bayrağı kapalıyken Apple düğmesi hiç render edilmez (ölü düğme yok)", () => {
+    expect(accountAccess).toContain("{APPLE_AUTH_ENABLED && <button");
+    expect(accountAccess).not.toContain("Apple ile giriş yakında");
+    expect(accountAccess).not.toContain("hazırlık aşamasında");
   });
 
   it("kalan öğelerin yerleşimi değişmez: providers + ayırıcı + form sırası korunur", () => {

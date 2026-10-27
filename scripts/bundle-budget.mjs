@@ -42,11 +42,27 @@ const DEFAULT_DIST = fileURLToPath(new URL("../dist", import.meta.url));
  * ModerationNotices bileşenleri ve moderation.ts ekleri. Yeni ağır
  * bağımlılık yok. JS eşiği ölçüme ~%0,46 payla 908.000'e çekildi;
  * CSS eşiği değişmedi (34.713 / 34.800, pay dar — izlenecek).
+ *
+ * 2026-10-27 (site turu) — bütçe kapsamı düzeltildi, gevşetilmedi:
+ * ölçüm CSS 34.957 B, JS 903.867 B gzip. "Toplam CSS" haritanın 10.517 B'lik
+ * lazy `map-vendor` dosyasını da sayıyordu; oysa ilk HTML yalnız
+ * `index-*.css` (24.440 B) çekiyor. Yani tek bir 200 B'lik sınıf eklemek,
+ * kullanıcının hiç indirmediği bir dosya yüzünden CI'ı kırıyordu.
+ *   + `initialCssGzipBytes` / `initialJsGzipBytes` eklendi: ilk boyaya giren
+ *     gerçek maliyet artık ayrı ve daha sıkı eşikle ölçülüyor (CSS 25.900,
+ *     JS 398.000; ölçüme ~%2,5-6 pay). Bu iki kapı eskisinden daha sıkı.
+ *   + `totalCssGzipBytes` 35.100 -> 35.700: ölçülen 34.957'ye ~%2,1 pay.
+ *     Toplam yine üst sınır olarak duruyor; artık "ilk boya" ile
+ *     karıştırılmıyor.
+ * Ayrıntı: docs/mvp-denetimi-2026-10-27.md §10 Parti B1.
  */
 export const BUNDLE_BUDGET = Object.freeze({
   totalJsGzipBytes: 908_000,
-  totalCssGzipBytes: 35_100,
+  totalCssGzipBytes: 35_700,
   initialGzipBytes: 439_000,
+  // İlk HTML ile gelen gerçek ilk boya maliyeti (lazy chunk'lar hariç).
+  initialCssGzipBytes: 25_900,
+  initialJsGzipBytes: 398_000,
   categoryGzipBytes: Object.freeze({
     entry: 174_000,
     reactVendor: 66_500,
@@ -174,6 +190,8 @@ export function summarizeBundle({ html, assets, initialAssetPaths }) {
     totalCssGzipBytes: sum(assets.filter((asset) => asset.kind === "css"), "gzipBytes"),
     initialBytes: html.bytes + sum(initialAssets, "bytes"),
     initialGzipBytes: html.gzipBytes + sum(initialAssets, "gzipBytes"),
+    initialCssGzipBytes: sum(initialAssets.filter((asset) => asset.kind === "css"), "gzipBytes"),
+    initialJsGzipBytes: sum(initialAssets.filter((asset) => asset.kind === "js"), "gzipBytes"),
   };
 }
 
@@ -209,6 +227,17 @@ export function evaluateBundleBudget(summary, budget = BUNDLE_BUDGET) {
       `İlk HTML asset seti bütçesi aşıldı: ${formatBytes(summary.initialGzipBytes)} > ${formatBytes(budget.initialGzipBytes)}`,
     );
   }
+  // İlk boyaya giren CSS/JS ayrı ölçülür: lazy harita dosyası bu kapıyı harcamaz.
+  if (summary.initialCssGzipBytes > budget.initialCssGzipBytes) {
+    violations.push(
+      `İlk boya CSS gzip bütçesi aşıldı: ${formatBytes(summary.initialCssGzipBytes)} > ${formatBytes(budget.initialCssGzipBytes)}`,
+    );
+  }
+  if (summary.initialJsGzipBytes > budget.initialJsGzipBytes) {
+    violations.push(
+      `İlk boya JS gzip bütçesi aşıldı: ${formatBytes(summary.initialJsGzipBytes)} > ${formatBytes(budget.initialJsGzipBytes)}`,
+    );
+  }
 
   for (const [category, limit] of Object.entries(budget.categoryGzipBytes)) {
     const actual = summary.categories[category]?.gzipBytes;
@@ -232,6 +261,7 @@ export function formatBundleReport(summary, budget = BUNDLE_BUDGET) {
     `İlk HTML seti: ${formatBytes(summary.initialBytes)} ham / ${formatBytes(summary.initialGzipBytes)} gzip (bütçe ${formatBytes(budget.initialGzipBytes)})`,
     `Toplam JS: ${formatBytes(summary.totalJsBytes)} ham / ${formatBytes(summary.totalJsGzipBytes)} gzip (bütçe ${formatBytes(budget.totalJsGzipBytes)})`,
     `Toplam CSS: ${formatBytes(summary.totalCssBytes)} ham / ${formatBytes(summary.totalCssGzipBytes)} gzip (bütçe ${formatBytes(budget.totalCssGzipBytes)})`,
+    `İlk boya CSS: ${formatBytes(summary.initialCssGzipBytes)} gzip (bütçe ${formatBytes(budget.initialCssGzipBytes)}) · İlk boya JS: ${formatBytes(summary.initialJsGzipBytes)} gzip (bütçe ${formatBytes(budget.initialJsGzipBytes)})`,
     "",
     "Dosya | Kategori | Ham | Gzip | İlk set",
   ];

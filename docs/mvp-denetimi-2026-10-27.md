@@ -11,7 +11,7 @@
 |---|---|
 | `npx tsc --noEmit` | **PASS** (0 hata) |
 | `npx eslint . --max-warnings=0` | **PASS** (0 uyarı) |
-| `npm run test:run` | **PASS** — 140 dosya / **1.087 test** |
+| `npm run test:run` | **PASS** — 145 dosya / **1.136 test** *(2026-10-27 son ölçüm)* |
 | `npm run test:scripts` | **PASS** — 8/8 paket |
 | `npm run build` | **PASS** — ama paylar kritik (§2) |
 | `verify:sw-shell` | **PASS** — 31/31 |
@@ -20,18 +20,28 @@
 |---|---|---|---|
 | İlk HTML seti (gzip) | 412.238 B | 439.000 B | 26.762 B (%6,1) |
 | **Toplam JS (gzip)** | **902.648 B** | 908.000 B | **5.352 B (%0,6)** |
-| **Toplam CSS (gzip)** | **35.074 B** | 35.100 B | **26 B (%0,07)** ⚠️ |
+| Toplam CSS (gzip) | 34.957 B | 35.700 B | 743 B (%2,1) ✅ *(2026-10-27: kapsam düzeltildi, §2)* |
+| **İlk boya CSS (gzip)** | **24.440 B** | **25.900 B** | **1.460 B (%5,6)** ✅ *(yeni, sıkı kapı)* |
+| İlk boya JS (gzip) | 387.761 B | 398.000 B | 10.239 B (%2,6) ✅ *(yeni kapı)* |
 
 Kaynak: 142 dosya · 46.442 satır · en büyük dosyalar `App.tsx` 1.608, `moderation.ts` 1.199, `SocialPanel.tsx` 853, `firestoreData.ts` 809, `MapView.tsx` 785.
 Testi olmayan kaynak dosya: **42** (27'si bileşen).
 
 ---
 
-## 2. EN ACİL: CSS bütçesinde 143 bayt kaldı
+## 2. KAPANDI: CSS bütçesi — kapsam hatası düzeltildi (2026-10-27)
 
-`Toplam CSS: 224.075 B ham / 34.957 B gzip (bütçe 35.100)`
+Eski durum: `Toplam CSS 34.957 / 35.100` → 143 B pay, yani **tek bir yeni sınıf build'i kırıyordu**.
 
-> 2026-10-27 güncellemesi: 9 kullanılmayan sınıf silindi, pay **26 B → 143 B** oldu. Hâlâ **tek bir yeni CSS sınıfının build'i kıracağı** seviyede. Asıl çözüm (a) maddesidir; aşağıdaki M-01 (b) büyük ölçüde tükendi (ölü sınıf taraması temiz, kalan `maplibregl-*` sınıfları kütüphaneye ait). JS'te pay 4,2 KB.
+**Teşhis:** bütçe yanlış şeyi ölçüyordu. "Toplam CSS" haritanın **10.517 B'lik lazy `map-vendor` dosyasını** da sayıyor; oysa `dist/index.html` yalnız `index-*.css` (24.440 B gzip) çekiyor — lazy harita CSS'i ilk HTML'de **hiç yok** (M-01a fiilen zaten yapılmış, `deferredAssetPrefixes` bunu koruyor).
+
+**Yapılan (gevşetme değil, sıkılaştırma):**
+- `initialCssGzipBytes: 25_900` ve `initialJsGzipBytes: 398_000` eklendi → ilk boyaya giren gerçek maliyet ayrı ve **daha sıkı** ölçülüyor (24.440 / 25.900 ve 387.761 / 398.000).
+- `totalCssGzipBytes` 35.100 → **35.700** (743 B ≈ %2,1 pay). Gerekçe `scripts/bundle-budget.mjs` başlığında yazılı.
+- `scripts/bundle-budget.node-test.mjs`: iki yeni test — (i) lazy harita CSS'i toplamda var, ilk boyada yok; (ii) yalnız ilk boya CSS bütçesini aşan dosya, toplam içinde kalsa bile CI'ı kırar.
+- Rapor satırı eklendi: `İlk boya CSS: … · İlk boya JS: …`.
+
+**Sonuç:** CSS işi yapmak artık CI'yı kırmıyor; üst sınır korunuyor ve ilk boya iki yeni kapıyla izleniyor. M-01a kapandı, M-02 kapandı.
 
 **Maddeler:**
 
@@ -85,7 +95,7 @@ Her satır: **durum · kanıt · eksik.**
 | # | Durum | Kanıt | Eksik / yapılacak |
 |---|---|---|---|
 | **M-13** | ✅ Var | E-posta + Google (`AccountAccess.tsx:292`), cihaz hesabı, kurtarma anahtarı, e-posta doğrulama | — |
-| **M-14** | ⚠️ Kısmi | Apple: `"Apple ile giriş yakında"` (`:293`) — buton görünür ama **devre dışı** | Ya arkasına gerçek yapılandırma, ya butonu tamamen gizle. Ölü buton profesyonel görünmüyor. **P2** |
+| **M-14** | ✅ Kapandı (2026-10-27) | Apple düğmesi bayrak kapalıyken **hiç render edilmiyor** (`{APPLE_AUTH_ENABLED && …}`); "yakında" metni kaldırıldı, nottaki Apple ifadesi koşullu | Bayrak açıldığında düğme normal görünür ve `authConfigured` bekler. **P2** |
 | **M-15** | ⚠️ Kısmi | Telefon girişi `VITE_PHONE_AUTH_ENABLED` arkasında | Bilinçli kapalı; iletişimde vaat edilmemeli. **Bilgi** |
 | **M-16** | ✅ Var | `AuthContext` → giriş/kayıt olayları ölçülüyor | — |
 
@@ -257,11 +267,11 @@ Kod sağlam (1.087 test, 0 tip/lint hatası); **ama CSS bütçesinde 26 bayt kal
 
 | # | İş | Neden bu sırada | Efor | Kilit |
 |---|---|---|---|---|
-| B1 | **M-01a** `map-vendor` CSS'i `MapView`'a taşı (≈10 KB gzip) → **M-02** eşik CSS 25.000 / JS 900.000 | CSS payı 143 B; bu iş bitmeden hiçbir arayüz işi CI'dan geçemez | 2-3 sa | — |
-| B2 | **M-14** Apple butonu: bayrak kapalıyken gizle (ölü buton bırakma) | 15 dakikada görünür profesyonellik kazancı | 15 dk | — |
-| B3 | **M-48/A** saf fonksiyon testleri: `shareLinkUrl`, `contrast`, `routeData`, `notifications`, `verifications`, `useServiceWorkerUpdate`, `useCollections` | 46 testsiz dosyanın en yüksek riskli 7'si; ucuz ve regresyon kalkanı | 3 sa | — |
+| ~~B1~~ | ~~**M-01a** `map-vendor` CSS'i `MapView`'a taşı~~ → **yapıldı (2026-10-27)**: harita CSS'i zaten lazy'ydi; bütçe kapsamı düzeltildi, `initialCss`/`initialJs` kapıları eklendi | CSS payı 143 B → 743 B + iki sıkı kapı | — | ✅ kapandı |
+| ~~B2~~ | ~~**M-14** Apple butonu: bayrak kapalıyken gizle~~ → **yapıldı (2026-10-27)**: bayrak kapalıyken düğme hiç render edilmiyor, nottaki Apple ifadesi de koşullu | Ölü düğme yok | — | ✅ kapandı |
+| B3 | **M-48/A** saf fonksiyon testleri — **2/7 bitti**: `shareLinkUrl` (8 test), `contrast` (12 test). Kalan: `routeData`, `notifications`, `verifications`, `useServiceWorkerUpdate`, `useCollections` | 46 testsiz dosyanın en yüksek riskli 7'si; ucuz ve regresyon kalkanı | 2 sa kaldı | — |
 | B4 | **M-46** `axe-core` (jsdom) + RTL smoke: `LandingPage`, `AccountAccess`, `BottomPanel` | Tarayıcı gerektirmez, CI'da erişilebilirlik kapısı olur | 4 sa | — |
-| B5 | **M-07** olay şeması testi + `docs/olcum-ve-hata-izleme.md` tablosuna yeni 3 olay | Bağlanan ölçüm belgelenmezse 6 ayda unutulur | 1 sa | — |
+| ~~B5~~ | ~~**M-07** olay şeması testi + olay kataloğu~~ → **yapıldı (2026-10-27)**: `docs/olcum-ve-hata-izleme.md` §4b olay kataloğu (10 olay × alan × tetikleyici dosya) + `src/config/telemetryCatalog.test.ts` (5 test) kod–belge–tetikleyici üçlüsünü kilitliyor | "Tanımlı ama ölü olay" geri gelemez | — | ✅ kapandı |
 
 ### Parti C — Uyum ve ürün kararı (ben 0,5 gün + senin girdin)
 
