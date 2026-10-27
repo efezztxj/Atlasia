@@ -378,7 +378,7 @@ export default function ProfilePanel({ onClose, onRecords, settings, myPlacesCou
 
         <section id="profile-settings" aria-labelledby="profile-settings-title" className="mt-9 scroll-mt-20">
           <h3 id="profile-settings-title" className="font-display text-lg font-semibold">Ayarlar</h3>
-          <p className="mt-1 text-[12px] leading-relaxed text-mint/70">Görünüm, harita, çevrimdışı kullanım, uygulama ve konum tercihlerinin tamamı burada.</p>
+          <p className="mt-1 text-[12px] leading-relaxed text-mint/70">Görünüm, çevrimdışı kullanım, uygulama ve konum tercihlerinin tamamı burada.</p>
           <div className="mt-5">
             <SettingsContent {...settings} />
           </div>

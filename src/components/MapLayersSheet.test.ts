@@ -5,14 +5,17 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import MapLayersSheet from "./MapLayersSheet";
 
 /**
- * Denetim K-03: mobil Katmanlar sayfası.
- * Üç anahtar (yer adları, 3B arazi, hava katmanı) `role="switch"` olarak
- * çalışır; hava katmanı durumu dürüst metinle gösterilir.
+ * Denetim K-03 & 2026-10-27 kararı: masaüstü ve mobil Katmanlar sayfası.
+ * Harita altlığı (Uydu, Karanlık, Sokak, Topoğrafik) ve üç katman anahtarı
+ * (yer adları, 3B arazi, hava katmanı) burada toplanır; hava katmanı durumu
+ * dürüst metinle gösterilir.
  */
 const renderSheet = (overrides: Partial<Parameters<typeof MapLayersSheet>[0]> = {}) => {
   const props = {
     open: true,
     onClose: vi.fn(),
+    baseMap: "satellite" as const,
+    onBaseMap: vi.fn(),
     labels: true,
     onToggleLabels: vi.fn(),
     terrain: true,
@@ -34,6 +37,8 @@ describe("MapLayersSheet", () => {
     render(createElement(MapLayersSheet, {
       open: false,
       onClose: () => {},
+      baseMap: "satellite",
+      onBaseMap: () => {},
       labels: true,
       onToggleLabels: () => {},
       terrain: true,
@@ -46,8 +51,12 @@ describe("MapLayersSheet", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("üç katman anahtarını ve sıfırla düğmesini gösterir", () => {
-    renderSheet();
+  it("harita altlığı seçeneklerini, üç katman anahtarını ve sıfırla düğmesini gösterir", () => {
+    renderSheet({ baseMap: "satellite" });
+    expect(screen.getByText("Harita altlığı")).toBeTruthy();
+    expect(screen.getByText("Harita gösterimi")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Uydu/ }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: /Sokak/ }).getAttribute("aria-pressed")).toBe("false");
     const switches = screen.getAllByRole("switch");
     expect(switches).toHaveLength(3);
     expect(switches[0].getAttribute("aria-checked")).toBe("true");
@@ -55,12 +64,18 @@ describe("MapLayersSheet", () => {
     expect(screen.getByRole("button", { name: /Görünümü sıfırla/ })).toBeTruthy();
   });
 
-  it("anahtarlar ve sıfırla doğru geri çağrıları tetikler", () => {
+  it("altlık seçimi, anahtarlar ve sıfırla doğru geri çağrıları tetikler", () => {
     const props = renderSheet();
+    fireEvent.click(screen.getByRole("button", { name: /Sokak/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Topoğrafik/ }));
     const switches = screen.getAllByRole("switch");
+    fireEvent.click(switches[0]);
     fireEvent.click(switches[1]);
     fireEvent.click(switches[2]);
     fireEvent.click(screen.getByRole("button", { name: /Görünümü sıfırla/ }));
+    expect(props.onBaseMap).toHaveBeenCalledWith("street");
+    expect(props.onBaseMap).toHaveBeenCalledWith("topographic");
+    expect(props.onToggleLabels).toHaveBeenCalledTimes(1);
     expect(props.onToggleTerrain).toHaveBeenCalledTimes(1);
     expect(props.onToggleWeather).toHaveBeenCalledTimes(1);
     expect(props.onReset).toHaveBeenCalledTimes(1);

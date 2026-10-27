@@ -27,8 +27,6 @@ function makeProps(overrides: Partial<SettingsContentProps> = {}): SettingsConte
   return {
     theme: "dark",
     onTheme: vi.fn(),
-    baseMap: "satellite",
-    onBaseMap: vi.fn(),
     installApp: {
       installed: false,
       canPrompt: false,
@@ -48,24 +46,20 @@ function makeProps(overrides: Partial<SettingsContentProps> = {}): SettingsConte
     onAllowLocation: vi.fn(),
     onShowLocation: vi.fn(),
     onClearLocation: vi.fn(),
-    showLabels: true,
-    onToggleLabels: vi.fn(),
-    terrainEnabled: false,
-    onToggleTerrain: vi.fn(),
     mapBounds: null,
     ...overrides,
   };
 }
 
 describe("SettingsContent", () => {
-  it("tema, harita, uygulama ve konum ayarlarının tamamını gösterir", () => {
+  it("tema, uygulama ve konum ayarlarını gösterir; harita altlığı ve gösterimi Katmanlar kısayoluna taşındı", () => {
     render(createElement(SettingsContent, makeProps()));
 
-    for (const heading of ["Görünüm", "Harita gösterimi", "Harita altlığı", "Erişilebilirlik", "Çevrimdışı harita", "Uygulama", "Konum ve gizlilik"]) {
+    for (const heading of ["Görünüm", "Erişilebilirlik", "Çevrimdışı harita", "Uygulama", "Konum ve gizlilik"]) {
       expect(screen.getByText(heading)).toBeTruthy();
     }
-    expect(screen.getByRole("button", { name: /^Yer adları/ }).getAttribute("aria-pressed")).toBe("true");
-    expect(screen.getByRole("button", { name: /^3B arazi/ }).getAttribute("aria-pressed")).toBe("false");
+    expect(screen.queryByText("Harita altlığı")).toBeNull();
+    expect(screen.queryByText("Harita gösterimi")).toBeNull();
     expect(document.getElementById("location-settings")).toBeTruthy();
     expect(document.getElementById("accessibility-title")).toBeTruthy();
   });
@@ -89,21 +83,15 @@ describe("SettingsContent", () => {
     expect(screen.getByRole("button", { name: "Büyük" }).getAttribute("aria-pressed")).toBe("true");
   });
 
-  it("tema, altlık ve harita anahtarlarını doğru işleyicilere bağlar", () => {
+  it("tema anahtarlarını doğru işleyicilere bağlar", () => {
     const props = makeProps();
     render(createElement(SettingsContent, props));
 
     fireEvent.click(screen.getByRole("button", { name: "Açık" }));
     fireEvent.click(screen.getByRole("button", { name: "Gece" }));
-    fireEvent.click(screen.getByRole("button", { name: /Sokak/ }));
-    fireEvent.click(screen.getByRole("button", { name: /^Yer adları/ }));
-    fireEvent.click(screen.getByRole("button", { name: /^3B arazi/ }));
 
     expect(props.onTheme).toHaveBeenCalledWith("light");
     expect(props.onTheme).toHaveBeenCalledWith("midnight");
-    expect(props.onBaseMap).toHaveBeenCalledWith("street");
-    expect(props.onToggleLabels).toHaveBeenCalledOnce();
-    expect(props.onToggleTerrain).toHaveBeenCalledOnce();
   });
 
   it("Çerez ve depolama satırı durumu gösterir, tercih olayını gönderir ve kayıt sonrası güncellenir", () => {

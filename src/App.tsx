@@ -395,6 +395,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
     setStoryPlace(null);
     setStreetPlace(null);
     setNotificationsOpen(false);
+    setLayersOpen(false);
   };
 
   const openRecords = () => { closePanels(); setRecordsOpen(true); };
@@ -978,8 +979,6 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
   const settingsContentProps: SettingsContentProps = {
     theme,
     onTheme: setTheme,
-    baseMap,
-    onBaseMap: setBaseMap,
     installApp,
     mapBounds: mapViewport?.bounds ?? null,
     location: {
@@ -993,10 +992,6 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
     onAllowLocation: handleAllowLocation,
     onClearLocation: handleClearLocation,
     onShowLocation: handleShowLocation,
-    showLabels: labels,
-    onToggleLabels: () => setLabels((value) => !value),
-    terrainEnabled: terrain,
-    onToggleTerrain: () => setTerrain((value) => !value),
     // Raporlar yalnız bulut hesabında anlamlı (cihaz hesabı Firestore'a yazmaz).
     onOpenReports: cloudAccount
       ? () => { closePanels(); setReportsOpen(true); }
@@ -1092,12 +1087,6 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         onZoomOut={() => mapRef.current?.zoomOut()}
         onReset={handleReset}
         onLocate={handleLocate}
-        onToggleLabels={() => setLabels((v) => !v)}
-        onToggleTerrain={() => setTerrain((v) => !v)}
-        labels={labels}
-        terrain={terrain}
-        weather={weather}
-        onToggleWeather={toggleWeather}
         onOpenLayers={() => {
           const next = !layersOpen;
           closePanels();
@@ -1127,6 +1116,8 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
           <MapLayersSheet
             open={layersOpen}
             onClose={() => setLayersOpen(false)}
+            baseMap={baseMap}
+            onBaseMap={setBaseMap}
             labels={labels}
             onToggleLabels={() => setLabels((v) => !v)}
             terrain={terrain}
@@ -1268,7 +1259,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         onDelete={handleDelete}
         onAdd={startAdd}
         shifted={feedOpen}
-        shiftedLeft={profileOpen || atlasOpen}
+        shiftedLeft={profileOpen || atlasOpen || layersOpen}
         onOpenFeed={() => { closePanels(); setFeedOpen(true); }}
         accuracy={precise?.accuracy ?? null}
         locating={geo.status === "locating" || geo.status === "refining"}
