@@ -145,5 +145,9 @@ Maintainer isteğiyle moderasyon, klasik admin paneli düzenine taşındı:
 - **Kullanıcılar:** kuyruktaki rapor sahipleri + ban kayıtlarının birleşimi;
   rapor sayısı, ban rozeti ve geçmiş sorgusu. Raporsuz ceza ilkesi sürer:
   bu ekran yalnız görüntüleme içindir.
-- Çekmece düzeni (Raporlarım ve inceleme durumu) aynen korunur; Yönetim Paneli
-  aynı bileşenin `admin` varyantıdır, veri ve yaptırım akışları ortaktır.
+- **Ayrım (2026-10-27):** çekmece düzeni moderatör hesabında bile yalnız
+  "Raporlarım"ı gösterir; Kuyruk/İtirazlar/Kayıtlar/Duyurular gibi moderasyon
+  görünümleri yalnız Yönetim Paneli (`admin`) düzeninde ve yalnız moderatörde
+  açılır. Kuyruk verisi de yalnız Yönetim Paneli açıkken dinlenir; çekmece
+  moderasyon verisi çekmez. Yönetim Paneli aynı bileşenin `admin` varyantıdır,
+  veri ve yaptırım akışları ortaktır.

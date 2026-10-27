@@ -512,8 +512,10 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
     };
   }, [reportsOpen, adminOpen, cloudAccount, user?.uid]);
 
+  // Kuyruk yalnız Yönetim Paneli açıkken dinlenir; çekmece ("Raporlarım")
+  // moderatör hesabında bile moderasyon verisi çekmez.
   useEffect(() => {
-    if ((!reportsOpen && !adminOpen) || !moderator || !cloudAccount) return;
+    if (!adminOpen || !moderator || !cloudAccount) return;
     let active = true;
     setQueueLoading(true);
     setQueueError(null);
@@ -530,7 +532,7 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
       active = false;
       unsub();
     };
-  }, [reportsOpen, adminOpen, moderator, cloudAccount]);
+  }, [adminOpen, moderator, cloudAccount]);
 
   // Etkin askıya almalar: yalnız moderatörde dinlenir (kural listeyi ona açar).
   useEffect(() => {

@@ -13,8 +13,10 @@ import {
  * Raporlar + moderasyon paneli — ayrıcalıklı yönetim yüzeyi.
  *
  * Görünümler:
- *  1. **Raporlarım** — herkes kendi raporlarının durumunu görür.
- *  2. **Kuyruk** — yalnız moderatör (`moderators/{uid}`, Console'da elle).
+ *  1. **Raporlarım** — çekmece (varsayılan) düzeni budur; moderatör hesabında
+ *     bile çekmecede yalnız kullanıcının kendi raporları görünür.
+ *  2. **Kuyruk** — yalnız Yönetim Paneli (`admin`) düzeninde ve yalnız
+ *     moderatörde (`moderators/{uid}`, Console'da elle).
  *     Kademeli yaptırım: uyarı → içerik kaldırma (kalıcı) → askıya alma.
  *     Kuyruk filtrelenebilir/aranabilir; hedef geçmişi karttan açılır.
  *  3. **İtirazlar** — ban itirazları; kabul ayrı, ban kaldırma ayrı yazılır.
@@ -94,7 +96,7 @@ type Tab = "mine" | "queue" | "appeals" | "log" | "announce" | "dash" | "users";
 interface Props {
   open: boolean;
   onClose: () => void;
-  /** Tam ekran Yönetim Paneli düzeni (sol menü + gösterge paneli). Yalnız moderatörde anlamlı. */
+  /** Tam ekran Yönetim Paneli düzeni (sol menü + gösterge paneli). Moderasyon görünümleri yalnız bu düzende ve yalnız moderatörde açılır; çekmece herkeste "Raporlarım"dır. */
   admin?: boolean;
   uid: string;
   moderator: boolean;
@@ -164,8 +166,8 @@ export default function ReportsPanel({
   const [annBody, setAnnBody] = useState("");
 
   useEffect(() => {
-    if (!moderator && tab !== "mine") setTab("mine");
-  }, [moderator, tab]);
+    if ((!admin || !moderator) && tab !== "mine") setTab("mine");
+  }, [admin, moderator, tab]);
 
   useEffect(() => {
     if (admin && moderator) setTab("dash");
@@ -243,24 +245,16 @@ export default function ReportsPanel({
   const reports = tab === "queue" ? visibleQueue : myReports;
   const error = tab === "queue" ? queueError : myReportsError;
 
-  const tabs: Array<[Tab, string]> = moderator
-    ? admin
-      ? [
-          ["dash", "Kontrol Paneli"],
-          ["queue", openCount > 0 ? `Kuyruk · ${openCount}` : "Kuyruk"],
-          ["appeals", openAppeals > 0 ? `İtirazlar · ${openAppeals}` : "İtirazlar"],
-          ["users", "Kullanıcılar"],
-          ["log", "Kayıtlar"],
-          ["announce", "Duyurular"],
-          ["mine", "Raporlarım"],
-        ]
-      : [
-          ["mine", "Raporlarım"],
-          ["queue", openCount > 0 ? `Kuyruk · ${openCount}` : "Kuyruk"],
-          ["appeals", openAppeals > 0 ? `İtirazlar · ${openAppeals}` : "İtirazlar"],
-          ["log", "Kayıtlar"],
-          ["announce", "Duyurular"],
-        ]
+  const tabs: Array<[Tab, string]> = admin && moderator
+    ? [
+        ["dash", "Kontrol Paneli"],
+        ["queue", openCount > 0 ? `Kuyruk · ${openCount}` : "Kuyruk"],
+        ["appeals", openAppeals > 0 ? `İtirazlar · ${openAppeals}` : "İtirazlar"],
+        ["users", "Kullanıcılar"],
+        ["log", "Kayıtlar"],
+        ["announce", "Duyurular"],
+        ["mine", "Raporlarım"],
+      ]
     : [["mine", "Raporlarım"]];
 
   return (
@@ -303,31 +297,12 @@ export default function ReportsPanel({
       >
         <header className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
           <h2 id="reports-title" className="flex items-center gap-2 font-display text-base font-semibold text-mint">
-            <Flag className="size-4 text-sun" />{admin ? "Yönetim Paneli" : moderator ? "Moderasyon" : "Raporlar"}
+            <Flag className="size-4 text-sun" />{admin && moderator ? "Yönetim Paneli" : "Raporlar"}
           </h2>
           <button type="button" onClick={onClose} aria-label="Kapat" className="grid size-9 place-items-center rounded-full text-mint/70 hover:bg-white/5">
             <X className="size-4" />
           </button>
         </header>
-
-        {moderator && !admin && (
-          <nav aria-label="Moderasyon görünümü" className="flex flex-wrap gap-1 border-b border-white/10 px-3 py-2">
-            {tabs.map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                aria-pressed={tab === id}
-                onClick={() => setTab(id)}
-                className={cn(
-                  "min-h-10 rounded-full px-3 text-[13px] font-semibold transition",
-                  tab === id ? "bg-sun/15 text-sun" : "text-mint/70 hover:bg-white/5",
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </nav>
-        )}
 
         {moderator && tab === "queue" && (
           <p className="mx-4 mt-3 rounded-xl border border-leaf/20 bg-leaf/[0.06] px-3 py-2 text-[11px] leading-relaxed text-mint/70">
