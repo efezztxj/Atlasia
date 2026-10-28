@@ -12,6 +12,14 @@ describe("ağır istemci modüllerinin tembel yüklenmesi", () => {
     expect(explorer).not.toMatch(/^import MapView.+from "\.\/MapView";/m);
   });
 
+  it("isteğe bağlı 6 panel (sosyal, çekmece, Atlas, yerlerim, sokak, ekle) tembel yüklenir", () => {
+    const explorer = read("src/components/Explorer.tsx");
+    for (const name of ["SocialPanel", "MyPlacesPanel", "Drawer", "AtlasAssistant", "StreetPeek", "AddDiscoveryModal"]) {
+      expect(explorer).toContain(`lazy(() => import("./${name}"))`);
+      expect(explorer).not.toMatch(new RegExp(`^import ${name} from "\\./${name}";`, "m"));
+    }
+  });
+
   it("landing kabuğu Firebase SDK'sını ve keşif kabuğunu ilk grafiğe almaz", () => {
     const app = read("src/App.tsx");
     // Landing'in ilk yüklemesinde firebase-vendor (~150 KB gzip) ve harita
