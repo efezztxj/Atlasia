@@ -192,7 +192,7 @@ Her satır: **durum · kanıt · eksik.**
 | **M-22** | ✅ Var | `AddDiscoveryModal` → iz bırakma, foto sıkıştırma (`compressImage`) | — |
 | **M-23** | ⚠️ Kısmi | `MAX_CLOUD_PHOTO_CHARS = 180_000`, `storage.rules` **tamamen kapalı** | Fotoğraf **Firestore belgesinin içinde** base64. 50 gönderilik akış dolarsa ≈ 1,8-9 MB indirme; **çoklu foto imkânsız** (1 MiB belge sınırı). **P0 — karar: Storage/Blaze mı, 60-80 KB'ye sıkıştırma mı.** |
 | **M-24** | ✅ Var | `RouteEditor` + yükseklik profili + görünürlük (özel/yayın) | — |
-| **M-25** | ⚠️ Kısmi | `src/data/siteTours.ts` → `isRealPath` **her turda `false`** | Site turlarının yürüme geometrisi yok; çizgi temsilî. Etiket arayüzde görünüyor mu doğrulanmalı. **P1** |
+| **M-25** | ✅ Kapandı (2026-10-28) | `src/components/NearbyAudioGuide.tsx` (`!isRealPath(tourRoute)`), `src/components/NearbyAudioGuide.test.ts` | `isRealPath === false` olan site turlarında kart içinde açık **`Temsilî tur — saha patikası doğrulanmadı; duraklar editör sırasıyla sunulur.`** etiketi gösterilir; tekil rehber noktalarında veya doğrulanmış patikalarda gösterilmez. |
 | **M-26** | ✅ Kapandı (2026-10-28) | `useTrackRecorder.ts` — `timeout` + `navigator.wakeLock.request("screen")` + `visibilitychange` yenileme | Kayıt boyunca ekran kilidi açık tutulur; desteklenmeyen/düşük güç modunda kayıt kesilmeden uyarı verir |
 | **M-27** | ✅ Var | İz → taslak → onay → kaydet/yayınla akışı | — |
 

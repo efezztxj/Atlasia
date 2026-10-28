@@ -4,7 +4,7 @@ import type { Place } from "../types";
 import { STORIES } from "../data/galleries";
 import { storageGet, storageSet } from "../utils/storage";
 import { initialGuideState, resolveGuidePlace, type TourGuideState } from "../utils/tourGuide";
-import { siteTourForPoint } from "../data/siteTours";
+import { isRealPath, siteTourForPoint } from "../data/siteTours";
 import { analytics } from "../lib/analytics";
 
 interface Props {
@@ -81,7 +81,12 @@ export default function NearbyAudioGuide({ location, places, onOpenPlace }: Prop
     if (!res.place) return null;
     const match = candidates.find((c) => c.id === res.place!.id);
     if (!match) return null;
-    return { place: match.place, meters: res.meters ?? 0 };
+    return {
+      place: match.place,
+      meters: res.meters ?? 0,
+      stopOrder: match.order,
+      totalStops: isTour ? tourRoute.days[0].stops.length : undefined,
+    };
   }, [dismissed, location, places, tourRoute]);
 
   useEffect(() => {
@@ -154,6 +159,7 @@ export default function NearbyAudioGuide({ location, places, onOpenPlace }: Prop
   };
 
   const replay = () => speakFromStart();
+  const representativeTour = nearby.stopOrder !== undefined && Boolean(tourRoute && !isRealPath(tourRoute));
 
   return (
     <section aria-labelledby="nearby-guide-title" className="nearby-audio-guide animate-rise fixed inset-x-3 top-[78px] z-[38] mx-auto max-w-[440px] rounded-[22px] border border-sun/30 bg-[#06241d] p-4 shadow-2xl shadow-black/60 md:top-[92px]">
@@ -166,6 +172,14 @@ export default function NearbyAudioGuide({ location, places, onOpenPlace }: Prop
         </div>
         <button type="button" onClick={dismiss} aria-label="Bu sesli rehber önerisini kapat" className="grid size-10 shrink-0 place-items-center rounded-full text-mint/60 hover:bg-white/5 hover:text-white"><X size={17} /></button>
       </div>
+
+      {representativeTour && tourRoute && (
+        <p role="note" className="mt-2.5 rounded-xl border border-sun/25 bg-sun/10 px-3 py-1.5 text-[11.5px] leading-snug text-mint/75">
+          <span className="font-semibold text-sun">Temsilî tur</span>
+          {" · "}
+          {tourRoute.routeTitle} ({nearby.stopOrder}/{nearby.totalStops}. durak) — saha patikası doğrulanmadı; duraklar editör sırasıyla sunulur.
+        </p>
+      )}
 
       <p className="mt-3 line-clamp-2 text-[13px] leading-relaxed text-mint/75">{nearby.place.note}</p>
       {!supported && <p className="mt-2 text-[12px] text-sun">Bu tarayıcı sesli okumayı desteklemiyor; hikâyeyi yer ayrıntısından okuyabilirsin.</p>}
