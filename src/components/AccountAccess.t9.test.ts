@@ -92,6 +92,25 @@ describe("giriş ekranı — sağlayıcı sırası", () => {
   });
 });
 
+describe("T4 — misafirden gelen kullanıcı geri dönebilir", () => {
+  it("onClose verilirse 'Misafir olarak devam et' düğmesi ekranı kapatır", async () => {
+    authState.authConfigured = true;
+    const onClose = vi.fn();
+    render(createElement(AccountAccess, { onClose }));
+
+    const back = screen.getByRole("button", { name: /Misafir olarak devam et/i });
+    const { fireEvent } = await import("@testing-library/react");
+    fireEvent.click(back);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("onClose yoksa geri dönüş düğmesi çizilmez (kayıt duvarı akışı bozulmaz)", () => {
+    authState.authConfigured = true;
+    render(createElement(AccountAccess));
+    expect(screen.queryByRole("button", { name: /Misafir olarak devam et/i })).toBeNull();
+  });
+});
+
 describe("giriş ekranı — form alanları", () => {
   it("e-posta ve şifre alanları doğru autocomplete değerlerini taşır", () => {
     authState.authConfigured = true;

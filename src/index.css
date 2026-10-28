@@ -394,6 +394,17 @@ html[data-theme="dark"] .text-leaf\/80 {
 .auth-access-security { display: flex; align-items: center; gap: 7px; font-size: 11px; color: #c0d3c7; }
 .auth-access-security svg { color: #8bb39d; }
 .auth-form-wrap { width: 100%; max-width: 360px; margin: auto; padding: 35px 0 32px; }
+/* T4 — misafir modundan gelen kullanıcı hesabı açmadan haritaya dönebilir. */
+.auth-guest-back {
+  display: inline-flex; align-items: center; gap: 7px; min-height: 40px; margin-top: 10px;
+  padding: 0 2px; border: 0; background: none; color: #c0cec2;
+  font-size: 12px; font-weight: 600; letter-spacing: .01em; cursor: pointer;
+}
+.auth-guest-back:hover { color: #ecf1e8; }
+.auth-intent {
+  margin-top: 12px; padding: 10px 12px; border-left: 2px solid var(--color-sun, #e8c169);
+  background: rgba(232, 193, 105, .08); color: #d9e3d6; font-size: 12px; line-height: 1.5;
+}
 .auth-heading { margin: 34px 0 29px; animation: auth-copy-enter .35s ease both; }
 .auth-heading .auth-eyebrow { font-size: 9px; letter-spacing: .16em; }
 .auth-heading h2 { margin-top: 13px; color: #ecf1e8; font-family: var(--font-display); font-size: clamp(28px, 2.45vw, 39px); font-weight: 500; letter-spacing: -.04em; line-height: 1.18; }

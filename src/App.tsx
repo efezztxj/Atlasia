@@ -29,28 +29,48 @@ function BootSplash({ label }: { label?: string }) {
 }
 
 function AuthGate({ installApp }: { installApp: InstallAppController }) {
-  const { user, checking } = useAuth();
+  const { user, checking, guest, startGuest, accountRequest, clearAccountRequest } = useAuth();
   const [accessOpen, setAccessOpen] = useState(false);
   const previousUser = useRef(user);
 
+  const closeAccess = () => { clearAccountRequest(); setAccessOpen(false); };
+
   useEffect(() => {
     if (previousUser.current && !user) setAccessOpen(false);
+    // Hesap açıldı: giriş ekranı kapanır, kullanıcı doğrudan haritaya döner (T5).
+    if (user) { setAccessOpen(false); clearAccountRequest(); }
     previousUser.current = user;
-  }, [user]);
+  }, [user, clearAccountRequest]);
 
-  // T2 huni adımı: landing'deki birincil eylem. Misafir modu (T4) gelene kadar
-  // bu adım giriş ekranını açar; `cta_click` sayesinde hangi yerleşimin
-  // çalıştığı ayrı ayrı ölçülür.
+  // T4: misafir yazmaya kalkarsa bağlam korunarak giriş/kayıt ekranı açılır.
+  // `accountRequest` sayaçtır: aynı niyet iki kez tetiklense de ekran açılır.
+  const requested = useRef(0);
+  useEffect(() => {
+    if (accountRequest === 0 || accountRequest === requested.current) return;
+    requested.current = accountRequest;
+    setAccessOpen(true);
+  }, [accountRequest]);
+
+  // T2 huni adımı: landing'deki birincil eylem. T4 ile birlikte bu adım artık
+  // kayıt duvarı değil: harita misafir olarak açılır, yazma anında hesap istenir.
   const handleStart = (placement: CtaPlacement) => {
     analytics.ctaClick({ placement, signedIn: false });
-    setAccessOpen(true);
+    startGuest();
   };
 
   if (checking) return <BootSplash />;
   if (!user) {
-    return accessOpen
-      ? <Suspense fallback={<BootSplash label="Giriş ekranı yükleniyor" />}><AccountAccess /></Suspense>
-      : <LandingPage onStart={handleStart} />;
+    if (accessOpen) {
+      return (
+        <Suspense fallback={<BootSplash label="Giriş ekranı yükleniyor" />}>
+          <AccountAccess onClose={closeAccess} />
+        </Suspense>
+      );
+    }
+    if (guest) {
+      return <Suspense fallback={<BootSplash label="Harita hazırlanıyor" />}><Explorer installApp={installApp} /></Suspense>;
+    }
+    return <LandingPage onStart={handleStart} />;
   }
   if (user.requiresEmailVerification) {
     return <Suspense fallback={<BootSplash />}><EmailVerification /></Suspense>;

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   authBackend,
   authConfigured,
@@ -13,6 +13,25 @@ import {
 import { AccountError, type AtlasAccount, type AuthBackend, type SignupDetails } from "../lib/accountTypes";
 import { registerDeviceAccount, restoreDeviceSession, signInDeviceAccount, signOutDeviceAccount, updateDeviceProfile } from "../lib/deviceAccounts";
 import { analytics } from "../lib/analytics";
+
+/**
+ * Misafir oturumu bayrağı. **Kimlik değildir**: misafirin Firestore'da hesabı
+ * yoktur, `request.auth` boştur, yani yazma kuralları sunucuda zaten kapalıdır
+ * (fail-closed). Bayrak yalnız "haritayı kayıt duvarı olmadan göster" demek için
+ * tutulur; sekme kapanınca düşer.
+ */
+const GUEST_KEY = "atlasia.guest.v1";
+
+function readGuestFlag(): boolean {
+  try { return sessionStorage.getItem(GUEST_KEY) === "1"; } catch { return false; }
+}
+
+function writeGuestFlag(active: boolean) {
+  try {
+    if (active) sessionStorage.setItem(GUEST_KEY, "1");
+    else sessionStorage.removeItem(GUEST_KEY);
+  } catch { /* Gizli sekmede depolama kapalı olabilir; oturum bellekte sürer. */ }
+}
 
 export interface SignupResult {
   recoveryCode?: string;
@@ -30,6 +49,20 @@ interface AuthState {
   signup: (details: SignupDetails) => Promise<SignupResult>;
   refreshSession: () => Promise<AtlasAccount | null>;
   resendVerification: () => Promise<void>;
+  /** Misafir (kayıtsız) keşif oturumu açık mı. */
+  guest: boolean;
+  startGuest: () => void;
+  endGuest: () => void;
+  /**
+   * Misafir yazmaya kalktığında çağrılır: kabuk giriş/kayıt ekranını açar.
+   * Sayaç bilinçli olarak monoton artar (aynı eylem iki kez istenirse de açılır).
+   */
+  requireAccount: (intent: string) => void;
+  /** Giriş/kayıt ekranının açılma sayacı; 0 = kapalı. */
+  accountRequest: number;
+  /** Ekran açılırken gösterilecek bağlam ("İz eklemek için hesap gerekli"). */
+  accountIntent: string | null;
+  clearAccountRequest: () => void;
 }
 
 const Context = createContext<AuthState | null>(null);
@@ -38,6 +71,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AtlasAccount | null>(null);
   const [checking, setChecking] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [guest, setGuest] = useState(readGuestFlag);
+  const [accountRequest, setAccountRequest] = useState(0);
+  const [accountIntent, setAccountIntent] = useState<string | null>(null);
   const generation = useRef(0);
 
   useEffect(() => {
@@ -185,6 +221,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await sendAtlasVerificationEmail(current);
   };
 
+  // Hesap açılınca misafir bayrağı düşer: bir daha "misafir" olarak dönülmez.
+  useEffect(() => {
+    if (!user) return;
+    setGuest(false);
+    writeGuestFlag(false);
+  }, [user]);
+
+  // Kimlik sabit: bu geri çağrılar kabuktaki effect'lerin bağımlılığı; her
+  // render'da yenisi üretilirse effect her render'da çalışır ve açılan ekranı
+  // hemen kapatır.
+  const startGuest = useCallback(() => { setGuest(true); writeGuestFlag(true); }, []);
+  const endGuest = useCallback(() => { setGuest(false); writeGuestFlag(false); }, []);
+  const requireAccount = useCallback((intent: string) => {
+    setAccountIntent(intent);
+    setAccountRequest((count) => count + 1);
+  }, []);
+  const clearAccountRequest = useCallback(() => { setAccountRequest(0); setAccountIntent(null); }, []);
+
   const deviceSessionUid = user?.backend === "device" ? user.uid : null;
 
   useEffect(() => {
@@ -198,7 +252,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => { active = false; clearInterval(timer); window.removeEventListener("focus", check); };
   }, [deviceSessionUid]);
 
-  return <Context.Provider value={{ user, backend: authBackend, checking, error, logout, setName, login, signup, refreshSession, resendVerification }}>{children}</Context.Provider>;
+  return (
+    <Context.Provider value={{
+      user,
+      backend: authBackend,
+      checking,
+      error,
+      logout,
+      setName,
+      login,
+      signup,
+      refreshSession,
+      resendVerification,
+      guest,
+      startGuest,
+      endGuest,
+      requireAccount,
+      accountRequest,
+      accountIntent,
+      clearAccountRequest,
+    }}>
+      {children}
+    </Context.Provider>
+  );
 }
 
 export function useAuth() {

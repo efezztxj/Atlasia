@@ -22,9 +22,9 @@ describe("analytics · olay sözleşmesi", () => {
   beforeEach(() => resetAnalyticsSessionForTests());
 
   it("tanımlı olay kümesi sabit, tekrarsız ve T2 huni adımlarını içerir", () => {
-    expect(ANALYTICS_EVENTS).toHaveLength(16);
+    expect(ANALYTICS_EVENTS).toHaveLength(17);
     expect(new Set(ANALYTICS_EVENTS).size).toBe(ANALYTICS_EVENTS.length);
-    for (const event of ["cta_click", "map_open", "signup_start", "signup_complete", "first_route_created", "audio_guide_start", "consent_choice"]) {
+    for (const event of ["cta_click", "map_open", "onboarding_choice", "signup_start", "signup_complete", "first_route_created", "audio_guide_start", "consent_choice"]) {
       expect(ANALYTICS_EVENTS).toContain(event);
     }
   });

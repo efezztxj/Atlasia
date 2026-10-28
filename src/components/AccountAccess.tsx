@@ -109,8 +109,8 @@ function PasswordField({ id, label = "Şifre", value, onChange, error, fresh = f
   </div>;
 }
 
-export default function AccountAccess() {
-  const { backend, checking, error: sessionError, login, signup } = useAuth();
+export default function AccountAccess({ onClose }: { onClose?: () => void }) {
+  const { backend, checking, error: sessionError, login, signup, accountIntent } = useAuth();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   // T2 huni adımı: kayıt formu ilk kez açıldığında bir kez sayılır.
   useEffect(() => {
@@ -314,6 +314,12 @@ export default function AccountAccess() {
   const heading = screen === "reset" ? "Şifreni sıfırla" : screen === "recovery" ? "Hesabını geri al" : screen === "code" ? "Telefonunu doğrula" : screen === "phone" ? "Telefonla giriş yap" : mode === "signup" ? "Atlasia’ya üye ol" : "Atlasia’ya giriş yap";
   return <>
     <AuthFrame signup={mode === "signup" && screen === "credentials"} onSwitch={switchMode} onLegal={setLegal}>
+      {onClose && screen === "credentials" && (
+        <button type="button" onClick={onClose} className="auth-guest-back">
+          <ArrowLeft size={15} aria-hidden /> Misafir olarak devam et
+        </button>
+      )}
+      {accountIntent && <p className="auth-intent" role="status">{accountIntent}</p>}
       <div className="auth-heading"><h2>{heading}<span>.</span></h2><p>{screen === "reset" ? "Kayıtlı e-posta adresine şifre yenileme bağlantısı gönderelim." : screen === "recovery" ? "Bu cihazda oluşturduğun hesabın kurtarma anahtarını kullan." : screen === "phone" || screen === "code" ? "Numaranı SMS koduyla doğrulayarak devam et." : mode === "signup" ? "Kendi izlerini ve rotalarını bir araya getir." : "Kaldığın yerden keşfetmeye devam et."}</p></div>
       <BackendNote />
 

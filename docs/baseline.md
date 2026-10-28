@@ -4,25 +4,25 @@ Bu dosya, iyileştirme planının "iyileşti mi?" sorusunu hisle değil sayıyla
 yanıtlamak için tutulur. **Her satırda kaynak ve tarih vardır.** Ölçülmemiş bir
 şey varsa "ölçülmedi" yazar; tahmini sayı yazılmaz.
 
-Son güncelleme: **2026-10-28** · Taban sürüm: `2412ace` (main) · Ölçüm alınan sürüm: `7079387` (bu dal, #124/#125 üstüne T1–T3 + T9 + T13–T16)
+Son güncelleme: **2026-10-28** · Taban sürüm: `2412ace` (main) · Ölçüm alınan sürüm: bu dal, #124/#125 üstüne T1–T3 + T9 + T13–T16 + T4/T5
 
 ## 1. Paket boyutları — ölçüldü
 
 Komut: `npm run build` (üretim derlemesi; `scripts/bundle-budget.mjs` gzip ölçer).
 
-| Ölçüm | Taban `2412ace` | Bu dal `7079387` | Fark |
+| Ölçüm | Taban `2412ace` | Bu dal | Not |
 |---|---|---|---|
-| İlk HTML seti (gzip) | 411.987 B | **117.585 B** | −294.402 B (−%71) |
-| İlk HTML seti (ham) | 1.371.468 B | 432.276 B | −939.192 B |
-| İlk setteki JS (gzip) | 386.401 B | **91.254 B** | −295.147 B |
-| `entry` chunk (gzip) | 166.244 B | **20.533 B** | −145.711 B |
-| `firebase-vendor` (gzip) | 149.338 B — ilk sette | 149.339 B — **ertelenmiş** | ilk setten çıktı |
-| `map-vendor` (gzip) | 248.691 B — ilk sette değil | 248.691 B — ilk sette değil | — |
-| Toplam JS (gzip) | 905.483 B | 916.296 B | +10.813 B (ambalaj + T2 olayları + mobil menü + #125 parça bölünmesi) |
-| Toplam CSS (gzip) | 35.061 B | 35.092 B | +31 B (T7 + T13/T14 sınıfları, T9 ölü CSS temizliği) |
-| Yolculuk: tanıtım (gzip) | 411.987 B | 117.585 B | −294.402 B (bütçe 425.000) |
-| Yolculuk: uygulama kabuğu (gzip) | 812.982 B | 517.449 B | −295.533 B (bütçe 830.000) |
-| Bütçe durumu | içinde | içinde (JS 916.296/916.500 · CSS 35.092/35.700) | JS marjı yalnız **204 B**; yeni bağımlılık eklemeden önce ölçüm gerekir |
+| İlk HTML seti (gzip) | 411.987 B | **126.774 B** | −285.213 B (−%69) |
+| İlk HTML seti (ham) | 1.371.468 B | 463.624 B | −907.844 B |
+| İlk setteki JS (gzip) | 386.401 B | **100.213 B** | −286.188 B |
+| `entry` chunk (gzip) | 166.244 B | **20.814 B** | −145.430 B |
+| `firebase-vendor` (gzip) | 149.338 B — ilk sette | 149.338 B — **ertelenmiş** | ilk setten çıktı |
+| `map-vendor` (gzip) | 248.691 B — ilk sette değil | 300.903 B — ilk sette değil | maplibre 6.15 (lazy) |
+| Toplam JS (gzip) | 905.483 B | 997.761 B | +92.278 B; tamamı **bağımlılık yükseltmeleri** (react 19.3.1, maplibre 6.15, firebase 13) + T4/T5 (+933 B) |
+| Toplam CSS (gzip) | 35.061 B | 34.988 B | −73 B (T7/T13/T14 sınıfları eklendi, T9 ölü CSS ve Tailwind 4.3 çıktısı düştü) |
+| Yolculuk: tanıtım (gzip) | 411.987 B | 126.774 B | −285.213 B (bütçe 129.400) |
+| Yolculuk: uygulama kabuğu (gzip) | 812.982 B | 586.968 B | −226.014 B (bütçe 603.400) |
+| Bütçe durumu | içinde | içinde (ilk set 126.774/129.400 · entry 20.814/20.900 · JS 997.761/998.500 · CSS 34.988/35.700) | T4/T5 yalnız **toplam JS** eşiğini 997.500 → 998.500 yükseltti (gerekçe `scripts/bundle-budget.mjs`); kullanıcıya görünen eşikler değişmedi |
 
 > Derleme kimliği (`index.html` içindeki sürüm damgası) her derlemede birkaç
 > bayt değiştiği için aynı ağaçta art arda iki `npm run build` ±≈20 B farklı
@@ -89,7 +89,7 @@ Olay sözleşmesi T2 ile kodda (bkz. `docs/olcum-ve-hata-izleme.md` §2b), ancak
 |---|---|
 | `npm run typecheck` | temiz |
 | `npm run lint` | temiz |
-| `npm run test:run` | 1228/1228 (151 dosya) |
+| `npm run test:run` | 1248/1248 (153 dosya) |
 | `npm run build` | başarılı, bütçe içinde |
 | `npm run test:scripts` | 19/19 (node test runner) |
 | `npm run verify:sw-shell` | 44/44 varlık |

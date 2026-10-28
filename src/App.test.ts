@@ -9,7 +9,7 @@
  */
 import { createElement } from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { analytics } from "./lib/analytics";
 import App from "./App";
 
@@ -33,6 +33,13 @@ vi.mock("./lib/analytics", () => {
   };
 });
 
+// T4: landing CTA'sı artık giriş ekranını değil haritayı açar. Harita kabuğu
+// (maplibre + Firestore veri katmanı) burada gerçekten yüklenmez; kapının
+// hangi dalı açtığı stub ile doğrulanır.
+vi.mock("./components/Explorer", () => ({
+  default: () => createElement("div", { "data-testid": "harita-kabugu" }, "misafir haritası"),
+}));
+
 vi.mock("./lib/firebaseConfig", () => ({
   firebaseConfigured: false,
   isCloudReady: false,
@@ -55,6 +62,12 @@ beforeAll(() => {
 
 // Testler arası DOM sızmasın: her test kendi landing'ini kurar.
 afterEach(() => cleanup());
+// Misafir bayrağı `sessionStorage`da tutulur; sızan bayrak sonraki testi
+// "harita açık" durumunda başlatırdı.
+beforeEach(() => {
+  tracked.length = 0;
+  try { sessionStorage.clear(); } catch { /* jsdom her zaman izin vermez */ }
+});
 
 describe("App kapısı", () => {
   it("oturumsuz ilk açılışta landing'i çizer ve boot ekranında takılmaz", async () => {
@@ -67,8 +80,7 @@ describe("App kapısı", () => {
     expect(screen.queryByRole("status", { name: "Harita hazırlanıyor" })).toBeNull();
   });
 
-  it("hero CTA'sı cta_click{placement:'hero'} gönderir (T2 kablolaması)", async () => {
-    tracked.length = 0;
+  it("hero CTA'sı cta_click{placement:'hero'} gönderir ve misafir haritasını açar (T2+T4)", async () => {
     render(createElement(App));
     const hero = await screen.findByRole("button", { name: /Dünyayı keşfet/i });
     fireEvent.click(hero);
@@ -76,12 +88,23 @@ describe("App kapısı", () => {
     const cta = tracked.filter((entry) => entry.name === "cta_click");
     expect(cta).toHaveLength(1);
     expect(cta[0].props).toEqual({ placement: "hero", signedIn: false });
+    // T4: kayıt duvarı yok — harita açılır, giriş formu açılmaz.
+    expect(await screen.findByTestId("harita-kabugu")).toBeTruthy();
+    expect(screen.queryByLabelText("E-posta adresi")).toBeNull();
+  });
+
+  it("misafir bayrağı sekme yenilenince korunur (harita yeniden açılır)", async () => {
+    sessionStorage.setItem("atlasia.guest.v1", "1");
+    render(createElement(App));
+    expect(await screen.findByTestId("harita-kabugu")).toBeTruthy();
   });
 
   it("üst menü ve alt bilgi CTA'ları kendi yerleşim adlarını taşır", async () => {
-    // Her CTA giriş ekranını açtığı için (T4'e kadar) her biri ayrı kurulumda denenir.
+    // Her CTA haritaya geçtiği için her biri ayrı kurulumda denenir.
     for (const [index, placement] of [[0, "header"], [-1, "footer"]] as const) {
       cleanup();
+      // İlk tur misafir oturumunu açar; ikinci tur landing'e dönebilmek için sıfırla.
+      sessionStorage.clear();
       tracked.length = 0;
       render(createElement(App));
       const starts = await screen.findAllByRole("button", { name: /Keşfe başla/i });
@@ -93,7 +116,6 @@ describe("App kapısı", () => {
   });
 
   it("landing açılışında harita ya da kayıt olayı ateşlenmez (huni sırası)", async () => {
-    tracked.length = 0;
     render(createElement(App));
     await screen.findByRole("button", { name: /Dünyayı keşfet/i });
     expect(tracked.some((entry) => ["map_open", "signup_start", "signup_complete"].includes(entry.name))).toBe(false);

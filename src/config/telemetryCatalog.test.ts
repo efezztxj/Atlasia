@@ -65,6 +65,8 @@ describe("olay kataloğu: kod, tetikleyici ve belge aynı şeyi söyler", () => 
       // T2 huni olayları (2026-10-28): `sign_up` adı `signup_complete` oldu.
       cta_click: "ctaClick",
       map_open: "mapOpen",
+      // T8 karşılama seçimi (2026-10-28).
+      onboarding_choice: "onboardingChoice",
       signup_start: "signupStart",
       signup_complete: "signupComplete",
       sign_in: "signIn",

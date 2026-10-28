@@ -37,17 +37,24 @@ const newId = (p: string) => `${p}-${Date.now().toString(36)}-${Math.random().to
 
 const LOCAL_STORY_EXPIRY_REFRESH_MS = 60 * 1000;
 
-export function useAtlasData(uid: string) {
+/**
+ * @param persist `false` → misafir oturumu: yerel depoya hiçbir şey yazılmaz,
+ *   başlangıç içeriği boştur. Misafirin kayıtları hesaba karışmaz, çünkü
+ *   anahtar (`...v2.<uid>`) misafirde hiç oluşmaz.
+ */
+export function useAtlasData(uid: string, { persist = true }: { persist?: boolean } = {}) {
   const me = useRef(clientId());
   const placesKey = `${PLACES_KEY}.${uid}`;
   const postsKey = `${POSTS_KEY}.${uid}`;
   const storiesKey = `${STORIES_KEY}.${uid}`;
-  const [places, setPlaces] = useState<Place[]>(() => load(placesKey, [] as Place[]));
+  const [places, setPlaces] = useState<Place[]>(() => persist ? load(placesKey, [] as Place[]) : []);
   const [posts, setPosts] = useState<FeedPost[]>(() =>
-    withoutSeedPosts(load(postsKey, [] as FeedPost[])),
+    persist ? withoutSeedPosts(load(postsKey, [] as FeedPost[])) : [],
   );
   const [stories, setStories] = useState<Story[]>(() =>
-    withoutSeedStories(load(storiesKey, [] as Story[])).filter((story) => isStoryAlive(story.createdAt)),
+    persist
+      ? withoutSeedStories(load(storiesKey, [] as Story[])).filter((story) => isStoryAlive(story.createdAt))
+      : [],
   );
 
   useEffect(() => {
@@ -81,9 +88,10 @@ export function useAtlasData(uid: string) {
     };
   }, []);
 
-  useEffect(() => save(placesKey, places), [placesKey, places]);
-  useEffect(() => save(postsKey, posts), [postsKey, posts]);
-  useEffect(() => save(storiesKey, stories), [storiesKey, stories]);
+  // Misafirde depolama kapalı: anahtar hiç yazılmaz, içerik hesaba karışmaz.
+  useEffect(() => { if (persist) save(placesKey, places); }, [persist, placesKey, places]);
+  useEffect(() => { if (persist) save(postsKey, posts); }, [persist, postsKey, posts]);
+  useEffect(() => { if (persist) save(storiesKey, stories); }, [persist, storiesKey, stories]);
 
   const uploadPhoto = useCallback(async (file: File, _kind: UploadPhotoKind) => {
     const { dataUrl } = await compressImage(file, 860, 0.7);
