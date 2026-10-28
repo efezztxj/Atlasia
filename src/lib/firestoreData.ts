@@ -273,6 +273,11 @@ function normalizeStory(id: string, raw: DocumentData): Story {
   };
 }
 
+/** Story'nin 24 saatlik ömrünü kesin olarak tamamladığını bildirir (`createdAt <= 0` bekleyen yazılar korunur). */
+export function isStoryExpired(createdAt: number, now = Date.now()): boolean {
+  return createdAt > 0 && createdAt < now - STORY_TTL_MS;
+}
+
 /** Açık oturumda süresi dolan story'lerin de görünümden düşmesini sağlar. */
 export function activeStories(stories: Story[], now = Date.now()): Story[] {
   const cutoff = now - STORY_TTL_MS;
@@ -734,15 +739,23 @@ export async function listStoriesPage(
 export function subscribeStories(
   onChange: (page: StoryPage) => void,
   onError?: (error: Error) => void,
+  onExpire?: (expiredStories: Story[]) => void,
 ): () => void {
   if (!db) return () => {};
 
   const cutoffMs = Date.now() - STORY_TTL_MS;
   let latestPage: StoryPage = { ...emptyPage<Story>(), cutoffMs };
-  const emitActiveStories = () => onChange({
-    ...latestPage,
-    items: activeStories(latestPage.items),
-  });
+  const emitActiveStories = () => {
+    const now = Date.now();
+    if (onExpire) {
+      const expired = latestPage.items.filter((story) => isStoryExpired(story.createdAt, now));
+      if (expired.length > 0) onExpire(expired);
+    }
+    onChange({
+      ...latestPage,
+      items: activeStories(latestPage.items, now),
+    });
+  };
   const unsubscribe = onSnapshot(
     storiesPageQuery(db, cutoffMs),
     (snap) => {
@@ -755,11 +768,108 @@ export function subscribeStories(
     onError,
   );
   const expiryTimer = globalThis.setInterval(emitActiveStories, STORY_EXPIRY_REFRESH_MS);
+  const handleVisibility = () => {
+    if (typeof document !== "undefined" && document.visibilityState === "visible") {
+      emitActiveStories();
+    }
+  };
+  const handleFocus = () => emitActiveStories();
+  if (typeof document !== "undefined") {
+    document.addEventListener("visibilitychange", handleVisibility);
+  }
+  if (typeof window !== "undefined") {
+    window.addEventListener("focus", handleFocus);
+  }
 
   return () => {
     globalThis.clearInterval(expiryTimer);
+    if (typeof document !== "undefined") {
+      document.removeEventListener("visibilitychange", handleVisibility);
+    }
+    if (typeof window !== "undefined") {
+      window.removeEventListener("focus", handleFocus);
+    }
     unsubscribe();
   };
+}
+
+export interface PurgeExpiredStoriesOptions {
+  uid: string;
+  moderator?: boolean;
+  now?: number;
+}
+
+const MAX_STORY_PURGE_BATCHES = 5;
+
+/**
+ * 24 saatlik ömrü dolmuş (`createdAt < now - 24 sa`) story belgelerini Firestore'dan kalıcı siler:
+ *   1) Her bulut oturumunda kullanıcının kendi süresi dolmuş story'lerini siler
+ *      (tek alanlı `authorUid` indeksi + `resource.data.authorUid == request.auth.uid` kuralı).
+ *   2) Oturum sahibi moderatörse tüm kullanıcıların süresi dolmuş story'lerini de süpürür
+ *      (tek alanlı `createdAt` ASC indeksi + `boundedList(50)` + `isModerator()` kuralı).
+ * Bekleyen yerel yazılar (`hasPendingWrites`) ve geçersiz zaman damgaları (`createdAt <= 0`) korunur.
+ */
+export async function purgeExpiredStories({
+  uid,
+  moderator = false,
+  now = Date.now(),
+}: PurgeExpiredStoriesOptions): Promise<number> {
+  if (!db) return 0;
+  const normalizedUid = uid.trim();
+  if (!normalizedUid) return 0;
+
+  const firestore = db;
+  const attemptedIds = new Set<string>();
+  let deletedCount = 0;
+
+  const isDocExpired = (docSnap: QueryDocumentSnapshot<DocumentData>): boolean => {
+    if (docSnap.metadata?.hasPendingWrites) return false;
+    return isStoryExpired(toMillis(docSnap.data().createdAt), now);
+  };
+
+  for (let batch = 0; batch < MAX_STORY_PURGE_BATCHES; batch += 1) {
+    const ownSnap = await getDocs(query(
+      collection(firestore, COL_STORIES),
+      where("authorUid", "==", normalizedUid),
+      limit(FIRESTORE_QUERY_LIMITS.storiesPage),
+    ));
+    const batchIds = ownSnap.docs
+      .filter((item) => !attemptedIds.has(item.id) && isDocExpired(item))
+      .map((item) => item.id);
+    if (batchIds.length === 0) break;
+    batchIds.forEach((id) => attemptedIds.add(id));
+    const settled = await Promise.allSettled(
+      batchIds.map((id) => deleteDoc(doc(firestore, COL_STORIES, id))),
+    );
+    const batchDeleted = settled.filter((res) => res.status === "fulfilled").length;
+    deletedCount += batchDeleted;
+    if (ownSnap.size < FIRESTORE_QUERY_LIMITS.storiesPage || batchDeleted === 0) break;
+  }
+
+  if (moderator) {
+    const cutoffTs = Timestamp.fromMillis(now - STORY_TTL_MS);
+    for (let batch = 0; batch < MAX_STORY_PURGE_BATCHES; batch += 1) {
+      const expiredSnap = await getDocs(query(
+        collection(firestore, COL_STORIES),
+        where("createdAt", "<", cutoffTs),
+        orderBy("createdAt", "asc"),
+        limit(FIRESTORE_QUERY_LIMITS.storiesPage),
+      ));
+      const batchIds = expiredSnap.docs
+        .filter((item) => !attemptedIds.has(item.id) && isDocExpired(item))
+        .map((item) => item.id);
+      if (batchIds.length === 0) break;
+      batchIds.forEach((id) => attemptedIds.add(id));
+      const settled = await Promise.allSettled(
+        batchIds.map((id) => deleteDoc(doc(firestore, COL_STORIES, id))),
+      );
+      const batchDeleted = settled.filter((res) => res.status === "fulfilled").length;
+      deletedCount += batchDeleted;
+      if (expiredSnap.size < FIRESTORE_QUERY_LIMITS.storiesPage || batchDeleted === 0) break;
+    }
+  }
+
+  return deletedCount;
 }
 
 export interface NewStoryInput {
