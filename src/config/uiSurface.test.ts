@@ -14,6 +14,7 @@ const read = (relative: string) => readFileSync(fileURLToPath(new URL(`../../${r
 const exists = (relative: string) => existsSync(fileURLToPath(new URL(`../../${relative}`, import.meta.url)));
 
 const css = read("src/index.css");
+const indexHtml = read("index.html");
 const app = read("src/App.tsx");
 const mapControls = read("src/components/MapControls.tsx");
 const bottomPanel = read("src/components/BottomPanel.tsx");
@@ -65,9 +66,33 @@ describe("altın kullanımı", () => {
   });
 
   it("açık tema krem değil gerçek beyaz panel rengi kullanıyor", () => {
-    expect(css).toContain("rgba(255, 255, 255, 0.97)");
+    expect(css).toContain("background-color: #ffffff !important;");
     expect(block('html[data-theme="light"]')).toContain("--color-ink: #ffffff");
     expect(block('html[data-theme="light"]')).toContain("--color-ink-2: #ffffff");
+  });
+});
+
+describe("tema başlangıcı ve yüzey güvenlik ağı", () => {
+  it("kayıtlı tema, ilk boyamadan önce renk şeması ve tarayıcı çubuğu ile eşitlenir", () => {
+    const bootstrap = indexHtml.indexOf('localStorage.getItem("atlasia.theme.v1")');
+    const appModule = indexHtml.indexOf('src="/src/main.tsx"');
+    expect(bootstrap).toBeGreaterThan(-1);
+    expect(bootstrap).toBeLessThan(appModule);
+    expect(indexHtml).toContain('root.dataset.theme = theme');
+    expect(indexHtml).toContain('root.style.colorScheme = theme === "light" ? "light" : "dark"');
+    expect(indexHtml).not.toMatch(/<html[^>]*data-theme=/);
+  });
+
+  it("ham koyu yüzeyler açık temada beyaz ve sınırlı kalır", () => {
+    expect(css).toContain('html[data-theme="light"] .space-bg :is(');
+    expect(css).toContain('[class*="bg-[#0"]');
+    expect(css).toContain("background-color: #ffffff !important");
+  });
+
+  it("autofill ve seçili metin etkin tema renklerini kullanır", () => {
+    expect(css).toContain("-webkit-text-fill-color: var(--color-mint)");
+    expect(css).toContain("box-shadow: inset 0 0 0 1000px var(--color-ink-2)");
+    expect(block("::selection")).toContain("color: var(--color-ink)");
   });
 });
 
