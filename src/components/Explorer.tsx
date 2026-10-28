@@ -37,7 +37,10 @@ import { useAtlasData } from "../hooks/useAtlasData";
 import { useFirestoreAtlasData } from "../hooks/useFirestoreAtlasData";
 import { useTheme } from "../hooks/useTheme";
 import type { InstallAppController } from "../hooks/useInstallApp";
-import { isCloudReady, firebaseConfigSummary } from "../lib/firebase";
+// A3: SDK başlatan `lib/firebase` yerine SDK'sız kapı. Explorer zaten Firestore
+// kullanıyor ama bu import yüzünden SDK, yapılandırma okuması için de değil,
+// modül yüklenirken başlatılıyordu; kapı dosyası hiçbir SDK import etmez.
+import { isCloudReady, firebaseConfigSummary } from "../lib/firebaseConfig";
 import type { PlaceViewport } from "../lib/firestoreData";
 import { ROUTE_OPEN_MESSAGES, openPublishedRoute } from "../lib/publishedRouteOpen";
 import { placeDeleteErrorMessage } from "../lib/firestoreValue";

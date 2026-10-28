@@ -3,7 +3,9 @@ import { Activity, CircleStop, MapPin, Play, Save, ShieldCheck, Trash2, X } from
 import type { AtlasRoute, AtlasTrack } from "../types";
 import { cn } from "../utils/cn";
 import { useTrackRecorder, type FinishedTrack } from "../hooks/useTrackRecorder";
-import { firebaseConfigured } from "../lib/firebase";
+// A3: `lib/firebase` SDK'yı modül yüklenirken başlatır; panel yalnız
+// "yapılandırıldı mı" sorusunu soruyor → SDK'sız kapı.
+import { firebaseConfigured } from "../lib/firebaseConfig";
 import { decodePolyline } from "../utils/polyline";
 import { summarizeDraft, draftSummaryText, DRAFT_LOSS_NOTICE } from "../utils/trackDraft";
 import TrackRibbonPreview from "./TrackRibbonPreview";

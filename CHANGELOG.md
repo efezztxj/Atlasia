@@ -1,5 +1,18 @@
 # Atlasia Update
 
+## 2026-10-28 — Denetim A grubu: CSP uyumlu tema, Google popup izni, gizli source map, CRLF (A1–A7)
+
+Ayrıntı: `docs/teslimatlar/teslimat-denetim-a-csp-hsts-2026-10-28.md`.
+
+- **A1:** satır içi tema betiği `/theme-boot.js`'e taşındı; `script-src 'self'` altında engelleniyordu.
+- **A2:** `apis.google.com` script/connect/frame direktiflerine eklendi (Firebase Google popup).
+- **A3:** `Explorer` ve `TrackRecorderPanel` SDK'sız `lib/firebaseConfig` kapısını okuyor.
+- **A4:** gizlilik metni `_GRECAPTCHA` gerçeğine göre güncellendi.
+- **A5:** HSTS `includeSubDomains`; `preload` gerekçesiyle yok.
+- **A6:** `sourcemap: "hidden"` + `collect-sourcemaps.mjs` haritaları `dist` dışına taşır; CI artifact (pinli action).
+- **A7:** `.gitattributes eol=lf` + `split(/\r?\n/)` (Windows checkout).
+- Testler **1275/1275** (158 dosya), typecheck/lint/build/`test:scripts`/`test:bundle-budget` yeşil.
+
 ## 2026-10-28 — Veri hatası artık kalıcı şerit, yükleme yerleri iskelet (M-18, M-19)
 
 Ayrıntı: `docs/teslimatlar/teslimat-m18-m19-hata-seridi-iskelet-2026-10-28.md`.
