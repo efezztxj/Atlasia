@@ -287,7 +287,7 @@ Kod sağlam (1.087 test, 0 tip/lint hatası); **ama CSS bütçesinde 26 bayt kal
 | # | İş | Neden bu sırada | Efor |
 |---|---|---|---|
 | D1 | **M-49** 5 Playwright senaryosu (yalnız CI — bu ortamda tarayıcı yok: `libnss3.so` eksik) | Uçtan uca akışın tek gerçek kanıtı | 1 gün |
-| D2 | **M-03** route bazlı bütçe + Lighthouse CI | Bütçe "toplam" olmaktan çıkıp sayfa bazlı olur | 3 sa |
+| D2 | **M-03** yolculuk bazlı bütçe → **yarısı yapıldı (2026-10-27)**: `journeyGzipBytes` (`landing` 425.000 / `appShell` 830.000; ölçüm 413.463 / 813.189) + 2 test. **Kalan:** Lighthouse CI (bu ortamda tarayıcı yok) ve **M-03b** `firebase-vendor` 149 KB'nin ilk boyadan çıkarılması | Bütçe artık hangi yolculuğun ağırlaştığını söylüyor | 2 sa |
 | D3 | **M-18** hata şeridi + **M-19** iskeletler | Kullanıcının gördüğü kalite | 4 sa |
 | D4 | **M-57** bağımlılık PR'ları, **M-58** yedek tatbikatı | Operasyon disiplini | 3 sa |
 

@@ -113,6 +113,33 @@ test("ilk boya CSS bütçesi aşılırsa toplam içinde kalsa bile kırar", (t) 
   assert.ok(result.violations.some((message) => message.includes("İlk boya CSS gzip")));
 });
 
+test("yolculuk bütçeleri: tanıtım haritayı, uygulama kabuğu haritayı içerir", (t) => {
+  const summary = summarizeBundle(collectBundleAssets(makeDist(t)));
+  const mapVendor = summary.categories.mapVendor.gzipBytes;
+  const mapView = summary.categories.mapView.gzipBytes;
+
+  assert.equal(summary.journeys.landing, summary.initialGzipBytes);
+  assert.equal(summary.journeys.appShell, summary.journeys.landing + mapVendor + mapView);
+  assert.match(formatBundleReport(summary), /Yolculuk — tanıtım:/);
+});
+
+test("tanıtım yolculuğu bütçesi aşılırsa, toplam içinde kalsa bile kırar", (t) => {
+  const distDir = makeDist(t);
+  const bloated = Buffer.alloc(BUNDLE_BUDGET.journeyGzipBytes.landing + 8_192);
+  let seed = 555_555;
+  for (let index = 0; index < bloated.length; index += 1) {
+    seed = (Math.imul(seed, 1_664_525) + 1_013_904_223) >>> 0;
+    bloated[index] = seed >>> 24;
+  }
+  writeFixture(distDir, "assets/index-entry.css", bloated);
+
+  const summary = summarizeBundle(collectBundleAssets(distDir));
+  const result = evaluateBundleBudget(summary);
+
+  assert.equal(result.ok, false);
+  assert.ok(result.violations.some((message) => message.includes("tanıtım yolculuğu")));
+});
+
 test("ertelenmesi gereken Auth chunk'ı ilk setteyse bütçeyi kırar", (t) => {
   const summary = summarizeBundle(collectBundleAssets(makeDist(t, { initialAuth: true })));
   const result = evaluateBundleBudget(summary);

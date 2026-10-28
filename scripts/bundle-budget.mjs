@@ -55,6 +55,16 @@ const DEFAULT_DIST = fileURLToPath(new URL("../dist", import.meta.url));
  *     Toplam yine üst sınır olarak duruyor; artık "ilk boya" ile
  *     karıştırılmıyor.
  * Ayrıntı: docs/mvp-denetimi-2026-10-27.md §10 Parti B1.
+ *
+ * 2026-10-27 (M-03, yolculuk bütçesi): "toplam" tek başına hangi sayfanın
+ * ağırlaştığını söylemiyor. İki yolculuk ayrıca ölçülür:
+ *   landing  = index.html + ilk boya CSS/JS            (ölçüm 413.463)
+ *   appShell = landing + maplibre JS+CSS + MapView + harita worker'ı
+ *                                                       (ölçüm 812.982)
+ * Ölçülen değerlerin üstünde ~%2 payla iki eşik eklendi (425.000 / 830.000).
+ * NOT (dürüst kayıt): hedef "tanıtım ≤ 250.000" DEĞİL. `firebase-vendor`
+ * (149.338 B) hâlâ ilk boyada, çünkü App.tsx veri katmanını statik import
+ * ediyor. Bu bütçe o durumu gizlemez, ölçer; küçültme işi M-03b olarak açık.
  */
 export const BUNDLE_BUDGET = Object.freeze({
   totalJsGzipBytes: 908_000,
@@ -63,6 +73,11 @@ export const BUNDLE_BUDGET = Object.freeze({
   // İlk HTML ile gelen gerçek ilk boya maliyeti (lazy chunk'lar hariç).
   initialCssGzipBytes: 25_900,
   initialJsGzipBytes: 398_000,
+  // Yolculuk bazlı üst sınırlar (bkz. başlıktaki M-03 notu).
+  journeyGzipBytes: Object.freeze({
+    landing: 425_000,
+    appShell: 830_000,
+  }),
   categoryGzipBytes: Object.freeze({
     entry: 174_000,
     reactVendor: 66_500,
@@ -162,6 +177,13 @@ function sum(items, field) {
   return items.reduce((total, item) => total + item[field], 0);
 }
 
+/** Bir yolculukta indirilen varlıkların gzip toplamı. */
+function journeyBytes(html, initialAssets, categories) {
+  return html.gzipBytes + initialAssets.reduce((total, asset) => total + asset.gzipBytes, 0) +
+    // Fixture'larda bazı kategoriler hiç olmayabilir; eksik kategori 0 sayılır.
+    categories.reduce((total, category) => total + (category?.gzipBytes ?? 0), 0);
+}
+
 export function summarizeBundle({ html, assets, initialAssetPaths }) {
   const byPath = new Map(assets.map((asset) => [asset.path, asset]));
   const initialAssets = initialAssetPaths
@@ -191,6 +213,16 @@ export function summarizeBundle({ html, assets, initialAssetPaths }) {
     initialBytes: html.bytes + sum(initialAssets, "bytes"),
     initialGzipBytes: html.gzipBytes + sum(initialAssets, "gzipBytes"),
     initialCssGzipBytes: sum(initialAssets.filter((asset) => asset.kind === "css"), "gzipBytes"),
+    // Yolculuk toplamları: tanıtım (haritasız) ve haritalı uygulama kabuğu.
+    // Harita kategori toplamları ilk sette olmasa da o yolculukta yüklenir.
+    journeys: {
+      landing: journeyBytes(html, initialAssets, []),
+      appShell: journeyBytes(html, initialAssets, [
+        categories.mapVendor,
+        categories.mapView,
+        categories.mapWorker,
+      ]),
+    },
     initialJsGzipBytes: sum(initialAssets.filter((asset) => asset.kind === "js"), "gzipBytes"),
   };
 }
@@ -239,6 +271,15 @@ export function evaluateBundleBudget(summary, budget = BUNDLE_BUDGET) {
     );
   }
 
+  const journeyLabels = { landing: "tanıtım", appShell: "uygulama kabuğu" };
+  for (const [journey, limit] of Object.entries(budget.journeyGzipBytes ?? {})) {
+    const actual = summary.journeys?.[journey];
+    if (actual !== undefined && actual > limit) {
+      const label = journeyLabels[journey] ?? journey;
+      violations.push(`${label} yolculuğu gzip bütçesi aşıldı: ${formatBytes(actual)} > ${formatBytes(limit)}`);
+    }
+  }
+
   for (const [category, limit] of Object.entries(budget.categoryGzipBytes)) {
     const actual = summary.categories[category]?.gzipBytes;
     if (actual !== undefined && actual > limit) {
@@ -262,6 +303,7 @@ export function formatBundleReport(summary, budget = BUNDLE_BUDGET) {
     `Toplam JS: ${formatBytes(summary.totalJsBytes)} ham / ${formatBytes(summary.totalJsGzipBytes)} gzip (bütçe ${formatBytes(budget.totalJsGzipBytes)})`,
     `Toplam CSS: ${formatBytes(summary.totalCssBytes)} ham / ${formatBytes(summary.totalCssGzipBytes)} gzip (bütçe ${formatBytes(budget.totalCssGzipBytes)})`,
     `İlk boya CSS: ${formatBytes(summary.initialCssGzipBytes)} gzip (bütçe ${formatBytes(budget.initialCssGzipBytes)}) · İlk boya JS: ${formatBytes(summary.initialJsGzipBytes)} gzip (bütçe ${formatBytes(budget.initialJsGzipBytes)})`,
+    `Yolculuk — tanıtım: ${formatBytes(summary.journeys.landing)} gzip (bütçe ${formatBytes(budget.journeyGzipBytes.landing)}) · uygulama kabuğu: ${formatBytes(summary.journeys.appShell)} gzip (bütçe ${formatBytes(budget.journeyGzipBytes.appShell)})`,
     "",
     "Dosya | Kategori | Ham | Gzip | İlk set",
   ];
