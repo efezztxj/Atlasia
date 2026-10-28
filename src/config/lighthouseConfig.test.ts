@@ -45,7 +45,10 @@ describe("G3 · mobil Lighthouse kapısı", () => {
   });
 
   it("CI iş akışı gerçekten bu yapılandırmayı çalıştırıyor", () => {
-    expect(workflow).toContain("@lhci/cli@0.15.1 autorun");
+    // Koşu ve kapı AYRI adımlar: assert düştüğünde rapor yine saklanır.
+    expect(workflow).toContain("@lhci/cli@0.15.1 collect");
+    expect(workflow).toContain("@lhci/cli@0.15.1 assert");
+    expect(workflow).not.toContain("@lhci/cli@0.15.1 autorun");
     expect(workflow).toContain("npm run build");
     // Sürüm sabit: `latest` bir gün sessizce ölçüm profilini değiştirmesin.
     expect(workflow).not.toMatch(/@lhci\/cli@latest/);
