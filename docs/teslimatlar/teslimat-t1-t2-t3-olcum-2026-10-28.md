@@ -66,6 +66,26 @@ korunuyor). Toplam JS 908.149 B gzip; eşik 908.000 → **909.000**'e çekildi
 (gerekçe `scripts/bundle-budget.mjs` içinde: yeni bağımlılık yok, artış huni
 sözleşmesinin kendisi). CSS değişmedi.
 
+### main'e taşınma notu (2026-10-28)
+
+Bu iş `arena/1058237b-atlasia` dalında yapıldı; #120 kapatıldığı için main'in
+`f58d0ef` sürümü üstüne yeniden uygulandı. Main'e taşınırken ölçümler değişti:
+
+| Ölçüm | Eski dal | Bu dal (`7079387`) | Eşik |
+|---|---|---|---|
+| İlk HTML seti (gzip) | 115.753 B | **117.585 B** | 439.000 |
+| Toplam JS (gzip) | 908.600 B | **916.296 B** | 916.500 |
+| Toplam CSS (gzip) | 35.083 B | **35.092 B** | 35.700 |
+| `test:run` | 1148/1148 | **1228/1228** (151 dosya) | — |
+| SW kabuğu | 35/35 | **44/44** | — |
+
+Farkın kaynağı yeni iş değil, main'de araya giren #124/#125 (tembel panel
+yükleme + bütçe kararı) ve bu dalda geri getirilen T1–T3/T9 olay kablolamasıdır.
+JS marjı yalnız **206 B** kaldı: yeni bağımlılık eklemeden önce `npm run build`
+ile ölçüm alınmalı. Ayrıca bu dalda "Gizlilik" girişi mobil panelde bağlantı
+değil düğme (yasal metni iletişim kutusunda açıyor); `landingA11y.test.ts`
+beklentisi buna göre yazıldı.
+
 ## Bilinen sınırlar
 
 1. **Veri akmıyor.** Uç nokta tanımlı değil; hiçbir olay ağa çıkmıyor

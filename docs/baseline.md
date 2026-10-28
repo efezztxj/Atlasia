@@ -4,23 +4,30 @@ Bu dosya, iyileştirme planının "iyileşti mi?" sorusunu hisle değil sayıyla
 yanıtlamak için tutulur. **Her satırda kaynak ve tarih vardır.** Ölçülmemiş bir
 şey varsa "ölçülmedi" yazar; tahmini sayı yazılmaz.
 
-Son güncelleme: **2026-10-28** · Taban sürüm: `2412ace` (main) · Ölçüm alınan sürüm: `2a7f1a4` (bu dal)
+Son güncelleme: **2026-10-28** · Taban sürüm: `2412ace` (main) · Ölçüm alınan sürüm: `7079387` (bu dal, #124/#125 üstüne T1–T3 + T9 + T13–T16)
 
 ## 1. Paket boyutları — ölçüldü
 
 Komut: `npm run build` (üretim derlemesi; `scripts/bundle-budget.mjs` gzip ölçer).
 
-| Ölçüm | Taban `2412ace` | `2a7f1a4` (T11 sonrası) | Fark |
+| Ölçüm | Taban `2412ace` | Bu dal `7079387` | Fark |
 |---|---|---|---|
-| İlk HTML seti (gzip) | 411.987 B | **115.753 B** | −296.234 B (−%72) |
-| İlk HTML seti (ham) | 1.371.468 B | 426.210 B | −945.258 B |
-| İlk setteki JS (gzip) | 386.401 B | **89.439 B** | −296.962 B |
-| `entry` chunk (gzip) | 166.244 B | **18.620 B** | −147.624 B |
+| İlk HTML seti (gzip) | 411.987 B | **117.585 B** | −294.402 B (−%71) |
+| İlk HTML seti (ham) | 1.371.468 B | 432.276 B | −939.192 B |
+| İlk setteki JS (gzip) | 386.401 B | **91.254 B** | −295.147 B |
+| `entry` chunk (gzip) | 166.244 B | **20.533 B** | −145.711 B |
 | `firebase-vendor` (gzip) | 149.338 B — ilk sette | 149.339 B — **ertelenmiş** | ilk setten çıktı |
 | `map-vendor` (gzip) | 248.691 B — ilk sette değil | 248.691 B — ilk sette değil | — |
-| Toplam JS (gzip) | 905.483 B | 908.600 B | +3.117 B (ambalaj + T2 olayları + mobil menü) |
-| Toplam CSS (gzip) | 35.061 B | 35.083 B | +22 B (T7 + T13/T14 sınıfları, T9 ölü CSS temizliği) |
-| Bütçe durumu | içinde | içinde (JS 908.600/909.000, CSS 35.083/35.300) | JS +1.000 B, CSS +200 B (gerekçe: `scripts/bundle-budget.mjs`) |
+| Toplam JS (gzip) | 905.483 B | 916.296 B | +10.813 B (ambalaj + T2 olayları + mobil menü + #125 parça bölünmesi) |
+| Toplam CSS (gzip) | 35.061 B | 35.092 B | +31 B (T7 + T13/T14 sınıfları, T9 ölü CSS temizliği) |
+| Yolculuk: tanıtım (gzip) | 411.987 B | 117.585 B | −294.402 B (bütçe 425.000) |
+| Yolculuk: uygulama kabuğu (gzip) | 812.982 B | 517.449 B | −295.533 B (bütçe 830.000) |
+| Bütçe durumu | içinde | içinde (JS 916.296/916.500 · CSS 35.092/35.700) | JS marjı yalnız **204 B**; yeni bağımlılık eklemeden önce ölçüm gerekir |
+
+> Derleme kimliği (`index.html` içindeki sürüm damgası) her derlemede birkaç
+> bayt değiştiği için aynı ağaçta art arda iki `npm run build` ±≈20 B farklı
+> gzip değeri verebilir. Yukarıdaki sayılar bu ağaçtaki son ölçümdür; eşik
+> karşılaştırmalarında marj bu kadar oynayabilir.
 
 > Plan hedefi "ilk yüklemede JS < 250 KB brotli". **Brotli ölçümü yapılmadı**;
 > yukarıdaki değerler gzip. Brotli tipik olarak gzip'ten ~%10–15 küçüktür, yani
@@ -82,9 +89,10 @@ Olay sözleşmesi T2 ile kodda (bkz. `docs/olcum-ve-hata-izleme.md` §2b), ancak
 |---|---|
 | `npm run typecheck` | temiz |
 | `npm run lint` | temiz |
-| `npm run test:run` | 1148/1148 (145 dosya) |
+| `npm run test:run` | 1228/1228 (151 dosya) |
 | `npm run build` | başarılı, bütçe içinde |
-| `npm run verify:sw-shell` | 35/35 varlık |
+| `npm run test:scripts` | 19/19 (node test runner) |
+| `npm run verify:sw-shell` | 44/44 varlık |
 | `npm run test:rules:emulator` | çalıştırılmadı (emülatör/Java yok) |
 
 ## 6. Nasıl güncellenir
