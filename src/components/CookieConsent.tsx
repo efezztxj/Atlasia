@@ -8,6 +8,7 @@ import {
   saveEssentialCookieConsent,
   type CookieConsentRecord,
 } from "../lib/cookieConsent";
+import { analytics } from "../lib/analytics";
 
 const LegalNotice = lazy(() => import("./LegalNotice"));
 
@@ -70,6 +71,9 @@ export default function CookieConsent() {
 
   const handleSaveWithAnalytics = () => {
     const { record } = saveCookieConsent({ analytics: true });
+    // T2: tercih olayı. "Yalnız zorunlu" seçen kullanıcıda rıza kapısı kapalı
+    // olduğu için bu olay gönderilmez (bilinçli: rıza öncesi ağ trafiği yok).
+    analytics.consentChoice({ analytics: true });
     setSaved(record);
     setOpen(false);
     setDetailsOpen(false);
@@ -78,6 +82,11 @@ export default function CookieConsent() {
 
   const handleSave = () => {
     const { record } = saveEssentialCookieConsent();
+    // Çağrı bilinçli olarak burada: rıza kapalıyken telemetry kapısı kaydı
+    // düşürür, yani bu olay ağa ÇIKMAZ. Ret oranı bu olaydan okunamaz; ileride
+    // istenirse rıza öncesi çalışan ayrı bir sunucu sayacı gerekir
+    // (docs/olcum-ve-hata-izleme.md §2b).
+    analytics.consentChoice({ analytics: false });
     setSaved(record);
     setOpen(false);
     setDetailsOpen(false);

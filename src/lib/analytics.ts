@@ -12,20 +12,43 @@ import { getTelemetry, type Telemetry } from "./telemetry";
 export const ANALYTICS_EVENTS = [
   "app_open",
   "session_start",
-  "sign_up",
+  // Dönüşüm hunisi (T2): landing → harita → kayıt.
+  "cta_click",
+  "map_open",
+  "signup_start",
+  "signup_complete",
   "sign_in",
   "place_created",
   "route_published",
+  "first_route_created",
+  "audio_guide_start",
   "post_created",
   "share",
   "offline_pack",
   "report_created",
+  "consent_choice",
 ] as const;
 
 export type AnalyticsEvent = (typeof ANALYTICS_EVENTS)[number];
 
-/** Oturumda en fazla bir kez gönderilen olaylar (sayfa yenilemesi sayılmasın). */
-const ONCE_PER_SESSION = new Set<AnalyticsEvent>(["app_open", "session_start"]);
+/** Landing'deki birincil eylem düğmeleri (huni kırılımı bu değerlerle okunur). */
+export type CtaPlacement = "hero" | "header" | "how_it_works" | "footer";
+
+/** Kayıt yöntemleri; hiçbiri kimlik taşımaz. Tip olarak tutulur, pakete dizge eklemez. */
+export type SignupMethod = "email" | "google" | "apple" | "phone" | "device";
+
+/**
+ * Oturumda en fazla bir kez gönderilen olaylar (sayfa yenilemesi sayılmasın).
+ * Huni adımları da bir kez sayılır: "kaç kişi haritayı açtı" sorusu oturum
+ * başına birdir; tekrar açmalar ayrı olay üretmez.
+ */
+const ONCE_PER_SESSION = new Set<AnalyticsEvent>([
+  "app_open",
+  "session_start",
+  "map_open",
+  "signup_start",
+  "first_route_created",
+]);
 const fired = new Set<AnalyticsEvent>();
 
 /** Uygulama açılışı: ilk görünür kare sonrası, panoyu bloke etmeden. */
@@ -34,10 +57,21 @@ export type AccountKind = "cloud" | "device";
 export interface Analytics {
   appOpen: (props?: { standalone?: boolean }) => void;
   sessionStart: (props?: { account: AccountKind | null }) => void;
-  signUp: (props: { account: AccountKind }) => void;
-  signIn: (props: { account: AccountKind }) => void;
+  /** Landing birincil eylemi. `signedIn` huni bağlamı içindir, kimlik değildir. */
+  ctaClick: (props: { placement: CtaPlacement; signedIn: boolean }) => void;
+  /** Harita açılışı. Misafir modu gelene kadar `guest` her zaman false. */
+  mapOpen: (props: { guest: boolean }) => void;
+  signupStart: () => void;
+  /** Plandaki `signup_complete{method}` olayı; `sign_up` adının yerini alır. */
+  signupComplete: (props: { method: SignupMethod; account: AccountKind }) => void;
+  signIn: (props: { account: AccountKind; method?: SignupMethod }) => void;
   placeCreated: (props: { account: AccountKind; category: string; hasPhoto: boolean }) => void;
   routePublished: (props: { account: AccountKind; visibility: "private" | "public"; stops: number }) => void;
+  /** Cihazda ilk kez rota oluşturuldu (aktivasyon metriği). */
+  firstRouteCreated: (props: { account: AccountKind; stops: number }) => void;
+  audioGuideStart: (props: { source: "manual" }) => void;
+  /** Çerez tercihi; `analytics: false` seçilirse rıza kapısı olayı göndermez. */
+  consentChoice: (props: { analytics: boolean }) => void;
   postCreated: (props: { hasPhoto: boolean; kind: "post" | "story" }) => void;
   share: (props: { channel: "native" | "clipboard" | "link"; target: string; ok: boolean }) => void;
   offlinePack: (props: { action: "download" | "delete"; ok: boolean }) => void;
@@ -63,8 +97,14 @@ export function createAnalytics(telemetry?: Telemetry): Analytics {
   return {
     appOpen: (props) => track("app_open", { ...props, screen: props?.standalone ? "standalone" : "browser" }),
     sessionStart: (props) => track("session_start", { account: props?.account ?? "anonymous" }),
-    signUp: (props) => track("sign_up", { account: props.account }),
-    signIn: (props) => track("sign_in", { account: props.account }),
+    ctaClick: (props) => track("cta_click", { placement: props.placement, signedIn: props.signedIn }),
+    mapOpen: (props) => track("map_open", { guest: props.guest }),
+    signupStart: () => track("signup_start"),
+    signupComplete: (props) => track("signup_complete", { method: props.method, account: props.account }),
+    signIn: (props) => track("sign_in", { account: props.account, method: props.method ?? "email" }),
+    firstRouteCreated: (props) => track("first_route_created", { account: props.account, stops: props.stops }),
+    audioGuideStart: (props) => track("audio_guide_start", { source: props.source }),
+    consentChoice: (props) => track("consent_choice", { analytics: props.analytics }),
     placeCreated: (props) => track("place_created", { ...props }),
     routePublished: (props) => track("route_published", { ...props }),
     postCreated: (props) => track("post_created", { ...props }),

@@ -105,11 +105,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ++generation.current;
     if (authBackend === "device") {
       setUser(await signInDeviceAccount(email, password));
-      analytics.signIn({ account: "device" });
+      analytics.signIn({ account: "device", method: "email" });
     } else {
       const credential = await signInEmail(email, password);
       setUser(toFirebaseAccount(credential.user));
-      analytics.signIn({ account: "cloud" });
+      analytics.signIn({ account: "cloud", method: "email" });
     }
     setChecking(false);
   };
@@ -124,13 +124,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           ++generation.current;
           setUser(await created.finish());
           setChecking(false);
-          analytics.signUp({ account: "device" });
+          analytics.signupComplete({ method: "device", account: "device" });
         },
       };
     }
     const credential = await registerEmail(details);
     setUser(toFirebaseAccount(credential.user));
-    analytics.signUp({ account: "cloud" });
+    analytics.signupComplete({ method: "email", account: "cloud" });
     return {};
   };
 

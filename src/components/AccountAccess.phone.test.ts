@@ -39,16 +39,11 @@ describe("T1-AUTH telefon bayrağı", () => {
     expect(authTs).toContain("Google ve Apple girişi için sağlayıcı bağlantısı henüz kurulmamış");
   });
 
-  it("Apple bayrağı kapalıyken Apple düğmesi hiç render edilmez (ölü düğme yok)", () => {
-    expect(accountAccess).toContain("{APPLE_AUTH_ENABLED && <button");
-    expect(accountAccess).not.toContain("Apple ile giriş yakında");
-    expect(accountAccess).not.toContain("hazırlık aşamasında");
-  });
-
-  it("kalan öğelerin yerleşimi değişmez: providers + ayırıcı + form sırası korunur", () => {
-    // credentials ekranında providers ve e-posta formu aynı sırada
-    const idxProviders = accountAccess.indexOf('const providers = <div className="auth-provider-actions');
-    const idxHeading = accountAccess.indexOf('const heading = screen === "reset"');
+  it("sağlayıcı bloğu tanımlı ve e-posta formundan önce; sıra T9 testinde davranışsal doğrulanır", () => {
+    // T9 (2026-10-28): sağlayıcılar artık her iki modda da formun üstünde ve
+    // yalnız etkin olanlar render ediliyor. Ayrıntılı sıra/erişilebilirlik
+    // kontrolü AccountAccess.t9.test.ts içinde gerçek render ile yapılır.
+    const idxProviders = accountAccess.indexOf("const providers = socialButtons.length");    const idxHeading = accountAccess.indexOf('const heading = screen === "reset"');
     expect(idxProviders).toBeGreaterThan(0);
     expect(idxHeading).toBeGreaterThan(idxProviders);
   });

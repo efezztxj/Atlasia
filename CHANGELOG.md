@@ -55,6 +55,32 @@ Dependabot dalları eski main'e dayandığı için CI'ları kırık geliyordu; y
 - **Bütçe kararı (maintainer):** kod bölünmesinin chunk başına küçük tekrar yükü toplam JS'i 906.447 → 908.855 bayta çıkardı; ilk boyadaki −297 KB kazanca karşılık toplam JS bütçesi 908.000 → **909.500** olarak güncellendi. İlk boya ve yolculuk bütçeleri değişmedi.
 - Çakışma çözümleri: bütçe testlerinde iki tarafın testleri de korundu; `uiSurface`/`siteSurface` testleri `Explorer.tsx`'i de kaynak sayar.
 
+## 2026-10-28 — Landing erişilebilirlik turu: mobil menü, tek H1, hareket azaltma (T13–T16)
+
+Ayrıntı: `docs/teslimatlar/teslimat-t13-t16-2026-10-28.md`.
+
+- **T13 — Mobil menü:** 768 px altında hamburger → tam ekran panel (Keşfet · Nasıl çalışır? · Gizlilik · Keşfe başla). `aria-expanded`/`aria-controls`, Escape ile kapanma, Tab tuzağı, kapanınca odağın düğmeye dönmesi.
+- **T14 — Klavye:** "İçeriğe geç" skip-link'i (ilk odak) + `#kesfet` hedefi `tabIndex={-1}`. Global `:focus-visible` halkası zaten vardı; kopya eklenmedi (denetim bulgusu).
+- **T15 — Hareket azaltma:** mevcut `prefers-reduced-motion` bloğuna eksik olan `scroll-behavior: auto !important` eklendi (landing'deki `scroll-smooth` artık yok sayılmıyor).
+- **T16 — Semantik:** sayfanın tek H1'i "Dünyayı merakınla keşfet."; marka yazısı `aria-hidden` dekoratif öğe. Bölüm başlıkları H2, kartlar H3 — hiyerarşi atlaması yok.
+- Ölçüm (main'e taşındıktan sonra, `7079387`): ilk set **117.585 B** gzip (bütçe 439.000); toplam JS **916.296 B** (bütçe 916.500); toplam CSS **35.092 B** (bütçe 35.700). Typecheck, lint, **1228 test** (151 dosya), build ve SW kabuğu (44/44) yeşil. Tablo: `docs/baseline.md`.
+
+## 2026-10-28 — Denetim düzeltmeleri + giriş ekranı sürtünmesi (T9)
+
+Ayrıntı: `docs/teslimatlar/teslimat-denetim-t9-2026-10-28.md`.
+
+- **T9 — Giriş/kayıt ekranı:** Google (ve etkinse Apple) artık her iki modda da e-posta formunun **üstünde** birincil boyutta; e-posta "veya e-posta ile" altında. Devre dışı "Apple ile giriş yakında" düğmesi kaldırıldı; yerine e-posta formunda mikro metin. Firebase yapılandırılmamışsa hiç sosyal düğme gösterilmiyor. Şifre göster/gizle, `autocomplete` değerleri ve satır içi hatalar korundu (7 yeni test).
+- **Denetim:** `cta_click` kablolaması için 3 davranışsal test eklendi (hero/header/footer ayrımı, landing'de huni sırası); ölü `auth-secondary-providers` CSS'i silindi (CSS 35.117 → 34.964 B gzip, eşik yeniden 35.100'e çekildi; #125 sonrası güncel eşik 35.700); `consent_choice{analytics:false}` sınırı kodda ve belgede açıklandı.
+- Erişilebilirlik testi `Explorer.tsx`i de tarıyor (dizin taraması) — kapsam kaybı yok. Typecheck, lint, 1139 test, build ve SW kabuğu yeşil.
+
+## 2026-10-28 — Ölçüm tabanı: huni olayları ve baseline (T1–T3)
+
+Ayrıntı: `docs/teslimatlar/teslimat-t1-t2-t3-olcum-2026-10-28.md`.
+
+- **T2 — Huni olayları:** `cta_click{placement}`, `map_open{guest}`, `signup_start`, `signup_complete{method}`, `first_route_created`, `audio_guide_start`, `consent_choice` eklendi (10 → 16 olay). Landing'in dört CTA'sı yerleşim adıyla sayılıyor; `sign_up` adı `signup_complete` oldu. Tüm olaylar sabit enum/boolean taşır, rıza kapısı aynen geçerli.
+- **T3 — Baseline:** `docs/baseline.md` eklendi (paket ölçümleri dolu; Lighthouse/CWV/Search Console satırları "ölçülmedi" olarak işaretli, ölçüm komutlarıyla).
+- **T1 — Durum:** panel/hesap açılmadı (dış servis kimliği yok); toplayıcı seçenekleri ve tek zorunlu adım (`VITE_TELEMETRY_ENDPOINT`) `docs/olcum-ve-hata-izleme.md` §5b'de.
+- Toplam JS 908.149 B gzip; eşik 908.000 → 909.000 (gerekçe aynı dosyada). Typecheck, lint, 1129 test, build ve SW kabuğu yeşil. *(Eski dal ölçümü; #125 sonrası güncel eşik 916.500.)*
 
 ## 2026-10-28 — Landing hızlı kazançları: Firebase ilk setten çıktı, kontrast ve çerez yerleşimi
 
