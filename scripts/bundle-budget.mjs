@@ -143,11 +143,16 @@ export const BUNDLE_BUDGET = Object.freeze({
   //   appShell       **586.160** · toplam JS     **1.001.019**
   // Toplam JS eşiği 1.003.000 (pay 1.981 B, %0,20). Diğer eşikler değişmedi;
   // moderasyon payı yalnız toplam JS'e yansıdı (lazy parça).
+  // 2026-10-28 (Vite 8 + plugin-react 6) — derleyici Rolldown'a geçti; toplam
+  // JS 988.185'e DÜŞTÜ, ilk boya ölçüleri bütçe içinde. Yalnız kategori
+  // dağılımı kaydı (parça sınırları değişti), ~%3 payla yeniden bağlandı:
+  //   entry 16.180 (eşik 21.200 bayattı) -> 16.700 · iconsVendor 13.261 -> 13.700
+  //   firebaseAuth 44.778 -> 46.200 · ilk boya CSS 25.372 -> 26.100
   totalJsGzipBytes: 1_003_000,
   totalCssGzipBytes: 35_700,
   initialGzipBytes: 129_400,
   // İlk HTML ile gelen gerçek ilk boya maliyeti (lazy chunk'lar hariç).
-  initialCssGzipBytes: 25_200,
+  initialCssGzipBytes: 26_100,
   initialJsGzipBytes: 102_200,
   // Yolculuk bazlı üst sınırlar (bkz. başlıktaki M-03 notu).
   journeyGzipBytes: Object.freeze({
@@ -155,11 +160,11 @@ export const BUNDLE_BUDGET = Object.freeze({
     appShell: 603_400,
   }),
   categoryGzipBytes: Object.freeze({
-    entry: 21_200,
+    entry: 16_700,
     reactVendor: 69_500,
-    iconsVendor: 10_500,
+    iconsVendor: 13_700,
     firebaseVendor: 164_500,
-    firebaseAuth: 40_500,
+    firebaseAuth: 46_200,
     mapVendor: 302_500,
     mapWorker: 152_000,
     mapView: 9_100,
@@ -457,6 +462,13 @@ export function run({ distDir = DEFAULT_DIST, budget = BUNDLE_BUDGET, log = cons
   if (!result.ok) {
     errorLog("\nBundle bütçesi aşıldı:");
     for (const violation of result.violations) errorLog(`- ${violation}`);
+    // CI'da ihlaller check-run annotation'ı olarak da görünsün (log indirmeden
+    // hangi eşiğin aşıldığı API'den okunabilsin; kurallar adımıyla aynı fikir).
+    if (process.env.GITHUB_ACTIONS) {
+      for (const violation of result.violations) {
+        errorLog(`::error title=Bundle bütçesi::${violation.replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A")}`);
+      }
+    }
   } else {
     log("\nBundle bütçesi içinde.");
   }

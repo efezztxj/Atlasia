@@ -120,7 +120,9 @@ function assetPath(value) {
 
 function assetPathsFromText(text) {
   const paths = new Set();
-  const references = text.matchAll(/["']((?:\/assets\/|assets\/|\.\/)[A-Za-z0-9_./-]+\.(?:js|css|png|jpe?g|svg|webp|woff2?))["']/g);
+  // Rolldown (Vite 8) varlık yollarını şablon dizgisiyle (backtick) de yazar;
+  // keşif üç tırnak türünü de tanımalı, yoksa işçi parçası kabuğa giremez.
+  const references = text.matchAll(/["'`]((?:\/assets\/|assets\/|\.\/)[A-Za-z0-9_./-]+\.(?:js|css|png|jpe?g|svg|webp|woff2?))["'`]/g);
   for (const match of references) {
     const path = assetPath(match[1]);
     if (path) paths.add(path);
