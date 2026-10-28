@@ -29,7 +29,7 @@ Plan sırası: `T1 → T2 → T3 → T12 → T11 → T7 → T4 → T5 → T8 →
 | T14 | Klavye: skip-link + `:focus-visible` | ✅ | "İçeriğe geç" → `#kesfet` (`tabIndex={-1}`); tek `:focus-visible` bloğu |
 | T15 | Hareket azaltma | ✅ | `prefers-reduced-motion` bloğunda `scroll-behavior: auto !important` |
 | T16 | Semantik (tek H1) | ✅ | Tek `h1` = "Dünyayı merakınla keşfet."; marka yazısı `aria-hidden` |
-| T17 | Prerender/SSG (SEO) | ⛔ **sıradaki** | Landing istemci tarafında render ediliyor; JS'siz HTML'de metin yok |
+| T17 | Prerender/SSG (SEO) | 🟡 **kısmi — bilinçli** | JS'siz HTML'de gerçek metin var (`<noscript>`, `landingStatic.ts` + vite `transformIndexHtml`); tam SSG/hidrasyon yapılmadı (tarayıcısız ortamda doğrulanamaz). `prerenderT17.test.ts` (6) |
 | T18 | Footer'da dil + yasal bağlantılar | ✅ | 3 yasal metin + "Çerez tercihleri" (rıza geri alma) + "Site dili: Türkçe (tr)" — `footerT18.test.ts` (3) |
 | T19 | İçerik/SEO meta seti | ✅ | `canonical`, `robots`, `hreflang` + `x-default`, taze `lastmod` — `seoMetaT19.test.ts` (6) |
 | T20 | Güven sinyalleri (sosyal kanıt) | ⛔ bekliyor | sahte sayaç yazılmaz; gerçek veri gerekir |
@@ -39,10 +39,10 @@ Plan sırası: `T1 → T2 → T3 → T12 → T11 → T7 → T4 → T5 → T8 →
 
 | Ölçüm | Değer | Eşik | Marj |
 |---|---|---|---|
-| İlk HTML seti (gzip) | 127.069 B | 129.400 B | 2.331 B |
+| İlk HTML seti (gzip) | 127.763 B | 129.400 B | 1.637 B |
 | Toplam JS (gzip) | 997.981 B | 998.500 B | **519 B** |
 | Toplam CSS (gzip) | 34.988 B | 35.700 B | 712 B |
-| Tanıtım yolculuğu (gzip) | 127.069 B | 129.400 B | 2.331 B |
+| Tanıtım yolculuğu (gzip) | 127.763 B | 129.400 B | 1.637 B |
 | Uygulama kabuğu (gzip) | 587.262 B | 603.400 B | 16.138 B |
 | `entry` (bizim kod) | 20.888 B | 20.900 B | **12 B** |
 

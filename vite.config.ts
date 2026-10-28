@@ -4,6 +4,9 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv } from "vite";
 import { parseAllowedHosts } from "./src/config/allowedHosts";
+// T17: JS'siz gelen ziyaretçiye (ve JS render etmeyen bota) boş sayfa yerine
+// gerçek tanıtım metnini ver. Metin tek kaynakta: `src/content/landingStatic.ts`.
+import { renderLandingStaticHtml } from "./src/content/landingStatic";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -14,7 +17,17 @@ export default defineConfig(({ mode }) => {
   const allowedHosts = parseAllowedHosts(env.ATLASIA_ALLOWED_HOSTS);
 
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [
+      react(),
+      tailwindcss(),
+      {
+        name: "atlasia-noscript-landing",
+        // `<noscript>` JS açıkken render edilmez: düzen, CLS ve LCP etkilenmez;
+        // hidrasyon da gerekmez (createRoot kökü kendi kurar).
+        transformIndexHtml: (html) =>
+          html.replace('<div id="root"></div>', `<div id="root"></div>\n${renderLandingStaticHtml()}`),
+      },
+    ],
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "src"),
