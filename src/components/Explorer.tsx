@@ -92,6 +92,12 @@ import { takePendingInvite, type SocialTarget } from "../utils/inviteLink";
 import { useMobileBackClose } from "../hooks/useMobileBackClose";
 // friendships zaten ilk pakette (moderation.ts); dinamik import bölmez.
 import { ensureFriendIndex } from "../lib/friendships";
+import { startAppCheck } from "../lib/firebase";
+
+// App Check (reCAPTCHA Enterprise ~350 KB + `_GRECAPTCHA` çerezi) yalnız
+// Firestore/Storage için gerekir; landing'de başlatılmaz. Bu parça indirilip
+// çalıştırıldığı anda, ilk Firestore okumasından önce bir kez başlatılır.
+startAppCheck();
 
 const MapView = lazy(() => import("./MapView"));
 // Profil paneli yalnız açılınca yüklenir (ilk paket bütçesi).
