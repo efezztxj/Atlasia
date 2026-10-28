@@ -1,5 +1,16 @@
 # Atlasia Update
 
+## 2026-10-28 — Bütçe eşikleri ölçüme bağlandı (#127, çözülmüş hali)
+
+#127'nin son hali güncel main'e taşındı ve son büyümelere kalibre edildi:
+
+- Bütçe eşikleri artık ölçüme yakın; şişkin/bayat eşik kapıyı fiilen öldüremiyor (bayatlama kapısı testlerde).
+- Son kalibrasyon: toplam JS 997.500, entry 20.900 (Firebase 13 + hikâye silme sonrası ölçüm: 996.828 / 20.530).
+- Yerel `.env.local` bağımlılığı iki testten kaldırıldı.
+
+Typecheck, lint, 1233 test, script testleri ve build yeşil.
+
+
 ## 2026-10-28 — Hikâye izleri 24 saatte otomatik ve kalıcı silinir (#131, çözülmüş hali)
 
 #131 paralel Explorer ayrımına dayandığı için olduğu gibi birleşemedi; tek özellik commit'i mevcut yapıya taşındı:
