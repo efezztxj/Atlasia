@@ -11,8 +11,8 @@
 |---|---|
 | `npx tsc --noEmit` | **PASS** (0 hata) |
 | `npx eslint . --max-warnings=0` | **PASS** (0 uyarı) |
-| `npm run test:run` | **PASS** — 147 dosya / **1.162 test** *(2026-10-27 son ölçüm)* |
-| `verify:sw-shell` | **PASS** — **40/40** varlık (lazy panel parçaları kabuğa girdi) |
+| `npm run test:run` | **PASS** — 148 dosya / **1.197 test** *(2026-10-27 son ölçüm)* |
+| `verify:sw-shell` | **PASS** — **42/42** varlık (lazy panel parçaları kabuğa girdi) |
 | `npm run test:scripts` | **PASS** — 8/8 paket |
 | `npm run build` | **PASS** — ama paylar kritik (§2) |
 | `verify:sw-shell` | **PASS** — 31/31 |
@@ -288,7 +288,7 @@ Kod sağlam (1.087 test, 0 tip/lint hatası); **ama CSS bütçesinde 26 bayt kal
 | # | İş | Neden bu sırada | Efor |
 |---|---|---|---|
 | D1 | **M-49** 5 Playwright senaryosu (yalnız CI — bu ortamda tarayıcı yok: `libnss3.so` eksik) | Uçtan uca akışın tek gerçek kanıtı | 1 gün |
-| D2 | **M-03 + M-03b** → **yarısı yapıldı (2026-10-27)**: (a) `journeyGzipBytes` yolculuk bütçeleri + 2 test; (b) **M-03b ilk tur**: 6 isteğe bağlı panel lazy → ilk boya **387.529 → 324.186**, tanıtım **413.463 → 350.121 (-63 KB, -%15)**, entry **167.470 → 104.127**. Eşikler aynı turda sıkılaştırıldı (entry 110.000, initialJs 340.000, landing 365.000, appShell 770.000). **Kalan:** Lighthouse CI (tarayıcı yok) + `firebase-vendor` 149 KB (asıl kazanç, M-03b-2) | Bütçe hem yolculuk hem ilk boya bazlı | 3 sa |
+| D2 | **M-03 + M-03b** → **büyük ölçüde yapıldı (2026-10-27)**: (a) `journeyGzipBytes` yolculuk bütçeleri; (b) 6 isteğe bağlı panel lazy; (c) **uygulama kabuğu ikiye ayrıldı**: `App.tsx` = giriş kapısı, `Explorer.tsx` = harita/paneller/Firestore, lazy. **Tanıtım 413.463 → 272.731 B gzip (−%34)**, entry 167.470 → 26.750, ilk boya JS 387.529 → 246.812. Eşikler her turda sıkılaştırıldı (entry 30.000, landing 288.000, appShell 706.000). `App.test.ts` (5 duman testi) kapıyı kilitliyor. **Kalan:** Lighthouse CI (tarayıcı yok) + **M-03b-2**: `firebase-vendor` 149.340 B hâlâ tanıtımda (oturum kontrolü için `lib/auth → lib/firebase` boot zinciri) | Bütçe hem yolculuk hem ilk boya bazlı | 4 sa |
 | D3 | **M-18** hata şeridi + **M-19** iskeletler | Kullanıcının gördüğü kalite | 4 sa |
 | D4 | **M-57** bağımlılık PR'ları, **M-58** yedek tatbikatı | Operasyon disiplini | 3 sa |
 

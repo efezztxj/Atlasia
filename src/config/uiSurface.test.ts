@@ -14,7 +14,9 @@ const read = (relative: string) => readFileSync(fileURLToPath(new URL(`../../${r
 const exists = (relative: string) => existsSync(fileURLToPath(new URL(`../../${relative}`, import.meta.url)));
 
 const css = read("src/index.css");
-const app = read("src/App.tsx");
+// M-03b: uygulama kabuğu iki dosyaya ayrıldı (giriş kapısı + Explorer).
+// Testler "kabuk" anlamında ikisini birlikte okur.
+const app = `${read("src/App.tsx")}\n${read("src/Explorer.tsx")}`;
 const mapControls = read("src/components/MapControls.tsx");
 const bottomPanel = read("src/components/BottomPanel.tsx");
 const hero = read("src/components/Hero.tsx");

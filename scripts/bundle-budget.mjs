@@ -78,21 +78,43 @@ const DEFAULT_DIST = fileURLToPath(new URL("../dist", import.meta.url));
  *   initialJs         398.000 -> 340.000 (ölçüm 324.186)
  *   journey landing   425.000 -> 365.000 (ölçüm 350.121)
  *   journey appShell  830.000 -> 770.000 (ölçüm 749.847)
+ *
+ * 2026-10-27 (M-03b, ikinci tur) — uygulama kabuğu iki dosyaya ayrıldı:
+ * `App.tsx` artık yalnız giriş kapısı + tanıtım yüzeyi; harita, paneller ve
+ * Firestore veri katmanı `Explorer.tsx` içinde ve **lazy**. Tanıtım sayfasını
+ * gören ziyaretçi Firestore'u artık ilk boyada indirmiyor:
+ *   entry             104.127 ->  26.750
+ *   ilk boya JS       324.019 -> 246.812
+ *   tanıtım yolculuğu 349.939 -> 272.731  (-77.208, -%22)
+ *   uygulama kabuğu   749.821 -> 672.611
+ *   toplam JS         911.684 -> 913.325  (+1.641: ek parça sınırı)
+ * Eşikler aynı turda yine SIKILAŞTIRILDI, gevşetme yok:
+ *   entry              110.000 ->  30.000 (ölçüm  26.750)
+ *   initialJs          340.000 -> 262.000 (ölçüm 246.812)
+ *   initialCss          25.900 ->  25.200 (ölçüm  24.425)
+ *   totalCss            35.700 ->  35.400 (ölçüm  34.942)
+ *   journey landing    365.000 -> 288.000 (ölçüm 272.731)
+ *   journey appShell   770.000 -> 706.000 (ölçüm 672.611)
+ *   totalJs            912.000 -> 916.000 (ölçüm 913.325; %0,29 pay)
+ * Kalan: `firebase-vendor` 149.340 B hâlâ tanıtım yolculuğunda, çünkü oturum
+ * kontrolü için `lib/auth.ts` → `lib/firebase.ts` statik zinciri boot'ta
+ * çalışıyor. 272 KB'ın 149 KB'ı bu; M-03b-2 olarak açık (firebase init'i
+ * tembelleştirmek 15 modülü etkileyen ayrı bir iş).
  */
 export const BUNDLE_BUDGET = Object.freeze({
-  totalJsGzipBytes: 912_000,
-  totalCssGzipBytes: 35_700,
+  totalJsGzipBytes: 916_000,
+  totalCssGzipBytes: 35_400,
   initialGzipBytes: 439_000,
   // İlk HTML ile gelen gerçek ilk boya maliyeti (lazy chunk'lar hariç).
-  initialCssGzipBytes: 25_900,
-  initialJsGzipBytes: 340_000,
+  initialCssGzipBytes: 25_200,
+  initialJsGzipBytes: 262_000,
   // Yolculuk bazlı üst sınırlar (bkz. başlıktaki M-03 notu).
   journeyGzipBytes: Object.freeze({
-    landing: 365_000,
-    appShell: 770_000,
+    landing: 288_000,
+    appShell: 706_000,
   }),
   categoryGzipBytes: Object.freeze({
-    entry: 110_000,
+    entry: 30_000,
     reactVendor: 66_500,
     iconsVendor: 10_500,
     firebaseVendor: 164_500,

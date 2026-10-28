@@ -12,6 +12,8 @@ import {
 const stylePath = fileURLToPath(new URL("../data/openFreeMapDarkStyle.json", import.meta.url));
 const mapViewPath = fileURLToPath(new URL("../components/MapView.tsx", import.meta.url));
 const appPath = fileURLToPath(new URL("../App.tsx", import.meta.url));
+// M-03b: harita kabuğu Explorer.tsx'e taşındı; "kabuk" iki dosyadır.
+const explorerPath = fileURLToPath(new URL("../Explorer.tsx", import.meta.url));
 const styleBytes = readFileSync(stylePath);
 const snapshotLayers = openFreeMapDarkStyle.layers as unknown as readonly MapStyleLayer[];
 
@@ -155,7 +157,7 @@ describe("map label calibration", () => {
   });
 
   it("wires live theme changes through App and MapView without reloading the style", () => {
-    const appSource = readFileSync(appPath, "utf8");
+    const appSource = `${readFileSync(appPath, "utf8")}\n${readFileSync(explorerPath, "utf8")}`;
     const mapViewSource = readFileSync(mapViewPath, "utf8");
 
     expect(appSource).toContain("theme={theme}");

@@ -10,6 +10,8 @@ const css = readFileSync("src/index.css", "utf8");
 const componentFiles = readdirSync("src/components").filter((name) => name.endsWith(".tsx") && !name.includes(".test."));
 const sources = new Map(componentFiles.map((name) => [name, readFileSync(`src/components/${name}`, "utf8")]));
 sources.set("../App.tsx", readFileSync("src/App.tsx", "utf8"));
+  // M-03b: uygulama kabuğunun ikinci yarısı Explorer.tsx.
+  sources.set("../Explorer.tsx", readFileSync("src/Explorer.tsx", "utf8"));
 
 function token(block: string, name: string): string {
   const match = new RegExp(`--color-${name}:\\s*(#[0-9a-fA-F]{3,6})`).exec(block);
