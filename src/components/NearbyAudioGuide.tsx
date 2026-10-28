@@ -5,6 +5,7 @@ import { STORIES } from "../data/galleries";
 import { storageGet, storageSet } from "../utils/storage";
 import { initialGuideState, resolveGuidePlace, type TourGuideState } from "../utils/tourGuide";
 import { siteTourForPoint } from "../data/siteTours";
+import { analytics } from "../lib/analytics";
 
 interface Props {
   location: { lat: number; lng: number; accuracy: number } | null;
@@ -130,6 +131,8 @@ export default function NearbyAudioGuide({ location, places, onOpenPlace }: Prop
       setPaused(false);
     };
     window.speechSynthesis.speak(utterance);
+    // T2: sesli rehber gerçekten başladığında sayılır (oturumda bir kez).
+    analytics.audioGuideStart({ source: "manual" });
     setSpeaking(true);
     setPaused(false);
   };

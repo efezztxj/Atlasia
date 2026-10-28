@@ -94,7 +94,7 @@ const DEFAULT_DIST = fileURLToPath(new URL("../dist", import.meta.url));
  * aynen korundu — sürüm yükseltmesinde doğal.
  */
 export const BUNDLE_BUDGET = Object.freeze({
-  totalJsGzipBytes: 986_500,
+  totalJsGzipBytes: 997_500,
   totalCssGzipBytes: 35_700,
   initialGzipBytes: 129_400,
   // İlk HTML ile gelen gerçek ilk boya maliyeti (lazy chunk'lar hariç).
