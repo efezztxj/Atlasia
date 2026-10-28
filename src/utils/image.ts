@@ -1,5 +1,42 @@
 export const MAX_CLOUD_PHOTO_CHARS = 180_000;
 
+/**
+ * T10 — girdi kapıları. 48 MP telefon fotoğrafı ~15 MB; 25 MB üstü dosyalar
+ * mobilde decode sırasında sekmeyi düşürebiliyor (OOM). Sınır **decode
+ * edilmeden** uygulanır, böylece bellek hiç ayrılmaz.
+ */
+export const MAX_INPUT_BYTES = 25 * 1024 * 1024;
+
+/** iPhone varsayılanı; tarayıcıların çoğu HEIC'i çözemez. */
+const HEIC_TYPES = new Set(["image/heic", "image/heif", "image/heic-sequence", "image/heif-sequence"]);
+
+/**
+ * Bulut kaydı için kademeli küçültme planı. Dışa açık: sıralamanın
+ * tek yönlü (hep küçülen) kaldığını test kilitliyor.
+ */
+export const CLOUD_PHOTO_ATTEMPTS = Object.freeze([
+  { maxSide: 860, quality: 0.7 },
+  { maxSide: 760, quality: 0.64 },
+  { maxSide: 660, quality: 0.58 },
+  { maxSide: 560, quality: 0.52 },
+  { maxSide: 480, quality: 0.46 },
+  { maxSide: 400, quality: 0.4 },
+]);
+
+/** Ortak girdi doğrulaması: tür, boyut ve HEIC yönlendirmesi. */
+function assertUsableImage(file: File): void {
+  if (!file.type.startsWith("image/")) throw new Error("Bu bir görsel değil");
+  if (HEIC_TYPES.has(file.type)) {
+    throw new Error(
+      "iPhone HEIC fotoğrafı tarayıcıda açılamıyor. Ayarlar → Kamera → Biçimler → \"En Uyumlu\" seç ya da fotoğrafı JPEG olarak yükle.",
+    );
+  }
+  if (file.size > MAX_INPUT_BYTES) {
+    const mb = (file.size / 1024 / 1024).toFixed(1).replace(".", ",");
+    throw new Error(`Fotoğraf çok büyük (${mb} MB). Üst sınır 25 MB; daha küçük bir fotoğraf seç.`);
+  }
+}
+
 interface CompressedImage {
   dataUrl: string;
   width: number;
@@ -40,7 +77,7 @@ export async function compressImage(
   maxSide = 1400,
   quality = 0.82,
 ): Promise<CompressedImage> {
-  if (!file.type.startsWith("image/")) throw new Error("Bu bir görsel değil");
+  assertUsableImage(file);
 
   const bitmap = await loadBitmap(file);
   try {
@@ -59,20 +96,12 @@ export async function compressImageWithinLimit(
   file: File,
   maxDataUrlChars = MAX_CLOUD_PHOTO_CHARS,
 ): Promise<CompressedImage> {
-  if (!file.type.startsWith("image/")) throw new Error("Bu bir görsel değil");
+  assertUsableImage(file);
 
   const bitmap = await loadBitmap(file);
-  const attempts = [
-    { maxSide: 860, quality: 0.7 },
-    { maxSide: 760, quality: 0.64 },
-    { maxSide: 660, quality: 0.58 },
-    { maxSide: 560, quality: 0.52 },
-    { maxSide: 480, quality: 0.46 },
-    { maxSide: 400, quality: 0.4 },
-  ];
 
   try {
-    for (const attempt of attempts) {
+    for (const attempt of CLOUD_PHOTO_ATTEMPTS) {
       const result = renderCompressed(bitmap, attempt.maxSide, attempt.quality);
       if (result.dataUrl.length <= maxDataUrlChars) return result;
     }
@@ -86,7 +115,9 @@ export async function compressImageWithinLimit(
 async function loadBitmap(file: File): Promise<ImageBitmap | HTMLImageElement> {
   if (typeof createImageBitmap === "function") {
     try {
-      return await createImageBitmap(file);
+      // T10: yön bilgisi **açıkça** istenir. Varsayılana güvenilirse eski
+      // tarayıcılarda telefon fotoğrafı yan yatmış kaydediliyordu.
+      return await createImageBitmap(file, { imageOrientation: "from-image" });
     } catch {
       /* yedek yola geç */
     }

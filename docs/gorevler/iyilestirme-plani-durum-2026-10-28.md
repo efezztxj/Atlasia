@@ -4,7 +4,7 @@ Bu defter, "Atlasia — İyileştirme Planı" maddelerinin **sırasını ve duru
 tutar. Sıra bağımlılığa göredir: Faz 1 (dönüşüm) ölçüm olmadan başlamaz —
 "iyileşti mi?" sorusu hisle değil sayıyla yanıtlanır.
 
-**Son güncelleme:** 2026-10-28 · **Referans sürüm:** bu dal (T1–T3, T9, T13–T19 + **T4/T5/T6/T7/T8** teslimatı)
+**Son güncelleme:** 2026-10-28 · **Referans sürüm:** bu dal (T1–T3, T9, T13–T19, T10 kod tarafı + **T4/T5/T6/T7/T8** teslimatı)
 **Ölçüm tablosu:** `docs/baseline.md` · **Olay sözleşmesi:** `docs/olcum-ve-hata-izleme.md` §2b/§4b
 
 Plan sırası: `T1 → T2 → T3 → T12 → T11 → T7 → T4 → T5 → T8 → T9 → T6 → T10 → T13 → T14 → T15 → T16 → T18 → T19 → T20 → T21 → T17`
@@ -22,7 +22,7 @@ Plan sırası: `T1 → T2 → T3 → T12 → T11 → T7 → T4 → T5 → T8 →
 | T7 | Landing CTA/çerez yerleşimi (1440×900 tıklanabilirlik, mobil sheet) | ✅ | `LandingPage.tsx`, `CookieConsent.tsx` (`bottom-[calc(66px+safe-area)]`, `md:right-6 md:bottom-6`), z-index: menü 95 > çerez 90 |
 | T8 | Onboarding / ilk rota akışı | ✅ | `Onboarding.tsx` misafir notu + `askAccount(..., "route")`; panel `FIRST_ROUTE_KEY`'e bağlı; `onboarding_choice` olayı — `onboardingT8.test.ts` (8) |
 | T9 | Giriş ekranı sürtünmesi (önce Google) | ✅ | `AccountAccess.tsx` + `AccountAccess.t9.test.ts` (7 test) |
-| T10 | Görsel boru hattı (foto optimize) | ⛔ **ölçüm bekliyor** | Protokol: `docs/gorevler/t3-olcum-protokolu.md`; tarayıcı/kota ölçümü olmadan boru hattı kurulmaz |
+| T10 | Görsel boru hattı (foto optimize) | 🟡 **kısmi — kod tarafı bitti** | 25 MB decode öncesi kapı, HEIC yönlendirmesi, `imageOrientation: "from-image"`, `decoding="async"`/`loading="lazy"` — `imagePipelineT10.test.ts` (7). Kalan: WebP/AVIF + sunucu tarvleri + gerçek cihaz süre ölçümü (onay/ölçüm ister) |
 | T11 | Firebase'i ilk setten çıkarma | ✅ | İlk boya JS **100.288 B** gzip; `firebase-vendor` ilk sette değil (`npm run build` tablosu) |
 | T12 | Kontrast düzeltmeleri (eyebrow/başlık) | ✅ | `#a37c35 → #8f6224` (4,66:1), `#ba8f45 → #9c7029` (3,86:1); `src/config/landingContrast.test.ts` |
 | T13 | Mobil menü (768 px altı) | ✅ | Hamburger + `role="dialog"` panel, Escape/Tab tuzağı/odak iadesi — `src/config/landingA11y.test.ts` |
@@ -32,7 +32,7 @@ Plan sırası: `T1 → T2 → T3 → T12 → T11 → T7 → T4 → T5 → T8 →
 | T17 | Prerender/SSG (SEO) | 🟡 **kısmi — bilinçli** | JS'siz HTML'de gerçek metin var (`<noscript>`, `landingStatic.ts` + vite `transformIndexHtml`); tam SSG/hidrasyon yapılmadı (tarayıcısız ortamda doğrulanamaz). `prerenderT17.test.ts` (6) |
 | T18 | Footer'da dil + yasal bağlantılar | ✅ | 3 yasal metin + "Çerez tercihleri" (rıza geri alma) + "Site dili: Türkçe (tr)" — `footerT18.test.ts` (3) |
 | T19 | İçerik/SEO meta seti | ✅ | `canonical`, `robots`, `hreflang` + `x-default`, taze `lastmod` — `seoMetaT19.test.ts` (6) |
-| T20 | Güven sinyalleri (sosyal kanıt) | ⛔ **insan girdisi gerekli** | Sahte sayaç yazılmaz. Bugünkü dürüst güven sinyalleri zaten var ("reklam ve takip pikseli yok", "konum onayla") ve `footerT18`/`siteSurface` ile kilitli. Gerçek kullanıcı/rota sayısı için toplayıcı (T1) gerekli |
+| T20 | Güven sinyalleri (sosyal kanıt) | ⛔ **karar gerekiyor (T11 ile çakışıyor)** | Sahte sayaç yazılmaz. Bugünkü dürüst güven sinyalleri zaten var ("reklam ve takip pikseli yok", "konum onayla") ve `footerT18`/`siteSurface` ile kilitli. Gerçek kullanıcı/rota sayısı için toplayıcı (T1) gerekli |
 | T21 | Basın/iletişim yüzeyi | ⛔ **hukuk onayı bekliyor** | Gerçek e-posta/künye olmadan yayınlanmaz (`docs/mvp-cikis-plani-2026-10-27.md` P0-1). Footer yüzeyi T18'de hazır |
 
 ## 2. Bütçe ve eşikler (bugünkü ölçüm)
@@ -75,7 +75,15 @@ kod eklemeden önce yine `npm run build` ile ölçüm alın.
    ve `CookieConsent` tembel parçada; `CookieConsentBoundary` ile tembel rıza
    parçası indirilemezse uygulama düşmez ve "Tekrar dene" / footer "Çerez
    tercihleri" tetiklemesi taze `lazy()` fabrikasıyla parçayı yeniden yükler.
-5. **T20 güven sinyalleri:** gerçek kullanıcı/rota sayısı olmadan sosyal kanıt
-   yazılmayacak; sayı üretilmesi gerekiyorsa kaynağı da yazılmalı.
+5. **T20 güven sinyalleri — T11 ile doğrudan çakışıyor.** En dürüst sosyal kanıt
+   ("son yayınlanan rotalar", "bu hafta eklenen izler") **gerçek veridir** ve
+   Firestore'dan okunur. Ama T11 kabul kriteri "landing'in ağ panelinde Firebase
+   görünmeyecek" diyor; bu tür bir blok, Firebase SDK'sını tanıtım sayfasına geri
+   getirir ve T11'i geri alır. Üç yol var, hepsi **karar** istiyor:
+   (a) T20'den vazgeç, mevcut dürüst güven maddeleri kalsın (statüko),
+   (b) build-time gömülü **tarihli** sayılar (ör. "28 Ekim 2026: 412 herkese açık
+       rota") — landing'de Firebase yok, ama sayı bayatlar ve günlük iş gerekir,
+   (c) ayrı bir `/kesfet/` sayfasında canlı kanıt — landing temiz kalır.
+   Sahte sayaç hiçbir durumda yazılmaz.
 6. **T21 basın/iletişim:** gerçek e-posta ve künye hukuk onayı bekliyor
    (`docs/mvp-cikis-plani-2026-10-27.md` P0-1).
