@@ -5,7 +5,7 @@ const productionOrigin = "https://atlasia.pages.dev";
 const shareImageUrl = `${productionOrigin}/images/atlasia-share-card.jpg`;
 const title = "Atlasia — Dünyayı merakınla keşfet";
 const description =
-  "Atlasia — gerçek uydu görüntüleriyle dünyayı keşfet, gezginlerin bıraktığı küçük ipuçlarını bul ve kendi keşfini haritaya bırak.";
+  "Atlasia — 3B dünya haritasında ve uydu görüntülerinde gezginlerin bıraktığı izleri keşfet; rotanı planla, kendi keşfini haritaya bırak.";
 const imageAlt =
   "Atlasia logosu ve gece Dünya görünümü üzerinde Dünyayı merakınla keşfet mesajı";
 

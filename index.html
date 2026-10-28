@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta
       name="description"
-      content="Atlasia — gerçek uydu görüntüleriyle dünyayı keşfet, gezginlerin bıraktığı küçük ipuçlarını bul ve kendi keşfini haritaya bırak."
+      content="Atlasia — 3B dünya haritasında ve uydu görüntülerinde gezginlerin bıraktığı izleri keşfet; rotanı planla, kendi keşfini haritaya bırak."
     />
     <meta property="og:locale" content="tr_TR" />
     <meta property="og:site_name" content="Atlasia" />
@@ -13,7 +13,7 @@
     <meta property="og:title" content="Atlasia — Dünyayı merakınla keşfet" />
     <meta
       property="og:description"
-      content="Atlasia — gerçek uydu görüntüleriyle dünyayı keşfet, gezginlerin bıraktığı küçük ipuçlarını bul ve kendi keşfini haritaya bırak."
+      content="Atlasia — 3B dünya haritasında ve uydu görüntülerinde gezginlerin bıraktığı izleri keşfet; rotanı planla, kendi keşfini haritaya bırak."
     />
     <meta property="og:url" content="https://atlasia.pages.dev/" />
     <meta property="og:image" content="https://atlasia.pages.dev/images/atlasia-share-card.jpg" />
@@ -29,7 +29,7 @@
     <meta name="twitter:title" content="Atlasia — Dünyayı merakınla keşfet" />
     <meta
       name="twitter:description"
-      content="Atlasia — gerçek uydu görüntüleriyle dünyayı keşfet, gezginlerin bıraktığı küçük ipuçlarını bul ve kendi keşfini haritaya bırak."
+      content="Atlasia — 3B dünya haritasında ve uydu görüntülerinde gezginlerin bıraktığı izleri keşfet; rotanı planla, kendi keşfini haritaya bırak."
     />
     <meta name="twitter:image" content="https://atlasia.pages.dev/images/atlasia-share-card.jpg" />
     <meta
@@ -93,12 +93,21 @@
     <link rel="icon" type="image/png" href="/icons/icon-512.png" />
     <link rel="apple-touch-icon" href="/icons/icon-512.png" />
     <title>Atlasia — Dünyayı merakınla keşfet</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- B2: fontlar self-host; dış istek yok. CSS'i erken ve senkron yükle:
+         font-display: swap, ilk karede sistem fontuyla boyanıp takas edilir. -->
+    <!-- B1: LCP görseli için ön yükleme. `imagesrcset`/`imagesizes` <picture>
+         ile AYNI adayları verir; tarayıcı aynı URL'yi seçer (çift indirme yok).
+         AVIF desteklemeyen tarayıcı bu ipucunu yok sayar, <picture> devralır. -->
     <link
-      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap"
-      rel="stylesheet"
+      rel="preload"
+      as="image"
+      type="image/avif"
+      imagesrcset="/images/hero-480.avif 480w, /images/hero-768.avif 768w, /images/hero-1376.avif 1376w"
+      imagesizes="100vw"
     />
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/dm-sans-latin-wght-normal.woff2" crossorigin />
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/bricolage-grotesque-latin-wght-normal.woff2" crossorigin />
+    <link rel="stylesheet" href="/fonts/fonts.css" />
   </head>
   <body>
     <div id="root"></div>

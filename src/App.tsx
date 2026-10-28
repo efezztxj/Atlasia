@@ -8,6 +8,7 @@
  * landing'de indirilmez (bkz. config/lazyLoading.test.ts, scripts/bundle-budget.mjs).
  */
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { useRouteMeta } from "./hooks/useRouteMeta";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { analytics, type CtaPlacement } from "./lib/analytics";
 import LandingPage from "./components/LandingPage";
@@ -30,6 +31,8 @@ function BootSplash({ label }: { label?: string }) {
 
 function AuthGate({ installApp }: { installApp: InstallAppController }) {
   const { user, checking, guest, startGuest, accountRequest, clearAccountRequest } = useAuth();
+  // F3: tanıtım ve uygulama kabuğu ayrı başlık/açıklama taşır (tek belge olsa da).
+  useRouteMeta(!user && !guest ? "landing" : "app");
   const [accessOpen, setAccessOpen] = useState(false);
   const previousUser = useRef(user);
 

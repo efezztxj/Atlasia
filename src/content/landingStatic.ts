@@ -39,7 +39,7 @@ export interface LandingStaticContent {
 export const LANDING_STATIC: LandingStaticContent = {
   heading: "Dünyayı merakınla keşfet.",
   intro:
-    "Atlasia — gerçek uydu görüntüleriyle dünyayı keşfet, gezginlerin bıraktığı küçük ipuçlarını bul ve kendi keşfini haritaya bırak.",
+    "Atlasia — 3B dünya haritasında ve uydu görüntülerinde gezginlerin bıraktığı izleri keşfet; rotanı planla, kendi keşfini haritaya bırak.",
   stepsHeading: "Nasıl çalışır?",
   steps: [
     {

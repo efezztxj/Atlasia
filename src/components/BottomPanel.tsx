@@ -142,7 +142,8 @@ export default function BottomPanel({
                         {current.kind === "user" ? `Keşif · ${current.author}` : current.author}
                       </span>
                     </span>
-                    <span className="mt-1 block truncate text-[10.5px] leading-snug text-mint/65 md:text-[11.5px]">{current.note}</span>
+                    {/* E4 — mobilde ipucu tek satıra sıkışıp kesiliyordu; iki satır sarar. */}
+                    <span className="mt-1 block line-clamp-2 text-[10.5px] leading-snug text-mint/65 md:line-clamp-1 md:text-[11.5px]">{current.note}</span>
                   </span>
                 </button>
 

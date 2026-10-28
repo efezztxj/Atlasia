@@ -71,8 +71,15 @@ describe("T10 · teslim işaretleri", () => {
 
   it("hero görseli LCP için öncelikli, alt katman görselleri tembel", () => {
     const landing = readFileSync("src/components/LandingPage.tsx", "utf8");
-    const hero = landing.slice(landing.indexOf("/images/atlasia-earth-hero.jpg") - 200, landing.indexOf("/images/atlasia-earth-hero.jpg") + 300);
+    // B1: hero artık <picture> (AVIF/WebP + srcset). Ölçüt aynı: LCP görseli
+    // öncelikli iner, tembel yüklenmez ve gerçek boyutları bildirir (CLS).
+    const start = landing.indexOf("<picture>");
+    const hero = landing.slice(start, start + 1600);
+    expect(start).toBeGreaterThan(-1);
     expect(hero).toContain('fetchPriority="high"');
+    expect(hero).toContain('type="image/avif"');
+    expect(hero).toContain("sizes=\"100vw\"");
+    expect(hero).toContain("width={1376}");
     // Hero tembel olmamalı: LCP'yi geciktirir.
     expect(hero).not.toContain('loading="lazy"');
 

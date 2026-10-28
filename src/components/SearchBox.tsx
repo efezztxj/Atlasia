@@ -154,6 +154,7 @@ export default function SearchBox({ places, onPick, onOpenFilters, autoFocus = f
       <label htmlFor="atlasia-search" className="sr-only md:not-sr-only md:mb-2 md:block md:text-[11px] md:tracking-wide md:text-mint/65">
         Yer, şehir veya ülke ara
       </label>
+      {/* E5: açılır liste sağdaki harita rayını örtmesin (md:right-[64px]). */}
       <div className="relative">
         <div className="mobile-search-field flex h-12 items-center gap-3 rounded-full border border-leaf/25 bg-ink/[0.92] px-4 transition focus-within:border-sun/70 focus-within:bg-ink/90">
           <Search className="size-[18px] shrink-0 text-sun" />
@@ -198,7 +199,7 @@ export default function SearchBox({ places, onPick, onOpenFilters, autoFocus = f
         </div>
 
         {showRecents && (
-          <div className="animate-fade panel-solid absolute top-14 right-0 left-0 z-20 overflow-hidden rounded-2xl border border-leaf/20 p-1.5 shadow-2xl shadow-black/50">
+          <div className="animate-fade panel-solid absolute top-14 right-0 left-0 z-20 md:right-[64px] overflow-hidden rounded-2xl border border-leaf/20 p-1.5 shadow-2xl shadow-black/50">
             <div className="flex items-center justify-between px-2 pt-1 pb-1.5">
               <p className="text-[11px] font-bold tracking-[0.14em] text-sun uppercase">Son aramalar</p>
               <button type="button" onClick={clearRecents} className="min-h-8 rounded-full px-2 text-[11px] text-mint/65 transition hover:text-mint">
@@ -223,7 +224,7 @@ export default function SearchBox({ places, onPick, onOpenFilters, autoFocus = f
         )}
 
         {showList && (
-          <div className="animate-fade thin-scroll absolute top-14 right-0 left-0 z-20 max-h-[min(50dvh,420px)] overflow-y-auto rounded-2xl border border-leaf/20 bg-ink-2/95 p-1.5 shadow-2xl shadow-black/50">
+          <div className="animate-fade thin-scroll absolute top-14 right-0 left-0 z-20 md:right-[64px] max-h-[min(50dvh,420px)] overflow-y-auto rounded-2xl border border-leaf/20 bg-ink-2/95 p-1.5 shadow-2xl shadow-black/50">
             {combined.length === 0 && !loading && (
               <p className="px-3 py-3 text-[12px] text-mint/55">
                 {error ? "Harita aramasına ulaşılamadı. Kayıtlı yerleri kullanabilir veya biraz sonra tekrar deneyebilirsin." : "Sonuç bulunamadı. Yer adını veya şehir adını farklı yazmayı dene."}

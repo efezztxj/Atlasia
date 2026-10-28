@@ -114,7 +114,9 @@ describe("P18 regresyon kilidi", () => {
   it("her modal pencere odak tuzağı + Esc + odak dönüşü sağlar", () => {
     for (const [name, source] of sources) {
       if (!/role="(alert)?dialog"/.test(source)) continue;
-      const hook = source.includes("usePanelAccess(");
+      // C3: kanca jenerik alabilir (usePanelAccess<HTMLDivElement>) — kök
+      // öğe <aside role="dialog"> geçersiz olduğu için <div role="dialog">.
+      const hook = /usePanelAccess(?:<[^>]+>)?\(/.test(source);
       const own = source.includes('"Escape"') && source.includes('"Tab"');
       expect(hook || own, `${name}: role="dialog" var ama odak yönetimi yok`).toBe(true);
     }

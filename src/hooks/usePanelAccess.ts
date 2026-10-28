@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 
-export function usePanelAccess(open: boolean, onClose: () => void, modal = false) {
-  const ref = useRef<HTMLElement>(null);
+export function usePanelAccess<T extends HTMLElement = HTMLElement>(open: boolean, onClose: () => void, modal = false) {
+  const ref = useRef<T>(null);
   const close = useRef(onClose);
   close.current = onClose;
   useEffect(() => {

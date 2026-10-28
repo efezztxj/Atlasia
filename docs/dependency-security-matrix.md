@@ -1,6 +1,6 @@
 # Üretim bağımlılığı güvenlik matrisi
 
-Son doğrulama: 13 Ekim 2026
+Son doğrulama: 28 Ekim 2026 (G4 — tam `npm audit` matrisi)
 
 Bu belge, üretim açığı bulunan bağımlılıkların neden topluca `latest` sürümüne taşınmadığını ve her düzeltmenin kalite kapısını kaydeder. `npm audit fix --force` kullanılmaz; özellikle npm'in Firebase için önerdiği eski `9.14.0` sürümüne dönüş uygulanmaz.
 
@@ -29,6 +29,37 @@ Bu belge, üretim açığı bulunan bağımlılıkların neden topluca `latest` 
 - Firebase upstream'de bağımlılığı `~1.14.5` sürümüne taşıyan çalışma henüz yayımlanmış pakete girmedi. Uyumlu resmî Firebase patch'i çıktığında override kaldırılıp lockfile ve tüm kalite kapısı yeniden doğrulanmalıdır.
 - Override öncesi ve sonrası tarayıcı build'inde `firebase-vendor-1BLvj0e2.js` aynı hash ve `581.85 kB` boyutta kaldı; gRPC browser bundle'ına eklenmedi. Rules emulator'daki 12/12 test Node/Firestore yolunun çalıştığını doğruladı.
 - Production audit sıfıra indirildi ve baseline artık hiçbir production advisory'sini izinli saymaz.
+
+## G4 · 28 Ekim 2026 tam `npm audit` matrisi
+
+Denetimde istenen: yalnız üretim zinciri değil, **geliştirme** zinciri de ölçülür ve
+kapıya bağlanır. Ölçüm komutu: `npm audit --json` + `npm run audit:check`
+(`scripts/audit-baseline.mjs`, `--omit=dev`).
+
+| Kapsam | Paket sayısı | critical | high | moderate | low | Toplam | Kapı |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Üretim (`--omit=dev`) | 127 | 0 | 0 | 0 | 0 | **0** | `npm run audit:check` — kritik > 0 ise CI kırmızı |
+| Geliştirme (dev) | 334 | 0 | 0 | 0 | 0 | **0** | `ci.yml` → `Check production dependency security baseline` |
+| Tümü (`npm audit`) | 460 (106 opsiyonel, 29 peer dâhil) | 0 | 0 | 0 | 0 | **0** | Elle + PR kontrol listesi |
+
+Notlar:
+
+- Ağaç 28 Ekim 2026 itibarıyla **tamamen temiz**. Bunu korumak için yeni araçlar
+  doğrudan `devDependencies`'e eklenmiyor: `@lhci/cli@0.15.1` denendiğinde
+  `chromium-bidi → zod` zinciri üzerinden **13 yüksek** geliştirme açığı getirdi
+  (bkz. `npm audit` çıktısı) ve geri alındı. Lighthouse CI, sürümü sabitlenmiş
+  `npx` ile yalnız CI'da çalışır: `npx --yes @lhci/cli@0.15.1 autorun`
+  (`.github/workflows/lighthouse.yml`).
+- `npm audit fix --force` **kullanılmaz**: önerdiği düzeltmeler Firebase'i
+  `9.14.0`'a düşürüyor (yukarıdaki karar matrisi).
+- Bir geliştirme açığı zorunlu hâle gelirse süreç: (1) advisory'yi bu tabloya ekle,
+  (2) etkilenen zinciri ve ilk güvenli sürümü yaz, (3) yükseltmeyi tek PR'da yap,
+  (4) `npm ci && npm run typecheck && npm run lint && npm test && npm run build`
+  yeşil olmadan birleştirme. Kural: **eşik yalnız sıkılaşır**, gevşetme gerekçesi
+  bu dosyaya yazılmadan yapılmaz.
+- Üretim zincirinde `0` açık olduğu için `audit:check` üst sınırı `critical > 0`dan
+  daha sıkı bir politikaya çekilebilir; bu turda değiştirilmedi (kapsam dışı) ama
+  öneri olarak kayda geçti.
 
 ## Kaynaklar
 

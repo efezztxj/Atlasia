@@ -33,6 +33,13 @@ const TRUST = [
 ];
 
 /** Mobil menü bağlantıları — masaüstü menüsüyle aynı hedefler (T13). */
+/** D6: tanıtımda gösterilen üç örnek rota (kısa tutuldu, entry bütçesi). */
+const EXAMPLE_ROUTES = [
+  { title: "Efes · yarım gün", detail: "Antik kent, Meryem Ana ve Selçuk; sabah erken." },
+  { title: "Kapadokya · 1 gün", detail: "Göreme, Uçhisar ve gün batımı noktası." },
+  { title: "Santorini · 2 gün", detail: "Oia–Fira arası sakin yürüyüş planı." },
+];
+
 const MENU_LINKS = [
   { href: "#kesfet", label: "Keşfet" },
   { href: "#nasil", label: "Nasıl çalışır?" },
@@ -116,12 +123,28 @@ export default function LandingPage({ onStart }: Props) {
 
     <main className="landing-page h-dvh overflow-y-auto scroll-smooth bg-[#020d17] text-white">
       <section className="relative isolate min-h-dvh overflow-hidden border-b border-white/10">
-        <img
-          src="/images/atlasia-earth-hero.jpg"
-          alt="Gece ışıklarıyla Avrupa, Akdeniz ve Türkiye'nin uzaydan görünümü"
-          className="absolute inset-0 -z-20 size-full object-cover object-[66%_center]"
-          fetchPriority="high"
-        />
+        {/* B1: AVIF → JPEG, üç gerçek genişlik. 390 px ekranda inen dosya 9 KB
+            (AVIF 480); eskiden her cihazda aynı 170 KB JPEG iniyordu. Ara WebP
+            katmanı bilinçli olarak yok: AVIF desteklemeyen tarayıcı zaten JPEG
+            alıyor, WebP yalnız bayt ekliyordu. Master 1376 px olduğu için daha
+            büyük aday ÜRETİLMİYOR (yükseltme keskinlik kazandırmaz). */}
+        <picture>
+          <source
+            type="image/avif"
+            srcSet="/images/hero-480.avif 480w, /images/hero-768.avif 768w, /images/hero-1376.avif 1376w"
+            sizes="100vw"
+          />
+          <img
+            src="/images/hero-1376.jpg"
+            srcSet="/images/hero-480.jpg 480w, /images/hero-768.jpg 768w, /images/hero-1376.jpg 1376w"
+            sizes="100vw"
+            alt="Gece ışıklarıyla Avrupa, Akdeniz ve Türkiye'nin uzaydan görünümü"
+            className="absolute inset-0 -z-20 size-full object-cover object-[66%_center]"
+            width={1376}
+            height={768}
+            fetchPriority="high"
+          />
+        </picture>
         <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(1,10,18,.96)_0%,rgba(1,10,18,.76)_34%,rgba(1,10,18,.18)_68%,rgba(1,10,18,.26)_100%)] max-md:bg-[linear-gradient(180deg,rgba(1,10,18,.7)_0%,rgba(1,10,18,.43)_38%,rgba(1,10,18,.96)_100%)]" />
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_70%_16%,rgba(234,181,79,.13),transparent_30%)]" />
 
@@ -246,6 +269,27 @@ export default function LandingPage({ onStart }: Props) {
         </div>
       </section>
 
+
+      {/* D6 — örnek rota kartları. Denetimde "somut örnek yok, ziyaretçi ne
+          göreceğini bilmiyor" notu vardı. Üç kısa örnek, gerçek Atlasia
+          bölgelerinden; hepsi aynı birincil eyleme (haritada aç) çıkar.
+          Veri dizisi bileşen içinde: ayrı dosya + import, entry'ye daha pahalı. */}
+      <section id="ornek-rotalar" aria-labelledby="ornek-title" className="border-t border-white/10 bg-[#04211c] px-5 py-16 md:px-10">
+        <div className="mx-auto max-w-[1280px]">
+          <p className="text-[10px] font-semibold tracking-[0.28em] text-sun uppercase">Örnek rotalar</p>
+          <h2 id="ornek-title" className="font-display mt-4 text-[clamp(26px,3.4vw,40px)] leading-[1.05] font-semibold tracking-[-0.04em]">Nereden başlayacağını bilmiyorsan.</h2>
+          <ul className="mt-8 grid gap-3 sm:grid-cols-3">
+            {EXAMPLE_ROUTES.map((route) => (
+              <li key={route.title}>
+                <button type="button" data-route-example onClick={() => onStart("how_it_works")} className="w-full rounded-2xl border border-white/12 bg-white/[0.04] p-5 text-left hover:border-sun/50">
+                  <span className="block font-display text-lg font-semibold">{route.title}</span>
+                  <span className="text-[13px] text-mint/65">{route.detail}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
 
       {/* T6 — tanıtım filmi. `preload="none"`: video yalnız kullanıcı oynatınca
           iner (4 MB mobil veri harcamaz). Poster, hero'da zaten yüklenen marka

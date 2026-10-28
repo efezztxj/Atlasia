@@ -101,6 +101,14 @@ const DEFAULT_DIST = fileURLToPath(new URL("../dist", import.meta.url));
  *   appShell  585.711 -> 586.617  (+906)
  *   toplam JS 984.682 -> 996.818  (main bu turda 997.500'e çıkardı)
  *   entry eşiği 20.400 -> 21.200 (ölçüme %3,2 pay)
+ *
+ * 2026-10-28 (B2) — Google Fonts kaldırıldı, fontlar self-host edildi. Kazanç:
+ * 8 dış istek / ~198 KB ve üçüncü taraf alan adına her açılışta bağlantı YOK
+ * (KVKK). Maliyet: 4 adet @font-face + unicode-range listesi = **+409 B gzip CSS**
+ * (toplam CSS 35.504 → 35.913). Yalnız wght ekseni, yalnız latin + latin-ext
+ * alt kümeleri gönderiliyor (Türkçe bu iki aralıkta; Vietnamca/Kiril hiç yok).
+ * Bu yüzden toplam CSS eşiği 35.700 → **36.600** (ölçüm +%1,9). İlk boya CSS
+ * eşiği değişmedi ve %2,7 payla geçiyor.
  */
 export const BUNDLE_BUDGET = Object.freeze({
   // 2026-10-28 (T4 misafir modu + T5 niyet hatırlama): misafir oturum bayrağı,
@@ -148,8 +156,28 @@ export const BUNDLE_BUDGET = Object.freeze({
   // dağılımı kaydı (parça sınırları değişti), ~%3 payla yeniden bağlandı:
   //   entry 16.180 (eşik 21.200 bayattı) -> 16.700 · iconsVendor 13.261 -> 13.700
   //   firebaseAuth 44.778 -> 46.200 · ilk boya CSS 25.372 -> 26.100
+  //
+  // 2026-10-28 (canlı denetim turu: B1 + E7 + F3) — entry eşiği 16.700 -> 17.300.
+  // GEREKÇE (gevşetme, yalnız bu tur için ve yazılı):
+  //   · Ölçülen taban 16.574 B idi; eşiğe 126 B kalmıştı, yani eşik zaten %99,2
+  //     doluydu. Bu, "eşik" değil "anlık ölçüm" demekti.
+  //   · Aynı turda entry'ye giren meşru baytlar:
+  //       B1  hero <picture> + AVIF kaynağı + srcset/sizes   (+~180 B)
+  //       E7  /gorsel?u=… köprüsü (Pexels hotlink kaldırıldı) (+~60 B)
+  //       F3  yüzey bazlı başlık/açıklama (rota meta)         (+~240 B)
+  //     Bunların hiçbiri "gereksiz"; ilk boyada görünen işaretleme/URL'ler.
+  //   · Küçültme denendi ve uygulandı: F3 metinleri ikiye bölündü (tanıtım
+  //     açıklaması artık index.html'den okunuyor, pakette ikinci kopya yok),
+  //     uygulama yüzeyi metinleri tembel `Explorer` chunk'ına taşındı.
+  //     Bu, ilk denemedeki 17.299 B'yi 16.983 B'ye indirdi.
+  //   · D6 (tanıtımda üç örnek rota kartı) aynı turda geldi: +343 B; kartlar
+  //     düğme olduğu için ayrı CTA satırı eklenmedi (metin/kopya da kısaltıldı).
+  //   · Yeni eşik 17_400 B: ölçüm (17.310) üstüne ~90 B pay. Daha dar bir pay
+  //     (ör. 17.050) her yeni tek satırda kapıyı kırardı.
+  // KURAL HATIRLATMASI: eşik yalnız sıkılaşır; bir daha gevşetme gerekirse
+  // gerekçe buraya, ölçümle birlikte yazılır.
   totalJsGzipBytes: 1_003_000,
-  totalCssGzipBytes: 35_700,
+  totalCssGzipBytes: 36_600,
   initialGzipBytes: 129_400,
   // İlk HTML ile gelen gerçek ilk boya maliyeti (lazy chunk'lar hariç).
   initialCssGzipBytes: 26_100,
@@ -160,7 +188,7 @@ export const BUNDLE_BUDGET = Object.freeze({
     appShell: 603_400,
   }),
   categoryGzipBytes: Object.freeze({
-    entry: 16_700,
+    entry: 17_400,
     reactVendor: 69_500,
     iconsVendor: 13_700,
     firebaseVendor: 164_500,

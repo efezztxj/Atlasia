@@ -1,8 +1,12 @@
 @import "tailwindcss";
+/* B2: Google Fonts kaldırıldı. Fontlar aynı origin'den (`/fonts/…`) geliyor;
+   @font-face tanımları public/fonts/fonts.css içinde, index.html'de erken
+   yüklenir. Tarayıcı yalnız gereken unicode aralığını (TR için latin +
+   latin-ext) indirir. */
 
 @theme {
-  --font-display: "Bricolage Grotesque", "DM Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Bricolage Grotesque Variable", "DM Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "DM Sans Variable", ui-sans-serif, system-ui, sans-serif;
 
   --color-ink: #021512;
   --color-ink-2: #04201b;
@@ -587,6 +591,19 @@ html[data-theme="dark"] .text-leaf\/80 {
     --mobile-fab-gap: 12px;
   }
 
+  /* D4 — çerez/izin bandı açıkken birincil eylemler bandın altında kalmasın.
+     CookieConsent bileşeni bandın GERÇEK yüksekliğini ölçüp
+     `--consent-space`e yazar; bant kapanınca değişken kalkar, düzen eski
+     yerine döner. Yalnız bant açıkken geçerli olduğu için kalıcı kayma yok. */
+  html[data-consent="open"] .mobile-walk-fab,
+  html[data-consent="open"] .mobile-map-controls {
+    bottom: calc(var(--mobile-fab-bottom) + var(--consent-space, 0px));
+  }
+  html[data-consent="open"] .atlas-launcher,
+  html[data-consent="open"] .atlas-launcher.atlas-dock-expanded {
+    bottom: calc(168px + env(safe-area-inset-bottom) + var(--consent-space, 0px));
+  }
+
   .mobile-explorer-header {
     height: calc(52px + env(safe-area-inset-top));
     padding-top: env(safe-area-inset-top);
@@ -833,6 +850,19 @@ html[data-theme="dark"] .text-leaf\/80 {
   .mobile-fullscreen {
     padding-top: max(16px, calc(12px + env(safe-area-inset-top)));
     padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+  /* E1 — keşif paneli artık ekranın TAMAMINI kaplamıyor. Denetimde: "mobil
+     keşif paneli tam ekran → header/tab bar erişilemez". Panel alt sekme
+     çubuğunun (58 px + güvenli alan) üstünde biter, üstte de başlık şeridine
+     yer bırakır; böylece küçültme düğmesine ek olarak gezinme her an erişilir.
+     Diğer tam ekran paneller (kayıtlar, detay, ayarlar) kapanma düğmesiyle
+     çalıştığı için etkilenmez. */
+  .mobile-discovery-panel.mobile-fullscreen {
+    inset: 0 0 calc(58px + env(safe-area-inset-bottom)) 0;
+    height: auto;
+    max-height: none;
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+    border-bottom-width: 1px;
   }
   .mobile-fullscreen article {
     width: 100%;

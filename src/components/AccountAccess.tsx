@@ -18,7 +18,10 @@ const LegalNotice = lazy(() => import("./LegalNotice"));
 type Screen = "credentials" | "phone" | "code" | "reset" | "recovery";
 type Busy = "email" | "google" | "apple" | "phone" | "code" | "reset" | "recovery" | "finish";
 type FieldErrors = Partial<Record<"email" | "password" | "name" | "terms" | "phone" | "code" | "recovery", string>>;
-const LANDSCAPE = "https://images.pexels.com/photos/19139425/pexels-photo-19139425.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=1600&w=2400";
+/** E7: Pexels'e doğrudan bağlanmıyoruz; kendi köprümüzden geçiyor. */
+const LANDSCAPE = `/gorsel?u=${encodeURIComponent(
+  "https://images.pexels.com/photos/19139425/pexels-photo-19139425.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=1600&w=2400",
+)}`;
 const APPLE_AUTH_ENABLED = import.meta.env.VITE_APPLE_AUTH_ENABLED === "true";
 const PHONE_AUTH_ENABLED = import.meta.env.VITE_PHONE_AUTH_ENABLED === "true";
 
@@ -332,7 +335,8 @@ export default function AccountAccess({ onClose }: { onClose?: () => void }) {
           {mode === "signup" && <>{profileFields}{consent}</>}
           <button className="auth-submit" type="submit" disabled={blocked}>{busy === "email" ? <Loader2 size={18} className="animate-spin" /> : mode === "signup" ? <ArrowRight size={16} /> : <LockKeyhole size={16} />}{busy === "email" ? "Lütfen bekle..." : mode === "signup" ? "Hesap oluştur" : "Giriş yap"}</button>
         </form>
-        {authConfigured && !APPLE_AUTH_ENABLED && <p className="auth-form-hint">Apple ile giriş yakında. Şimdilik Google veya e-posta ile devam edebilirsin.</p>}
+        {/* D5: "Apple ile giriş yakında" metni kaldırıldı; olmayan bir özelliği
+            vaat ediyordu. Bayrak açıldığında düğme kendiliğinden görünür. */}
         {PHONE_AUTH_ENABLED && <button type="button" disabled={blocked || !authConfigured} onClick={() => { resetMessages(); setScreen("phone"); }} className="auth-phone-alternative"><Phone size={14} />Telefon numarasıyla giriş yap</button>}
         {!authConfigured && <p className="auth-provider-note">{APPLE_AUTH_ENABLED ? "Google ve Apple bağlantısı henüz etkin değil." : "Google bağlantısı henüz etkin değil."} Bu cihaza özel hesabın için e-posta ve şifre kullan.</p>}
         <p className="auth-bottom-switch">{mode === "signin" ? "Henüz hesabın yok mu?" : "Zaten hesabın var mı?"}<button type="button" disabled={blocked} onClick={switchMode}>{mode === "signin" ? "Üye ol" : "Giriş yap"}</button></p>

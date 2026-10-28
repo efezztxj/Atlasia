@@ -1,8 +1,13 @@
 import type { Place } from "../types";
 import { GALLERIES } from "./galleries";
 
+/**
+ * E7: Rehber fotoğrafları artık kendi köprümüzden (`/gorsel`) geçiyor; tarayıcı
+ * üçüncü taraf alan adına hiç bağlanmıyor (KVKK + CDN bağımlılığı). Sunucu
+ * tarafındaki allowlist `functions/gorsel.js` içinde.
+ */
 const px = (id: number) =>
-  `https://images.pexels.com/photos/${id}/pexels-photo-${id}.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=360&w=560`;
+  `/gorsel?u=${encodeURIComponent(`https://images.pexels.com/photos/${id}/pexels-photo-${id}.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=360&w=560`)}`;
 
 /** Atlasia rehberi — elle seçilmiş küçük ipuçları */
 const BASE_PLACES: Place[] = [
@@ -245,7 +250,7 @@ const BASE_PLACES: Place[] = [
     lng: 33.3208,
     lat: 35.3426,
     note: "Eski liman boyunca yürüyüp kaleye çıkın; sabah ışığında Beşparmak Dağları ve deniz aynı karede.",
-    image: "https://images.pexels.com/photos/33448395/pexels-photo-33448395.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=360&w=560",
+    image: px(33448395),
     author: "Atlasia rehberi",
     kind: "guide",
   },
@@ -257,7 +262,7 @@ const BASE_PLACES: Place[] = [
     lng: 33.3612,
     lat: 35.1765,
     note: "Taş avluda kahve molası verin; üst kattaki atölyelerden sonra Surlariçi sokaklarına karışın.",
-    image: "https://images.pexels.com/photos/25649220/pexels-photo-25649220.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=360&w=560",
+    image: px(25649220),
     author: "Atlasia rehberi",
     kind: "guide",
   },
@@ -291,7 +296,7 @@ const BASE_PLACES: Place[] = [
     lng: 35.4517,
     lat: 30.3285,
     note: "Siq'den çıkınca Hazine birden açılır; sabah ilk ışıkta taş pembe, gece kırmızı.",
-    image: "https://images.pexels.com/photos/15998100/pexels-photo-15998100.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=360&w=560",
+    image: px(15998100),
     author: "Atlasia rehberi",
     kind: "guide",
   },
@@ -303,7 +308,7 @@ const BASE_PLACES: Place[] = [
     lng: -5.2636,
     lat: 35.1688,
     note: "Mavi merdivenler tur otobüsünden önce sessizdir; sabah çamaşır ipleri henüz asılıdır.",
-    image: "https://images.pexels.com/photos/18487344/pexels-photo-18487344.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=360&w=560",
+    image: px(18487344),
     author: "Atlasia rehberi",
     kind: "guide",
   },
@@ -315,7 +320,7 @@ const BASE_PLACES: Place[] = [
     lng: -116.1779,
     lat: 51.3217,
     note: "Buzul sütü turkuazdır. Rockpile'a gün doğumunda çık; öğleden sonra rüzgâr suyu bozar.",
-    image: "https://images.pexels.com/photos/18515005/pexels-photo-18515005.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=360&w=560",
+    image: px(18515005),
     author: "Atlasia rehberi",
     kind: "guide",
   },
@@ -327,7 +332,7 @@ const BASE_PLACES: Place[] = [
     lng: 14.489,
     lat: 40.628,
     note: "Limandan yukarı her merdiven başka bir teras. Öğleden sonra gölge, cepheler denizi işaret eder.",
-    image: "https://images.pexels.com/photos/19900429/pexels-photo-19900429.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=360&w=560",
+    image: px(19900429),
     author: "Atlasia rehberi",
     kind: "guide",
   },

@@ -40,6 +40,33 @@ export default function CookieConsent() {
     restoreFocus();
   }, [restoreFocus]);
 
+  /* D4 — çerez bandı açıkken ekranın altındaki birincil eylemleri örtmesin.
+     Bant yüksekliği ölçülüp `--consent-space` olarak köke yazılır; CSS'te
+     sabit eylem çifti ve FAB'lar bu kadar yukarı kayar, bant kapanınca sıfırlanır.
+     Ölçüm gerçek yükseklikten geldiği için metin büyütme/çeviri ile de doğru kalır. */
+  const bannerRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const root = document.documentElement;
+    if (!open) {
+      root.style.removeProperty("--consent-space");
+      delete root.dataset.consent;
+      return;
+    }
+    const apply = () => {
+      const height = bannerRef.current?.getBoundingClientRect().height ?? 0;
+      root.style.setProperty("--consent-space", `${Math.ceil(height)}px`);
+      root.dataset.consent = "open";
+    };
+    apply();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(apply);
+    if (bannerRef.current && observer) observer.observe(bannerRef.current);
+    return () => {
+      observer?.disconnect();
+      root.style.removeProperty("--consent-space");
+      delete root.dataset.consent;
+    };
+  }, [open]);
+
   useEffect(() => {
     const onOpenPreferences = () => {
       previousFocusRef.current = document.activeElement as HTMLElement | null;
@@ -107,8 +134,9 @@ export default function CookieConsent() {
         // hiçbir genişlikte örtmez. Mobilde tam genişlikte alt sayfa olur ve
         // güvenli alanı (çentik/gesture çubuğu) hesaba katar.
         <section
+          ref={(node) => { bannerRef.current = node; }}
           aria-labelledby="cookie-consent-title"
-          className="thin-scroll fixed inset-x-0 bottom-[calc(66px+env(safe-area-inset-bottom))] z-[90] max-h-[70dvh] w-full overflow-y-auto rounded-t-3xl border border-leaf/25 bg-ink-2 px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] text-mint shadow-2xl md:inset-x-auto md:right-6 md:bottom-6 md:max-h-dvh md:w-96 md:rounded-3xl md:p-4"
+          className="thin-scroll fixed inset-x-0 bottom-[calc(66px+env(safe-area-inset-bottom))] z-[90] max-h-[52dvh] w-full overflow-y-auto rounded-t-3xl border border-leaf/25 bg-ink-2 px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] text-mint shadow-2xl md:inset-x-auto md:right-6 md:bottom-6 md:max-h-dvh md:w-96 md:rounded-3xl md:p-4"
         >
           <div className="flex items-start gap-3">
             <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-xl bg-leaf/10 text-leaf">

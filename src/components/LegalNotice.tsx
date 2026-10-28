@@ -25,14 +25,14 @@ function LegalSectionContent({ section }: { section: LegalSection }) {
 
 export default function LegalNotice({ type, onClose }: LegalNoticeProps) {
   const document = getLegalDocument(type);
-  const ref = usePanelAccess(true, onClose, true);
+  const ref = usePanelAccess<HTMLDivElement>(true, onClose, true);
   const sections = document.sections.map((section) => document.ordered
     ? <li key={section.title}><LegalSectionContent section={section} /></li>
     : <LegalSectionContent key={section.title} section={section} />);
 
   return <div className="mobile-fullscreen-wrap fixed inset-0 z-[100] grid place-items-center bg-black/75 p-4">
     <button type="button" className="absolute inset-0" onClick={onClose} aria-label={`${document.shortTitle} penceresini kapat`} />
-    <aside
+    <div
       ref={ref}
       role="dialog"
       aria-modal="true"
@@ -62,6 +62,6 @@ export default function LegalNotice({ type, onClose }: LegalNoticeProps) {
       <footer className="mobile-safe-bottom shrink-0 border-t border-white/10 bg-ink-2 px-6 py-4 sm:px-7">
         <button type="button" onClick={onClose} className="min-h-11 w-full rounded-full bg-sun px-6 text-sm font-semibold text-ink">Okudum</button>
       </footer>
-    </aside>
+    </div>
   </div>;
 }

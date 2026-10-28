@@ -28,6 +28,7 @@ import DataStatusBanner, { type DataIssueKind } from "./DataStatusBanner";
 import RouteEditor from "./RouteEditor";
 import { useAuth } from "../contexts/AuthContext";
 import { analytics } from "../lib/analytics";
+import { useAppRouteMeta } from "../hooks/useAppRouteMeta";
 import { CollectionsProvider, isCloudAccount } from "../hooks/useCollections";
 import type { WeatherMode, WeatherStatus } from "../utils/mapWeather";
 import { GUIDE_PLACES } from "../data/places";
@@ -1098,6 +1099,18 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
     else setProfileOpen(true);
   }, []);
   const mobileTab = myPlacesOpen ? "İzlerim" : recordsOpen ? "Kaydet" : feedOpen ? "Topluluk" : profileOpen ? "Profil" : "Keşfet";
+  // F3: sekme/panel değişince belge başlığı ve açıklaması o yüzeye döner.
+  // (Tanıtım ↔ uygulama geçişini App.tsx yönetir; burada uygulama içi yüzeyler.)
+  const routeSurface = myPlacesOpen || recordsOpen
+    ? "records"
+    : feedOpen
+      ? "community"
+      : profileOpen
+        ? "profile"
+        : addMode
+          ? "add"
+          : "explore";
+  useAppRouteMeta(routeSurface);
   const settingsContentProps: SettingsContentProps = {
     theme,
     onTheme: setTheme,

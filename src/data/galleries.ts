@@ -1,5 +1,6 @@
+/** E7: bkz. `data/places.ts` — tarayıcı Pexels'e doğrudan bağlanmaz. */
 const p = (id: number) =>
-  `https://images.pexels.com/photos/${id}/pexels-photo-${id}.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200`;
+  `/gorsel?u=${encodeURIComponent(`https://images.pexels.com/photos/${id}/pexels-photo-${id}.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200`)}`;
 
 const commons = (name: string) =>
   `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(name)}?width=1200`;

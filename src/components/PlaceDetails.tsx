@@ -49,7 +49,7 @@ interface Props {
 export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDelete = false, onDelete, onVerify, onOpenPlace }: Props) {
   const { photos: allPhotos, loading, error } = usePlaceGallery(place);
   const { savePlace, isSaved } = useCollections();
-  const panelRef = usePanelAccess(true, onClose, true);
+  const panelRef = usePanelAccess<HTMLDivElement>(true, onClose, true);
   const [failed, setFailed] = useState<string[]>([]);
   const [index, setIndex] = useState(0);
   const [status, setStatus] = useState<string | null>(null);
@@ -115,7 +115,7 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDele
   return (
     <div className="fixed inset-0 z-[65] flex justify-end bg-black/35">
       <button type="button" className="absolute inset-0" onClick={onClose} aria-label="Yer detayından haritaya dön" />
-      <aside ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="place-title" className="settings-sheet mobile-fullscreen-bleed relative flex h-dvh w-full max-w-[510px] flex-col overflow-hidden border-l border-leaf/20 bg-[#041c16] shadow-2xl">
+      <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="place-title" className="settings-sheet mobile-fullscreen-bleed relative flex h-dvh w-full max-w-[510px] flex-col overflow-hidden border-l border-leaf/20 bg-[#041c16] shadow-2xl">
         <header className="mobile-safe-top absolute inset-x-0 top-0 z-10 flex items-center justify-between bg-gradient-to-b from-ink/95 to-transparent px-4 py-3">
           <button type="button" onClick={onClose} className="flex min-h-11 items-center gap-1.5 rounded-full bg-ink/85 px-3 text-sm"><ChevronLeft size={17} />Haritaya dön</button>
           <button type="button" onClick={onClose} aria-label="Yer detayını kapat" className="grid size-11 place-items-center rounded-full bg-ink/85"><X size={18} /></button>
@@ -287,7 +287,7 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDele
           {error && <p className="mt-3 text-[13px] text-mint/75">Ek fotoğraf kaynağına ulaşılamadı; mevcut galeriyi kullanabilirsin.</p>}
           <p className="mt-5 border-l-2 border-sun/30 pl-3 text-[12px] leading-relaxed text-mint/75">Bu bir rehber özetidir. Saat, ücret ve erişim koşullarını gitmeden resmî kaynaktan doğrula.</p>
         </div>
-      </aside>
+      </div>
       {showReport && user && (
         <ReportDialog targetType="place" targetId={place.id} targetOwnerUid={place.authorUid} targetLabel={place.title} reporterUid={user.uid} onClose={() => setShowReport(false)} onReported={() => setStatus("Raporun alındı, inceleyeceğiz.")} />
       )}

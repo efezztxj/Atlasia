@@ -1,0 +1,77 @@
+name: Atlasia Lighthouse (mobil)
+
+# G3 + B5 — CI'da mobil Lighthouse ve bütçe kapısı.
+#
+# NEDEN AYRI İŞ AKIŞI: ana CI 15 dakikalık bir sözleşme; Lighthouse iki koşu
+# yaptığı için oraya sığmaz ve sık düşen bir adım tüm CI'yı gürültüye çevirir.
+# Ayrı dosya, kapının kendi görünürlüğünü korur (PR'da ayrı check).
+on:
+  pull_request:
+  push:
+    branches: [main, "arena/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: atlasia-lighthouse-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lighthouse:
+    name: Mobil Lighthouse + bütçe
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install exact dependencies
+        run: npm ci
+
+      - name: Build (bundle budget included)
+        run: npm run build
+
+      # @lhci/cli DEPENDENCY DEĞİL (bilinçli): geliştirme bağımlılığı olarak
+      # eklemek `npm audit` matrisine 13 yüksek/dev açık sokuyordu (chromium-bidi
+      # → zod). CI'da sürüm sabit `npx` ile çalışır, üretim ve yerel ağaç temiz
+      # kalır. G4 matrisi bu kararı belgeliyor.
+      - name: Lighthouse mobil (perf ≥90, a11y ≥95, BP ≥95, SEO ≥95)
+        run: npx --yes @lhci/cli@0.15.1 autorun
+
+      - name: Upload Lighthouse reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: lighthouse
+          path: .lighthouseci/
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Özet (skorlar ve bütçe)
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import glob, json, os
+          lines = ["## Mobil Lighthouse", "", "| Koşu | Perf | A11y | BP | SEO |", "| --- | --- | --- | --- | --- |"]
+          for path in sorted(glob.glob(".lighthouseci/lhr-*.json")):
+              data = json.load(open(path, encoding="utf-8"))
+              cats = data.get("categories", {})
+              score = lambda key: round((cats.get(key, {}) or {}).get("score") or 0)
+              lines.append("| {} | {} | {} | {} | {} |".format(
+                  os.path.basename(path).replace(".json", ""), score("performance"),
+                  score("accessibility"), score("best-practices"), score("seo")))
+          summary = os.environ.get("GITHUB_STEP_SUMMARY")
+          if summary:
+              with open(summary, "a", encoding="utf-8") as handle:
+                  handle.write("\n".join(lines) + "\n")
+          print("\n".join(lines))
+          PY

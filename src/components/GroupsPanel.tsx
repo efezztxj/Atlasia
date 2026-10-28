@@ -44,7 +44,7 @@ interface Props {
 type Tab = "groups" | "friends";
 
 export default function GroupsPanel({ currentUid, currentName, blockedSet, isBlocked, initialTarget, onClose }: Props) {
-  const panelRef = usePanelAccess(true, onClose);
+  const panelRef = usePanelAccess<HTMLDivElement>(true, onClose);
   const [tab, setTab] = useState<Tab>(initialTarget?.kind === "friends" || (initialTarget?.kind === "invite" && initialTarget.invite.kind === "friend") ? "friends" : "groups");
   const [index, setIndex] = useState<GroupIndexEntry[]>([]);
   const [openGroup, setOpenGroup] = useState<Group | null>(null);
@@ -365,7 +365,7 @@ export default function GroupsPanel({ currentUid, currentName, blockedSet, isBlo
   return (
     <div className="fixed inset-0 z-[66] flex justify-end bg-black/40">
       <button type="button" aria-label="Paneli kapat" onClick={onClose} className="absolute inset-0" />
-      <aside ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="groups-title" className="panel-solid mobile-fullscreen-bleed relative flex h-dvh w-full max-w-[430px] flex-col border-l border-leaf/20 bg-[#041c16] shadow-2xl">
+      <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="groups-title" className="panel-solid mobile-fullscreen-bleed relative flex h-dvh w-full max-w-[430px] flex-col border-l border-leaf/20 bg-[#041c16] shadow-2xl">
         <header className="mobile-safe-top flex shrink-0 items-center gap-2 border-b border-white/10 px-4 py-3">
           {openGroup ? (
             <button type="button" onClick={() => { setOpenGroup(null); setMessages([]); setAddPeopleOpen(false); }} className="grid size-10 place-items-center rounded-full hover:bg-white/5" aria-label="Listeye dön"><ArrowLeft size={18} /></button>
@@ -553,7 +553,7 @@ export default function GroupsPanel({ currentUid, currentName, blockedSet, isBlo
             </form>
           </>
         )}
-      </aside>
+      </div>
       {reportSender && (
         <ReportDialog targetType="user" targetId={reportSender} targetOwnerUid={reportSender} targetLabel="Sohbet kullanıcısı" reporterUid={currentUid} onClose={() => setReportSender(null)} onReported={() => setStatus("Raporun alındı.")} />
       )}

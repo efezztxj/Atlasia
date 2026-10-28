@@ -64,7 +64,16 @@ export default function AtlasAssistant({ open, onOpen, onClose, places, view, or
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<"good" | "bad" | null>(null);
   const [saved, setSaved] = useState(false);
-  const context = selectedPlace ?? origin;
+  /* E2 — "Referans" rozeti bayatlıyordu: rozet seçili yeri (yoksa konumu)
+     gösterirken asistan, mesajda adı geçen yeri kullanıyordu; sonraki sorular
+     da o bağlamı kaybediyordu ("göster" → yanlış yer). Artık çözümlenen son
+     referans durumda tutuluyor, rozet gerçekten kullanılan bağlamı gösteriyor
+     ve haritada başka bir yer seçilince kendiliğinden tazeleniyor. */
+  const [activeReference, setActiveReference] = useState<Place | null>(selectedPlace ?? null);
+  useEffect(() => {
+    if (selectedPlace) setActiveReference(selectedPlace);
+  }, [selectedPlace]);
+  const context = activeReference ?? origin;
 
   useEffect(() => { const timer = setTimeout(() => setIntro(false), 1800); return () => clearTimeout(timer); }, []);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
@@ -177,7 +186,9 @@ export default function AtlasAssistant({ open, onOpen, onClose, places, view, or
     setError(null);
     const q = normalize(question);
     const named = namedPlace(question, places);
-    const reference = named ?? selectedPlace;
+    const reference = named ?? selectedPlace ?? activeReference ?? undefined;
+    // Bağlamı tazele: sonraki kısa sorular ("göster", "orada ne yenir") aynı yere bakar.
+    if (reference && reference !== activeReference) setActiveReference(reference);
     const center = reference ?? origin;
     const local = nearbyPlaces(places, center, 20);
 
@@ -249,7 +260,7 @@ export default function AtlasAssistant({ open, onOpen, onClose, places, view, or
     <button type="button" onClick={open ? onClose : onOpen} aria-label="Atlas AI keşif asistanını aç" aria-expanded={open} aria-controls="atlas-assistant" className={cn("atlas-fab atlas-launcher absolute right-3 z-30 flex min-h-12 items-center gap-2 btn-gold-round rounded-full px-4 font-semibold text-[#10241a] md:hidden", intro && "is-intro", dockExpanded && "atlas-dock-expanded", open && "invisible", hiddenOnMobile && "max-md:hidden")}><Sparkles size={17} /><span className="atlas-launcher-label">Atlas AI</span></button>
     {open && <aside ref={panelRef} id="atlas-assistant" aria-labelledby="atlas-title" className="atlas-sheet mobile-fullscreen-bleed gold-frame glass-panel fixed right-3 bottom-6 z-[55] flex max-h-[min(78dvh,710px)] w-[calc(100%-24px)] max-w-[450px] flex-col overflow-hidden rounded-[28px] md:right-20">
       <header className="mobile-safe-top flex shrink-0 items-start justify-between gap-3 px-5 pb-3 pt-3.5"><div className="flex min-w-0 items-start gap-3"><span aria-hidden className="avatar-gold-ring size-11 shrink-0"><span className="btn-gold grid size-full place-items-center"><Sparkles size={18} /></span></span><div className="min-w-0"><h2 id="atlas-title" className="font-display text-lg font-semibold text-white">Atlas AI</h2><p className="mt-0.5 text-[13px] leading-relaxed text-mint/75">Yakındaki izlerle önerir. Güncel bilgileri gitmeden doğrula.</p></div></div><button type="button" onClick={onClose} aria-label="Atlas AI'yi kapat" className="grid size-11 shrink-0 place-items-center rounded-full bg-white/[0.05] ring-1 ring-white/10 transition hover:bg-white/10"><ChevronDown size={18} /></button></header>
-      <div className="shrink-0 px-5 pb-1"><p className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-sun/10 px-2.5 py-1 text-[12px] text-sun ring-1 ring-sun/25"><MapPin size={12} className="shrink-0" /><span className="truncate">Referans: {selectedPlace?.title ?? origin.label}</span></p></div>
+      <div className="shrink-0 px-5 pb-1"><p className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-sun/10 px-2.5 py-1 text-[12px] text-sun ring-1 ring-sun/25"><MapPin size={12} className="shrink-0" /><span className="truncate">Referans: {activeReference?.title ?? (selectedPlace?.title ?? origin.label)}</span></p></div>
       <div className="no-scrollbar fade-x flex shrink-0 gap-2 overflow-x-auto px-4 py-3">{QUICK.map((prompt) => <button key={prompt} type="button" disabled={!!loading} onClick={() => void respond(prompt)} className="min-h-10 shrink-0 rounded-full border border-white/15 bg-white/[0.03] px-3.5 text-[13px] text-mint transition hover:border-sun/60 hover:text-sun active:scale-95 disabled:opacity-40">{prompt}</button>)}</div>
       <div ref={bodyRef} className="thin-scroll min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-3">
         <div role="log" aria-live="polite" aria-relevant="additions" className="space-y-4">{messages.map((message) => <div key={message.id} className={cn("text-[14px] leading-[1.65]", message.role === "user" ? "btn-gold ml-10 rounded-[20px] rounded-br-md px-3.5 py-2.5" : "mr-3 rounded-[20px] rounded-bl-md border border-white/[0.08] bg-white/[0.045] px-3.5 py-2.5 text-mint")}><p className="whitespace-pre-line">{message.text}</p>{message.photo && <img src={message.photo} alt="Photoğrafın ışık ve renk eşleştirmesi için yüklediğin görsel" className="mt-2 max-h-36 rounded-xl object-cover" />}{message.cards && <div className="mt-3 space-y-2">{message.cards.map((place) => <button key={place.id} type="button" onClick={() => onPulse(place.lng, place.lat)} className="flex w-full items-center gap-3 rounded-xl border border-white/10 p-2.5 text-left"><PlaceImage place={place} compact className="size-12 shrink-0 rounded-lg" /><span className="min-w-0 flex-1"><span className="block truncate text-[14px] font-semibold">{place.title}</span><span className="mt-1 block truncate text-[12px] text-mint/75">{place.kind === "user" ? "Topluluk izi" : "Atlasia rehberi"} · {haversineKm(context.lat, context.lng, place.lat, place.lng).toFixed(1)} km</span></span><MapPin size={15} className="text-sun" /></button>)}</div>}{message.role === "assistant" && message.id !== "welcome" && <p className="mt-2 text-[12px] text-mint/70">{DISCLAIMER}</p>}</div>)}</div>

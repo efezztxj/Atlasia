@@ -34,6 +34,36 @@ export default defineConfig(({ mode }) => {
           return html.replace(marker, `${marker}\n${renderLandingStaticHtml()}`);
         },
       },
+      {
+        // E7: tarayıcı Pexels'e doğrudan bağlanmıyor; üretimde `/gorsel` bir
+        // Cloudflare Pages Function (functions/gorsel.js). `vite dev` Functions
+        // çalıştırmadığı için aynı allowlist burada 302 ile köprülenir: yerelde
+        // görseller kırılmaz, kural tek yerde kalır.
+        name: "atlasia-image-bridge-dev",
+        configureServer(server) {
+          server.middlewares.use("/gorsel", (request, response, next) => {
+            const target = new URL(request.url ?? "", "http://localhost").searchParams.get("u");
+            if (!target) return next();
+            let allowed = false;
+            try {
+              const url = new URL(target);
+              allowed = url.protocol === "https:"
+                && url.hostname === "images.pexels.com"
+                && /^\/photos\/\d{1,12}\/[A-Za-z0-9._-]{1,120}$/.test(url.pathname);
+            } catch {
+              allowed = false;
+            }
+            if (!allowed) {
+              response.statusCode = 403;
+              response.end("İzin verilmeyen adres");
+              return;
+            }
+            response.statusCode = 302;
+            response.setHeader("location", target);
+            response.end();
+          });
+        },
+      },
     ],
     resolve: {
       alias: {

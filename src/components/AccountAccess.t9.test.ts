@@ -67,12 +67,14 @@ describe("giriş ekranı — sağlayıcı sırası", () => {
     expect(screen.getAllByText(/veya e-posta ile/i).length).toBeGreaterThan(0);
   });
 
-  it("Apple kapalıyken devre dışı düğme yok, yerine mikro metin var", () => {
+  it("Apple kapalıyken ne devre dışı düğme ne de 'yakında' vaadi var", () => {
     authState.authConfigured = true;
     render(createElement(AccountAccess));
 
     expect(screen.queryByRole("button", { name: /Apple/i })).toBeNull();
-    expect(screen.getByText(/Apple ile giriş yakında/i)).toBeTruthy();
+    // D5: ölü düğme kaldırılmıştı ama "yakında" metni kalmıştı; olmayan bir
+    // özelliği vaat ediyordu. Artık hiçbir iz yok.
+    expect(screen.queryByText(/Apple/i)).toBeNull();
     // Hiçbir sosyal düğme devre dışı gösterilmiyor.
     for (const name of [/Google ile devam et/i]) {
       expect((screen.getByRole("button", { name }) as HTMLButtonElement).disabled).toBe(false);

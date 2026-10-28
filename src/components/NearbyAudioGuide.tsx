@@ -38,6 +38,12 @@ export default function NearbyAudioGuide({ location, places, onOpenPlace }: Prop
   const [dismissed, setDismissed] = useState<string[]>(readDismissed);
   const [speaking, setSpeaking] = useState(false);
   const [paused, setPaused] = useState(false);
+  // E8 — sesli rehber "izin sırası": konum izni ve sesin gerçekten başlaması
+  // ayrı adımlar. Sesi yalnızca kullanıcı dokunuşu başlatır; tarayıcı sesi
+  // engellerse ya da Türkçe ses paketi yoksa kullanıcı sessiz kalmasın diye
+  // görünür bir açıklama gösterilir. Ölçüm (audio_guide_start) artık sesin
+  // gerçekten çalmaya başladığı anda sayılır, istek anında değil.
+  const [voiceIssue, setVoiceIssue] = useState<string | null>(null);
   const supported = typeof window !== "undefined" && "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
   // KARAR (e) BAĞLI: web/PWA kalır, ekran açık şartı kabul — arka plan konumu yok, rehber yalnızca sekme ön planda ve ekran açıkken tetiklenir.
   const guideStateRef = useRef<TourGuideState>(initialGuideState());
@@ -115,6 +121,7 @@ export default function NearbyAudioGuide({ location, places, onOpenPlace }: Prop
 
   const speakFromStart = () => {
     if (!supported) return;
+    setVoiceIssue(null);
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(guideText(nearby.place));
     utterance.lang = "tr-TR";
@@ -126,13 +133,19 @@ export default function NearbyAudioGuide({ location, places, onOpenPlace }: Prop
       setSpeaking(false);
       setPaused(false);
     };
-    utterance.onerror = () => {
+    utterance.onstart = () => {
+      // T2: yalnızca ses gerçekten başladığında sayılır (oturumda bir kez).
+      analytics.audioGuideStart({ source: "manual" });
+    };
+    utterance.onerror = (event) => {
       setSpeaking(false);
       setPaused(false);
+      const reason = (event as SpeechSynthesisErrorEvent).error;
+      setVoiceIssue(reason === "not-allowed" || reason === "interrupted"
+        ? "Tarayıcı sesi başlatmadı. Ekrana bir kez dokunup “Hikâyeyi dinle”yi tekrar dene."
+        : "Türkçe konuşma sesi bulunamadı. Cihaz ayarlarından Türkçe ses paketini ekleyip tekrar dene.");
     };
     window.speechSynthesis.speak(utterance);
-    // T2: sesli rehber gerçekten başladığında sayılır (oturumda bir kez).
-    analytics.audioGuideStart({ source: "manual" });
     setSpeaking(true);
     setPaused(false);
   };
@@ -169,6 +182,7 @@ export default function NearbyAudioGuide({ location, places, onOpenPlace }: Prop
 
       <p className="mt-3 line-clamp-2 text-[13px] leading-relaxed text-mint/75">{nearby.place.note}</p>
       {!supported && <p className="mt-2 text-[12px] text-sun">Bu tarayıcı sesli okumayı desteklemiyor; hikâyeyi yer ayrıntısından okuyabilirsin.</p>}
+      {supported && voiceIssue && <p role="status" className="mt-2 text-[12px] text-sun">{voiceIssue}</p>}
 
       <div className="mt-3 flex flex-wrap gap-2">
         <button type="button" disabled={!supported} onClick={speaking && !paused ? pause : play} className="flex min-h-11 items-center gap-2 rounded-full bg-sun px-4 text-[13px] font-semibold text-ink disabled:opacity-45">

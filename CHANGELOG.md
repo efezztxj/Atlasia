@@ -1,5 +1,20 @@
 # Atlasia Update
 
+## 2026-10-28 — Canlı denetim turu: erişilebilirlik, görsel köprü, rota meta (C3, E1, E2, E4, E5, E7, E8, D4, D6, B2, B1, F1, F3, G2, G3, B5, G4)
+
+Ayrıntı ve ID eşleşmesi: `docs/teslimatlar/teslimat-denetim-2026-10-28.md`.
+
+- **C3:** axe kapısı **üç tema × yedi ekran**a çıkarıldı (`config/a11yThemes.test.ts`, 23 test). Kapı gerçek bir kusur buldu: `<aside role="dialog">` geçersiz (ARIA in HTML) — yer detayı, grup paneli ve gizlilik penceresi ekran okuyucuda diyalog olarak duyurulmuyordu. Üç dosyada kök `div` oldu, `usePanelAccess` jenerikleşti.
+- **E7:** Pexels hotlink kaldırıldı. Tarayıcı artık `/gorsel?u=…` çağırıyor; üretimde Cloudflare Pages Function (`functions/gorsel.js`) allowlist + kenar önbelleği uygular, yerelde `vite.config.ts` eklentisi aynı kuralı 302 ile uygular. CSP `img-src`'den `images.pexels.com` çıktı. Düğüm testleri: `npm run test:image-bridge` (5/5).
+- **B2:** Google Fonts self-host — `public/fonts/` 4 woff2 (124 KB), elle yazılmış minimal `fonts.css`, `npm run fonts:sync`. Fontsource CSS'ini doğrudan import etmek bütçeyi açtığı için yalnız `wght` + latin/latin-ext.
+- **B1:** Hero `<picture>`: AVIF + JPEG, 480/768/1376 aday, `sizes="100vw"`, `fetchPriority="high"`, `index.html` preload `imagesrcset` ile hizalı. Mobilde **9,1 KB** (480 AVIF); 2400 px master depoda olmadığı için türev üretilmedi (gerekçe script başlığında).
+- **E1:** Mobil keşif paneli artık alt sekme çubuğunun (58 px + güvenli alan) üstünde bitiyor — gezinme her an erişilebilir. **E2:** Atlas AI referansı durumda tutuluyor; rozet gerçekten kullanılan bağlamı gösteriyor. **E4:** ipucu metni iki satıra kadar sarıyor. **E5:** arama listesi masaüstünde harita rayını örtmüyor (`md:right-[64px]`). **E8:** ses ölçümü `onstart`'a taşındı, engellenirse görünür açıklama var.
+- **D4:** çerez bandı yüksekliği `--consent-space` olarak köke yazılıyor; sabit eylemler bant açıkken yukarı kayıyor. **D6:** tanıtıma üç örnek rota kartı (`#ornek-rotalar`). **D5:** ölü "Apple ile giriş yakında" metni kaldırıldı.
+- **F1:** meta açıklaması tek metne hizalandı (4 dosya). **F3:** rota bazlı başlık/açıklama (`lib/routeMeta.ts` + tembel `lib/appSurfaceMeta.ts`).
+- **G3 + B5:** `.github/workflows/lighthouse.yml` — mobil Lighthouse (perf ≥90, a11y ≥95, BP ≥95, SEO ≥95) + `lighthouse-budgets.json` (420 KB / 14 istek / 0 üçüncü taraf). `@lhci/cli` dependency değil, sürüm sabit `npx`. **G2:** `docs/gelistirme-rehberi.md`. **G4:** `npm audit` tam ağaç matrisi (`docs/dependency-security-matrix.md`).
+- **Bütçe:** entry 16.574 → 17.321 B; eşik **16.700 → 17.400** (gerekçe `scripts/bundle-budget.mjs` başlığında, ölçümle). Toplam CSS 36.090/36.600. Tanıtım yolculuğu 128.285/129.400.
+- Testler **1373/1373** (172 dosya), typecheck/lint/build/`test:scripts` yeşil. **Yayına alma yapılmadı.**
+
 ## 2026-10-28 — Yapılandırma eksikliği de kalıcı şeride taşındı (M-18 tamamlandı)
 
 - **Eksik kalan kalem:** bulut yapılandırması olmayan derlemede durum yalnız 3,2 sn'lik toast ile duyuruluyordu; kaybolunca kullanıcı neden yerel veri gördüğünü bilmiyordu. Artık `DataStatusBanner` `config` türüyle kalıcı gösteriliyor — **"Yeniden dene" sunulmaz** (eksik değer derleme zamanında sabit).
