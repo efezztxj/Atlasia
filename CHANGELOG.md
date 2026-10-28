@@ -1,6 +1,20 @@
 # Atlasia Update
 
 ## 2026-10-28 — Vite 8 + plugin-react 6 (bekletilen majör alındı)
+## 2026-10-28 — Denetim A grubu: CSP uyumlu tema, Google popup izni, gizli source map, CRLF (A1–A7)
+
+Ayrıntı: `docs/teslimatlar/teslimat-denetim-a-csp-hsts-2026-10-28.md`.
+
+- **A1:** satır içi tema betiği `/theme-boot.js`'e taşındı; `script-src 'self'` altında engelleniyordu.
+- **A2:** `apis.google.com` script/connect/frame direktiflerine eklendi (Firebase Google popup).
+- **A3:** `Explorer` ve `TrackRecorderPanel` SDK'sız `lib/firebaseConfig` kapısını okuyor.
+- **A4:** gizlilik metni `_GRECAPTCHA` gerçeğine göre güncellendi.
+- **A5:** HSTS `includeSubDomains`; `preload` gerekçesiyle yok.
+- **A6:** `sourcemap: "hidden"` + `collect-sourcemaps.mjs` haritaları `dist` dışına taşır; CI artifact (pinli action).
+- **A7:** `.gitattributes eol=lf` + `split(/\r?\n/)` (Windows checkout).
+- Testler **1275/1275** (158 dosya), typecheck/lint/build/`test:scripts`/`test:bundle-budget` yeşil.
+
+## 2026-10-28 — Veri hatası artık kalıcı şerit, yükleme yerleri iskelet (M-18, M-19)
 
 - `vite` ^7.3.7 → **^8.3.5**, `@vitejs/plugin-react` 5.1.1 → **6.1.2** (plugin-react 6, Vite 8 istiyordu; ikisi birlikte alındı). TypeScript 7 hâlâ bekliyor: `typescript-eslint` peer aralığı `<6.1.0`.
 - **Ölçüm (Rolldown):** toplam JS 988.185 bayt gzip (bütçe 1.003.000) — derleyici değişimi toplamı düşürdü; ilk boya ve yolculuklar bütçe içinde. Kategori dağılımı kaydığı için entry/iconsVendor/firebaseAuth/ilk-boya-CSS eşikleri ölçüme ~%3 payla yeniden bağlandı (ayrıntı `scripts/bundle-budget.mjs` içinde).

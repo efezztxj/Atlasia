@@ -14,7 +14,8 @@ vi.mock("../utils/geo", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../utils/geo")>();
   return { ...actual, reverseName: h.reverseName };
 });
-vi.mock("../lib/firebase", () => ({ firebaseConfigured: true }));
+// Panel artık SDK'sız kapıyı okuyor (A3); mock da gerçek bağımlılığı hedeflemeli.
+vi.mock("../lib/firebaseConfig", () => ({ firebaseConfigured: true, isCloudReady: true }));
 
 import TrackRecorderPanel from "./TrackRecorderPanel";
 

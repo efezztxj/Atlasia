@@ -156,12 +156,15 @@ export default function BottomPanel({
                   <button
                     type="button"
                     onClick={() => onShow(current)}
+                    aria-pressed={isActive}
                     className={cn(
                       "flex min-h-10 items-center gap-1.5 rounded-full px-3 text-[12px] font-bold text-ink transition active:scale-95 md:px-5 md:text-[12.5px]",
                       isActive ? "bg-leaf" : "btn-gold",
                     )}
                   >
-                    <span className="hidden sm:inline">{isActive ? "Odaklandı" : "Haritada gör"}</span>
+                    {/* E6: tek tutarlı etiket. "Odaklandı" bir eylem adı değil DURUM;
+                        düğme rengi ve aria-pressed bildirir. */}
+                    <span className="hidden sm:inline">Haritada gör</span>
                     <span className="sm:hidden">Gör</span>
                     <ArrowRight className="size-3.5" strokeWidth={2.6} />
                   </button>
@@ -390,12 +393,15 @@ export default function BottomPanel({
                     )}
                     <button
                       onClick={() => onShow(current)}
+                      aria-pressed={isActive}
                       className={cn(
                         "flex items-center gap-2 rounded-full px-4 py-2.5 text-[12.5px] font-bold text-ink transition active:scale-95 md:px-5",
                         isActive ? "bg-leaf" : "btn-gold",
                       )}
                     >
-                      <span className="hidden sm:inline">{isActive ? "Odaklandı" : "Haritada gör"}</span>
+                      {/* E6: tek tutarlı etiket. "Odaklandı" bir eylem adı değil DURUM;
+                          düğme rengi ve aria-pressed bildirir. */}
+                      <span className="hidden sm:inline">Haritada gör</span>
                       <span className="sm:hidden">Gör</span>
                       <ArrowRight className="size-3.5" strokeWidth={2.6} />
                     </button>

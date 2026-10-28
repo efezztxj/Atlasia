@@ -15,6 +15,7 @@ const exists = (relative: string) => existsSync(fileURLToPath(new URL(`../../${r
 
 const css = read("src/index.css");
 const indexHtml = read("index.html");
+const themeBoot = readFileSync(fileURLToPath(new URL("../../public/theme-boot.js", import.meta.url)), "utf8");
 // App.tsx ince kapıdır (landing + giriş); keşif yerleşimi Explorer.tsx içinde.
 const app = read("src/components/Explorer.tsx");
 const mapControls = read("src/components/MapControls.tsx");
@@ -75,12 +76,16 @@ describe("altın kullanımı", () => {
 
 describe("tema başlangıcı ve yüzey güvenlik ağı", () => {
   it("kayıtlı tema, ilk boyamadan önce renk şeması ve tarayıcı çubuğu ile eşitlenir", () => {
-    const bootstrap = indexHtml.indexOf('localStorage.getItem("atlasia.theme.v1")');
+    // A1: betik satır içi değil, CSP uyumlu ayrı dosyada; yine de main.tsx'ten
+    // ÖNCE, senkron yüklenmeli — yoksa ilk kare yanlış temayla boyanır.
+    const bootstrapTag = indexHtml.indexOf('<script src="/theme-boot.js"></script>');
     const appModule = indexHtml.indexOf('src="/src/main.tsx"');
-    expect(bootstrap).toBeGreaterThan(-1);
-    expect(bootstrap).toBeLessThan(appModule);
-    expect(indexHtml).toContain('root.dataset.theme = theme');
-    expect(indexHtml).toContain('root.style.colorScheme = theme === "light" ? "light" : "dark"');
+    expect(bootstrapTag).toBeGreaterThan(-1);
+    expect(bootstrapTag).toBeLessThan(appModule);
+    expect(indexHtml).not.toContain("defer");
+    expect(themeBoot).toContain('localStorage.getItem("atlasia.theme.v1")');
+    expect(themeBoot).toContain("root.dataset.theme = theme");
+    expect(themeBoot).toContain('root.style.colorScheme = theme === "light" ? "light" : "dark"');
     expect(indexHtml).not.toMatch(/<html[^>]*data-theme=/);
   });
 

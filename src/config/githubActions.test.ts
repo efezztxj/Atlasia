@@ -6,6 +6,8 @@ const EXPECTED_PINS = [
   "actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0",
   "actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0",
   "actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0",
+  // A6: kaynak haritaları CI artifact olarak saklanır.
+  "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2",
 ] as const;
 
 describe("GitHub Actions tedarik zinciri", () => {
