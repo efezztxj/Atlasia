@@ -1,5 +1,10 @@
+// Yapılandırma kapısı `lib/firebaseConfig`ten gelir ve modül yüklenirken
+// okunur. Açıkça "yapılandırılmamış"a sabitleniyor: aksi hâlde geliştiricinin
+// yerel `.env.local` dosyası bu testi kırıyordu (CI'da dosya yok, yerelde var).
+vi.mock("./firebaseConfig", () => ({ firebaseConfigured: false, isCloudReady: false }));
+
 import type { User } from "firebase/auth";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   authBackend,
   authConfigured,

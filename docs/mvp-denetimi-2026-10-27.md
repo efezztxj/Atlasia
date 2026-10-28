@@ -81,6 +81,26 @@ Yani **tanıtıma 300 KB eklemek bile CI'dan geçerdi**. Bütçe "koruma" değil
 
 ---
 
+## 2c. DÜZELTİLDİ (2026-10-28): testler yerel `.env.local`'a bağımlıydı
+
+Yerel `.env.local` (Firebase env dolu) varken **2 test kırmızı**, CI'da (dosya yok) yeşildi:
+`lib/auth.test.ts` ve `hooks/useCollections.local.test.ts`.
+
+**Kök neden:** iki test de "yapılandırılmamış derleme" varsayıyor, ama `useCollections.local.test.ts`
+yanlış modülü — `lib/firebase` — mock'luyordu. Gerçek kapı `lib/firebaseConfig` (SDK'sız hafif modül).
+`auth.test.ts` ise hiç mock'lamıyor, ortamdan gelen değeri okuyordu (`auth.ts` modül yüklenirken okuyor).
+
+**Düzeltme:**
+- `useCollections.local.test.ts`: doğru modül (`lib/firebaseConfig`) mock'landı.
+- `auth.test.ts`: `lib/firebaseConfig` açıkça "yapılandırılmamış"a sabitlendi.
+- `vitest.config.ts`: `test.env` ile `VITE_FIREBASE_*`, `VITE_APPLE_AUTH_ENABLED`,
+  `VITE_PHONE_AUTH_ENABLED`, `VITE_TELEMETRY_ENDPOINT` boşaltıldı. Ortamı gereken test
+  kendisi kurar (`vi.stubEnv`, bkz. `lib/firebase.test.ts`).
+
+**Kanıt:** aynı 149 dosya / 1.202 test, `.env.local` varken **ve** yokken yeşil.
+
+---
+
 ## 3. Ölçüm katmanı — ~~3 olay tanımlı ama hiç çağrılmıyor~~ **kapandı (2026-10-27)**
 
 > `analytics.share` (AtlasAssistant: native/clipboard), `analytics.offlinePack` (OfflinePackage: indirme + silme), `analytics.reportCreated` (ReportDialog) artık gerçek akışlara bağlı. Kalan iş: **M-07** olay şeması testi ve `docs/olcum-ve-hata-izleme.md` olay tablosunun bu 3 olayla güncellenmesi.
