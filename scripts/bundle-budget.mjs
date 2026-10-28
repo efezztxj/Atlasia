@@ -44,7 +44,7 @@ const DEFAULT_DIST = fileURLToPath(new URL("../dist", import.meta.url));
  * CSS eşiği değişmedi (34.713 / 34.800, pay dar — izlenecek).
  */
 export const BUNDLE_BUDGET = Object.freeze({
-  totalJsGzipBytes: 908_000,
+  totalJsGzipBytes: 909_000,
   totalCssGzipBytes: 35_300,
   initialGzipBytes: 439_000,
   categoryGzipBytes: Object.freeze({

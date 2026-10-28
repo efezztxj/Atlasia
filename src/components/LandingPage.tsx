@@ -1,3 +1,4 @@
+import type { CtaPlacement } from "../lib/analytics";
 import {
   ArrowDown,
   ArrowRight,
@@ -10,7 +11,8 @@ import {
 } from "lucide-react";
 
 interface Props {
-  onStart: () => void;
+  /** Birincil eylemin hangi yerleşimden geldiği (T2 huni kırılımı). */
+  onStart: (placement: CtaPlacement) => void;
 }
 
 const features = [
@@ -57,7 +59,7 @@ export default function LandingPage({ onStart }: Props) {
             <a href="#nasil" className="transition hover:text-white">Nasıl çalışır?</a>
             <a href="#guven" className="transition hover:text-white">Gizlilik</a>
           </nav>
-          <button type="button" onClick={onStart} className="group flex min-h-11 items-center gap-3 border border-white/35 bg-black/15 px-4 text-[12px] font-semibold backdrop-blur-sm transition hover:border-sun hover:bg-sun hover:text-[#15221d] md:px-6">
+          <button type="button" onClick={() => onStart("header")} className="group flex min-h-11 items-center gap-3 border border-white/35 bg-black/15 px-4 text-[12px] font-semibold backdrop-blur-sm transition hover:border-sun hover:bg-sun hover:text-[#15221d] md:px-6">
             Keşfe başla <ArrowRight size={15} className="transition-transform group-hover:translate-x-1" />
           </button>
         </header>
@@ -69,7 +71,7 @@ export default function LandingPage({ onStart }: Props) {
             <h2 className="font-display mt-7 max-w-[690px] text-[clamp(29px,4vw,55px)] leading-[1.02] font-medium tracking-[-0.045em]">Dünyayı <span className="text-[#f3c870]">merakınla</span> keşfet.</h2>
             <p className="mt-6 max-w-[500px] text-[14px] leading-7 text-white/70 md:text-[16px]">Yeni yerler, gerçek gezgin izleri ve bulunduğun noktada canlanan hikâyeler. Bir sonraki keşfin burada başlıyor.</p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
-              <button type="button" onClick={onStart} className="group flex min-h-[56px] items-center gap-8 bg-[#f3c870] px-6 text-[13px] font-bold text-[#142019] transition hover:bg-white md:px-7">Dünyayı keşfet <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" /></button>
+              <button type="button" onClick={() => onStart("hero")} className="group flex min-h-[56px] items-center gap-8 bg-[#f3c870] px-6 text-[13px] font-bold text-[#142019] transition hover:bg-white md:px-7">Dünyayı keşfet <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" /></button>
               <a href="#nasil" className="flex min-h-[56px] items-center gap-2 px-4 text-[13px] font-medium text-white/85 transition hover:text-white"><Sparkles size={16} />Atlas AI nasıl çalışır?</a>
             </div>
           </div>
@@ -106,7 +108,7 @@ export default function LandingPage({ onStart }: Props) {
             <p className="text-[10px] font-semibold tracking-[0.28em] text-sun uppercase">Atlas AI + Sesli Rehber</p>
             <h2 className="font-display mt-5 text-[clamp(40px,5vw,72px)] leading-[.98] font-semibold tracking-[-0.045em]">Bir haritadan<br />daha fazlası.</h2>
             <p className="mt-6 max-w-lg text-[15px] leading-7 text-mint/65">Atlasia yalnızca nereye gideceğini değil, zamanına göre hangi sırayla gezebileceğini de düşünür. Bir kültür noktasına yaklaştığında sesli anlatım sen onay verirsen başlar.</p>
-            <button type="button" onClick={onStart} className="mt-8 flex min-h-[52px] items-center gap-8 border border-sun/50 px-6 text-[13px] font-semibold text-sun transition hover:bg-sun hover:text-ink">Rotanı oluşturmaya başla <ArrowRight size={15} /></button>
+            <button type="button" onClick={() => onStart("how_it_works")} className="mt-8 flex min-h-[52px] items-center gap-8 border border-sun/50 px-6 text-[13px] font-semibold text-sun transition hover:bg-sun hover:text-ink">Rotanı oluşturmaya başla <ArrowRight size={15} /></button>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-6 sm:translate-y-8"><Route className="text-sun" size={25} /><h3 className="mt-8 font-display text-2xl font-semibold">Zamana göre rota</h3><p className="mt-3 text-[13px] leading-6 text-mint/60">Rahat, dengeli veya yoğun tempo. Yakın duraklar ve tahmini süre tek planda.</p></div>
@@ -120,7 +122,7 @@ export default function LandingPage({ onStart }: Props) {
       <footer className="flex flex-col gap-5 border-t border-white/10 bg-[#020f0d] px-5 py-8 text-[11px] text-mint/45 md:flex-row md:items-center md:justify-between md:px-10 lg:px-16">
         <p className="font-display text-lg font-semibold text-mint">atlasia<span className="text-sun">.</span></p>
         <p>© {new Date().getFullYear()} Atlasia · Merak ettiğin her yer</p>
-        <button type="button" onClick={onStart} className="flex items-center gap-2 text-sun">Keşfe başla <ArrowRight size={13} /></button>
+        <button type="button" onClick={() => onStart("footer")} className="flex items-center gap-2 text-sun">Keşfe başla <ArrowRight size={13} /></button>
       </footer>
     </main>
   );
