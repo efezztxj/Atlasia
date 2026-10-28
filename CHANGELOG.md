@@ -1,5 +1,16 @@
 # Atlasia Update
 
+## 2026-10-28 — Görsel boru hattı: yükleme kapıları + teslim işaretleri (T10)
+
+Ayrıntı: `docs/teslimatlar/teslimat-t10-gorsel-hatti-2026-10-28.md`.
+
+- **Boyut kapısı:** 25 MB üstü dosya **decode edilmeden** reddedilir (mobilde OOM riski); hata gerçek boyutu söyler.
+- **HEIC:** iPhone varsayılanı tarayıcıda çözülemiyor; artık "Ayarlar → Kamera → Biçimler → En Uyumlu ya da JPEG" diyen net bir hata var.
+- **EXIF yönü** açıkça istenir (`imageOrientation: "from-image"`): fotoğraf yan yatmaz.
+- **Teslim:** galeri/akış görsellerine `decoding="async"`, ekran dışı rota fotoğrafına `loading="lazy"`. Hero bilinçli olarak `fetchPriority="high"` ve tembel değil (LCP).
+- Kademeli küçültme planı tek yönlü olduğu ve Firestore'daki 180.000 karakter kilidiyle uyumlu olduğu testle kilitli: `imagePipelineT10.test.ts` (7).
+- **Yapılmayan:** WebP/AVIF çıktısı, `toBlob` geçişi, sunucu tarafı `srcset` türevleri — hepsi ölçüm/bağımlılık/onay istiyor (dokümanda gerekçeli).
+
 ## 2026-10-28 — Vite 8 + plugin-react 6 (bekletilen majör alındı)
 
 - `vite` ^7.3.7 → **^8.3.5**, `@vitejs/plugin-react` 5.1.1 → **6.1.2** (plugin-react 6, Vite 8 istiyordu; ikisi birlikte alındı). TypeScript 7 hâlâ bekliyor: `typescript-eslint` peer aralığı `<6.1.0`.
