@@ -94,6 +94,7 @@ Alan adları `src/lib/analytics.ts` içindeki tiplerin **birebir** karşılığ�
 | `session_start` | `account` (`cloud`/`device`/`anonymous`) | `telemetryBootstrap.ts` (oturum başı) | Oturum sayısı, hesap türü dağılımı |
 | `cta_click` | `placement` (`hero`/`header`/`how_it_works`/`footer`), `signedIn` | `LandingPage.tsx` → `App.tsx` | Hangi CTA'nın dönüştürdüğü (huni kırılımı) |
 | `map_open` | `guest` | `Explorer.tsx` (hem oturumlu hem misafir) | Landing'den haritaya geçiş oranı; kayıt duvarının kalkıp kalkmadığı |
+| `onboarding_choice` | `choice` (`nearby`/`route`/`leave`/`skip`), `guest` | `Explorer.tsx` (karşılama panelinin her çıkışı) | T8: ilk oturumda ne seçiliyor; "harita açıldı ama hiçbir şey seçilmedi" oranı |
 | `signup_start` | — | `AccountAccess.tsx` (kayıt moduna geçiş) | Kayıt formunun açılma oranı |
 | `signup_complete` | `method` (`email`/`google`/`apple`/`phone`/`device`), `account` | `AuthContext.tsx` (kayıt tamamlanınca) | Kayıt dönüşümü + yöntem dağılımı |
 | `sign_in` | `method`, `account` | `AuthContext.tsx`, `AccountAccess.tsx` (sosyal popup) | Geri dönen kullanıcı |

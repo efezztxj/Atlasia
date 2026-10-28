@@ -1,5 +1,16 @@
 # Atlasia Update
 
+## 2026-10-28 — Karşılama paneli (T8): misafir ayrımı, ilk rota kapısı, ölçüm
+
+Ayrıntı: `docs/teslimatlar/teslimat-t8-onboarding-2026-10-28.md`.
+
+- **Misafir notu:** karşılama paneli misafire hesabın nerede isteneceğini baştan söyler ("harita okuma serbest, iz bırakmak/rota yayımlamak için hesap istenecek, seçtiğin yol kaybolmaz"). Üyeye gösterilmez.
+- **Sürpriz duvar kalktı:** misafir "Rota oluştur"a bastığında Atlas AI açılıp sonra kayıt istemek yerine anında hesap kapısına (`route` niyetiyle) gider; hesap açılınca T5 aynı yere döndürür.
+- **Aktivasyona bağlı panel:** cihazda rota oluşturulmuşsa karşılama bir daha açılmaz (yalnız "görüldü" bayrağına bağlı değil).
+- **Ölçüm:** `onboarding_choice{choice, guest}` (dört çıkış) — kod + tetikleyici + belge aynı teslimatta (katalog testi).
+- **Bütçe:** eşik yükseltilmedi; toplam JS **997.923 / 998.500**, `entry` **20.839 / 20.900** (marj 61 B), ilk boya JS 100.238 / 102.200.
+- Testler **1256/1256** (154 dosya), typecheck/lint/build/`test:scripts`/`audit:check` yeşil.
+
 ## 2026-10-28 — Misafir modu (T4) ve kayıt sonrası ilk değer (T5)
 
 Ayrıntı: `docs/teslimatlar/teslimat-t4-t5-misafir-2026-10-28.md`.

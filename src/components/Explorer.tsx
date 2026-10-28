@@ -796,8 +796,12 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
     if (geo.status === "unavailable") setToast("Konum şu an alınamıyor.");
   }, [geo.status]);
 
-  // Onboarding: ilk girişte üç seçenekli sade karşılama
-  const [onboarding, setOnboarding] = useState(() => !storageGet("atlasia.onboardingSeen"));
+  // Onboarding (T8): ilk girişte üç seçenekli sade karşılama. Cihazda bir rota
+  // oluşturulduysa karşılama bir daha gösterilmez — panel aktivasyona bağlı,
+  // yalnız "görüldü" bayrağına değil.
+  const [onboarding, setOnboarding] = useState(
+    () => !storageGet("atlasia.onboardingSeen") && !storageGet(FIRST_ROUTE_KEY),
+  );
   const dismissOnboarding = useCallback(() => {
     storageSet("atlasia.onboardingSeen", "1");
     setOnboarding(false);
@@ -1598,16 +1602,29 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
 
       {onboarding && (
         <Onboarding
-          onClose={dismissOnboarding}
+          guest={guest}
+          onClose={() => {
+            analytics.onboardingChoice({ choice: "skip", guest });
+            dismissOnboarding();
+          }}
           onNearby={() => {
+            analytics.onboardingChoice({ choice: "nearby", guest });
             dismissOnboarding();
             handleLocate();
           }}
           onRoute={() => {
+            analytics.onboardingChoice({ choice: "route", guest });
             dismissOnboarding();
+            // Misafirde rota yayımlamak hesap ister; T5 niyeti kaydedilir ve
+            // hesap açılışında Atlas AI'a dönülür.
+            if (guest) {
+              askAccount("Rota oluşturmak için bir hesap aç ya da giriş yap.", "route");
+              return;
+            }
             setAtlasOpen(true);
           }}
           onLeave={() => {
+            analytics.onboardingChoice({ choice: "leave", guest });
             dismissOnboarding();
             startAdd();
           }}
