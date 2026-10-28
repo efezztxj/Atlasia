@@ -1,5 +1,12 @@
 # Atlasia Update
 
+## 2026-10-28 — Vite 8 + plugin-react 6 (bekletilen majör alındı)
+
+- `vite` ^7.3.7 → **^8.3.5**, `@vitejs/plugin-react` 5.1.1 → **6.1.2** (plugin-react 6, Vite 8 istiyordu; ikisi birlikte alındı). TypeScript 7 hâlâ bekliyor: `typescript-eslint` peer aralığı `<6.1.0`.
+- **Ölçüm (Rolldown):** toplam JS 988.185 bayt gzip (bütçe 1.003.000) — derleyici değişimi toplamı düşürdü; ilk boya ve yolculuklar bütçe içinde. Kategori dağılımı kaydığı için entry/iconsVendor/firebaseAuth/ilk-boya-CSS eşikleri ölçüme ~%3 payla yeniden bağlandı (ayrıntı `scripts/bundle-budget.mjs` içinde).
+- Typecheck, lint, test ve build yeşil.
+
+
 ## 2026-10-28 — Tanıtım filmi (`preload="none"` + poster, T6)
 
 Ayrıntı: `docs/teslimatlar/teslimat-t6-video-2026-10-28.md`.
