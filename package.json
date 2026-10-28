@@ -7,7 +7,7 @@
     "dev": "vite",
     "prebuild": "node scripts/verify-env.mjs",
     "build": "vite build",
-    "postbuild": "npm run bundle:budget && npm run verify:sw-shell",
+    "postbuild": "node scripts/collect-sourcemaps.mjs && npm run bundle:budget && npm run verify:sw-shell",
     "bundle:budget": "node scripts/bundle-budget.mjs",
     "verify:sw-shell": "node scripts/verify-sw-shell.mjs",
     "preview": "vite preview",

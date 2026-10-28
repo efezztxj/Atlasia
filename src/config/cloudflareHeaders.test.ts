@@ -53,7 +53,9 @@ describe("Cloudflare Pages security headers", () => {
     expect(global.get("referrer-policy")).toBe("strict-origin-when-cross-origin");
     expect(global.get("cross-origin-opener-policy")).toBe("same-origin-allow-popups");
     expect(global.get("cross-origin-resource-policy")).toBe("same-origin");
-    expect(global.get("strict-transport-security")).toBe("max-age=31536000");
+    // A5: includeSubDomains eklendi; `preload` bilinçli olarak yok (gerekçe _headers).
+    expect(global.get("strict-transport-security")).toContain("includeSubDomains");
+    expect(global.get("strict-transport-security")).toContain("max-age=31536000");
     expect(global.get("permissions-policy")).toContain("geolocation=(self)");
     expect(global.get("permissions-policy")).toContain("camera=()");
     expect(global.get("permissions-policy")).toContain("microphone=()");
@@ -79,6 +81,8 @@ describe("Cloudflare Pages security headers", () => {
       "https://*.firebaseapp.com",
       "wss://*.firebaseio.com",
       "https://www.google.com/recaptcha/",
+      // A2: Firebase Google popup'ı apis.google.com üzerinden betik/iframe açar.
+      "https://apis.google.com",
       "https://server.arcgisonline.com",
       "https://tiles.openfreemap.org",
       "https://photon.komoot.io",

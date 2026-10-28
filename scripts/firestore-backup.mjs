@@ -371,7 +371,8 @@ export function verifyBackupManifest(manifestPath, { log = console.log } = {}) {
     if (actualSha !== entry.sha256) {
       throw new Error(`SHA-256 uyuşmazlığı: ${entry.file}`);
     }
-    const nonEmptyLines = content.split("\n").filter((line) => line.trim().length > 0);
+    // A7: CRLF'te satır sonundaki \r satırı bozmaz; sayım aynı kalır.
+  const nonEmptyLines = content.split(/\r?\n/).filter((line) => line.trim().length > 0);
     if (nonEmptyLines.length !== entry.documentCount) {
       throw new Error(
         `Belge sayısı uyuşmazlığı (${entry.file}): beklenen ${entry.documentCount}, bulunan ${nonEmptyLines.length}`,
