@@ -3,10 +3,10 @@ import { fileURLToPath } from "url";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv } from "vite";
-import { parseAllowedHosts } from "./src/config/allowedHosts";
+import { parseAllowedHosts } from "./src/config/allowedHosts.ts";
 // T17: JS'siz gelen ziyaretçiye (ve JS render etmeyen bota) boş sayfa yerine
 // gerçek tanıtım metnini ver. Metin tek kaynakta: `src/content/landingStatic.ts`.
-import { renderLandingStaticHtml } from "./src/content/landingStatic";
+import { renderLandingStaticHtml } from "./src/content/landingStatic.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

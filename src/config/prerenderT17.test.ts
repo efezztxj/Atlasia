@@ -75,7 +75,7 @@ describe("T17 · noscript içerik", () => {
   });
 
   it("derleme hattı enjeksiyonu bağlı ve tek kaynak", () => {
-    expect(viteConfig).toContain('from "./src/content/landingStatic"');
+    expect(viteConfig).toContain('from "./src/content/landingStatic.ts"');
     expect(viteConfig).toContain("transformIndexHtml");
     // İşaret bulunamazsa derleme kırılmalı: sessizce metinsiz HTML yayına çıkmasın.
     expect(viteConfig).toContain('html.includes(marker)');
