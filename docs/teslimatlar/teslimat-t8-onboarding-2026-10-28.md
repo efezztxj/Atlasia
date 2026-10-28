@@ -34,13 +34,21 @@ panelinin etrafında toplanır:
 | Her çıkış ölçülüyor, ölü olay yok | ✅ | `onboardingT8` + `telemetryCatalog` (kod ↔ tetikleyici ↔ belge) |
 | Klavye/Esc/odak davranışı korunur | ✅ | `usePanelAccess` değişmedi; `mobileFullscreen` kilidi yeşil |
 
+### 3b. Denetimde bulunan ek eksik (aynı teslimatta kapatıldı)
+
+T5'in "hesap açılınca aynı yere dön" sözü `route` niyetinde **tutulmuyordu**:
+kod yalnız bir toast gösteriyor, Atlas AI'ı açmıyordu. Kullanıcı "rota
+oluşturmak istiyorum" diyip kaydolduktan sonra boş haritaya dönüyordu. Artık
+`pending === "route"` dalı asistanı da açıyor; test bunu kilitliyor
+(`rota niyeti hesap açılınca asistanı açar`).
+
 ## 4. Kapılar (bu dalda, `npm ci` sonrası)
 
 | Komut | Sonuç |
 |---|---|
 | `npm run typecheck` | ✅ |
 | `npm run lint` (`--max-warnings=0`) | ✅ |
-| `npx vitest run` | ✅ **1256/1256** (154 dosya; T8 ile +8) |
+| `npx vitest run` | ✅ **1256/1256** (154 dosya; T8 ile +9) |
 | `npm run test:scripts` | ✅ 8 paket, `# fail 0` |
 | `npm run build` | ✅ bütçe içinde, SW 44/44 |
 | `npm run audit:check` | ✅ |

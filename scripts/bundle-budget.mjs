@@ -103,12 +103,47 @@ const DEFAULT_DIST = fileURLToPath(new URL("../dist", import.meta.url));
  *   entry eşiği 20.400 -> 21.200 (ölçüme %3,2 pay)
  */
 export const BUNDLE_BUDGET = Object.freeze({
-  // 2026-10-28 (T4/T5 misafir + T8 onboarding + moderasyon İncelenenler sekmesi):
-  // T8 birleşmesi sonrası baz 998.050 B; moderasyon paneline eklenen lazy
-  // "İncelenenler" görünümü ve işlem/hedef türüne göre gruplama (+608 B, yalnız
-  // ReportsPanel lazy parçasında; yeni bağımlılık yok, ilk boya/landing/appShell
-  // 0 B değişti) ile ölçüm **998.658 B** oldu → eşik ~%0,07 payla 999.400 B.
-  totalJsGzipBytes: 999_400,
+  // 2026-10-28 (T4 misafir modu + T5 niyet hatırlama): misafir oturum bayrağı,
+  // yazma kapısı (Explorer + veri katmanı), "misafir olarak devam et" yolu ve
+  // hesap açılınca tüketilen niyet kaydı koda eklendi; **yeni bağımlılık yok**.
+  // Ölçüm (güncel bağımlılıklarla `npm ci` + `npm run build`):
+  //   toplam JS 996.828 → **997.761** (+933)  ·  eşik 997.500 → 998.500
+  //   entry 20.530 → 20.814 (+284)            ·  eşik 20.900 (değişmedi)
+  //   ilk set 125.517 → 126.774 (+1.257)      ·  eşik 129.400 (değişmedi)
+  //   ilk boya JS 100.213 / 102.200 · appShell 586.968 / 603.400 (değişmedi)
+  // Yani artışın tamamı misafir modu kodudur; kullanıcıya görünen ilk boya
+  // eşiklerinin hepsi payla içinde kaldı, yalnız toplam JS eşiği aşıldı.
+  //
+  // 2026-10-28 (kritik yol ayrımı) — giriş paketindeki pay 20.915 / 20.900'e
+  // dayanmıştı. İki blok `entry` dışına alındı (ölçüm: `npm ci` + `npm run build`):
+  //   LandingFooter (SSS + footer) lazy  ·  CookieConsent lazy
+  //   entry           20.915 -> **18.344**  (−2.571)  · eşik 20.900 (değişmedi)
+  //   ilk boya JS    100.314 -> **97.743**  (−2.571)  · eşik 102.200 (değişmedi)
+  //   ilk HTML seti  127.918 -> **125.351** (−2.567)  · eşik 129.400 (değişmedi)
+  //   toplam JS      998.070 -> **999.785** (+1.715)  · eşik 998.500 -> 1.001.000
+  // Toplam JS neden büyüdü: ayrı chunk'lar tek tek daha kötü sıkışır (4,3 KB ve
+  // 6,2 KB ham parçalar) ve chunk sarmalayıcı/preload yardımcısı eklenir. Yani
+  // bu, kullanıcıya **daha hızlı ilk boya** karşılığında ödenen ~1,7 KB'dir;
+  // indirilen toplam bayt artmaz (aynı kod, farklı zaman). Eşik bu ölçüme göre
+  // 1.001.000'e çekildi: pay 1.215 B (%0,12), bayatlama kapısı rahat.
+  //
+  // 2026-10-28 (T6 tanıtım filmi) — aynı gün ikinci ölçüm:
+  //   entry          18.344 -> **18.888**  (+544)  · eşik 20.900 (değişmedi)
+  //   ilk boya JS    97.743 -> **98.287**  (+544)  · eşik 102.200 (değişmedi)
+  //   ilk HTML seti 125.351 -> **125.991** (+640)  · eşik 129.400 (değişmedi)
+  //   toplam JS     999.785 -> **1.000.364** (+579) · eşik -> 1.002.000
+  // Video dosyası (4 MB) **JS paketine girmez**: `preload="none"` + poster,
+  // yalnız kullanıcı oynatınca iner; SW kabuğu da `/social/` yolunu kapsamaz.
+  // Pay 1.636 B; sıradaki landing işi yine ölçümle başlamalı.
+  //
+  // 2026-10-28 (main birleşmesi) — main, moderasyon "İncelenenler" sekmesiyle
+  // toplam JS'i 998.658 B'ye çıkarmıştı (eşik 999.400, yalnız lazy ReportsPanel).
+  // Birleşme sonrası ölçüm (`npm run build`):
+  //   entry          **18.903**  · ilk boya JS **98.248** · ilk HTML **125.965**
+  //   appShell       **586.160** · toplam JS     **1.001.019**
+  // Toplam JS eşiği 1.003.000 (pay 1.981 B, %0,20). Diğer eşikler değişmedi;
+  // moderasyon payı yalnız toplam JS'e yansıdı (lazy parça).
+  totalJsGzipBytes: 1_003_000,
   totalCssGzipBytes: 35_700,
   initialGzipBytes: 129_400,
   // İlk HTML ile gelen gerçek ilk boya maliyeti (lazy chunk'lar hariç).

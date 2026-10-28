@@ -17,18 +17,13 @@ import {
 import type { LegalDocumentType } from "../content/legal";
 
 const LegalNotice = lazy(() => import("./LegalNotice"));
+// T18/T21: alt blok (SSS + footer) giriş paketinde değil.
+const LandingFooter = lazy(() => import("./LandingFooter"));
 
 interface Props {
   /** Birincil eylemin hangi yerleşimden geldiği (T2 huni kırılımı). */
   onStart: (placement: CtaPlacement) => void;
 }
-
-/** Tanıtım sayfasından doğrudan okunabilen yasal metinler. */
-const LEGAL_LINKS: { type: LegalDocumentType; label: string }[] = [
-  { type: "privacy", label: "Gizlilik" },
-  { type: "kvkk", label: "KVKK aydınlatma" },
-  { type: "terms", label: "Kullanım koşulları" },
-];
 
 /** Kısa, dürüst güven maddeleri — abartısız. */
 const TRUST = [
@@ -37,29 +32,11 @@ const TRUST = [
   { icon: WifiOff, text: "Çevrimdışı paket desteği" },
 ];
 
-const FAQ = [
-  {
-    q: "Atlasia ücretsiz mi?",
-    a: "Evet. Uygulamanın tamamı ücretsizdir; reklam göstermiyoruz ve kişisel verini satmıyoruz. Gelecekte ücretli bir katman eklenirse önce mevcut kullanıcılara haber verilir.",
-  },
-  {
-    q: "Konumum sürekli takip ediliyor mu?",
-    a: "Hayır. Konum yalnız sen açıkça izin verdiğinde ve ilgili ekranı kullanırken okunur. Sesli rehber, yakınlık uyarıları ve iz kaydı ayrı ayrı senin onayına bağlıdır; kapattığında çalışmaz.",
-  },
-  {
-    q: "İnternet yokken çalışır mı?",
-    a: "Yüklediğin harita paketi ve son uygulama kabuğu çevrimdışı açılır. Yeni iz bırakma, rota yayınlama ve sosyal işlemler bağlantı gerektirir; kayıtlar bağlantı gelince gönderilir.",
-  },
-  {
-    q: "Verdiğim izleri kim görür?",
-    a: "Yalnızca sen görürsün; izlerin varsayılan olarak özeldir. Yayınlamayı seçersen görünür olur ve dilediğinde geri alabilirsin.",
-  },
-];
-
 /** Mobil menü bağlantıları — masaüstü menüsüyle aynı hedefler (T13). */
 const MENU_LINKS = [
   { href: "#kesfet", label: "Keşfet" },
   { href: "#nasil", label: "Nasıl çalışır?" },
+  { href: "#film", label: "Tanıtım filmi" },
   { href: "#sss", label: "Sık sorulanlar" },
 ] as const;
 
@@ -269,49 +246,58 @@ export default function LandingPage({ onStart }: Props) {
         </div>
       </section>
 
-      <section id="sss" aria-labelledby="sss-title" className="border-t border-white/10 bg-[#f1f0e9] px-5 py-16 text-[#102b2a] md:px-10 md:py-24 lg:px-16">
-        <div className="mx-auto max-w-[900px]">
-          <p className="text-[11px] font-semibold tracking-[0.18em] text-[#9a7a3a] uppercase">Sık sorulanlar</p>
-          <h2 id="sss-title" className="font-display mt-3 text-[clamp(30px,4vw,48px)] leading-[1.02] font-semibold tracking-[-0.04em]">
-            Aklında kalan sorular.
-          </h2>
-          <div className="mt-8 divide-y divide-[#102b2a]/10 border-y border-[#102b2a]/10">
-            {FAQ.map((item) => (
-              <details key={item.q} className="group py-4">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-[15px] font-semibold marker:hidden">
-                  {item.q}
-                  <span aria-hidden className="grid size-7 shrink-0 place-items-center rounded-full border border-[#102b2a]/20 text-[15px] leading-none transition group-open:rotate-45">+</span>
-                </summary>
-                <p className="mt-3 max-w-[720px] text-[13.5px] leading-7 text-[#102b2a]/75">{item.a}</p>
-              </details>
-            ))}
+
+      {/* T6 — tanıtım filmi. `preload="none"`: video yalnız kullanıcı oynatınca
+          iner (4 MB mobil veri harcamaz). Poster, hero'da zaten yüklenen marka
+          görselidir (ek ağ maliyeti yok, SW kabuğunda da önbellekte).
+          Otomatik oynatma ve ses yok; genişlik/yükseklik CLS için yazılı. */}
+      <section id="film" aria-labelledby="film-title" className="border-t border-[#173c37]/10 bg-[#f1f0e9] px-5 py-16 text-[#102b2a] md:px-10 md:py-24 lg:px-16">
+        <div className="mx-auto grid max-w-[1280px] gap-10 lg:grid-cols-[1fr_auto] lg:items-center">
+          <div className="max-w-[560px]">
+            <p className="text-[10px] font-semibold tracking-[0.28em] text-[#8f6224] uppercase">Tanıtım filmi</p>
+            <h2 id="film-title" className="font-display mt-4 text-[clamp(30px,4vw,52px)] leading-[1.02] font-semibold tracking-[-0.04em]">
+              Bir sırt, bir sabah,<br />bir iz.
+            </h2>
+            <p className="mt-5 text-[15px] leading-7 text-[#36504c]">
+              Kapadokya'da Aşk Vadisi sırtı: araba yok, sadece yürüyorsun. Klip 45 saniye;
+              video yalnız oynat dediğinde iner.
+            </p>
+            <p className="mt-3 text-[13px] leading-6 text-[#49615d]">
+              Ses kapalı başlar. Otomatik oynatma yok, arka planda indirme yok.
+            </p>
+            <a
+              href="/social/goreme-yuruyus.mp4"
+              className="mt-6 inline-flex min-h-[44px] items-center gap-2 border border-[#173c37]/25 px-5 text-[13px] font-semibold transition hover:border-[#173c37] hover:bg-[#173c37] hover:text-[#f1f0e9]"
+            >
+              Videoyu ayrı aç
+            </a>
           </div>
+          <figure className="mx-auto w-full max-w-[300px] lg:mx-0">
+            {/* `aria-label` yerine görünmez başlık: video öğesinin etiketi
+                ekran okuyucularda tutarlı duyurulmuyor (P18 dersi). */}
+            <figcaption className="sr-only">Kapadokya Aşk Vadisi yürüyüşü tanıtım filmi</figcaption>
+            <video
+              className="aspect-[9/16] w-full rounded-[24px] border border-[#173c37]/15 bg-[#031b18] object-cover shadow-xl"
+              controls
+              playsInline
+              preload="none"
+              poster="/images/atlasia-earth-hero.jpg"
+              width={1080}
+              height={1920}
+            >
+              <source src="/social/goreme-yuruyus.mp4" type="video/mp4" />
+              Tarayıcın videoyu oynatamıyor. Klibi{" "}
+              <a href="/social/goreme-yuruyus.mp4">doğrudan açabilirsin</a>.
+            </video>
+          </figure>
         </div>
       </section>
 
-      <footer className="border-t border-white/10 bg-[#020f0d] px-5 py-10 text-[11px] text-mint/45 md:px-10 lg:px-16">
-        <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
-          <div>
-            <p className="font-display text-lg font-semibold text-mint">atlasia<span className="text-sun">.</span></p>
-            <p className="mt-2 max-w-[280px] leading-relaxed">Merak ettiğin her yer için sakin bir keşif defteri. Reklamsız, izinsiz konum okumaz.</p>
-          </div>
-          <nav aria-label="Yasal" className="flex flex-col gap-2">
-            <span className="text-[10px] font-semibold tracking-[0.16em] text-mint/35 uppercase">Yasal</span>
-            {LEGAL_LINKS.map(({ type, label }) => (
-              <button key={type} type="button" onClick={() => setLegal(type)} className="min-h-8 text-left text-[12px] text-mint/70 transition hover:text-sun">
-                {label}
-              </button>
-            ))}
-          </nav>
-          <nav aria-label="Ürün" className="flex flex-col gap-2">
-            <span className="text-[10px] font-semibold tracking-[0.16em] text-mint/35 uppercase">Ürün</span>
-            <a href="#kesfet" className="min-h-8 text-[12px] text-mint/70 transition hover:text-sun">Nasıl çalışır</a>
-            <a href="#sss" className="min-h-8 text-[12px] text-mint/70 transition hover:text-sun">Sık sorulanlar</a>
-            <button type="button" data-cta-level="tertiary" onClick={() => onStart("footer")} className="min-h-8 text-left text-[12px] text-sun">Keşfe başla</button>
-          </nav>
-        </div>
-        <p className="mt-8 border-t border-white/5 pt-5">© {new Date().getFullYear()} Atlasia · Merak ettiğin her yer</p>
-      </footer>
+      {/* Alt blok (SSS + footer) `entry` dışında: ekranın altında, ilk boya
+          için gerekli değil. Yükseklik fallback'i kaymayı sınırlar. */}
+      <Suspense fallback={<div aria-hidden className="min-h-[520px] bg-[#f1f0e9]" />}>
+        <LandingFooter onLegal={setLegal} onStart={onStart} />
+      </Suspense>
 
       {legal && (
         <Suspense fallback={null}>

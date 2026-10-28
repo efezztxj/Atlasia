@@ -1,5 +1,45 @@
 # Atlasia Update
 
+## 2026-10-28 — Tanıtım filmi (`preload="none"` + poster, T6)
+
+Ayrıntı: `docs/teslimatlar/teslimat-t6-video-2026-10-28.md`.
+
+- **Yeni bölüm `#film`:** repodaki mevcut klip (`public/social/goreme-yuruyus.mp4`, Kapadokya, 1080×1920, 4,0 MB) dikey kart olarak tanıtımda. Harici barındırma/CDN yok.
+- **Mobil veri korunur:** `preload="none"` — kullanıcı oynatmadan tek bayt inmez; `autoPlay`/`loop`/`muted` yok, ses kendiliğinden başlamaz, `controls` + `playsInline`.
+- **Poster:** hero'da zaten yüklenen `images/atlasia-earth-hero.jpg` (ek ağ maliyeti sıfır). Videodan alınmış kare değildir — afiş görseli; ffmpeg ile tek komutta gerçek kareyle değiştirilebilir.
+- **CLS:** `width`/`height` (1080×1920) + `aspect-[9/16]` ile yer önceden ayrıldı. Video oynatılamazsa okunabilir bağlantı var; SW kabuğu videoyu önbelleğe **almıyor** (4 MB tuzağı yok).
+- **Bütçe:** `entry` 18.888 / 20.900, ilk boya JS 98.287 / 102.200, ilk HTML 125.991 / 129.400. Toplam JS 1.000.364 → eşik 1.002.000 (ölçümlü gerekçe kod içinde). SW 46/46.
+- Testler **1292/1292** (160 dosya); `landingVideoT6.test.ts` (7) yeni kilidi.
+
+## 2026-10-28 — Kritik yol: SSS/footer ve rıza paneli giriş paketinden çıktı (T7)
+
+Ayrıntı: `docs/teslimatlar/teslimat-t7-kritik-yol-2026-10-28.md`.
+
+- **Kapı kırıktı:** `entry` 20.915 / 20.900. Eşik yükseltilmedi; onun yerine ilk boyada gerekmeyen iki blok `lazy()` yapıldı: tanıtımın alt bloğu (`LandingFooter`: SSS + footer) ve rıza paneli (`CookieConsent`).
+- **Sonuç:** `entry` **18.344** (−2.571), ilk boya JS **97.743** (−2.571), ilk HTML seti **125.351** (−2.567). Fallback yüksekliği (520 px) düzen zıplamasını sınırlar.
+- **Toplam JS +1.715 B** (999.785): ayrı chunk'lar daha kötü sıkışır. İndirilen bayt artmıyor, aynı kod daha sonra iniyor. Yalnız toplam JS eşiği 998.500 → **1.001.000** (pay 1.215 B, %0,12); `entry`/ilk boya/ilk HTML/appShell eşikleri değişmedi.
+- **Kilit:** `src/config/criticalPath.test.ts` (4) — iki blok gerçekten tembel, fallback var, eşikler ölçüme bağlı. `siteSurface`, `footerT18`, `prerenderT17`, `LandingPage.test` ve `CookieConsent.test` yeni yüzeye uyarlandı (iddialar zayıflatılmadı).
+- Testler **1281/1281** (158 dosya); typecheck, lint, build, SW 44/44, `test:scripts`, `audit:check` yeşil.
+
+## 2026-10-28 — JavaScript'siz içerik (T17)
+
+Ayrıntı: `docs/teslimatlar/teslimat-t17-noscript-2026-10-28.md`.
+
+- **Boş sayfa bitti:** `index.html` gövdesinde yalnız `<div id="root"></div>` vardı; JS engelli tarayıcıda sayfa tamamen boştu. Tanıtım metni (başlık, üç adım, iki SSS, "harita JavaScript gerektirir" notu) derleme sırasında `<noscript>` olarak gömülüyor.
+- **Neden prerender değil:** tam prerender + hidrasyon bu ortamda doğrulanamıyor (tarayıcı yok) ve `entry` marjı 12 B; `<noscript>` JS açıkken render edilmediği için CLS/LCP riski sıfır, hidrasyon gerektirmiyor.
+- **Tek kaynak + sürüklenme kilidi:** metin `src/content/landingStatic.ts`'te; `prerenderT17.test.ts` her dizenin `LandingPage.tsx`'te de geçtiğini doğrular, `index.html`'de kopya metin yasak.
+- **Bütçe:** eşik yükseltilmedi. İlk HTML seti 127.763 / 129.400 (+694 B gzip), JS paketleri ve `entry` (20.888 / 20.900) değişmedi. Testler **1271/1271** (157 dosya).
+
+## 2026-10-28 — Footer yüzeyi (T18) ve SEO meta seti (T19)
+
+Ayrıntı: `docs/teslimatlar/teslimat-t18-t19-footer-seo-2026-10-28.md`.
+
+- **Çerez tercihleri landing'den geri alınabiliyor:** footer'ın "Yasal" nav'ına eklendi; var olan rıza panelini (`atlasia:cookie-preferences`) açar. Yeni bağımlılık yok.
+- **Dil açıkça yazılı:** footer'da "Site dili: Türkçe (tr)" (`lang="tr"`). İkinci yerel ayar olmadığı için **sahte dil seçici yazılmadı**; `<html lang>`, `hreflang="tr"` ve `x-default` aynı şeyi söyler.
+- **SEO:** `canonical`, `robots: index, follow, max-image-preview:large`, `hreflang` + `x-default` eklendi; `sitemap.xml` `lastmod` 2026-10-28'e çekildi. Yapısal veri (Organization/WebSite/WebApplication) korundu, doğrulanamayan puan/oylama yok.
+- **Bütçe:** eşik **yükseltilmedi**. Toplam JS 997.981 / 998.500, ilk boya JS 100.287 / 102.200, ilk HTML seti 127.069 / 129.400, `entry` 20.888 / 20.900 → **marj 12 B**; landing'e dokunacak sıradaki işin önce ölçüm alması ve gerekirse footer'ı tembel parçaya taşıması gerekiyor.
+- Testler **1262/1262** (155 dosya; T18 3 + T19 6 yeni), typecheck/lint/build/`test:scripts`/`audit:check` yeşil.
+
 ## 2026-10-28 — Karşılama paneli (T8): misafir ayrımı, ilk rota kapısı, ölçüm
 
 Ayrıntı: `docs/teslimatlar/teslimat-t8-onboarding-2026-10-28.md`.
