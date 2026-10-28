@@ -51,8 +51,8 @@
 
 | Ölçüm | Değer | Eşik | Marj |
 |---|---|---|---|
-| Toplam JS | 997.981 B gzip | 998.500 | **519 B** |
-| `entry` (bizim kod) | 20.888 B gzip | 20.900 | **12 B** |
+| Toplam JS | 998.004 B gzip | 998.500 | **519 B** |
+| `entry` (bizim kod) | 20.889 B gzip | 20.900 | **12 B** |
 | İlk boya JS | 100.287 B gzip | 102.200 | 1.913 B |
 | İlk HTML seti | 127.069 B gzip | 129.400 | 2.331 B |
 | Uygulama kabuğu | 587.262 B gzip | 603.400 | 16.138 B |
