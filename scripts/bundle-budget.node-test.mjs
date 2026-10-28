@@ -140,6 +140,8 @@ test("tanıtım yolculuğu bütçesi aşılırsa, toplam içinde kalsa bile kır
 
   assert.equal(result.ok, false);
   assert.ok(result.violations.some((message) => message.includes("tanıtım yolculuğu")));
+});
+
 test("ertelenmesi gereken Firebase vendor ilk setteyse bütçeyi kırar (T11)", (t) => {
   const summary = summarizeBundle(collectBundleAssets(makeDist(t, { initialFirebaseVendor: true })));
   const result = evaluateBundleBudget(summary);
