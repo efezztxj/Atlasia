@@ -50,7 +50,7 @@ okunabilir bağlantı var.
 
 Video **JS paketine girmez**; `dist/social/goreme-yuruyus.mp4` olarak durur ve
 yalnız oynatma anında istenir. Toplam JS eşiği tek seferde ölçüme göre
-1.003.000'e çekilmişti (pay 1.981 B; `main`'in moderasyon "İncelenenler" payı dahil),
+1.003.000'e çekildi (pay 1.981 B; `main`'in moderasyon "İncelenenler" payı dahil),
 gerekçe `scripts/bundle-budget.mjs` içinde. Sayılar birleşme sonrası ölçümdür.
 
 ## 5. Kapılar

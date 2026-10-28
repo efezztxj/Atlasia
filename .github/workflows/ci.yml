@@ -108,3 +108,15 @@ jobs:
 
       - name: Production build and bundle budget
         run: npm run build
+
+      # A6: kaynak haritaları `hidden` üretilir ve postbuild onları `dist` dışına
+      # taşır; yayında URL'leri yok. Hata ayıklama için burada artifact olarak
+      # saklanır (yalnız başarılı derlemede, 7 gün).
+      - name: Upload source maps
+        if: success()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: source-maps
+          path: sourcemaps/
+          retention-days: 7
+          if-no-files-found: warn

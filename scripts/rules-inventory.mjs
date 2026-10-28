@@ -46,7 +46,10 @@ export function describeCondition(condition) {
  * `parent` alanı, iç içe bloklarda üst yolun tamamını verir (ör. posts/replies).
  */
 export function parseRules(source) {
-  const lines = source.split("\n");
+  // A7: Windows'ta `git checkout` (autocrlf) dosyayı CRLF'e çevirebilir. O zaman
+  // satır sonunda kalan `\r`, başlık/`allow` kalıplarını sessizce kaçırıyordu.
+  // Ayrıştırma platformdan bağımsız olmalı: hem LF hem CRLF.
+  const lines = source.split(/\r?\n/);
   const stack = [];
   const blocks = [];
   let pendingAllow = null;

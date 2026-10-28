@@ -1,3 +1,8 @@
 # These files are checked as exact text snapshots; keep LF on Windows too.
 /.github/workflows/*.yml text eol=lf
 /src/data/openFreeMapDarkStyle.json text eol=lf
+
+# A7: kurallar ve üretim başlıkları platformdan bağımsız aynı baytlar olmalı.
+/firestore.rules text eol=lf
+/firebase.json text eol=lf
+/rules text eol=lf

@@ -34,8 +34,11 @@ while (pending.length) {
   }
 }
 
+// A6: kaynak haritaları yayın künyesine girmez (postbuild onları dist dışına
+// taşır). Doğrulama `dist` içinde kalmış olsalar bile onları saymaz; sayılan küme
+// tarayıcıya giden gerçek varlıklarla aynı olmalı.
 const builtAssets = readdirSync("dist/assets", { withFileTypes: true })
-  .filter((entry) => entry.isFile())
+  .filter((entry) => entry.isFile() && !entry.name.endsWith(".map"))
   .map((entry) => `/assets/${entry.name}`);
 const unreached = builtAssets.filter((path) => !reachable.has(path));
 assert.deepEqual(unreached, [], `SW ön önbellek grafiğine girmeyen üretim varlıkları: ${unreached.join(", ")}`);

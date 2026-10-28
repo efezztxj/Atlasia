@@ -44,3 +44,6 @@ reklam/video/build/
 reklam/video/*.mp4
 
 __pycache__/
+
+# A6: kaynak haritaları CI artifact olarak saklanır, depoya girmez.
+/sourcemaps/

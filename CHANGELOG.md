@@ -1,17 +1,20 @@
 # Atlasia Update
 
-## 2026-10-28 — Görsel boru hattı: yükleme kapıları + teslim işaretleri (T10)
-
-Ayrıntı: `docs/teslimatlar/teslimat-t10-gorsel-hatti-2026-10-28.md`.
-
-- **Boyut kapısı:** 25 MB üstü dosya **decode edilmeden** reddedilir (mobilde OOM riski); hata gerçek boyutu söyler.
-- **HEIC:** iPhone varsayılanı tarayıcıda çözülemiyor; artık "Ayarlar → Kamera → Biçimler → En Uyumlu ya da JPEG" diyen net bir hata var.
-- **EXIF yönü** açıkça istenir (`imageOrientation: "from-image"`): fotoğraf yan yatmaz.
-- **Teslim:** galeri/akış görsellerine `decoding="async"`, ekran dışı rota fotoğrafına `loading="lazy"`. Hero bilinçli olarak `fetchPriority="high"` ve tembel değil (LCP).
-- Kademeli küçültme planı tek yönlü olduğu ve Firestore'daki 180.000 karakter kilidiyle uyumlu olduğu testle kilitli: `imagePipelineT10.test.ts` (7).
-- **Yapılmayan:** WebP/AVIF çıktısı, `toBlob` geçişi, sunucu tarafı `srcset` türevleri — hepsi ölçüm/bağımlılık/onay istiyor (dokümanda gerekçeli).
-
 ## 2026-10-28 — Vite 8 + plugin-react 6 (bekletilen majör alındı)
+## 2026-10-28 — Denetim A grubu: CSP uyumlu tema, Google popup izni, gizli source map, CRLF (A1–A7)
+
+Ayrıntı: `docs/teslimatlar/teslimat-denetim-a-csp-hsts-2026-10-28.md`.
+
+- **A1:** satır içi tema betiği `/theme-boot.js`'e taşındı; `script-src 'self'` altında engelleniyordu.
+- **A2:** `apis.google.com` script/connect/frame direktiflerine eklendi (Firebase Google popup).
+- **A3:** `Explorer` ve `TrackRecorderPanel` SDK'sız `lib/firebaseConfig` kapısını okuyor.
+- **A4:** gizlilik metni `_GRECAPTCHA` gerçeğine göre güncellendi.
+- **A5:** HSTS `includeSubDomains`; `preload` gerekçesiyle yok.
+- **A6:** `sourcemap: "hidden"` + `collect-sourcemaps.mjs` haritaları `dist` dışına taşır; CI artifact (pinli action).
+- **A7:** `.gitattributes eol=lf` + `split(/\r?\n/)` (Windows checkout).
+- Testler **1275/1275** (158 dosya), typecheck/lint/build/`test:scripts`/`test:bundle-budget` yeşil.
+
+## 2026-10-28 — Veri hatası artık kalıcı şerit, yükleme yerleri iskelet (M-18, M-19)
 
 - `vite` ^7.3.7 → **^8.3.5**, `@vitejs/plugin-react` 5.1.1 → **6.1.2** (plugin-react 6, Vite 8 istiyordu; ikisi birlikte alındı). TypeScript 7 hâlâ bekliyor: `typescript-eslint` peer aralığı `<6.1.0`.
 - **Ölçüm (Rolldown):** toplam JS 988.185 bayt gzip (bütçe 1.003.000) — derleyici değişimi toplamı düşürdü; ilk boya ve yolculuklar bütçe içinde. Kategori dağılımı kaydığı için entry/iconsVendor/firebaseAuth/ilk-boya-CSS eşikleri ölçüme ~%3 payla yeniden bağlandı (ayrıntı `scripts/bundle-budget.mjs` içinde).
@@ -26,6 +29,17 @@ Ayrıntı: `docs/teslimatlar/teslimat-t10-gorsel-hatti-2026-10-28.md`.
 - **Yürüyüş kaydında Screen Wake Lock (M-26 · P1):** `useTrackRecorder` kayıt başladığında `navigator.wakeLock.request("screen")` alıyor, sekme arka plandan görünür duruma döndüğünde (`visibilitychange`) kilidi yeniliyor, bitiş/vazgeçiş/unmount anında serbest bırakıyor ve düşük güç modunda reddedilse bile GPS kaydını kesintisiz sürdürüyor. `TrackRecorderPanel` kilit durumunu kullanıcıya açıkça bildiriyor.
 - **Tembel rıza parçası kurtarma (T7/T18 açık nokta):** `CookieConsentBoundary` tembel `CookieConsent` parçasının kesintili ağda indirilememesi hâlinde hatanın `AppErrorBoundary`'ye tırmanıp uygulamayı düşürmesini engelliyor; **Tekrar dene** veya footer **Çerez tercihleri** tetiklemesinde taze `lazy()` fabrikasıyla parçayı yeniden yüklüyor.
 - **Test ve doküman kilidi (M-35 · P1):** `ProfilePanel.test.ts` (çift onaylı hesap silme, KVKK veri indirme, çıkış onayı), `CookieConsentBoundary.test.ts`, `LoadingAndRetrySurface.test.ts`, `useFirestoreAtlasData.test.ts` ve `useTrackRecorder.test.ts` eklendi/genişletildi; `docs/moderasyon-akisi.md` PR #140 `İncelenenler` mimarisiyle güncellendi. Mevcut tüm bundle bütçesi eşikleri aşılmadan korundu (`1.002.430 / 1.003.000 B` JS gzip, `25.068 / 25.200 B` ilk boya CSS gzip).
+## 2026-10-28 — Görsel boru hattı: yükleme kapıları + teslim işaretleri (T10)
+
+Ayrıntı: `docs/teslimatlar/teslimat-t10-gorsel-hatti-2026-10-28.md`.
+
+- **Boyut kapısı:** 25 MB üstü dosya **decode edilmeden** reddedilir (mobilde OOM riski); hata gerçek boyutu söyler.
+- **HEIC:** iPhone varsayılanı tarayıcıda çözülemiyor; artık "Ayarlar → Kamera → Biçimler → En Uyumlu ya da JPEG" diyen net bir hata var.
+- **EXIF yönü** açıkça istenir (`imageOrientation: "from-image"`): fotoğraf yan yatmaz.
+- **Teslim:** galeri/akış görsellerine `decoding="async"`, ekran dışı rota fotoğrafına `loading="lazy"`. Hero bilinçli olarak `fetchPriority="high"` ve tembel değil (LCP).
+- Kademeli küçültme planı tek yönlü olduğu ve Firestore'daki 180.000 karakter kilidiyle uyumlu olduğu testle kilitli: `imagePipelineT10.test.ts` (7).
+- **Yapılmayan:** WebP/AVIF çıktısı, `toBlob` geçişi, sunucu tarafı `srcset` türevleri — hepsi ölçüm/bağımlılık/onay istiyor (dokümanda gerekçeli).
+- Testler **1292/1292** (161 dosya); bütçe içinde (`entry` 18.938/20.900, toplam JS 1.001.304/1.003.000).
 
 ## 2026-10-28 — Tanıtım filmi (`preload="none"` + poster, T6)
 
