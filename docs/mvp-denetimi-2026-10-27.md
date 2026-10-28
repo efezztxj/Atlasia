@@ -11,21 +11,28 @@
 |---|---|
 | `npx tsc --noEmit` | **PASS** (0 hata) |
 | `npx eslint . --max-warnings=0` | **PASS** (0 uyarı) |
-| `npm run test:run` | **PASS** — 147 dosya / **1.162 test** *(2026-10-27 son ölçüm)* |
+| `npm run test:run` | **PASS** — 149 dosya / **1.202 test** *(2026-10-28 ölçümü)* |
 | `npm run test:scripts` | **PASS** — 8/8 paket |
 | `npm run build` | **PASS** — ama paylar kritik (§2) |
-| `verify:sw-shell` | **PASS** — 31/31 |
+| `verify:sw-shell` | **PASS** — 44/44 |
+
+**2026-10-28 güncel ölçüm** (`main` = `f58d0ef` + bu turdaki eşik sıkılaştırması):
 
 | Ölçüm | Değer | Bütçe | **Kalan pay** |
 |---|---|---|---|
-| İlk HTML seti (gzip) | 412.238 B | 439.000 B | 26.762 B (%6,1) |
-| **Toplam JS (gzip)** | **902.648 B** | 908.000 B | **5.352 B (%0,6)** |
-| Toplam CSS (gzip) | 34.957 B | 35.700 B | 743 B (%2,1) ✅ *(2026-10-27: kapsam düzeltildi, §2)* |
-| **İlk boya CSS (gzip)** | **24.440 B** | **25.900 B** | **1.460 B (%5,6)** ✅ *(yeni, sıkı kapı)* |
-| İlk boya JS (gzip) | 387.761 B | 398.000 B | 10.239 B (%2,6) ✅ *(yeni kapı)* |
+| **Tanıtım yolculuğu (gzip)** | **116.702 B** | **120.300 B** | **3.598 B (%3,0)** |
+| Uygulama kabuğu (giriş sonrası) | 516.564 B | 532.000 B | 15.436 B (%2,9) |
+| **İlk boya JS (gzip)** | **90.444 B** | **93.200 B** | 2.756 B (%3,0) |
+| İlk boya CSS (gzip) | 24.504 B | 25.200 B | 696 B (%2,8) |
+| entry (uygulama kodu) | 19.722 B | 20.400 B | 678 B (%3,3) |
+| **Toplam JS (gzip)** | **915.389 B** | 916.500 B | **1.111 B (%0,12)** ⚠️ |
+| Toplam CSS (gzip) | 35.021 B | 35.700 B | 679 B (%1,9) |
+| `verify:sw-shell` | 44/44 | — | — |
 
-Kaynak: 142 dosya · 46.442 satır · en büyük dosyalar `App.tsx` 1.608, `moderation.ts` 1.199, `SocialPanel.tsx` 853, `firestoreData.ts` 809, `MapView.tsx` 785.
-Testi olmayan kaynak dosya: **42** (27'si bileşen).
+> 27 Ekim (kabuk bölünmesinden önce): ilk HTML seti 412.238 / 439.000, ilk boya JS 387.761 / 398.000, tanıtım 413.463. Bölünmeyle tanıtım **413.463 → 116.702 B gzip (−%72)**.
+
+Kaynak: 143 dosya · en büyük dosyalar `components/Explorer.tsx` 1.680, `moderation.ts` 1.199, `SocialPanel.tsx` 853, `firestoreData.ts` 809, `MapView.tsx` 785. `App.tsx` artık **58 satır** (giriş kapısı).
+Testi olmayan kaynak dosya: **≈36** (kabuk bölünmesinden sonra; `Explorer` dolaylı kapsanıyor).
 
 ---
 
@@ -49,6 +56,28 @@ Eski durum: `Toplam CSS 34.957 / 35.100` → 143 B pay, yani **tek bir yeni sın
   - (a) **hâlâ açık** — `map-vendor` CSS'i (83 KB ham / 10,5 KB gzip) yalnız harita yüklenirken çekilsin: `MapView` lazy olduğu için `maplibre-gl/dist/maplibre-gl.css` importu `index.css`'ten `MapView.tsx`'e taşınır. Kazanç ≈ 10 KB gzip → pay ~%30.
 - **M-02 · P0 — Eşikleri gerçek ölçüme sabitle.** Bütçe ölçümün hemen üstünde tutulmaya devam ederse her iş kırılır; CSS eşiğini (a) uygulandıktan sonra **28.000**'e, JS'i **895.000**'e çek. Amaç: pay ≥ %2.
 - **M-03 · P1 — Bütçeyi "sadece toplam" olmaktan çıkar.** `initialGzipBytes` zaten var; **route bazlı** ölçüm ekle: açılış sayfası ≤ 250 KB, uygulama kabuğu ≤ 700 KB.
+
+---
+
+## 2b. DÜZELTİLDİ (2026-10-28): bütçe eşikleri bayatlamıştı — kapı fiilen ölmüştü
+
+Kabuk bölünmesi tanıtımı 413 KB → 117 KB'ye indirdi ama **eşikler eski yerinde kaldı**:
+
+| Kapı | Ölçüm | Eski eşik | Boşluk |
+|---|---|---|---|
+| initial (ilk HTML seti) | 116.702 | 439.000 | **%73** |
+| ilk boya JS | 90.444 | 398.000 | **%77** |
+| tanıtım yolculuğu | 116.702 | 425.000 | **%73** |
+| entry | 19.722 | 174.000 | **%89** |
+| uygulama kabuğu | 516.564 | 830.000 | %38 |
+
+Yani **tanıtıma 300 KB eklemek bile CI'dan geçerdi**. Bütçe "koruma" değil, süs olmuştu.
+
+**Yapılan:**
+1. Tüm bizim-kod kapıları ölçüme ~%3 payla yeniden bağlandı: `initial 120.300`, `initialJs 93.200`, `initialCss 25.200`, `entry 20.400`, `landing 120.300`, `appShell 532.000`, `mapView 9.100`.
+2. **Bayatlama kapısı** eklendi (`BUNDLE_BUDGET.staleness`): sahibi olduğumuz bir kapı ölçümün **%20'sinden** fazla (ve 4 KB'dan çok) üstündeyse build **kırılır** ve mesaj hedef eşiği söyler (*"entry eşiği bayat: ölçüm 40 B, eşik 140 B… eşiği ~100 B yap"*). Böylece büyük bir kazançtan sonra eşik sıkılaştırmak zorunlu; sessizce gevşeyemez.
+3. Satıcı (vendor) kategorileri kapsam dışı — sürüm yükseltmelerinde doğal dalgalanırlar.
+4. 3 yeni test: bayat eşik kırar · güncel eşik kırmaz · vendor kapsam dışı (`test:bundle-budget` 14/14).
 
 ---
 
@@ -287,7 +316,7 @@ Kod sağlam (1.087 test, 0 tip/lint hatası); **ama CSS bütçesinde 26 bayt kal
 | # | İş | Neden bu sırada | Efor |
 |---|---|---|---|
 | D1 | **M-49** 5 Playwright senaryosu (yalnız CI — bu ortamda tarayıcı yok: `libnss3.so` eksik) | Uçtan uca akışın tek gerçek kanıtı | 1 gün |
-| D2 | **M-03** yolculuk bazlı bütçe → **yarısı yapıldı (2026-10-27)**: `journeyGzipBytes` (`landing` 425.000 / `appShell` 830.000; ölçüm 413.463 / 813.189) + 2 test. **Kalan:** Lighthouse CI (bu ortamda tarayıcı yok) ve **M-03b** `firebase-vendor` 149 KB'nin ilk boyadan çıkarılması | Bütçe artık hangi yolculuğun ağırlaştığını söylüyor | 2 sa |
+| D2 | **M-03 + M-03b** → **kapandı (2026-10-28)**: yolculuk bütçeleri + 6 panel lazy + **kabuk bölünmesi** (`App.tsx` = 58 satırlık kapı, `components/Explorer.tsx` = lazy harita/panel/Firestore). Firebase ve maplibre tanıtımda değil. Tanıtım **413.463 → 116.702 B gzip (−%72)**. Eşikler ölçüme ~%3 payla yeniden bağlandı + bayatlama kapısı. **Kalan:** Lighthouse CI (tarayıcı yok) | Bütçe artık gerçekten koruyor | — |
 | D3 | **M-18** hata şeridi + **M-19** iskeletler | Kullanıcının gördüğü kalite | 4 sa |
 | D4 | **M-57** bağımlılık PR'ları, **M-58** yedek tatbikatı | Operasyon disiplini | 3 sa |
 
