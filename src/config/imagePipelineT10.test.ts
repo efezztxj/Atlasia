@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   CLOUD_PHOTO_ATTEMPTS,
+  DEFAULT_CLOUD_PHOTO_BUDGET_CHARS,
   ImageInputError,
   MAX_CLOUD_PHOTO_CHARS,
   MAX_INPUT_BYTES,
@@ -64,8 +65,13 @@ describe("T10 · yükleme kapıları", () => {
       expect(CLOUD_PHOTO_ATTEMPTS[i].maxSide).toBeLessThan(CLOUD_PHOTO_ATTEMPTS[i - 1].maxSide);
       expect(CLOUD_PHOTO_ATTEMPTS[i].quality).toBeLessThan(CLOUD_PHOTO_ATTEMPTS[i - 1].quality);
     }
-    // Firestore kuralındaki 180.000 karakter kilidi ile aynı kalmalı.
+    // Firestore kuralındaki 180.000 karakter kilidi ile aynı kalmalı; Spark $0
+    // ücretsiz plan kararıyla (M-23/P0-4) yeni yükleme bütçesi ~73 KB (100.000 karakter)
+    // tutulur ki 10 fotoğraflı akış < 800 KB kalsın.
     expect(MAX_CLOUD_PHOTO_CHARS).toBe(180_000);
+    expect(DEFAULT_CLOUD_PHOTO_BUDGET_CHARS).toBe(100_000);
+    expect(DEFAULT_CLOUD_PHOTO_BUDGET_CHARS).toBeLessThan(MAX_CLOUD_PHOTO_CHARS);
+    expect((DEFAULT_CLOUD_PHOTO_BUDGET_CHARS * 0.75 * 10) / 1024).toBeLessThan(800);
     expect(CLOUD_PHOTO_ATTEMPTS.at(-1)!.maxSide).toBeLessThanOrEqual(480);
   });
 

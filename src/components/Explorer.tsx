@@ -25,6 +25,7 @@ const StreetPeek = lazy(() => import("./StreetPeek"));
 const AddDiscoveryModal = lazy(() => import("./AddDiscoveryModal"));
 import RecordsDock from "./RecordsDock";
 import RouteEditor from "./RouteEditor";
+import ConfirmDialogHost, { requestConfirm } from "./ConfirmDialog";
 import { useAuth } from "../contexts/AuthContext";
 import { analytics } from "../lib/analytics";
 import { CollectionsProvider, isCloudAccount } from "../hooks/useCollections";
@@ -1026,7 +1027,13 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
       setToast("Yalnızca kendi izlerini silebilirsin.");
       return false;
     }
-    if (!window.confirm(`“${p.title}” izini kalıcı olarak silmek istiyor musun?`)) return false;
+    const accepted = await requestConfirm({
+      title: "İzi sil",
+      message: `“${p.title}” izini kalıcı olarak silmek istiyor musun?`,
+      confirmLabel: "Sil",
+      danger: true,
+    });
+    if (!accepted) return false;
     try {
       await cloud.removePlace(p.id);
       if (activeId === p.id) setActiveId(null);
@@ -1768,6 +1775,8 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
           {toast}
         </div>
       )}
+
+      <ConfirmDialogHost />
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { X } from "lucide-react";
 import { usePanelAccess } from "../hooks/usePanelAccess";
 import {
   getLegalDocument,
-  LEGAL_REVIEW_NOTICE,
+  getLegalReviewNotice,
   LEGAL_SOURCE,
   LEGAL_VERSION,
   type LegalDocumentType,
@@ -25,6 +25,7 @@ function LegalSectionContent({ section }: { section: LegalSection }) {
 
 export default function LegalNotice({ type, onClose }: LegalNoticeProps) {
   const document = getLegalDocument(type);
+  const reviewNotice = getLegalReviewNotice();
   const ref = usePanelAccess(true, onClose, true);
   const sections = document.sections.map((section) => document.ordered
     ? <li key={section.title}><LegalSectionContent section={section} /></li>
@@ -37,7 +38,7 @@ export default function LegalNotice({ type, onClose }: LegalNoticeProps) {
       role="dialog"
       aria-modal="true"
       aria-labelledby="account-legal-title"
-      aria-describedby="account-legal-review"
+      aria-describedby={reviewNotice ? "account-legal-review" : undefined}
       data-legal-source={LEGAL_SOURCE}
       data-legal-version={LEGAL_VERSION}
       className="mobile-fullscreen-bleed relative flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-3xl border border-white/15 bg-ink-2 shadow-2xl"
@@ -48,7 +49,7 @@ export default function LegalNotice({ type, onClose }: LegalNoticeProps) {
           <button type="button" onClick={onClose} aria-label="Açıklamayı kapat" className="grid size-11 shrink-0 place-items-center rounded-full text-mint/80 transition hover:bg-white/10 hover:text-white"><X size={19} /></button>
         </div>
         <h2 id="account-legal-title" className="font-display mt-1 text-2xl leading-tight">{document.title}</h2>
-        <p id="account-legal-review" role="status" className="mt-3 inline-flex rounded-full border border-amber-200/20 bg-amber-100/10 px-3 py-1.5 text-[11px] font-semibold text-amber-100">{LEGAL_REVIEW_NOTICE}</p>
+        {reviewNotice && <p id="account-legal-review" role="status" className="mt-3 inline-flex rounded-full border border-amber-200/20 bg-amber-100/10 px-3 py-1.5 text-[11px] font-semibold text-amber-100">{reviewNotice}</p>}
         <p className="mt-3 text-[12px] text-mint/70">{document.updatedLine}</p>
       </header>
 

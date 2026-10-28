@@ -1,4 +1,4 @@
-const CACHE = "atlasia-shell-v8";
+const CACHE = "atlasia-shell-v9";
 const TILE_CACHE = "atlasia-tiles-v1";
 const TILE_META_CACHE = "atlasia-tile-meta-v1";
 const CACHE_PREFIX = "atlasia-shell-";
@@ -13,6 +13,8 @@ const PACK_CACHE = "atlasia-packs-v1";
 const SHELL = [
   "/theme-boot.js",
   "/manifest.webmanifest",
+  "/icons/icon-32.png",
+  "/icons/icon-180.png",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
   "/images/atlasia-earth-hero.jpg",

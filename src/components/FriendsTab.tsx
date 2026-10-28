@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, Link2, Loader2, Search, UserMinus, UserPlus, X } from "lucide-react";
+import { requestConfirm } from "./ConfirmDialog";
 import {
   acceptFriendRequest,
   declineFriendRequest,
@@ -205,7 +206,13 @@ export default function FriendsTab({ currentUid, currentName, friends, requests,
   };
 
   const remove = async (friend: FriendIndex) => {
-    if (!confirm(`${friend.friendName} arkadaşlarından çıkarılsın mı?`)) return;
+    const accepted = await requestConfirm({
+      title: "Arkadaşı çıkar",
+      message: `${friend.friendName} arkadaşlarından çıkarılsın mı?`,
+      confirmLabel: "Çıkar",
+      danger: true,
+    });
+    if (!accepted) return;
     setBusyUid(friend.friendUid);
     try {
       await removeFriend(currentUid, friend.friendUid);

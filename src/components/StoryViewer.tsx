@@ -7,6 +7,7 @@ import { cn } from "../utils/cn";
 import { relativeTime, storyRemaining } from "../utils/time";
 import Avatar from "./Avatar";
 import { usePanelAccess } from "../hooks/usePanelAccess";
+import { requestConfirm } from "./ConfirmDialog";
 
 const DURATION = 6000;
 
@@ -161,11 +162,22 @@ export default function StoryViewer({
           </div>
           {story.kind === "user" && canDelete(story) && (
             <button
-              onClick={() => {
-                // Denetim K-04: silme geri alınamaz; iptalde hikâye açık kalır.
-                if (!confirm("Bu hikâyeyi kalıcı olarak silmek istiyor musun?")) return;
-                onDelete(story.id);
-                onClose();
+              onClick={async () => {
+                // Denetim K-04 + M-33: onay açıkken hikâye ilerleme sayacı duraklar.
+                pausedRef.current = true;
+                try {
+                  const accepted = await requestConfirm({
+                    title: "Hikâyeyi sil",
+                    message: "Bu hikâyeyi kalıcı olarak silmek istiyor musun?",
+                    confirmLabel: "Sil",
+                    danger: true,
+                  });
+                  if (!accepted) return;
+                  onDelete(story.id);
+                  onClose();
+                } finally {
+                  pausedRef.current = false;
+                }
               }}
               aria-label="Story'yi sil"
               className="grid size-8 place-items-center rounded-full bg-black/30 text-white/80 transition hover:bg-black/50 hover:text-white"

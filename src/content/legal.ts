@@ -20,11 +20,53 @@ export const LEGAL_SOURCE = "Notion page 3f90097a-5569-813f-9e27-e9f2f4f3135e ·
 export const LEGAL_REVIEW_NOTICE = "Taslak · Künye ve avukat onayı bekleniyor";
 export const LEGAL_PLACEHOLDERS = ["[TARİH]", "[AD SOYAD / UNVAN]", "[E-POSTA]", "[ŞEHİR]"] as const;
 
+/**
+ * C1 / M-53 / T21 — Tek merkezli yasal künye kaynağı.
+ *
+ * Üç yasal belgedeki 17 yer tutucu artık dağınık metin kopyaları yerine bu tek
+ * nesneden beslenir. Avukat onayı ve gerçek veri sorumlusu bilgileri geldiğinde
+ * yalnız bu beş alan güncellenir; taslak rozeti de otomatik kalkar.
+ */
+export interface LegalImprint {
+  readonly updatedDate: string;
+  readonly controllerName: string;
+  readonly contactEmail: string;
+  readonly jurisdictionCity: string;
+  readonly reviewApproved: boolean;
+}
+
+export const LEGAL_IMPRINT: LegalImprint = {
+  updatedDate: LEGAL_PLACEHOLDERS[0],
+  controllerName: LEGAL_PLACEHOLDERS[1],
+  contactEmail: LEGAL_PLACEHOLDERS[2],
+  jurisdictionCity: LEGAL_PLACEHOLDERS[3],
+  reviewApproved: false,
+};
+
+export function isLegalImprintComplete(imprint: LegalImprint = LEGAL_IMPRINT): boolean {
+  if (!imprint.reviewApproved) return false;
+  const fields = [
+    imprint.updatedDate,
+    imprint.controllerName,
+    imprint.contactEmail,
+    imprint.jurisdictionCity,
+  ];
+  return fields.every(
+    (value) =>
+      value.trim().length > 0 &&
+      !LEGAL_PLACEHOLDERS.some((placeholder) => value.includes(placeholder)),
+  );
+}
+
+export function getLegalReviewNotice(imprint: LegalImprint = LEGAL_IMPRINT): string | null {
+  return isLegalImprintComplete(imprint) ? null : LEGAL_REVIEW_NOTICE;
+}
+
 export const privacyDocument: LegalDocument = {
   type: "privacy",
   shortTitle: "Gizlilik açıklaması",
   title: "Gizlilik Açıklaması",
-  updatedLine: "Son güncelleme: [TARİH] · Sürüm 2.0",
+  updatedLine: `Son güncelleme: ${LEGAL_IMPRINT.updatedDate} · Sürüm ${LEGAL_VERSION}`,
   intro: [
     "Merhaba, Atlasia'ya hoş geldin. Bu metin, 6698 sayılı Kişisel Verilerin Korunması Kanunu (KVKK) uyarınca; hangi kişisel verilerini, hangi amaçla, hangi hukuki sebebe dayanarak işlediğimizi; kimlerle paylaştığımızı ve haklarını açıklar. Bu bir bilgilendirme metnidir, onay gerektirmez; özet hâli ayrıca KVKK Aydınlatma Metni'nde yer alır. Soruların için bize her zaman yazabilirsin.",
   ],
@@ -32,7 +74,7 @@ export const privacyDocument: LegalDocument = {
     {
       title: "1. VERİ SORUMLUSU",
       paragraphs: [
-        "Veri sorumlusu: [AD SOYAD / UNVAN]. Başvuru ve iletişim: [E-POSTA]. KVKK kapsamındaki başvurularını bu adrese yazılı iletebilirsin.",
+        `Veri sorumlusu: ${LEGAL_IMPRINT.controllerName}. Başvuru ve iletişim: ${LEGAL_IMPRINT.contactEmail}. KVKK kapsamındaki başvurularını bu adrese yazılı iletebilirsin.`,
       ],
     },
     {
@@ -82,7 +124,7 @@ export const privacyDocument: LegalDocument = {
     {
       title: "8. HAKLARIN (KVKK m.11) VE BAŞVURU",
       paragraphs: [
-        "Hakların: kişisel verilerinin işlenip işlenmediğini öğrenme; işlenmişse bilgi talep etme; amacına uygun kullanılıp kullanılmadığını öğrenme; eksik/yanlış işlenmişse düzeltilmesini; silinmesini/yok edilmesini; aktarılan üçüncü kişilere düzeltme/silmenin bildirilmesini isteme; işlenen verilerin yalnızca otomatik sistemlerle analiz edilmesiyle aleyhine sonuç çıkmasına itiraz etme; kanuna aykırı işleme nedeniyle zarara uğrarsan giderilmesini talep etme. Başvurunu [E-POSTA] adresinden yapabilirsin; başvurular en geç 30 gün içinde ücretsiz cevaplanır (işlem ayrıca maliyet gerektirirse Kurul tarifesindeki ücret istenebilir). Kimliğini doğrulamak için ek bilgi isteyebiliriz.",
+        `Hakların: kişisel verilerinin işlenip işlenmediğini öğrenme; işlenmişse bilgi talep etme; amacına uygun kullanılıp kullanılmadığını öğrenme; eksik/yanlış işlenmişse düzeltilmesini; silinmesini/yok edilmesini; aktarılan üçüncü kişilere düzeltme/silmenin bildirilmesini isteme; işlenen verilerin yalnızca otomatik sistemlerle analiz edilmesiyle aleyhine sonuç çıkmasına itiraz etme; kanuna aykırı işleme nedeniyle zarara uğrarsan giderilmesini talep etme. Başvurunu ${LEGAL_IMPRINT.contactEmail} adresinden yapabilirsin; başvurular en geç 30 gün içinde ücretsiz cevaplanır (işlem ayrıca maliyet gerektirirse Kurul tarifesindeki ücret istenebilir). Kimliğini doğrulamak için ek bilgi isteyebiliriz.`,
       ],
     },
     {
@@ -105,7 +147,7 @@ export const termsDocument: LegalDocument = {
   type: "terms",
   shortTitle: "Kullanım koşulları",
   title: "Kullanım Koşulları",
-  updatedLine: "Son güncelleme: [TARİH] · Sürüm 2.0",
+  updatedLine: `Son güncelleme: ${LEGAL_IMPRINT.updatedDate} · Sürüm ${LEGAL_VERSION}`,
   intro: [],
   sections: [
     {
@@ -141,7 +183,7 @@ export const termsDocument: LegalDocument = {
     {
       title: "6. MODERASYON VE ŞEFFAFLIK",
       paragraphs: [
-        "Herhangi bir izi, gönderiyi veya kullanıcıyı uygulama içinden bildirebilirsin. Bir kullanıcıyı engellediğinde o kullanıcının izleri, gönderileri ve hikâyeleri senin görünümünden gizlenir; engelleme kaydı yalnızca sana aittir ve dilediğinde kaldırılabilir. Bildirilen içerikler önce gözden geçirilir; kurala aykırı bulunan içerik kaldırılır ve sahibine sebebi bildirilir, hesabında görünür. Karara [E-POSTA] veya uygulama içi yol üzerinden itiraz edebilirsin; itirazın incelenir ve sonucu paylaşılır. Spam'i önlemek için yeni hesapların ilk içerikleri kısa süre yayın öncesi denetime tabi olabilir ve topluluğu korumak amacıyla makul paylaşım sınırları uygulanabilir; bu sınırlar abonelikle satılmaz. Tekrarlayan veya ağır ihlallerde hesap sınırlandırılabilir ya da kalıcı kapatılabilir; sessizce veri silmiyoruz — hesapla ilgili her işlemden seni haberdar ederiz (yasal zorunluluk veya acil güvenlik hâlleri dışında).",
+        `Herhangi bir izi, gönderiyi veya kullanıcıyı uygulama içinden bildirebilirsin. Bir kullanıcıyı engellediğinde o kullanıcının izleri, gönderileri ve hikâyeleri senin görünümünden gizlenir; engelleme kaydı yalnızca sana aittir ve dilediğinde kaldırılabilir. Bildirilen içerikler önce gözden geçirilir; kurala aykırı bulunan içerik kaldırılır ve sahibine sebebi bildirilir, hesabında görünür. Karara ${LEGAL_IMPRINT.contactEmail} veya uygulama içi yol üzerinden itiraz edebilirsin; itirazın incelenir ve sonucu paylaşılır. Spam'i önlemek için yeni hesapların ilk içerikleri kısa süre yayın öncesi denetime tabi olabilir ve topluluğu korumak amacıyla makul paylaşım sınırları uygulanabilir; bu sınırlar abonelikle satılmaz. Tekrarlayan veya ağır ihlallerde hesap sınırlandırılabilir ya da kalıcı kapatılabilir; sessizce veri silmiyoruz — hesapla ilgili her işlemden seni haberdar ederiz (yasal zorunluluk veya acil güvenlik hâlleri dışında).`,
       ],
     },
     {
@@ -177,7 +219,7 @@ export const termsDocument: LegalDocument = {
     {
       title: "12. UYGULANACAK HUKUK VE İLETİŞİM",
       paragraphs: [
-        "Bu koşullar Türkiye hukukuna tabidir. Anlaşmazlıklarda önce bize yazmanı isteriz: [E-POSTA]. Çözülemeyen uyuşmazlıklarda [ŞEHİR] mahkemeleri ve icra daireleri yetkilidir (tüketici işlemlerinde tüketici hakem heyetleri/mahkemelerine başvurma hakkın saklıdır).",
+        `Bu koşullar Türkiye hukukuna tabidir. Anlaşmazlıklarda önce bize yazmanı isteriz: ${LEGAL_IMPRINT.contactEmail}. Çözülemeyen uyuşmazlıklarda ${LEGAL_IMPRINT.jurisdictionCity} mahkemeleri ve icra daireleri yetkilidir (tüketici işlemlerinde tüketici hakem heyetleri/mahkemelerine başvurma hakkın saklıdır).`,
       ],
     },
   ],
@@ -196,7 +238,7 @@ export const kvkkNoticeDocument: LegalDocument = {
   type: "kvkk",
   shortTitle: "KVKK aydınlatma metni",
   title: "KVKK Aydınlatma Metni",
-  updatedLine: "Son güncelleme: [TARİH] · Sürüm 2.0",
+  updatedLine: `Son güncelleme: ${LEGAL_IMPRINT.updatedDate} · Sürüm ${LEGAL_VERSION}`,
   intro: [
     "Bu metin, 6698 sayılı Kişisel Verilerin Korunması Kanunu (\"KVKK\") m.10 uyarınca veri sorumlusunun aydınlatma yükümlülüğünü yerine getirmek için hazırlanmıştır. Kişisel verilerinin hangi amaçla ve hukuki sebebe dayanarak işlendiğinin, kimlere aktarılabildiğinin ve haklarının özeti aşağıdadır; ayrıntılı açıklama Gizlilik açıklaması belgesindedir.",
   ],
@@ -204,7 +246,7 @@ export const kvkkNoticeDocument: LegalDocument = {
     {
       title: "1. VERİ SORUMLUSU",
       paragraphs: [
-        "Veri sorumlusu: [AD SOYAD / UNVAN]. Aydınlatma ve başvuru adresi: [E-POSTA].",
+        `Veri sorumlusu: ${LEGAL_IMPRINT.controllerName}. Aydınlatma ve başvuru adresi: ${LEGAL_IMPRINT.contactEmail}.`,
       ],
     },
     {
@@ -228,7 +270,7 @@ export const kvkkNoticeDocument: LegalDocument = {
     {
       title: "5. HAKLARIN VE BAŞVURU",
       paragraphs: [
-        "KVKK m.11 uyarınca; verilerinin işlenip işlenmediğini öğrenme, bilgi talep etme, düzeltilmesini/silinmesini isteme, aktarılan üçüncü kişilere bildirim talep etme, otomatik analiz sonucuna itiraz ve zararın giderilmesini talep etme haklarına sahipsin. Başvuru: [E-POSTA]. Bu metin [TARİH] tarihi itibarıyla taslaktır; künye ve avukat onayı beklenir.",
+        `KVKK m.11 uyarınca; verilerinin işlenip işlenmediğini öğrenme, bilgi talep etme, düzeltilmesini/silinmesini isteme, aktarılan üçüncü kişilere bildirim talep etme, otomatik analiz sonucuna itiraz ve zararın giderilmesini talep etme haklarına sahipsin. Başvuru: ${LEGAL_IMPRINT.contactEmail}.${LEGAL_IMPRINT.reviewApproved ? "" : ` Bu metin ${LEGAL_IMPRINT.updatedDate} tarihi itibarıyla taslaktır; künye ve avukat onayı beklenir.`}`,
       ],
     },
   ],

@@ -1,7 +1,9 @@
 # Atlasia — MVP Denetimi ve Yapılacaklar (madde madde)
 
-**Tarih:** 27 Ekim 2026 · **Kesit:** `main` = `fd9b780` (PR #114) · **Dal:** `arena/c16a6f9b-atlasia`
+**Tarih:** 27 Ekim 2026 (29 Ekim 2026 kapanış güncellemesi işlendi) · **Kesit:** `main` + `2026-10-29` kapanış paketi
 **Yöntem:** Her MVP akışı tek tek okundu, kapılar çalıştırıldı, sayılar depoda **ölçüldü**. Kanıt satır numarasıyla verildi. Tahminler "≈" ile işaretli.
+
+> **2026-10-29 Kapanış Notu:** Bu denetimdeki repo içi kod, erişilebilirlik, SW önbelleği (`atlasia-shell-v9`), `ConfirmDialog` (`M-33`), sıkı Spark JPEG bütçesi (`M-23`), doğrulanmış katalog kapsamı (`T20`), küresel açılış görünümü (`M-51`), merkezî `LEGAL_IMPRINT` (`M-53`), Spark geri yükleme CLI'ı (`M-58`), kritik bileşen JSDOM+`axe` testleri (`M-46/M-48`) ve CI Playwright E2E duman testleri (`M-49`) tamamlanıp `main`'e alınmıştır. Aşağıdaki tarihsel bulgu kayıtları izlenebilirlik için korunmuştur; güncel özet için `CHANGELOG.md` ve `docs/mvp-cikis-plani-2026-10-27.md` dosyalarına bakın.
 
 ---
 

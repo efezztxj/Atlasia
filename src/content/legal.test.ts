@@ -1,11 +1,14 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
+  LEGAL_IMPRINT,
   LEGAL_PLACEHOLDERS,
   LEGAL_REVIEW_NOTICE,
   LEGAL_SOURCE,
   LEGAL_VERSION,
   getLegalDocument,
+  getLegalReviewNotice,
+  isLegalImprintComplete,
   kvkkNoticeDocument,
   legalDocumentText,
   privacyDocument,
@@ -46,11 +49,31 @@ describe("TASK-021 A yasal metin paketi", () => {
     expect(terms).toContain("Satın alma yapılmadan ücretlendirme yapılamaz");
   });
 
-  it("künye yer tutucularını ve avukat onayı bekleyen taslak durumunu görünür tutar", () => {
+  it("künye yer tutucularını tek LEGAL_IMPRINT kaynağında tutar ve avukat onayıyla otomatik çözülür", () => {
     expect(LEGAL_PLACEHOLDERS).toEqual(["[TARİH]", "[AD SOYAD / UNVAN]", "[E-POSTA]", "[ŞEHİR]"]);
     expect(unresolvedLegalPlaceholders(privacyDocument)).toEqual(["[TARİH]", "[AD SOYAD / UNVAN]", "[E-POSTA]"]);
     expect(unresolvedLegalPlaceholders(termsDocument)).toEqual(["[TARİH]", "[E-POSTA]", "[ŞEHİR]"]);
     expect(LEGAL_REVIEW_NOTICE).toBe("Taslak · Künye ve avukat onayı bekleniyor");
+    expect(isLegalImprintComplete(LEGAL_IMPRINT)).toBe(false);
+    expect(getLegalReviewNotice(LEGAL_IMPRINT)).toBe(LEGAL_REVIEW_NOTICE);
+
+    // Gerçek künye + avukat onayı girildiğinde taslak rozeti otomatik kalkar.
+    const completed = {
+      updatedDate: "2026-10-29",
+      controllerName: "Atlasia Teknoloji A.Ş.",
+      contactEmail: "kvkk@atlasia.example",
+      jurisdictionCity: "İzmir",
+      reviewApproved: true,
+    };
+    expect(isLegalImprintComplete(completed)).toBe(true);
+    expect(getLegalReviewNotice(completed)).toBeNull();
+
+    // Belge gövdelerinde dağınık yer tutucu dizgesi kalmamalı (yalnız LEGAL_PLACEHOLDERS dizisinde).
+    const source = readFileSync("src/content/legal.ts", "utf8");
+    const bodyAfterImprint = source.slice(source.indexOf("export const privacyDocument"));
+    for (const placeholder of LEGAL_PLACEHOLDERS) {
+      expect(bodyAfterImprint).not.toContain(placeholder);
+    }
   });
 
   it("Gizlilik bölüm 3 zorunlu atlasia_consent çerezini, 12 ay süresini ve Ayarlar erişimini açıklar", () => {

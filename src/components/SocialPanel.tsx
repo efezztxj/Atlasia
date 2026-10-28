@@ -33,6 +33,7 @@ import Avatar from "./Avatar";
 import StoryComposer from "./StoryComposer";
 import StoryViewer from "./StoryViewer";
 import ReportDialog from "./ReportDialog";
+import { requestConfirm } from "./ConfirmDialog";
 import type { SocialTarget } from "../utils/inviteLink";
 
 // Gruplar/arkadaşlar paneli yalnız açılınca yüklenir (ilk paket bütçesi).
@@ -595,10 +596,15 @@ export default function SocialPanel({
                       </span>
                       {p.kind === "user" && p.authorUid === currentUid && (
                         <button
-                          onClick={() => {
-                            // Denetim K-04: geri alınamaz silme, engelleme kadar
-                            // korunmalı; tek dokunuşla silinmez.
-                            if (!confirm("Gönderiyi kalıcı olarak silmek istiyor musun?")) return;
+                          onClick={async () => {
+                            // Denetim K-04 + M-33: geri alınamaz silme, erişilebilir onay ister.
+                            const accepted = await requestConfirm({
+                              title: "Gönderiyi sil",
+                              message: "Gönderiyi kalıcı olarak silmek istiyor musun?",
+                              confirmLabel: "Sil",
+                              danger: true,
+                            });
+                            if (!accepted) return;
                             void runCloudAction(
                               () => onRemovePost(p.id),
                               "Gönderi silinemedi. Bağlantını kontrol edip tekrar dene.",
@@ -620,7 +626,13 @@ export default function SocialPanel({
                               <button type="button" onClick={() => { setMenuPostId(null); setReportPost(p); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[12px] text-mint/80 hover:bg-white/5"><Flag size={14} />Bildir</button>
                               <button type="button" onClick={async () => {
                                 if (!p.authorUid) return;
-                                if (!confirm(`${p.author} kullanıcısını engellemek istiyor musun?`)) return;
+                                const accepted = await requestConfirm({
+                                  title: "Kullanıcıyı engelle",
+                                  message: `${p.author} kullanıcısını engellemek istiyor musun?`,
+                                  confirmLabel: "Engelle",
+                                  danger: true,
+                                });
+                                if (!accepted) return;
                                 setMenuPostId(null);
                                 try { await blockUser(p.authorUid, currentUid); setActionError(`${p.author} engellendi.`); } catch (e) { setActionError(friendlyDataError(e, "Kullanıcı engellenemedi.")); }
                               }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[12px] text-mint/80 hover:bg-white/5"><Ban size={14} />Engelle</button>

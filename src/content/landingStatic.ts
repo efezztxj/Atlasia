@@ -26,9 +26,27 @@ export interface LandingStaticFaq {
   answer: string;
 }
 
+export interface VerifiedCatalogCounts {
+  guidePlaces: number;
+  siteTours: number;
+}
+
+/**
+ * T20 ↔ T11 (karar: doğrulanmış statik kapsam sayıları):
+ * Landing sayfasına Firebase SDK'sı indirmeden ve sahte kullanıcı/rota sayacı
+ * üretmeden yalnızca repodaki gerçek editör kataloğunun doğrulanmış kapsamı
+ * gösterilir (`src/config/socialProofT20.test.ts` bu sayıları `GUIDE_PLACES` ve
+ * `SITE_TOURS` uzunluklarıyla birebir kilitler).
+ */
+export const VERIFIED_CATALOG_COUNTS: VerifiedCatalogCounts = {
+  guidePlaces: 28,
+  siteTours: 4,
+};
+
 export interface LandingStaticContent {
   heading: string;
   intro: string;
+  catalogSummary: string;
   stepsHeading: string;
   steps: LandingStaticStep[];
   faqHeading: string;
@@ -40,6 +58,8 @@ export const LANDING_STATIC: LandingStaticContent = {
   heading: "Dünyayı merakınla keşfet.",
   intro:
     "Atlasia — gerçek uydu görüntüleriyle dünyayı keşfet, gezginlerin bıraktığı küçük ipuçlarını bul ve kendi keşfini haritaya bırak.",
+  catalogSummary:
+    "28 seçilmiş rehber nokta · 4 antik kent sesli turu · 0 reklam ve takip pikseli",
   stepsHeading: "Nasıl çalışır?",
   steps: [
     {
@@ -100,6 +120,7 @@ export function renderLandingStaticHtml(): string {
     '      <section aria-labelledby="static-heading" lang="tr">',
     `        <h1 id="static-heading">${escapeHtml(LANDING_STATIC.heading)}</h1>`,
     `        <p>${escapeHtml(LANDING_STATIC.intro)}</p>`,
+    `        <p>${escapeHtml(LANDING_STATIC.catalogSummary)}</p>`,
     `        <h2>${escapeHtml(LANDING_STATIC.stepsHeading)}</h2>`,
     "        <ol>",
     steps,

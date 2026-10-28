@@ -16,7 +16,7 @@ jobs:
   verify:
     name: Security, typecheck, lint, test and build
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
@@ -108,6 +108,12 @@ jobs:
 
       - name: Production build and bundle budget
         run: npm run build
+
+      - name: Install Playwright Chromium for E2E smoke suite
+        run: npx playwright install --with-deps chromium
+
+      - name: Browser E2E smoke tests (Playwright)
+        run: npm run test:e2e
 
       # A6: kaynak haritaları `hidden` üretilir ve postbuild onları `dist` dışına
       # taşır; yayında URL'leri yok. Hata ayıklama için burada artifact olarak

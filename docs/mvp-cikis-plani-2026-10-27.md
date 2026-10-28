@@ -9,7 +9,17 @@
 
 Atlasia'nın **mühendislik kalitesi MVP'nin çok üstünde** (46.442 satır, 142 kaynak dosya, 136 test dosyası / 1.033 test, 1.326 satır Firestore kuralı, CI'da tip+lint+test+build+bütçe+rules emülatörü). Buna karşılık ürünü **"profesyonel bir site"** yapan şey kod değil; **hukuk, ölçülebilirlik, veri mimarisi ve saha kanıtı**. Bugün üçü de eksik: yasal metinlerde `[TARİH] [AD SOYAD] [E-POSTA] [ŞEHİR]` duruyor, üretimde **hiç hata izleme ve hiç analitik yok**, fotoğraflar Firestore belgesinin içinde base64 olarak duruyor (180.000 karakter sınırı). Bu üçü kapanmadan site "çalışan bir demo"; kapandığında "işletilebilir bir ürün" olur.
 
-**İlerleme (2026-10-27):** P0-2 ve P0-3 **kodda tamam** — `src/lib/telemetry.ts`, `src/lib/analytics.ts`, `src/lib/telemetryBootstrap.ts` + çerez bandında anonim ölçüm opt-in'i (`saveCookieConsent`). Aktif olması için tek adım: Cloudflare'de `VITE_TELEMETRY_ENDPOINT`. Ayrıntı: `docs/olcum-ve-hata-izleme.md`.
+**İlerleme (2026-10-29 Kapanış Özeti):**
+- **Repo içi kod, güvenlik, erişilebilirlik, birim/kural/betik testleri ve CI tarayıcı E2E (Playwright) kapılarının tamamı tamamlandı:**
+  - **P0-1 / C1 / M-53:** 17 dağınık künye yer tutucusu `src/content/legal.ts` içinde tek `LEGAL_IMPRINT` nesnesinde birleştirildi (avukat onaylı gerçek veri gelene dek dürüst taslak rozeti korunuyor).
+  - **P0-2 & P0-3 / T1 & T2:** Telemetri çekirdeği, 16 huni olayı ve `$0` Cloudflare Worker toplayıcı paketi (`workers/telemetry/`) + sözleşme testleri hazır.
+  - **P0-4 / M-23 (`$0` Spark kararı):** Ücretli Blaze/Storage açılmadan bulut JPEG hedefi `DEFAULT_CLOUD_PHOTO_BUDGET_CHARS = 100_000` (~73 KB) düzeyine çekilerek 10 fotoğraflı akış `< 800 KB` altına indirildi (`firestore.rules` 180.000 tavanı korundu).
+  - **P0-5 / T11:** Tanıtım ilk yükü `413 KB` → `127,3 KB` gzip (`-%69`); Firebase ve App Check tamamen uygulama/hesap kabuğuna ertelendi.
+  - **P1-3 / M-48 / M-49 / D1:** Kritik bileşen JSDOM + `axe` testleri ve CI üzerinde koşan 5 gerçek Chromium Playwright E2E duman testi (`e2e/smoke.spec.ts`) eklendi.
+  - **P1-5 / M-25:** Antik kent sesli turlarında `isRealPath === false` için erişilebilir `Temsilî tur` etiketi eklendi (`NearbyAudioGuide.tsx`).
+  - **P1-7 / M-58:** `scripts/firestore-backup.mjs` yanına SHA-256 doğrulamalı, varsayılan `--dry-run` ve üretim ezme kilitli `scripts/firestore-restore.mjs` eklendi.
+  - **M-33:** Tüm yerel `confirm()` / `window.confirm()` çağrıları erişilebilir `ConfirmDialog` (`role="alertdialog"`) ile değiştirildi.
+- **Yalnız dış konsol / saha operasyonu bekleyen maddeler:** (1) avukat onaylı gerçek `LEGAL_IMPRINT` verisi, (2) operatör hesabında `wrangler deploy` + Cloudflare Pages `VITE_TELEMETRY_ENDPOINT`, (3) 1–2 hafta izleme sonrası Firebase Console `App Check → Enforce`, (4) gerçek mobil cihaz (iOS Safari / Android Chrome) saha koşusu.
 
 **Karar:** MVP'den çıkış ≈ **4 hafta** (P0: 9-12 iş günü, P1: 11-14 iş günü) + **4 haftalık davetli pilot**. Aşağıdaki **G1–G6 kapıları** yeşil olmadan genel açılış yok.
 

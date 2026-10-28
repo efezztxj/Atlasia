@@ -41,7 +41,7 @@ export default function StoryComposer({
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Odak tuzağı + Esc + odak dönüşü (P18).
-  const panelRef = usePanelAccess(true, onClose, true) as React.RefObject<HTMLFormElement>;
+  const panelRef = usePanelAccess(true, onClose, true) as React.RefObject<HTMLDivElement>;
 
   const pick = async (file?: File) => {
     if (!file) return;
@@ -86,14 +86,14 @@ export default function StoryComposer({
     <div className="mobile-fullscreen-wrap animate-fade fixed inset-0 z-[70] grid place-items-center bg-black/70 p-4 backdrop-blur-sm">
       <button type="button" tabIndex={-1} aria-label="Pencereyi kapat" className="absolute inset-0 cursor-default" onClick={onClose} />
 
-      <form
+      <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label="Hikâye oluştur"
-        onSubmit={submit}
         className="mobile-fullscreen-bleed mobile-safe-bottom animate-rise thin-scroll relative max-h-[94vh] w-full max-w-[400px] overflow-y-auto rounded-3xl border border-leaf/25 bg-ink-2 shadow-2xl shadow-black/70"
       >
+        <form onSubmit={submit}>
         {/* Önizleme */}
         <div className={cn("relative aspect-[16/11] w-full overflow-hidden", STORY_ACCENTS[accent].bg)}>
           {preview && <img src={preview} alt="" className="absolute inset-0 size-full object-cover" />}
@@ -128,6 +128,7 @@ export default function StoryComposer({
           <p className="text-[11px] font-bold tracking-[0.2em] text-sun uppercase">24 saatlik iz</p>
 
           <textarea
+            aria-label="Hikâye notu"
             autoFocus
             value={text}
             onChange={(e) => setText(e.target.value)}
@@ -207,6 +208,7 @@ export default function StoryComposer({
           </button>
 
           <input
+            aria-label="Takma adın"
             value={author}
             onChange={(e) => setAuthor(e.target.value)}
             maxLength={24}
@@ -236,7 +238,8 @@ export default function StoryComposer({
             </button>
           </div>
         </div>
-      </form>
+        </form>
+      </div>
     </div>
   );
 }

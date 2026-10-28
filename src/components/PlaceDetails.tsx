@@ -27,6 +27,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { blockUser } from "../lib/moderation";
 import { VERIFICATION_LABELS, VERIFICATION_STATUSES, type VerificationStatus } from "../utils/freshness";
 import ReportDialog from "./ReportDialog";
+import { requestConfirm } from "./ConfirmDialog";
 import { advice } from "../utils/placeAdvice";
 import { buildGooglePlaceDirectionsUrl, buildYandexPlaceDirectionsUrl } from "../utils/mapLinks";
 import { friendlyDataError } from "../lib/firestoreValue";
@@ -195,7 +196,13 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDele
             {place.authorUid && place.authorUid !== user?.uid && (
               <button type="button" disabled={blocking} onClick={async () => {
                 if (!user || !place.authorUid) return;
-                if (!confirm(`${place.author} kullanıcısını engellemek istiyor musun?`)) return;
+                const accepted = await requestConfirm({
+                  title: "Kullanıcıyı engelle",
+                  message: `${place.author} kullanıcısını engellemek istiyor musun?`,
+                  confirmLabel: "Engelle",
+                  danger: true,
+                });
+                if (!accepted) return;
                 setBlocking(true);
                 try { await blockUser(place.authorUid, user.uid); setStatus("Kullanıcı engellendi."); } catch (e) { setStatus(friendlyDataError(e, "Kullanıcı engellenemedi.")); } finally { setBlocking(false); }
               }} className="flex min-h-11 items-center gap-2 rounded-full border border-white/10 px-4 text-sm text-mint/70 disabled:opacity-50">

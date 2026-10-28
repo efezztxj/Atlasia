@@ -56,7 +56,7 @@ export default function AddDiscoveryModal({ draft, uploadPhoto, onClose, onSave 
   }, [draft.lat, draft.lng]);
 
   // Odak tuzağı + Esc + kapanınca açan öğeye odak dönüşü (P18).
-  const panelRef = usePanelAccess(true, onClose, true) as React.RefObject<HTMLFormElement>;
+  const panelRef = usePanelAccess(true, onClose, true) as React.RefObject<HTMLDivElement>;
 
   const coords = formatCoords(draft.lat, draft.lng);
   const canSave = title.trim().length >= 2 && !saving && !uploading;
@@ -102,14 +102,14 @@ export default function AddDiscoveryModal({ draft, uploadPhoto, onClose, onSave 
   return (
     <div className="mobile-fullscreen-wrap animate-fade fixed inset-0 z-[55] grid place-items-center bg-black/60 p-4 backdrop-blur-sm md:z-50">
       <button type="button" tabIndex={-1} aria-label="Pencereyi kapat" className="absolute inset-0 cursor-default" onClick={onClose} />
-      <form
+      <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label="Keşif ekle"
-        onSubmit={submit}
         className="mobile-fullscreen animate-rise thin-scroll relative max-h-[92vh] w-full max-w-[480px] overflow-y-auto rounded-3xl border border-leaf/25 bg-ink-2 p-6 shadow-2xl shadow-black/70"
       >
+        <form onSubmit={submit}>
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[12px] font-bold tracking-[0.18em] text-sun uppercase">Yeni iz</p>
@@ -263,7 +263,8 @@ export default function AddDiscoveryModal({ draft, uploadPhoto, onClose, onSave 
             {saving ? "Kaydediliyor…" : "İz bırak"}
           </button>
         </div>
-      </form>
+        </form>
+      </div>
     </div>
   );
 }

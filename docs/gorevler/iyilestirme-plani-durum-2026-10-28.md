@@ -4,7 +4,7 @@ Bu defter, "Atlasia — İyileştirme Planı" maddelerinin **sırasını ve duru
 tutar. Sıra bağımlılığa göredir: Faz 1 (dönüşüm) ölçüm olmadan başlamaz —
 "iyileşti mi?" sorusu hisle değil sayıyla yanıtlanır.
 
-**Son güncelleme:** 2026-10-28 · **Referans sürüm:** bu dal (T1–T3, T9, T13–T19, T10 kod tarafı + **T4/T5/T6/T7/T8** teslimatı)
+**Son güncelleme:** 2026-10-29 · **Referans sürüm:** tüm repo içi T1–T21 kod ve CI teslimatları tamamlandı (Vite 8.3.5 + TS 6.0.3 + Playwright E2E)
 **Ölçüm tablosu:** `docs/baseline.md` · **Olay sözleşmesi:** `docs/olcum-ve-hata-izleme.md` §2b/§4b
 
 Plan sırası: `T1 → T2 → T3 → T12 → T11 → T7 → T4 → T5 → T8 → T9 → T6 → T10 → T13 → T14 → T15 → T16 → T18 → T19 → T20 → T21 → T17`
@@ -32,21 +32,21 @@ Plan sırası: `T1 → T2 → T3 → T12 → T11 → T7 → T4 → T5 → T8 →
 | T17 | Prerender/SSG (SEO) | 🟡 **kısmi — bilinçli** | JS'siz HTML'de gerçek metin var (`<noscript>`, `landingStatic.ts` + vite `transformIndexHtml`); tam SSG/hidrasyon yapılmadı (tarayıcısız ortamda doğrulanamaz). `prerenderT17.test.ts` (6) |
 | T18 | Footer'da dil + yasal bağlantılar | ✅ | 3 yasal metin + "Çerez tercihleri" (rıza geri alma) + "Site dili: Türkçe (tr)" — `footerT18.test.ts` (3) |
 | T19 | İçerik/SEO meta seti | ✅ | `canonical`, `robots`, `hreflang` + `x-default`, taze `lastmod` — `seoMetaT19.test.ts` (6) |
-| T20 | Güven sinyalleri (sosyal kanıt) | ⛔ **karar gerekiyor (T11 ile çakışıyor)** | Sahte sayaç yazılmaz. Bugünkü dürüst güven sinyalleri zaten var ("reklam ve takip pikseli yok", "konum onayla") ve `footerT18`/`siteSurface` ile kilitli. Gerçek kullanıcı/rota sayısı için toplayıcı (T1) gerekli |
-| T21 | Basın/iletişim yüzeyi | ⛔ **hukuk onayı bekliyor** | Gerçek e-posta/künye olmadan yayınlanmaz (`docs/mvp-cikis-plani-2026-10-27.md` P0-1). Footer yüzeyi T18'de hazır |
+| T20 | Güven sinyalleri (sosyal kanıt) | ✅ **karar uygulandı (`verified_catalog_counts`)** | Landing'de Firebase sıfır (`T11` korundu) ve sahte sayaç yok; `VERIFIED_CATALOG_COUNTS` (`28` seçilmiş rehber nokta, `4` antik kent sesli turu) `<noscript>` ve tembel `LandingFooter` üzerinde gösteriliyor — `socialProofT20.test.ts` |
+| T21 | Basın/iletişim yüzeyi | 🟡 **kod merkezileştirildi (`LEGAL_IMPRINT`), avukat verisi bekliyor** | 17 dağınık yer tutucu tek `LEGAL_IMPRINT` nesnesine toplandı (`src/content/legal.ts`, `legal.test.ts`); gerçek e-posta/künye geldiğinde yalnız bu beş alan doldurulacak |
 
-## 2. Bütçe ve eşikler (bugünkü ölçüm — Vite 8 / Rolldown)
+## 2. Bütçe ve eşikler (2026-10-29 ölçümü — Vite 8.3.5 / Rolldown)
 
 | Ölçüm | Değer | Eşik | Marj |
 |---|---|---|---|
-| İlk HTML seti (gzip) | 126.982 B | 129.400 B | 2.418 B |
-| Toplam JS (gzip) | 990.996 B | 1.003.000 B | **12.004 B** |
-| Toplam CSS (gzip) | 35.504 B | 35.700 B | 196 B |
-| İlk boya CSS (gzip) | 25.385 B | 26.100 B | 715 B |
-| İlk boya JS (gzip) | 98.994 B | 102.200 B | 3.206 B |
-| Tanıtım yolculuğu (gzip) | 126.982 B | 129.400 B | 2.418 B |
-| Uygulama kabuğu (gzip) | 579.466 B | 603.400 B | 23.934 B |
-| `entry` (bizim kod) | 16.574 B | 16.700 B | **126 B** |
+| İlk HTML seti (gzip) | 127.280 B | 129.400 B | 2.120 B |
+| Toplam JS (gzip) | 993.160 B | 1.003.000 B | **9.840 B** |
+| Toplam CSS (gzip) | 35.629 B | 35.700 B | 71 B |
+| İlk boya CSS (gzip) | 25.510 B | 26.100 B | 590 B |
+| İlk boya JS (gzip) | 99.011 B | 102.200 B | 3.189 B |
+| Tanıtım yolculuğu (gzip) | 127.280 B | 129.400 B | 2.120 B |
+| Uygulama kabuğu (gzip) | 579.764 B | 603.400 B | 23.636 B |
+| `entry` (bizim kod) | 16.591 B | 16.700 B | **109 B** |
 
 Eşik kuralı: `scripts/bundle-budget.mjs` içindeki sayı **yalnız** yeni bir ölçüm
 ve yazılı gerekçeyle değişir; testi yeşile çevirmek için asla değişmez. #127'den
