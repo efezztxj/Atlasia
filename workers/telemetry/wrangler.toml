@@ -1,0 +1,12 @@
+name = "atlasia-telemetry"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+[[analytics_engine_datasets]]
+binding = "EVENTS"
+dataset = "atlasia_events"
+
+[vars]
+# Set to the exact production Pages origin; include any preview origin only if needed.
+ALLOWED_ORIGINS = "https://atlasia.pages.dev"
