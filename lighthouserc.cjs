@@ -24,8 +24,10 @@ module.exports = {
       ...(process.env.LHCI_URL ? { url: [url] } : { staticDistDir: "./dist", url: ["/"] }),
       numberOfRuns: 2,
       settings: {
-        preset: "mobile",
-        // Tanıtım sayfası tek sayfa; form factor ve önbellek gerçekçi olsun.
+        // DİKKAT: Lighthouse'un `preset` bayrağı yalnız "desktop"/"perf" alır;
+        // "mobile" değeri `npx lhci autorun`ı ilk turda düşürdü (CI kanıtı:
+        // 39e38e5). Mobil profil `formFactor` + `screenEmulation` +
+        // `throttling` ile kurulur; varsayılan zaten mobil.
         formFactor: "mobile",
         screenEmulation: { mobile: true, width: 390, height: 844, deviceScaleFactor: 3, disabled: false },
         throttlingMethod: "simulate",
@@ -35,7 +37,9 @@ module.exports = {
       },
     },
     assert: {
-      preset: "lighthouse:no-pwa",
+      // Hazır preset (`lighthouse:no-pwa`) KULLANILMIYOR: denetlemediğimiz
+      // onlarca denetimi "error" yapıp kapıyı gürültüye çeviriyordu. Aşağıdaki
+      // liste bilinçli: denetimde geçen maddeler + regresyon riski yüksek olanlar.
       assertions: {
         "categories:performance": ["error", { minScore: 0.9 }],
         "categories:accessibility": ["error", { minScore: 0.95 }],

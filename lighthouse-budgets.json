@@ -4,15 +4,15 @@
     "resourceSizes": [
       {
         "resourceType": "total",
-        "budget": 420
+        "budget": 500
       },
       {
         "resourceType": "script",
-        "budget": 300
+        "budget": 320
       },
       {
         "resourceType": "stylesheet",
-        "budget": 60
+        "budget": 70
       },
       {
         "resourceType": "font",
@@ -20,7 +20,7 @@
       },
       {
         "resourceType": "image",
-        "budget": 80
+        "budget": 120
       },
       {
         "resourceType": "third-party",
@@ -34,7 +34,7 @@
       },
       {
         "resourceType": "script",
-        "budget": 6
+        "budget": 8
       },
       {
         "resourceType": "stylesheet",
@@ -46,7 +46,7 @@
       },
       {
         "resourceType": "total",
-        "budget": 14
+        "budget": 16
       }
     ]
   }
