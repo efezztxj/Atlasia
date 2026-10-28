@@ -67,7 +67,7 @@ const DEFAULT_DIST = fileURLToPath(new URL("../dist", import.meta.url));
  * ediyor. Bu bütçe o durumu gizlemez, ölçer; küçültme işi M-03b olarak açık.
  */
 export const BUNDLE_BUDGET = Object.freeze({
-  totalJsGzipBytes: 925_000,
+  totalJsGzipBytes: 986_500,
   totalCssGzipBytes: 35_700,
   initialGzipBytes: 439_000,
   // İlk HTML ile gelen gerçek ilk boya maliyeti (lazy chunk'lar hariç).
@@ -84,8 +84,8 @@ export const BUNDLE_BUDGET = Object.freeze({
     iconsVendor: 10_500,
     firebaseVendor: 164_500,
     firebaseAuth: 40_500,
-    mapVendor: 286_000,
-    mapWorker: 145_500,
+    mapVendor: 302_500,
+    mapWorker: 152_000,
     mapView: 9_500,
   }),
   // Bu parçalar ilk HTML ile preload edilirse lazy sınırı fiilen ortadan kalkar.
