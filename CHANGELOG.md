@@ -4,7 +4,9 @@
 
 - `vite` ^7.3.7 → **^8.3.5**, `@vitejs/plugin-react` 5.1.1 → **6.1.2** (plugin-react 6, Vite 8 istiyordu; ikisi birlikte alındı). TypeScript 7 hâlâ bekliyor: `typescript-eslint` peer aralığı `<6.1.0`.
 - **Ölçüm (Rolldown):** toplam JS 988.185 bayt gzip (bütçe 1.003.000) — derleyici değişimi toplamı düşürdü; ilk boya ve yolculuklar bütçe içinde. Kategori dağılımı kaydığı için entry/iconsVendor/firebaseAuth/ilk-boya-CSS eşikleri ölçüme ~%3 payla yeniden bağlandı (ayrıntı `scripts/bundle-budget.mjs` içinde).
-- Typecheck, lint, test ve build yeşil.
+- **SW düzeltmesi:** Rolldown varlık yollarını şablon dizgisiyle (backtick) yazıyor; `sw.js` keşif regex'i üç tırnak türünü de tanıyacak şekilde genişletildi — yoksa harita işçisi SW kabuğuna giremiyor ve `verify:sw-shell` kapısı düşüyordu (CI'da bu yüzden build adımı kırılıyordu).
+- Ayrıca bütçe ihlalleri CI'da check-run annotation'ı olarak basılıyor.
+- Typecheck, lint, 1284 test ve build (SW kabuğu 62/62) yeşil.
 
 
 ## 2026-10-28 — Tanıtım filmi (`preload="none"` + poster, T6)
