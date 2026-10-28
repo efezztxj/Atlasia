@@ -135,7 +135,15 @@ export const BUNDLE_BUDGET = Object.freeze({
   // Video dosyası (4 MB) **JS paketine girmez**: `preload="none"` + poster,
   // yalnız kullanıcı oynatınca iner; SW kabuğu da `/social/` yolunu kapsamaz.
   // Pay 1.636 B; sıradaki landing işi yine ölçümle başlamalı.
-  totalJsGzipBytes: 1_002_000,
+  //
+  // 2026-10-28 (main birleşmesi) — main, moderasyon "İncelenenler" sekmesiyle
+  // toplam JS'i 998.658 B'ye çıkarmıştı (eşik 999.400, yalnız lazy ReportsPanel).
+  // Birleşme sonrası ölçüm (`npm run build`):
+  //   entry          **18.903**  · ilk boya JS **98.248** · ilk HTML **125.965**
+  //   appShell       **586.160** · toplam JS     **1.001.019**
+  // Toplam JS eşiği 1.003.000 (pay 1.981 B, %0,20). Diğer eşikler değişmedi;
+  // moderasyon payı yalnız toplam JS'e yansıdı (lazy parça).
+  totalJsGzipBytes: 1_003_000,
   totalCssGzipBytes: 35_700,
   initialGzipBytes: 129_400,
   // İlk HTML ile gelen gerçek ilk boya maliyeti (lazy chunk'lar hariç).
