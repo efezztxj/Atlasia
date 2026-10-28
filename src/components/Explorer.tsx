@@ -14,15 +14,15 @@ import Hero from "./Hero";
 import SearchBox from "./SearchBox";
 import MapControls from "./MapControls";
 import BottomPanel from "./BottomPanel";
-import AddDiscoveryModal from "./AddDiscoveryModal";
-import Drawer from "./Drawer";
-import SocialPanel from "./SocialPanel";
 import SettingsPanel, { type SettingsContentProps } from "./SettingsPanel";
-import AtlasAssistant from "./AtlasAssistant";
 import Onboarding from "./Onboarding";
-import StreetPeek from "./StreetPeek";
-import MyPlacesPanel from "./MyPlacesPanel";
 const NearbyAudioGuide = lazy(() => import("./NearbyAudioGuide"));
+const SocialPanel = lazy(() => import("./SocialPanel"));
+const MyPlacesPanel = lazy(() => import("./MyPlacesPanel"));
+const Drawer = lazy(() => import("./Drawer"));
+const AtlasAssistant = lazy(() => import("./AtlasAssistant"));
+const StreetPeek = lazy(() => import("./StreetPeek"));
+const AddDiscoveryModal = lazy(() => import("./AddDiscoveryModal"));
 import RecordsDock from "./RecordsDock";
 import RouteEditor from "./RouteEditor";
 import { useAuth } from "../contexts/AuthContext";
@@ -1315,6 +1315,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
         onOccupiedSpaceChange={handleDiscoverySpaceChange}
       />}
 
+      <Suspense fallback={null}>
       <AtlasAssistant
         open={atlasOpen}
         onOpen={openAtlas}
@@ -1340,7 +1341,9 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
         }}
         onFit={(coords) => mapRef.current?.fitCoords(coords)}
       />
+      </Suspense>
 
+      <Suspense fallback={null}>
       <SocialPanel
         open={feedOpen}
         onOpen={() => { closePanels(); setFeedOpen(true); }}
@@ -1373,6 +1376,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
         socialTarget={socialTarget}
         onSocialTargetHandled={clearSocialTarget}
       />
+      </Suspense>
 
       {recordsOpen && <RecordsDock onClose={() => setRecordsOpen(false)} onPlace={(place) => { closePanels(); focusPlace(place); setStoryPlace(place); }} onRoute={(route) => { closePanels(); setResumeRoute(route); setAtlasOpen(true); }} />}
       {routeEditorRoute && <RouteEditor
@@ -1405,6 +1409,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
         </Suspense>
       )}
       {myPlacesOpen && (
+        <Suspense fallback={null}>
         <MyPlacesPanel
           places={myPlaces}
           onClose={() => setMyPlacesOpen(false)}
@@ -1416,8 +1421,10 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
           }}
           onDelete={handleDelete}
         />
+        </Suspense>
       )}
 
+      <Suspense fallback={null}>
       <Drawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
@@ -1435,6 +1442,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
         isMine={canManagePlace}
         onRecords={openRecords}
       />
+      </Suspense>
 
       {reportsOpen && (
         <Suspense fallback={null}>
@@ -1500,12 +1508,14 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
       )}
 
       {draft && (
+        <Suspense fallback={null}>
         <AddDiscoveryModal
           draft={draft}
           uploadPhoto={cloud.uploadPhoto}
           onClose={() => setDraft(null)}
           onSave={handleSave}
         />
+        </Suspense>
       )}
 
       {settingsOpen && (
@@ -1563,11 +1573,13 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
         </Suspense>
       )}
       {streetPlace && !atlasOpen && (
+        <Suspense fallback={null}>
         <StreetPeek
           place={streetPlace}
           corner={storyPlace ? "left" : "right"}
           onClose={() => setStreetPlace(null)}
         />
+        </Suspense>
       )}
 
       {/* Mobil ana menü (2026-10-25 düzeni):
