@@ -129,6 +129,9 @@ export default function TrackRecorderPanel({ uid, cloudAccount, onClose, onPrevi
         <div className="rounded-2xl border border-white/[0.08] bg-white/[0.04] p-2.5"><span className="block text-[11px] text-mint/70">Tempo</span><strong className="mt-1 block text-[15px] text-white tabular-nums">{paceLabel(recorder.elapsedSeconds, recorder.distanceKm)}</strong></div>
         <div className="rounded-2xl border border-white/[0.08] bg-white/[0.04] p-2.5"><span className="block text-[11px] text-mint/70">Ölçüm</span><strong className="mt-1 block text-[15px] text-white tabular-nums">{recorder.pointCount}</strong></div>
       </div>
+      <p role="status" className="mt-2 text-center text-[11px] text-mint/70">
+        {recorder.wakeLockActive ? "Ekran açık tutuluyor (Wake Lock etkin)" : "Ekran kilidi korunamadı · telefon ekranını açık tut"}
+      </p>
     </div>}
 
     {draft && summary && (

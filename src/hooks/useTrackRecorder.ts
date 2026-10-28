@@ -35,6 +35,22 @@ export interface FinishedTrack {
  */
 const GPS_TIMEOUT_MS = 30_000;
 
+interface WakeLockSentinelLike {
+  readonly released?: boolean;
+  release: () => Promise<void>;
+  addEventListener?: (type: "release", listener: () => void) => void;
+}
+
+interface WakeLockContainer {
+  request: (type: "screen") => Promise<WakeLockSentinelLike>;
+}
+
+function getWakeLockApi(): WakeLockContainer | null {
+  if (typeof navigator === "undefined" || !("wakeLock" in navigator)) return null;
+  const candidate = (navigator as Navigator & { wakeLock?: WakeLockContainer }).wakeLock;
+  return candidate && typeof candidate.request === "function" ? candidate : null;
+}
+
 function makeId() {
   return typeof crypto !== "undefined" && "randomUUID" in crypto
     ? `track-${crypto.randomUUID()}`
@@ -47,14 +63,62 @@ export function useTrackRecorder(uid: string, onPreview?: (coords: [number, numb
   const [distanceKm, setDistanceKm] = useState(0);
   const [pointCount, setPointCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [wakeLockActive, setWakeLockActive] = useState(false);
   const points = useRef<TrackPoint[]>([]);
   const dwell = useRef<DwellState>({ candidate: null, stops: [] });
   const watchId = useRef<number | null>(null);
   const timerId = useRef<number | null>(null);
+  const wakeLockRef = useRef<WakeLockSentinelLike | null>(null);
   const startedAt = useRef(0);
   const previewRef = useRef(onPreview);
   const generation = useRef(0);
   previewRef.current = onPreview;
+
+  const releaseWakeLock = useCallback(() => {
+    const current = wakeLockRef.current;
+    wakeLockRef.current = null;
+    setWakeLockActive(false);
+    if (current && !current.released) {
+      void current.release().catch((err) => {
+        console.warn("[Atlasia] Ekran kilidi bırakılamadı:", err);
+      });
+    }
+  }, []);
+
+  const acquireWakeLock = useCallback((requestId: number) => {
+    const api = getWakeLockApi();
+    if (!api) {
+      setWakeLockActive(false);
+      return;
+    }
+    if (wakeLockRef.current && !wakeLockRef.current.released) {
+      setWakeLockActive(true);
+      return;
+    }
+    void api.request("screen").then(
+      (sentinel) => {
+        if (generation.current !== requestId) {
+          void sentinel.release().catch((err) => {
+            console.warn("[Atlasia] Gecikmiş ekran kilidi bırakılamadı:", err);
+          });
+          return;
+        }
+        wakeLockRef.current = sentinel;
+        setWakeLockActive(true);
+        sentinel.addEventListener?.("release", () => {
+          if (wakeLockRef.current === sentinel) {
+            wakeLockRef.current = null;
+            setWakeLockActive(false);
+          }
+        });
+      },
+      (err) => {
+        // Düşük güç modu veya arka plan sekmesinde tarayıcı reddedebilir; GPS kaydı sürer.
+        console.info("[Atlasia] Wake Lock alınamadı:", err);
+        if (generation.current === requestId) setWakeLockActive(false);
+      },
+    );
+  }, []);
 
   const clearWatch = useCallback(() => {
     if (watchId.current !== null && typeof navigator !== "undefined" && "geolocation" in navigator) {
@@ -65,9 +129,22 @@ export function useTrackRecorder(uid: string, onPreview?: (coords: [number, numb
       window.clearInterval(timerId.current);
       timerId.current = null;
     }
-  }, []);
+    releaseWakeLock();
+  }, [releaseWakeLock]);
 
   useEffect(() => () => { generation.current += 1; clearWatch(); }, [clearWatch]);
+
+  // M-26: Sekme arka plana geçince tarayıcı Wake Lock'u düşürür; görünür olunca yeniden al.
+  useEffect(() => {
+    if (status !== "recording" || typeof document === "undefined") return;
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        acquireWakeLock(generation.current);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [status, acquireWakeLock]);
 
   const start = useCallback(() => {
     if (status === "recording" || status === "finishing") return;
@@ -92,6 +169,7 @@ export function useTrackRecorder(uid: string, onPreview?: (coords: [number, numb
     setPointCount(0);
     setError(null);
     setStatus("recording");
+    acquireWakeLock(requestId);
 
     watchId.current = navigator.geolocation.watchPosition((position) => {
       if (generation.current !== requestId) return;
@@ -128,7 +206,7 @@ export function useTrackRecorder(uid: string, onPreview?: (coords: [number, numb
       setDistanceKm(simplifiedDistanceKm(simplified));
       previewRef.current?.(simplified);
     }, 1000);
-  }, [clearWatch, status]);
+  }, [acquireWakeLock, clearWatch, status]);
 
   /**
    * "Bitir": kaydı kapatır ve **taslak** üretir. Hiçbir yere yazmaz.
@@ -196,5 +274,5 @@ export function useTrackRecorder(uid: string, onPreview?: (coords: [number, numb
     previewRef.current?.([]);
   }, [clearWatch]);
 
-  return { status, elapsedSeconds, distanceKm, pointCount, error, start, finish, save, discard };
+  return { status, elapsedSeconds, distanceKm, pointCount, error, wakeLockActive, start, finish, save, discard };
 }

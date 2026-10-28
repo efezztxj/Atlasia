@@ -406,4 +406,90 @@ describe("useTrackRecorder", () => {
     expect(clearWatch).toHaveBeenCalledWith(55);
     expect(onPreview).not.toHaveBeenCalled();
   });
+
+  it("M-26: kayıt başladığında Screen Wake Lock alır, sekme görünür olunca yeniler, bitiş/vazgeçişte serbest bırakır", async () => {
+    let releaseHandler: (() => void) | undefined;
+    let released = false;
+    const release = vi.fn(async () => {
+      released = true;
+      releaseHandler?.();
+    });
+    const request = vi.fn(async () => {
+      released = false;
+      return {
+        get released() {
+          return released;
+        },
+        release,
+        addEventListener: (_type: "release", cb: () => void) => {
+          releaseHandler = cb;
+        },
+      };
+    });
+    Object.defineProperty(window.navigator, "wakeLock", {
+      configurable: true,
+      value: { request },
+    });
+
+    try {
+      const { result } = renderHook(() => useTrackRecorder("u1"));
+      await act(async () => {
+        result.current.start();
+      });
+
+      expect(request).toHaveBeenCalledTimes(1);
+      expect(request).toHaveBeenCalledWith("screen");
+      expect(result.current.wakeLockActive).toBe(true);
+
+      // Tarayıcı arka planda Wake Lock'u düşürürse sekme görünür olunca yeniden alınır
+      act(() => {
+        released = true;
+        releaseHandler?.();
+      });
+      expect(result.current.wakeLockActive).toBe(false);
+
+      Object.defineProperty(document, "visibilityState", {
+        configurable: true,
+        value: "visible",
+      });
+      await act(async () => {
+        document.dispatchEvent(new Event("visibilitychange"));
+      });
+      expect(request).toHaveBeenCalledTimes(2);
+      expect(result.current.wakeLockActive).toBe(true);
+
+      await act(async () => {
+        result.current.discard();
+      });
+      expect(release).toHaveBeenCalledTimes(1);
+      expect(result.current.wakeLockActive).toBe(false);
+    } finally {
+      Reflect.deleteProperty(window.navigator, "wakeLock");
+    }
+  });
+
+  it("M-26: Wake Lock reddedilse bile GPS kaydı kesintisiz devam eder", async () => {
+    const infoSpy = vi.spyOn(console, "info").mockImplementation(() => undefined);
+    const request = vi.fn(async () => {
+      throw new Error("NotAllowedError: Low Power Mode");
+    });
+    Object.defineProperty(window.navigator, "wakeLock", {
+      configurable: true,
+      value: { request },
+    });
+
+    try {
+      const { result } = renderHook(() => useTrackRecorder("u1"));
+      await act(async () => {
+        result.current.start();
+      });
+
+      expect(result.current.status).toBe("recording");
+      expect(result.current.wakeLockActive).toBe(false);
+      expect(watchPosition).toHaveBeenCalledTimes(1);
+    } finally {
+      infoSpy.mockRestore();
+      Reflect.deleteProperty(window.navigator, "wakeLock");
+    }
+  });
 });

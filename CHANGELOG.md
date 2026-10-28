@@ -8,6 +8,13 @@
 - Ayrıca bütçe ihlalleri CI'da check-run annotation'ı olarak basılıyor.
 - Typecheck, lint, 1284 test ve build (SW kabuğu 62/62) yeşil.
 
+## 2026-10-28 — Dayanıklılık paketi: canlı veri yeniden deneme (M-18), yükleme iskeletleri (M-19), yürüyüş Wake Lock (M-26), rıza parçası kurtarma ve profil testleri (M-35)
+
+- **Kalıcı canlı veri hata şeridi + `Yeniden dene` (M-18 · P0):** `useFirestoreAtlasData` artık `retry()` eylemi sunarak başarısız abonelikleri (`ownerPlaces`, `viewportPlaces`, `posts`, `stories`) kapatıp yeniden kuruyor. `Explorer` geçici toast yerine kapatılabilir kalıcı `role="alert"` şeridi + **Yeniden dene** düğmesi gösteriyor; `SocialPanel` içinde de akış hatası kartından yeniden deneme yapılabiliyor.
+- **Yükleme iskeletleri (M-19 · P1):** `SocialPanel` (story halkaları + gönderi kartları), `SearchBox` (uzak dünya araması) ve `PlaceDetails` (galeri yüklemesi, `NearbyHistory` ve tembel panel açılışı) tema duyarlı `.skeleton` bileşenleriyle sahte "boş ekran" algısını ortadan kaldırıyor.
+- **Yürüyüş kaydında Screen Wake Lock (M-26 · P1):** `useTrackRecorder` kayıt başladığında `navigator.wakeLock.request("screen")` alıyor, sekme arka plandan görünür duruma döndüğünde (`visibilitychange`) kilidi yeniliyor, bitiş/vazgeçiş/unmount anında serbest bırakıyor ve düşük güç modunda reddedilse bile GPS kaydını kesintisiz sürdürüyor. `TrackRecorderPanel` kilit durumunu kullanıcıya açıkça bildiriyor.
+- **Tembel rıza parçası kurtarma (T7/T18 açık nokta):** `CookieConsentBoundary` tembel `CookieConsent` parçasının kesintili ağda indirilememesi hâlinde hatanın `AppErrorBoundary`'ye tırmanıp uygulamayı düşürmesini engelliyor; **Tekrar dene** veya footer **Çerez tercihleri** tetiklemesinde taze `lazy()` fabrikasıyla parçayı yeniden yüklüyor.
+- **Test ve doküman kilidi (M-35 · P1):** `ProfilePanel.test.ts` (çift onaylı hesap silme, KVKK veri indirme, çıkış onayı), `CookieConsentBoundary.test.ts`, `LoadingAndRetrySurface.test.ts`, `useFirestoreAtlasData.test.ts` ve `useTrackRecorder.test.ts` eklendi/genişletildi; `docs/moderasyon-akisi.md` PR #140 `İncelenenler` mimarisiyle güncellendi. Mevcut tüm bundle bütçesi eşikleri aşılmadan korundu (`1.002.430 / 1.003.000 B` JS gzip, `25.068 / 25.200 B` ilk boya CSS gzip).
 
 ## 2026-10-28 — Tanıtım filmi (`preload="none"` + poster, T6)
 

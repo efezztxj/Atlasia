@@ -39,12 +39,12 @@ Plan sırası: `T1 → T2 → T3 → T12 → T11 → T7 → T4 → T5 → T8 →
 
 | Ölçüm | Değer | Eşik | Marj |
 |---|---|---|---|
-| İlk HTML seti (gzip) | 125.965 B | 129.400 B | 3.409 B |
-| Toplam JS (gzip) | 1.001.019 B | 1.003.000 B | **1.636 B** |
-| Toplam CSS (gzip) | 34.988 B | 35.700 B | 712 B |
-| Tanıtım yolculuğu (gzip) | 125.965 B | 129.400 B | 3.409 B |
-| Uygulama kabuğu (gzip) | 586.160 B | 603.400 B | 17.214 B |
-| `entry` (bizim kod) | 18.903 B | 20.900 B | **2.012 B** |
+| İlk HTML seti (gzip) | 126.334 B | 129.400 B | 3.066 B |
+| Toplam JS (gzip) | 1.002.430 B | 1.003.000 B | **570 B** |
+| Toplam CSS (gzip) | 35.247 B | 35.700 B | 453 B |
+| Tanıtım yolculuğu (gzip) | 126.334 B | 129.400 B | 3.066 B |
+| Uygulama kabuğu (gzip) | 586.528 B | 603.400 B | 16.872 B |
+| `entry` (bizim kod) | 19.251 B | 20.900 B | **1.649 B** |
 
 Eşik kuralı: `scripts/bundle-budget.mjs` içindeki sayı **yalnız** yeni bir ölçüm
 ve yazılı gerekçeyle değişir; testi yeşile çevirmek için asla değişmez. #127'den
@@ -72,8 +72,9 @@ kod eklemeden önce yine `npm run build` ile ölçüm alın.
    operatörün `wrangler deploy` çalıştırıp `VITE_TELEMETRY_ENDPOINT` yazması.
 3. ~~T6 video barındırma~~ **kapandı:** repodaki klip kullanıldı (`#film`), harici servis yok. Açık kalan: poster gerçek video karesi değil (ffmpeg tek komut) ve 720p türevi isteğe bağlı.
 4. ~~`entry` payı~~ **kapandı (2026-10-28):** iki yol da uygulandı — SSS/footer
-   ve `CookieConsent` tembel parçada; pay 2.556 B. Açık kalan tek nokta: tembel
-   parça indirilemezse rıza paneline erişim (yeniden deneme) ayrı iş.
+   ve `CookieConsent` tembel parçada; `CookieConsentBoundary` ile tembel rıza
+   parçası indirilemezse uygulama düşmez ve "Tekrar dene" / footer "Çerez
+   tercihleri" tetiklemesi taze `lazy()` fabrikasıyla parçayı yeniden yükler.
 5. **T20 güven sinyalleri:** gerçek kullanıcı/rota sayısı olmadan sosyal kanıt
    yazılmayacak; sayı üretilmesi gerekiyorsa kaynağı da yazılmalı.
 6. **T21 basın/iletişim:** gerçek e-posta ve künye hukuk onayı bekliyor
