@@ -6,16 +6,9 @@ import Hero from "./components/Hero";
 import SearchBox from "./components/SearchBox";
 import MapControls from "./components/MapControls";
 import BottomPanel from "./components/BottomPanel";
-import AddDiscoveryModal from "./components/AddDiscoveryModal";
-import Drawer from "./components/Drawer";
-import SocialPanel from "./components/SocialPanel";
 import SettingsPanel, { type SettingsContentProps } from "./components/SettingsPanel";
-import AtlasAssistant from "./components/AtlasAssistant";
 import Onboarding from "./components/Onboarding";
-import StreetPeek from "./components/StreetPeek";
 import AccountAccess, { EmailVerification, ProfileSetup } from "./components/AccountAccess";
-import MyPlacesPanel from "./components/MyPlacesPanel";
-const NearbyAudioGuide = lazy(() => import("./components/NearbyAudioGuide"));
 import LandingPage from "./components/LandingPage";
 import RecordsDock from "./components/RecordsDock";
 import RouteEditor from "./components/RouteEditor";
@@ -83,6 +76,17 @@ import { takePendingInvite, type SocialTarget } from "./utils/inviteLink";
 import { useMobileBackClose } from "./hooks/useMobileBackClose";
 // friendships zaten ilk pakette (moderation.ts); dinamik import bölmez.
 import { ensureFriendIndex } from "./lib/friendships";
+
+
+// İsteğe bağlı paneller ilk boyada indirilmez: kullanıcı açtığında kendi
+// parçası yüklenir. Gerekçe ve ölçüm: scripts/bundle-budget.mjs (M-03b).
+const NearbyAudioGuide = lazy(() => import("./components/NearbyAudioGuide"));
+const SocialPanel = lazy(() => import("./components/SocialPanel"));
+const MyPlacesPanel = lazy(() => import("./components/MyPlacesPanel"));
+const Drawer = lazy(() => import("./components/Drawer"));
+const AtlasAssistant = lazy(() => import("./components/AtlasAssistant"));
+const StreetPeek = lazy(() => import("./components/StreetPeek"));
+const AddDiscoveryModal = lazy(() => import("./components/AddDiscoveryModal"));
 
 const MapView = lazy(() => import("./components/MapView"));
 // Profil paneli yalnız açılınca yüklenir (ilk paket bütçesi).
@@ -1275,64 +1279,68 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         onOccupiedSpaceChange={handleDiscoverySpaceChange}
       />}
 
-      <AtlasAssistant
-        open={atlasOpen}
-        onOpen={openAtlas}
-        onClose={() => setAtlasOpen(false)}
-        places={allPlaces}
-        view={view}
-        selectedPlace={activePlace}
-        hasLocation={!!precise}
-        resumeRoute={resumeRoute}
-        dockExpanded={false}
-        hiddenOnMobile={panelOpen}
-        onOpenRouteEditor={(route) => setRouteEditorRoute(route)}
-        origin={{
-          lat: precise?.lat ?? view.lat,
-          lng: precise?.lng ?? view.lng,
-          label: precise?.label ?? locationLabel,
-        }}
-        onPreview={(coords, route) => (route ? drawAtlasRoute(route, true) : mapRef.current?.drawRoute(coords, true))}
-        onDraw={(coords, route) => (route ? drawAtlasRoute(route, false) : mapRef.current?.drawRoute(coords, false))}
-        onPulse={(lng, lat) => {
-          setSpin(false);
-          mapRef.current?.pulseAt(lng, lat);
-        }}
-        onFit={(coords) => mapRef.current?.fitCoords(coords)}
-      />
+      <Suspense fallback={null}>
+        <AtlasAssistant
+          open={atlasOpen}
+          onOpen={openAtlas}
+          onClose={() => setAtlasOpen(false)}
+          places={allPlaces}
+          view={view}
+          selectedPlace={activePlace}
+          hasLocation={!!precise}
+          resumeRoute={resumeRoute}
+          dockExpanded={false}
+          hiddenOnMobile={panelOpen}
+          onOpenRouteEditor={(route) => setRouteEditorRoute(route)}
+          origin={{
+            lat: precise?.lat ?? view.lat,
+            lng: precise?.lng ?? view.lng,
+            label: precise?.label ?? locationLabel,
+          }}
+          onPreview={(coords, route) => (route ? drawAtlasRoute(route, true) : mapRef.current?.drawRoute(coords, true))}
+          onDraw={(coords, route) => (route ? drawAtlasRoute(route, false) : mapRef.current?.drawRoute(coords, false))}
+          onPulse={(lng, lat) => {
+            setSpin(false);
+            mapRef.current?.pulseAt(lng, lat);
+          }}
+          onFit={(coords) => mapRef.current?.fitCoords(coords)}
+        />
+      </Suspense>
 
-      <SocialPanel
-        open={feedOpen}
-        onOpen={() => { closePanels(); setFeedOpen(true); }}
-        onClose={() => setFeedOpen(false)}
-        view={view}
-        locationLabel={locationLabel}
-        onGoTo={handleFeedGoTo}
-        precise={precise}
-        onRequestPrecise={handleLocate}
-        posts={filteredPosts}
-        stories={filteredStories}
-        hasMorePosts={cloud.hasMorePosts}
-        hasMoreStories={cloud.hasMoreStories}
-        loadingMorePosts={cloud.loadingMorePosts}
-        loadingMoreStories={cloud.loadingMoreStories}
-        onLoadMorePosts={cloud.loadMorePosts}
-        onLoadMoreStories={cloud.loadMoreStories}
-        clientId={cloud.clientId}
-        currentUid={user!.uid}
-        uploadPhoto={cloud.uploadPhoto}
-        onAddPost={cloud.addPost}
-        onRemovePost={cloud.removePost}
-        onAddReply={cloud.addReply}
-        onLoadReplies={cloud.loadPostReplies}
-        onToggleLike={cloud.toggleLike}
-        onAddStory={cloud.addStory}
-        onRemoveStory={cloud.removeStory}
-        blockedSet={blockedSet}
-        isBlocked={isBlocked}
-        socialTarget={socialTarget}
-        onSocialTargetHandled={clearSocialTarget}
-      />
+      <Suspense fallback={null}>
+        <SocialPanel
+          open={feedOpen}
+          onOpen={() => { closePanels(); setFeedOpen(true); }}
+          onClose={() => setFeedOpen(false)}
+          view={view}
+          locationLabel={locationLabel}
+          onGoTo={handleFeedGoTo}
+          precise={precise}
+          onRequestPrecise={handleLocate}
+          posts={filteredPosts}
+          stories={filteredStories}
+          hasMorePosts={cloud.hasMorePosts}
+          hasMoreStories={cloud.hasMoreStories}
+          loadingMorePosts={cloud.loadingMorePosts}
+          loadingMoreStories={cloud.loadingMoreStories}
+          onLoadMorePosts={cloud.loadMorePosts}
+          onLoadMoreStories={cloud.loadMoreStories}
+          clientId={cloud.clientId}
+          currentUid={user!.uid}
+          uploadPhoto={cloud.uploadPhoto}
+          onAddPost={cloud.addPost}
+          onRemovePost={cloud.removePost}
+          onAddReply={cloud.addReply}
+          onLoadReplies={cloud.loadPostReplies}
+          onToggleLike={cloud.toggleLike}
+          onAddStory={cloud.addStory}
+          onRemoveStory={cloud.removeStory}
+          blockedSet={blockedSet}
+          isBlocked={isBlocked}
+          socialTarget={socialTarget}
+          onSocialTargetHandled={clearSocialTarget}
+        />
+      </Suspense>
 
       {recordsOpen && <RecordsDock onClose={() => setRecordsOpen(false)} onPlace={(place) => { closePanels(); focusPlace(place); setStoryPlace(place); }} onRoute={(route) => { closePanels(); setResumeRoute(route); setAtlasOpen(true); }} />}
       {routeEditorRoute && <RouteEditor
@@ -1365,36 +1373,40 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         </Suspense>
       )}
       {myPlacesOpen && (
-        <MyPlacesPanel
-          places={myPlaces}
-          onClose={() => setMyPlacesOpen(false)}
-          onPlace={(place) => {
-            closePanels();
-            setPanelOpen(true);
-            focusPlace(place);
-            setStoryPlace(place);
-          }}
-          onDelete={handleDelete}
-        />
+        <Suspense fallback={null}>
+          <MyPlacesPanel
+            places={myPlaces}
+            onClose={() => setMyPlacesOpen(false)}
+            onPlace={(place) => {
+              closePanels();
+              setPanelOpen(true);
+              focusPlace(place);
+              setStoryPlace(place);
+            }}
+            onDelete={handleDelete}
+          />
+        </Suspense>
       )}
 
-      <Drawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        onAdd={startAdd}
-        showLabels={labels}
-        terrainEnabled={terrain}
-        onToggleLabels={() => setLabels((value) => !value)}
-        onToggleTerrain={() => setTerrain((value) => !value)}
-        onOpenLocation={() => { closePanels(); openSettings(); }}
-        locationReady={!!geo.fix}
-        places={visiblePlaces}
-        category={category}
-        onCategory={handleCategory}
-        onPick={handleDrawerPick}
-        isMine={canManagePlace}
-        onRecords={openRecords}
-      />
+      <Suspense fallback={null}>
+        <Drawer
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          onAdd={startAdd}
+          showLabels={labels}
+          terrainEnabled={terrain}
+          onToggleLabels={() => setLabels((value) => !value)}
+          onToggleTerrain={() => setTerrain((value) => !value)}
+          onOpenLocation={() => { closePanels(); openSettings(); }}
+          locationReady={!!geo.fix}
+          places={visiblePlaces}
+          category={category}
+          onCategory={handleCategory}
+          onPick={handleDrawerPick}
+          isMine={canManagePlace}
+          onRecords={openRecords}
+        />
+      </Suspense>
 
       {reportsOpen && (
         <Suspense fallback={null}>
@@ -1430,12 +1442,14 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
       )}
 
       {draft && (
-        <AddDiscoveryModal
-          draft={draft}
-          uploadPhoto={cloud.uploadPhoto}
-          onClose={() => setDraft(null)}
-          onSave={handleSave}
-        />
+        <Suspense fallback={null}>
+          <AddDiscoveryModal
+            draft={draft}
+            uploadPhoto={cloud.uploadPhoto}
+            onClose={() => setDraft(null)}
+            onSave={handleSave}
+          />
+        </Suspense>
       )}
 
       {settingsOpen && (
@@ -1493,11 +1507,13 @@ function Explorer({ installApp }: { installApp: InstallAppController }) {
         </Suspense>
       )}
       {streetPlace && !atlasOpen && (
-        <StreetPeek
-          place={streetPlace}
-          corner={storyPlace ? "left" : "right"}
-          onClose={() => setStreetPlace(null)}
-        />
+        <Suspense fallback={null}>
+          <StreetPeek
+            place={streetPlace}
+            corner={storyPlace ? "left" : "right"}
+            onClose={() => setStreetPlace(null)}
+          />
+        </Suspense>
       )}
 
       {/* Mobil ana menü (2026-10-25 düzeni):

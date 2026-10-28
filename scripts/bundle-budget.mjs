@@ -64,22 +64,35 @@ const DEFAULT_DIST = fileURLToPath(new URL("../dist", import.meta.url));
  * Ölçülen değerlerin üstünde ~%2 payla iki eşik eklendi (425.000 / 830.000).
  * NOT (dürüst kayıt): hedef "tanıtım ≤ 250.000" DEĞİL. `firebase-vendor`
  * (149.338 B) hâlâ ilk boyada, çünkü App.tsx veri katmanını statik import
- * ediyor. Bu bütçe o durumu gizlemez, ölçer; küçültme işi M-03b olarak açık.
+ * ediyor. Bu bütçe o durumu gizlemez, ölçer. (M-03b'nin ilk yarısı aşağıda.)
+ *
+ * 2026-10-27 (M-03b, ilk tur) — isteğe bağlı paneller lazy yapıldı
+ * (SocialPanel, Drawer, AtlasAssistant, MyPlacesPanel, StreetPeek,
+ * AddDiscoveryModal). Sonuç: entry 167.470 -> 104.127 gzip, ilk boya
+ * 387.529 -> 324.186, tanıtım yolculuğu 413.463 -> 350.121 (-63 KB, -%15).
+ * Bedeli: parça bölünmesi ~5,2 KB ek yük getirdi (toplam JS 903.559 ->
+ * 908.737). Bu yüzden `totalJsGzipBytes` 908.000 -> 912.000 (ölçüme %0,36
+ * pay) — ilk boyada 63 KB kazanırken toplamda 5 KB artışın telafisi.
+ * Aynı turda eşikler SIKILAŞTIRILDI (regresyon kilidi):
+ *   entry            174.000 -> 110.000  (ölçüm 104.127)
+ *   initialJs         398.000 -> 340.000 (ölçüm 324.186)
+ *   journey landing   425.000 -> 365.000 (ölçüm 350.121)
+ *   journey appShell  830.000 -> 770.000 (ölçüm 749.847)
  */
 export const BUNDLE_BUDGET = Object.freeze({
-  totalJsGzipBytes: 908_000,
+  totalJsGzipBytes: 912_000,
   totalCssGzipBytes: 35_700,
   initialGzipBytes: 439_000,
   // İlk HTML ile gelen gerçek ilk boya maliyeti (lazy chunk'lar hariç).
   initialCssGzipBytes: 25_900,
-  initialJsGzipBytes: 398_000,
+  initialJsGzipBytes: 340_000,
   // Yolculuk bazlı üst sınırlar (bkz. başlıktaki M-03 notu).
   journeyGzipBytes: Object.freeze({
-    landing: 425_000,
-    appShell: 830_000,
+    landing: 365_000,
+    appShell: 770_000,
   }),
   categoryGzipBytes: Object.freeze({
-    entry: 174_000,
+    entry: 110_000,
     reactVendor: 66_500,
     iconsVendor: 10_500,
     firebaseVendor: 164_500,
