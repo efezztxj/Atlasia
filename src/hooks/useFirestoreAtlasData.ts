@@ -15,14 +15,17 @@ import {
   addReply as addReplyFs,
   addStory as addStoryFs,
   isCloudReady,
+  isStoryExpired,
   listPostsPage,
   listPostReplies as listPostRepliesFs,
   listStoriesPage,
   mergeRecordsById,
   preserveDisplacedPageItems,
+  purgeExpiredStories,
   removePlace as removePlaceFs,
   removePost as removePostFs,
   removeStory as removeStoryFs,
+  STORY_TTL_MS,
   subscribeOwnedPlaces,
   subscribePlaceOverview,
   subscribePlacesInViewport,
@@ -40,10 +43,14 @@ import {
 import { analytics } from "../lib/analytics";
 import type { FeedPost, FeedReply, Place, Story, UploadPhotoKind } from "../types";
 
+const STORY_PURGE_INTERVAL_MS = 15 * 60 * 1000;
+const STORY_PURGE_VISIBILITY_THROTTLE_MS = 5 * 60 * 1000;
+
 export interface UseFirestoreAtlasDataArgs {
   uid: string;
   enabled?: boolean;
   viewport?: PlaceViewport | null;
+  moderator?: boolean;
 }
 
 type Source = "ownerPlaces" | "viewportPlaces" | "posts" | "stories";
@@ -71,6 +78,7 @@ export function useFirestoreAtlasData({
   uid,
   enabled = true,
   viewport = null,
+  moderator = false,
 }: UseFirestoreAtlasDataArgs) {
   const [loaded, setLoaded] = useState<SourceState<boolean>>(initialLoaded);
   const [errors, setErrors] = useState<SourceState<Error | null>>(initialErrors);
@@ -96,9 +104,28 @@ export function useFirestoreAtlasData({
   const hasMoreStoriesRef = useRef(false);
   const loadingMorePostsRef = useRef(false);
   const loadingMoreStoriesRef = useRef(false);
+  const moderatorRef = useRef(moderator);
+  moderatorRef.current = moderator;
+  const purgedStoryIdsRef = useRef<Set<string>>(new Set());
   // Oturum muhafızı: uid/enabled değişimi veya unmount, bekleyen beğeni yazısının
   // yerel state/ref'e dönüşünü engeller. Firestore yazısı yine commit olur.
   const sessionRef = useRef(0);
+
+  const deleteDeletableExpiredStories = useCallback(
+    (candidates: Story[]) => {
+      if (!isCloudReady || !uid) return;
+      for (const story of candidates) {
+        if (purgedStoryIdsRef.current.has(story.id)) continue;
+        if (story.authorUid !== uid && !moderatorRef.current) continue;
+        purgedStoryIdsRef.current.add(story.id);
+        void removeStoryFs(story.id).catch((err) => {
+          purgedStoryIdsRef.current.delete(story.id);
+          console.warn("[Atlasia] Süresi dolan story silinemedi:", err);
+        });
+      }
+    },
+    [uid],
+  );
 
   const markLoaded = useCallback((source: Source) => {
     setLoaded((current) => ({ ...current, [source]: true }));
@@ -127,6 +154,7 @@ export function useFirestoreAtlasData({
     storyCursorRef.current = null;
     hasMorePostsRef.current = false;
     hasMoreStoriesRef.current = false;
+    purgedStoryIdsRef.current.clear();
     setHasMorePosts(false);
     setHasMoreStories(false);
     return () => {
@@ -228,13 +256,54 @@ export function useFirestoreAtlasData({
 
   useEffect(() => {
     if (!enabled || !isCloudReady || !uid) return;
+    let lastSweepMs = 0;
+    const runSweep = () => {
+      lastSweepMs = Date.now();
+      void purgeExpiredStories({ uid, moderator }).catch((err) => {
+        console.warn("[Atlasia] Süresi dolan story temizliği başarısız:", err);
+      });
+    };
+    runSweep();
+    const timer = globalThis.setInterval(runSweep, STORY_PURGE_INTERVAL_MS);
+    const handleVisibility = () => {
+      if (
+        typeof document !== "undefined" &&
+        document.visibilityState === "visible" &&
+        Date.now() - lastSweepMs >= STORY_PURGE_VISIBILITY_THROTTLE_MS
+      ) {
+        runSweep();
+      }
+    };
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", handleVisibility);
+    }
+    return () => {
+      globalThis.clearInterval(timer);
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", handleVisibility);
+      }
+    };
+  }, [uid, enabled, moderator]);
+
+  useEffect(() => {
+    if (!enabled || !isCloudReady || !uid) return;
     return subscribeStories(
       (page) => {
+        const now = Date.now();
+        const expiredInState = [...storyHeadRef.current, ...storyTailRef.current].filter((story) =>
+          isStoryExpired(story.createdAt, now),
+        );
+        if (expiredInState.length > 0) {
+          deleteDeletableExpiredStories(expiredInState);
+        }
+
+        const livePrevHead = activeStories(storyHeadRef.current, now);
         if (storyTailRef.current.length > 0) {
+          const livePrevTail = activeStories(storyTailRef.current, now);
           const nextTail = preserveDisplacedPageItems(
-            storyHeadRef.current,
+            livePrevHead,
             page.items,
-            storyTailRef.current,
+            livePrevTail,
           );
           storyTailRef.current = nextTail;
           setStoryTail(nextTail);
@@ -250,8 +319,9 @@ export function useFirestoreAtlasData({
         markLoaded("stories");
       },
       (error) => markError("stories", error),
+      deleteDeletableExpiredStories,
     );
-  }, [uid, enabled, markError, markLoaded]);
+  }, [uid, enabled, deleteDeletableExpiredStories, markError, markLoaded]);
 
   const loadMorePosts = useCallback(async () => {
     const cursor = postCursorRef.current;
@@ -282,7 +352,8 @@ export function useFirestoreAtlasData({
     loadingMoreStoriesRef.current = true;
     setLoadingMoreStories(true);
     try {
-      const page = await listStoriesPage(cursor, storyCutoffRef.current);
+      const effectiveCutoff = Math.max(storyCutoffRef.current, Date.now() - STORY_TTL_MS);
+      const page = await listStoriesPage(cursor, effectiveCutoff);
       setStoryTail((current) => {
         const next = mergeRecordsById(current, page.items);
         storyTailRef.current = next;

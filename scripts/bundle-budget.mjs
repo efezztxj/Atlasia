@@ -65,28 +65,55 @@ const DEFAULT_DIST = fileURLToPath(new URL("../dist", import.meta.url));
  * NOT (dürüst kayıt): hedef "tanıtım ≤ 250.000" DEĞİL. `firebase-vendor`
  * (149.338 B) hâlâ ilk boyada, çünkü App.tsx veri katmanını statik import
  * ediyor. Bu bütçe o durumu gizlemez, ölçer; küçültme işi M-03b olarak açık.
+ *
+ * 2026-10-28 — kabuk bölünmesi (App.tsx = kapı, components/Explorer.tsx = lazy
+ * harita+paneller+Firestore) tamamlandı. Firebase artık landing'de DEĞİL.
+ * Ölçüm: tanıtım 116.702, ilk boya JS 90.444, CSS 24.504, entry 19.722,
+ * appShell 516.564. Eşikler ölçüme ~%3 payla yeniden bağlandı.
+ *
+ * EŞİK BAYATLAMASI ARTIK KAPI: eski hâlde tanıtım 116 KB iken eşik 425 KB'de
+ * duruyordu; yani "koruma" %72 boşlukla hiçbir şeyi yakalamıyordu. Bu yüzden
+ * `staleness` denetimi eklendi: sahibi olduğumuz kapılar (entry, initial*,
+ * journey*) ölçümün %20'sinden fazla üstündeyse build kırılır. Böylece büyük
+ * bir kazançtan sonra eşiği sıkılaştırmak zorunlu hale gelir; sessizce
+ * gevşeyemez. Satıcı (vendor) kategorileri kapsam dışıdır: sürüm
+ * yükseltmelerinde doğal dalgalanırlar.
+ *
+ * 2026-10-28 (bağımlılık yükseltmeleri) — `main` ile birleşince maplibre
+ * 6.4.1 -> 6.15.0 ve react 19.3.1 geldi. Ölçüm ve bayat-kalan eşikler:
+ *   mapVendor  248.691 -> 300.903  (+52.212)   maplibre
+ *   mapWorker  131.810 -> 150.448  (+18.638)   maplibre
+ *   reactVendor 60.325 ->  69.004  ( +8.679)   react 19.3.1
+ *   entry       19.722 ->  19.721  (     -1)   bizim kod: DEĞİŞMEDİ
+ *   tanıtım    116.702 -> 125.517  (+8.815)    yalnız react-vendor büyümesi
+ *   appShell   516.564 -> 585.711  (+69.147)   tamamı harita (lazy, giriş sonrası)
+ * Yani tanıtım sayfası kendi kodumuz yüzünden büyümedi; giriş sonrası harita
+ * maliyeti arttı ve o zaten lazy. Eşikler yeni ölçüme ~%3 payla bağlandı:
+ *   initial 129.400 · initialJs 102.200 · landing 129.400 · appShell 603.400
+ * Vendor eşikleri (react/mapVendor/mapWorker) `main` tarafından yükseltilmişti,
+ * aynen korundu — sürüm yükseltmesinde doğal.
  */
 export const BUNDLE_BUDGET = Object.freeze({
-  totalJsGzipBytes: 916_500,
+  totalJsGzipBytes: 997_500,
   totalCssGzipBytes: 35_700,
-  initialGzipBytes: 439_000,
+  initialGzipBytes: 129_400,
   // İlk HTML ile gelen gerçek ilk boya maliyeti (lazy chunk'lar hariç).
-  initialCssGzipBytes: 25_900,
-  initialJsGzipBytes: 398_000,
+  initialCssGzipBytes: 25_200,
+  initialJsGzipBytes: 102_200,
   // Yolculuk bazlı üst sınırlar (bkz. başlıktaki M-03 notu).
   journeyGzipBytes: Object.freeze({
-    landing: 425_000,
-    appShell: 830_000,
+    landing: 129_400,
+    appShell: 603_400,
   }),
   categoryGzipBytes: Object.freeze({
-    entry: 174_000,
-    reactVendor: 66_500,
+    entry: 20_900,
+    reactVendor: 69_500,
     iconsVendor: 10_500,
     firebaseVendor: 164_500,
     firebaseAuth: 40_500,
-    mapVendor: 286_000,
-    mapWorker: 145_500,
-    mapView: 9_500,
+    mapVendor: 302_500,
+    mapWorker: 152_000,
+    mapView: 9_100,
   }),
   // Bu parçalar ilk HTML ile preload edilirse lazy sınırı fiilen ortadan kalkar.
   deferredAssetPrefixes: Object.freeze([
@@ -99,6 +126,18 @@ export const BUNDLE_BUDGET = Object.freeze({
     "assets/maplibre-gl-worker-",
   ]),
   requiredCategories: Object.freeze(["entry", "reactVendor", "firebaseVendor", "mapVendor"]),
+  /**
+   * Eşik bayatlaması denetimi. `maxSlackRatio`: eşik, ölçümün bu orandan fazla
+   * üstündeyse kapı iş görmüyor demektir → build kırılır, eşik sıkılaştırılır.
+   * `gates`: yalnız bizim kodumuzu izleyen kapılar (vendor hariç).
+   */
+  staleness: Object.freeze({
+    maxSlackRatio: 0.2,
+    // Küçük parçalarda birkaç yüz baytlık boşluk anlamsızdır; bayatlama yalnız
+    // hem oransal hem mutlak olarak büyük boşlukta bildirilir.
+    minSlackBytes: 4_096,
+    gates: Object.freeze(["entry", "initial", "initialCss", "initialJs", "landing", "appShell"]),
+  }),
 });
 
 function toPosix(filePath) {
@@ -230,6 +269,26 @@ export function summarizeBundle({ html, assets, initialAssetPaths }) {
   };
 }
 
+/** Bayatlama denetiminin okuduğu kapı → {ölçüm, eşik} çiftleri. */
+function gateValues(summary, budget, gate) {
+  switch (gate) {
+    case "entry":
+      return { actual: summary.categories?.entry?.gzipBytes, limit: budget.categoryGzipBytes?.entry };
+    case "initial":
+      return { actual: summary.initialGzipBytes, limit: budget.initialGzipBytes };
+    case "initialCss":
+      return { actual: summary.initialCssGzipBytes, limit: budget.initialCssGzipBytes };
+    case "initialJs":
+      return { actual: summary.initialJsGzipBytes, limit: budget.initialJsGzipBytes };
+    case "landing":
+      return { actual: summary.journeys?.landing, limit: budget.journeyGzipBytes?.landing };
+    case "appShell":
+      return { actual: summary.journeys?.appShell, limit: budget.journeyGzipBytes?.appShell };
+    default:
+      return { actual: undefined, limit: undefined };
+  }
+}
+
 function formatBytes(bytes) {
   return `${new Intl.NumberFormat("tr-TR").format(bytes)} B`;
 }
@@ -287,6 +346,26 @@ export function evaluateBundleBudget(summary, budget = BUNDLE_BUDGET) {
     const actual = summary.categories[category]?.gzipBytes;
     if (actual !== undefined && actual > limit) {
       violations.push(`${category} gzip bütçesi aşıldı: ${formatBytes(actual)} > ${formatBytes(limit)}`);
+    }
+  }
+
+  // Eşik bayatlaması: sahibi olduğumuz kapılar ölçümün çok üstündeyse kapı iş
+  // görmüyor demektir. Sessizce gevşemeyi engeller (bkz. başlıktaki 2026-10-28 notu).
+  const staleness = budget.staleness;
+  if (staleness && staleness.maxSlackRatio > 0) {
+    for (const gate of staleness.gates) {
+      const { actual, limit } = gateValues(summary, budget, gate);
+      if (actual === undefined || limit === undefined || limit <= 0) continue;
+      const slack = (limit - actual) / limit;
+      const slackBytes = limit - actual;
+      if (slack > staleness.maxSlackRatio && slackBytes > (staleness.minSlackBytes ?? 0)) {
+        const target = Math.ceil((actual * 1.03) / 100) * 100;
+        violations.push(
+          `${gate} eşiği bayat: ölçüm ${formatBytes(actual)}, eşik ${formatBytes(limit)} ` +
+          `(boşluk %${Math.round(slack * 100)}). Kapı regresyonu yakalamıyor; ` +
+          `eşiği ~${formatBytes(target)} yap.`,
+        );
+      }
     }
   }
 

@@ -5,7 +5,8 @@
 - Görev: tanıtım sayfasında tek bir birincil keşif CTA'sını belirginleştirmek;
   diğer başlangıç yollarını ikincil/üçüncül sunmak.
 - Branch: `arena/0f6e2b94-atlasia`
-- Taban: `f58d0ef` (`origin/main`)
+- İlk taban: `f58d0ef`; PR çakışmasını çözmek için `2ba7b76` (`origin/main`)
+  ile birleştirildi ve T1–T3/T13–T16 güncellemeleri korundu.
 - Firestore kuralları ve indeksleri değişmedi; Firebase/Cloudflare ayarlarına
   dokunulmadı.
 
@@ -33,7 +34,7 @@
 | `npm ci` | başarılı |
 | `npm run typecheck` | başarılı |
 | `npm run lint` | başarılı |
-| `npm run test:run` | **1204/1204** (150 dosya) |
+| `npm run test:run` | **1236/1236** (153 dosya) |
 | `npm run test:scripts` | başarılı |
 | `npm run audit:check` | üretim bağımlılıklarında bilinen açık yok |
 | `npm run build` | başarılı; bundle ve service-worker bütçe/varlık kontrolleri geçti |

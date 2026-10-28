@@ -1,4 +1,5 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import type { CtaPlacement } from "../lib/analytics";
 import {
   ArrowDown,
   ArrowRight,
@@ -10,13 +11,16 @@ import {
   Sparkles,
   WifiOff,
   Ban,
+  Menu,
+  X,
 } from "lucide-react";
 import type { LegalDocumentType } from "../content/legal";
 
 const LegalNotice = lazy(() => import("./LegalNotice"));
 
 interface Props {
-  onStart: () => void;
+  /** Birincil eylemin hangi yerleşimden geldiği (T2 huni kırılımı). */
+  onStart: (placement: CtaPlacement) => void;
 }
 
 /** Tanıtım sayfasından doğrudan okunabilen yasal metinler. */
@@ -52,6 +56,13 @@ const FAQ = [
   },
 ];
 
+/** Mobil menü bağlantıları — masaüstü menüsüyle aynı hedefler (T13). */
+const MENU_LINKS = [
+  { href: "#kesfet", label: "Keşfet" },
+  { href: "#nasil", label: "Nasıl çalışır?" },
+  { href: "#sss", label: "Sık sorulanlar" },
+] as const;
+
 const features = [
   {
     icon: Compass,
@@ -75,7 +86,57 @@ const features = [
 
 export default function LandingPage({ onStart }: Props) {
   const [legal, setLegal] = useState<LegalDocumentType | null>(null);
+  // T13: 768 px altında menü erişimi yoktu. Hamburger tam ekran panel açar;
+  // Escape kapatır, Tab panel içinde döner, kapanınca odak düğmeye döner.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const menuPanelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const panel = menuPanelRef.current;
+    const focusables = () =>
+      Array.from(panel?.querySelectorAll<HTMLElement>("a[href], button:not([disabled])") ?? []);
+
+    (panel?.querySelector<HTMLElement>("a[href]") ?? focusables()[0])?.focus();
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setMenuOpen(false);
+        menuButtonRef.current?.focus();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const items = focusables();
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [menuOpen]);
+
+  const closeMenu = () => setMenuOpen(false);
+
   return (
+    <>
+      {/* T14: klavyeyle gelen kullanıcı hero'nun tamamını geçmek zorunda kalmasın. */}
+      <a
+        href="#kesfet"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:bg-[#f3c870] focus:px-4 focus:py-3 focus:text-[13px] focus:font-bold focus:text-[#142019]"
+      >
+        İçeriğe geç
+      </a>
+
     <main className="landing-page h-dvh overflow-y-auto scroll-smooth bg-[#020d17] text-white">
       <section className="relative isolate min-h-dvh overflow-hidden border-b border-white/10">
         <img
@@ -93,24 +154,69 @@ export default function LandingPage({ onStart }: Props) {
             <span className="font-display text-[25px] font-bold tracking-tight">atlasia<span className="text-sun">.</span></span>
           </a>
           <nav aria-label="Tanıtım menüsü" className="hidden items-center gap-8 text-[13px] text-white/75 md:flex">
-            <a href="#kesfet" className="transition hover:text-white">Keşfet</a>
-            <a href="#nasil" className="transition hover:text-white">Nasıl çalışır?</a>
-            <a href="#sss" className="transition hover:text-white">Sık sorulanlar</a>
+            {MENU_LINKS.map(({ href, label }) => (
+              <a key={href} href={href} className="transition hover:text-white">{label}</a>
+            ))}
             <button type="button" onClick={() => setLegal("privacy")} className="transition hover:text-white">Gizlilik</button>
           </nav>
-          <button type="button" data-cta-level="secondary" onClick={onStart} className="group flex min-h-11 items-center gap-2 px-2 text-[12px] font-semibold text-white/75 transition hover:text-white md:px-3">
-            Keşfe başla <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              ref={menuButtonRef}
+              type="button"
+              aria-expanded={menuOpen}
+              aria-controls="landing-menu"
+              aria-label="Menü"
+              onClick={() => setMenuOpen((value) => !value)}
+              className="grid size-11 place-items-center border border-white/35 bg-black/15 text-white md:hidden"
+            >
+              {menuOpen ? <X size={18} aria-hidden /> : <Menu size={18} aria-hidden />}
+            </button>
+            <button type="button" data-cta-level="secondary" onClick={() => onStart("header")} className="group hidden min-h-11 items-center gap-2 px-2 text-[12px] font-semibold text-white/75 transition hover:text-white sm:flex md:px-3">
+              Keşfe başla <ArrowRight size={15} className="transition-transform group-hover:translate-x-1" />
+            </button>
+          </div>
         </header>
+
+        {menuOpen && (
+          <div
+            id="landing-menu"
+            ref={menuPanelRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Site menüsü"
+            className="fixed inset-0 z-[95] flex flex-col gap-2 bg-[#020d17] px-5 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom))] md:hidden"
+          >
+            <div className="flex items-center justify-between">
+              <span className="font-display text-[22px] font-bold">atlasia<span className="text-sun">.</span></span>
+              <button type="button" aria-label="Menüyü kapat" onClick={() => { closeMenu(); menuButtonRef.current?.focus(); }} className="grid size-11 place-items-center border border-white/30">
+                <X size={18} aria-hidden />
+              </button>
+            </div>
+            <nav aria-label="Mobil menü" className="mt-6 flex flex-col">
+              {MENU_LINKS.map(({ href, label }) => (
+                <a key={href} href={href} onClick={closeMenu} className="border-b border-white/10 py-4 text-[18px] text-white/90">{label}</a>
+              ))}
+              <button type="button" onClick={() => { closeMenu(); setLegal("privacy"); }} className="border-b border-white/10 py-4 text-left text-[18px] text-white/90">Gizlilik</button>
+            </nav>
+            <button
+              type="button"
+              data-cta-level="primary"
+              onClick={() => { closeMenu(); onStart("header"); }}
+              className="mt-6 flex min-h-[52px] items-center justify-center gap-3 bg-[#f3c870] px-6 text-[14px] font-bold text-[#142019]"
+            >
+              Keşfe başla <ArrowRight size={16} aria-hidden />
+            </button>
+          </div>
+        )}
 
         <div id="top" className="mx-auto flex min-h-[calc(100dvh-82px)] w-full max-w-[1440px] items-end px-5 pt-24 pb-20 md:min-h-[calc(100dvh-92px)] md:items-center md:px-10 md:pt-16 md:pb-24 lg:px-16">
           <div className="max-w-[700px]">
             <p className="flex items-center gap-3 text-[10px] font-semibold tracking-[0.32em] text-[#f3c870] uppercase md:text-[12px]"><span className="h-px w-8 bg-[#f3c870]" />Dünya seni bekliyor</p>
-            <h1 className="font-display mt-7 text-[clamp(68px,11vw,160px)] leading-[0.78] font-semibold tracking-[-0.075em] text-white">atlasia<span className="text-sun">.</span></h1>
-            <h2 className="font-display mt-7 max-w-[690px] text-[clamp(29px,4vw,55px)] leading-[1.02] font-medium tracking-[-0.045em]">Dünyayı <span className="text-[#f3c870]">merakınla</span> keşfet.</h2>
+            <div aria-hidden="true" className="font-display mt-7 text-[clamp(68px,11vw,160px)] leading-[0.78] font-semibold tracking-[-0.075em] text-white">atlasia<span className="text-sun">.</span></div>
+            <h1 className="font-display mt-7 max-w-[690px] text-[clamp(29px,4vw,55px)] leading-[1.02] font-medium tracking-[-0.045em]">Dünyayı <span className="text-[#f3c870]">merakınla</span> keşfet.</h1>
             <p className="mt-6 max-w-[500px] text-[14px] leading-7 text-white/70 md:text-[16px]">Yeni yerler, gerçek gezgin izleri ve bulunduğun noktada canlanan hikâyeler. Bir sonraki keşfin burada başlıyor.</p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
-              <button type="button" data-cta-level="primary" onClick={onStart} className="group flex min-h-[56px] items-center gap-8 bg-[#f3c870] px-6 text-[13px] font-bold text-[#142019] transition hover:bg-white md:px-7">Dünyayı keşfet <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" /></button>
+              <button type="button" data-cta-level="primary" onClick={() => onStart("hero")} className="group flex min-h-[56px] items-center gap-8 bg-[#f3c870] px-6 text-[13px] font-bold text-[#142019] transition hover:bg-white md:px-7">Dünyayı keşfet <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" /></button>
               <a href="#nasil" className="flex min-h-[56px] items-center gap-2 px-4 text-[13px] font-medium text-white/85 transition hover:text-white"><Sparkles size={16} />Atlas AI nasıl çalışır?</a>
             </div>
             <ul aria-label="Kısa güven notları" className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] text-white/55">
@@ -125,7 +231,7 @@ export default function LandingPage({ onStart }: Props) {
         <p className="absolute right-5 bottom-7 hidden text-[9px] tracking-[0.27em] text-white/55 uppercase md:block md:right-10 lg:right-16">Her yer bir hikâye.</p>
       </section>
 
-      <section id="kesfet" className="bg-[#f1f0e9] px-5 py-20 text-[#102b2a] md:px-10 md:py-28 lg:px-16">
+      <section id="kesfet" tabIndex={-1} className="bg-[#f1f0e9] outline-none px-5 py-20 text-[#102b2a] md:px-10 md:py-28 lg:px-16">
         <div className="mx-auto max-w-[1280px]">
           <p className="flex items-center gap-3 text-[10px] font-semibold tracking-[0.28em] text-[#8f6224] uppercase"><span className="h-px w-8 bg-[#8f6224]" />Keşif noktan</p>
           <div className="mt-8 grid gap-8 md:grid-cols-[1.25fr_.75fr] md:items-end">
@@ -152,7 +258,7 @@ export default function LandingPage({ onStart }: Props) {
             <p className="text-[10px] font-semibold tracking-[0.28em] text-sun uppercase">Atlas AI + Sesli Rehber</p>
             <h2 className="font-display mt-5 text-[clamp(40px,5vw,72px)] leading-[.98] font-semibold tracking-[-0.045em]">Bir haritadan<br />daha fazlası.</h2>
             <p className="mt-6 max-w-lg text-[15px] leading-7 text-mint/65">Atlasia yalnızca nereye gideceğini değil, zamanına göre hangi sırayla gezebileceğini de düşünür. Bir kültür noktasına yaklaştığında sesli anlatım sen onay verirsen başlar.</p>
-            <button type="button" data-cta-level="secondary" onClick={onStart} className="mt-8 flex min-h-[52px] items-center gap-8 border border-sun/50 px-6 text-[13px] font-semibold text-sun transition hover:bg-sun hover:text-ink">Rotanı oluşturmaya başla <ArrowRight size={15} /></button>
+            <button type="button" data-cta-level="secondary" onClick={() => onStart("how_it_works")} className="mt-8 flex min-h-[52px] items-center gap-8 border border-sun/50 px-6 text-[13px] font-semibold text-sun transition hover:bg-sun hover:text-ink">Rotanı oluşturmaya başla <ArrowRight size={15} /></button>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-6 sm:translate-y-8"><Route className="text-sun" size={25} /><h3 className="mt-8 font-display text-2xl font-semibold">Zamana göre rota</h3><p className="mt-3 text-[13px] leading-6 text-mint/60">Rahat, dengeli veya yoğun tempo. Yakın duraklar ve tahmini süre tek planda.</p></div>
@@ -201,7 +307,7 @@ export default function LandingPage({ onStart }: Props) {
             <span className="text-[10px] font-semibold tracking-[0.16em] text-mint/35 uppercase">Ürün</span>
             <a href="#kesfet" className="min-h-8 text-[12px] text-mint/70 transition hover:text-sun">Nasıl çalışır</a>
             <a href="#sss" className="min-h-8 text-[12px] text-mint/70 transition hover:text-sun">Sık sorulanlar</a>
-            <button type="button" data-cta-level="tertiary" onClick={onStart} className="min-h-8 text-left text-[12px] text-sun">Keşfe başla</button>
+            <button type="button" data-cta-level="tertiary" onClick={() => onStart("footer")} className="min-h-8 text-left text-[12px] text-sun">Keşfe başla</button>
           </nav>
         </div>
         <p className="mt-8 border-t border-white/5 pt-5">© {new Date().getFullYear()} Atlasia · Merak ettiğin her yer</p>
@@ -213,5 +319,6 @@ export default function LandingPage({ onStart }: Props) {
         </Suspense>
       )}
     </main>
+    </>
   );
 }

@@ -62,19 +62,30 @@ describe("olay kataloğu: kod, tetikleyici ve belge aynı şeyi söyler", () => 
     const methodByEvent: Record<string, string> = {
       app_open: "appOpen",
       session_start: "sessionStart",
-      sign_up: "signUp",
+      // T2 huni olayları (2026-10-28): `sign_up` adı `signup_complete` oldu.
+      cta_click: "ctaClick",
+      map_open: "mapOpen",
+      signup_start: "signupStart",
+      signup_complete: "signupComplete",
       sign_in: "signIn",
       place_created: "placeCreated",
       route_published: "routePublished",
+      first_route_created: "firstRouteCreated",
+      audio_guide_start: "audioGuideStart",
       post_created: "postCreated",
       share: "share",
       offline_pack: "offlinePack",
       report_created: "reportCreated",
+      consent_choice: "consentChoice",
     };
 
     for (const event of ANALYTICS_EVENTS) {
       const row = docRow(event)!;
-      for (const key of payloadKeys(methodByEvent[event])) {
+      const method = methodByEvent[event];
+      // Eşleme eksikse test sessizce geçmesin: katalog kuralı gereği her olayın
+      // metodu burada tanımlı olmalı.
+      expect(method, `${event} için metot eşlemesi yok`).toBeTruthy();
+      for (const key of payloadKeys(method)) {
         expect(row, `${event} satırında "${key}" alanı yazmıyor`).toContain(`\`${key}\``);
       }
     }

@@ -106,6 +106,8 @@ const SuspensionNotice = lazy(() => import("./SuspensionNotice"));
 const WarningNotice = lazy(() => import("./ModerationNotices").then((m) => ({ default: m.WarningNotice })));
 const AnnouncementBanner = lazy(() => import("./ModerationNotices").then((m) => ({ default: m.AnnouncementBanner })));
 const MAP_STYLE_KEY = "atlasia.mapStyle.v1";
+/** Cihazda ilk rota oluşturuldu mu (T2 aktivasyon bayrağı). */
+const FIRST_ROUTE_KEY = "atlasia.metrics.firstRoute.v1";
 
 function initialMapStyle(): BaseMapStyle {
   const saved = storageGet(MAP_STYLE_KEY);
@@ -129,6 +131,9 @@ function MapLoadingSkeleton() {
 
 function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
   const mapRef = useRef<MapViewHandle>(null);
+  // T2 huni adımı: harita açılışı (oturumda bir kez). Misafir modu (T4)
+  // geldiğinde aynı olay `guest: true` ile App kapısından da gönderilecek.
+  useEffect(() => { analytics.mapOpen({ guest: false }); }, []);
   // Adım 11: her günün bacağı varsa rota mod ayrımlı çizilir (patika kesikli,
   // yol düz); yoksa durak durak düz çizgiye düşer.
   const drawAtlasRoute = (route: AtlasRoute, preview: boolean) => {
@@ -156,6 +161,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
   const { theme, setTheme } = useTheme();
 
   const [mapViewport, setMapViewport] = useState<PlaceViewport | null>(null);
+  const [moderator, setModerator] = useState(false);
 
   // Yerel veri yalnız yapılandırmasız mod ve ilk canlı liste görünümü için yedektir.
   const local = useAtlasData(user!.uid);
@@ -166,6 +172,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
     uid: user!.uid,
     enabled: cloudAccount,
     viewport: mapViewport,
+    moderator,
   });
   // Bulut hesabı varsa yazma/silme işlemleri her zaman Firestore'a gider.
   // İlk canlı snapshot gelene kadar yalnız görünür liste için yerel içerik kullanılır;
@@ -250,7 +257,6 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [reportsOpen, setReportsOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
-  const [moderator, setModerator] = useState(false);
   const [myReports, setMyReports] = useState<Report[]>([]);
   const [myReportsError, setMyReportsError] = useState<string | null>(null);
   const [queue, setQueue] = useState<Report[]>([]);
@@ -1363,6 +1369,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
         onLoadMoreStories={cloud.loadMoreStories}
         clientId={cloud.clientId}
         currentUid={user!.uid}
+        moderator={moderator}
         uploadPhoto={cloud.uploadPhoto}
         onAddPost={cloud.addPost}
         onRemovePost={cloud.removePost}
@@ -1383,11 +1390,18 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
         route={routeEditorRoute}
         onClose={() => setRouteEditorRoute(null)}
         onSaved={(route, visibility: RouteVisibility) => {
+          const stops = route.days.reduce((total, day) => total + day.stops.length, 0);
           analytics.routePublished({
             account: cloudAccount ? "cloud" : "device",
             visibility: visibility === "private" ? "private" : "public",
-            stops: route.days.reduce((total, day) => total + day.stops.length, 0),
+            stops,
           });
+          // Aktivasyon metriği: cihazda ilk kez rota oluşturma. Yerel bayrak,
+          // aynı kullanıcının sonraki rotalarının sayacı şişirmesini engeller.
+          if (!storageGet(FIRST_ROUTE_KEY)) {
+            analytics.firstRouteCreated({ account: cloudAccount ? "cloud" : "device", stops });
+            storageSet(FIRST_ROUTE_KEY, "1");
+          }
           setResumeRoute(route);
           setAtlasOpen(true);
           drawAtlasRoute(route, false);

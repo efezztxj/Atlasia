@@ -98,13 +98,25 @@ describe("ölçüm · tanımlı her olay gerçekten çağrılıyor", () => {
     "src/contexts/AuthContext.tsx",
     "src/hooks/useFirestoreAtlasData.ts",
     "src/lib/telemetryBootstrap.ts",
+    // T2 huni olaylarının çağrı yerleri.
+    "src/components/LandingPage.tsx",
+    "src/components/AccountAccess.tsx",
+    "src/components/CookieConsent.tsx",
+    "src/components/NearbyAudioGuide.tsx",
   ].map((path) => readFileSync(path, "utf8")).join("\n");
 
   it.each([
     "appOpen",
     "sessionStart",
-    "signUp",
+    // T2: `signUp` adı `signupComplete{method}` oldu; huni adımları eklendi.
+    "ctaClick",
+    "mapOpen",
+    "signupStart",
+    "signupComplete",
+    "consentChoice",
+    "audioGuideStart",
     "signIn",
+    "firstRouteCreated",
     "placeCreated",
     "routePublished",
     "postCreated",

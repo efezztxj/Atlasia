@@ -63,6 +63,7 @@ interface Props {
   onLoadMoreStories: () => Promise<void>;
   clientId: string;
   currentUid: string;
+  moderator?: boolean;
   uploadPhoto: (file: File, kind: UploadPhotoKind) => Promise<string>;
   onAddPost: (p: Partial<FeedPost>) => Promise<unknown> | unknown;
   onRemovePost: (id: string) => Promise<unknown> | unknown;
@@ -96,6 +97,7 @@ export default function SocialPanel({
   onLoadMoreStories,
   clientId,
   currentUid,
+  moderator = false,
   uploadPhoto,
   onAddPost,
   onRemovePost,
@@ -196,13 +198,42 @@ export default function SocialPanel({
     };
   }, [usePrecise, precise, locationLabel, view.lng, view.lat]);
 
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    if (!open && storyIndex === null) return;
+    setNowTick(Date.now());
+    const timer = globalThis.setInterval(() => setNowTick(Date.now()), 30_000);
+    const refreshNow = () => setNowTick(Date.now());
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", refreshNow);
+    }
+    if (typeof window !== "undefined") {
+      window.addEventListener("focus", refreshNow);
+    }
+    return () => {
+      globalThis.clearInterval(timer);
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", refreshNow);
+      }
+      if (typeof window !== "undefined") {
+        window.removeEventListener("focus", refreshNow);
+      }
+    };
+  }, [open, storyIndex]);
+
   const stories = useMemo(
     () =>
       [...allStories]
-        .filter((s) => isStoryAlive(s.createdAt))
+        .filter((s) => isStoryAlive(s.createdAt, nowTick))
         .sort((a, b) => b.createdAt - a.createdAt),
-    [allStories],
+    [allStories, nowTick],
   );
+
+  useEffect(() => {
+    if (storyIndex === null) return;
+    if (stories.length === 0) setStoryIndex(null);
+    else if (storyIndex >= stories.length) setStoryIndex(stories.length - 1);
+  }, [stories.length, storyIndex]);
 
   const visiblePosts = useMemo(() => {
     const sorted = [...posts].sort((a, b) => b.createdAt - a.createdAt);
@@ -821,7 +852,7 @@ export default function SocialPanel({
           onClose={() => setStoryIndex(null)}
           onSeen={markSeen}
           onGoTo={goToStory}
-          canDelete={(story) => story.authorUid === currentUid}
+          canDelete={(story) => story.authorUid === currentUid || moderator}
           onDelete={(id) => {
             void runCloudAction(
               () => onRemoveStory(id),

@@ -9,6 +9,7 @@
  */
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { analytics, type CtaPlacement } from "./lib/analytics";
 import LandingPage from "./components/LandingPage";
 import { useInstallApp, type InstallAppController } from "./hooks/useInstallApp";
 
@@ -37,11 +38,19 @@ function AuthGate({ installApp }: { installApp: InstallAppController }) {
     previousUser.current = user;
   }, [user]);
 
+  // T2 huni adımı: landing'deki birincil eylem. Misafir modu (T4) gelene kadar
+  // bu adım giriş ekranını açar; `cta_click` sayesinde hangi yerleşimin
+  // çalıştığı ayrı ayrı ölçülür.
+  const handleStart = (placement: CtaPlacement) => {
+    analytics.ctaClick({ placement, signedIn: false });
+    setAccessOpen(true);
+  };
+
   if (checking) return <BootSplash />;
   if (!user) {
     return accessOpen
       ? <Suspense fallback={<BootSplash label="Giriş ekranı yükleniyor" />}><AccountAccess /></Suspense>
-      : <LandingPage onStart={() => setAccessOpen(true)} />;
+      : <LandingPage onStart={handleStart} />;
   }
   if (user.requiresEmailVerification) {
     return <Suspense fallback={<BootSplash />}><EmailVerification /></Suspense>;
