@@ -53,7 +53,9 @@ jobs:
         run: npm run lint
 
       - name: Unit tests
-        run: npm test
+        # github-actions raporlayıcısı: düşen test, log indirmeden check-run
+        # annotation'ı olarak API'den de okunabilsin (kurallar adımıyla aynı fikir).
+        run: npm test -- --reporter=default --reporter=github-actions
 
       - name: Script tests (no credentials)
         run: npm run test:scripts
