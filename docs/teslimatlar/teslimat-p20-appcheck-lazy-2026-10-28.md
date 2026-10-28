@@ -63,6 +63,23 @@ beklenen değer geçiyor. Doğrulama CI + Cloudflare preview üzerinden yapılac
 | `_GRECAPTCHA` çerezi | var | yok |
 | App Check `403` konsol hatası | var | yok |
 
+## Preview ölçümü (bionic-auth-idle.atlasia.pages.dev)
+
+Gerçek tarayıcı, 412×823, soğuk profil:
+
+| | canlı | preview |
+|---|---|---|
+| FCP | 276 ms | **104 ms** |
+| LCP | 672 ms | **492 ms** |
+| İstek | 71 | **60** |
+| reCAPTCHA | 11 | **0** |
+| icon-512 | indiriliyor | **0** |
+
+Lighthouse simüle mobil: **Best Practices 75 → 100**, a11y 100, konsol hatası 0,
+üçüncü taraf çerez yok. LH'nin simüle performans puanı preview'da 62 (FCP 6,3 s);
+bu, yeni origin'de SW ilk kurulumunun simülasyonla birleşmesinden doğan artefakt —
+aynı sayfa gerçek zamanda 104 ms'de boyanıyor.
+
 ## Bilinen riskler
 
 - App Check artık uygulama kabuğu yüklenince başlıyor. Firebase konsolunda
