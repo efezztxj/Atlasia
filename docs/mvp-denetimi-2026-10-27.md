@@ -105,6 +105,29 @@ yanlış modülü — `lib/firebase` — mock'luyordu. Gerçek kapı `lib/fireba
 
 ---
 
+## 2d. `main` CI kırmızısının kök nedeni (2026-10-28)
+
+`main` = `2ba7b76` üzerinde CI "Unit tests" adımı düştü; log indirme ağdan
+(`results-receiver.actions.githubusercontent.com` → EOF) alınamıyor, annotation
+da yalnız "exit code 1" diyordu. Temiz klonda (`--depth 1`) tekrar üretilemedi
+(152/152, 1233/1233 yeşil, 5 kez). Yerelde tekrarlı koşuda yakalandı — **1/7**:
+
+- `src/components/TrackRecorderPanel.test.ts` → "Vazgeç taslağı atar…"
+- `expected last call to have been called with [ [] ]`, gelen: taslak koordinatları.
+- Kök neden: taslak önizlemesi `useEffect([draft])` ile yayılıyordu; "Vazgeç"
+  `onPreview([])` çağrısı effect'ten önce çalışabildiği için temizlenmiş haritaya
+  taslak geri dönebiliyordu (React 19.3.1'de daha sık).
+
+**Onarım:** önizleme artık taslağın üretildiği yerde, aynı elde yayılıyor
+(`finish()` içinde `setDraft` sonrası); effect kaldırıldı. Sıra kesin:
+taslak → önizleme, vazgeç → temizleme. Sonrasında suite **4/4 tam yeşil**
+(önce 1/7 kırmızı).
+
+**Kalıcı düzeltme (CI görünürlüğü):** `ci.yml`'de unit test adımı artık
+`tee unit-tests.log` ile yazıyor ve `failure()` olduğunda kural testlerindeki
+desenle aynı şekilde annotasyon + iş özeti basıyor. Bir sonraki kırmızıda hangi
+testin düştüğü log indirmeden okunur.
+
 ## 3. Ölçüm katmanı — ~~3 olay tanımlı ama hiç çağrılmıyor~~ **kapandı (2026-10-27)**
 
 > `analytics.share` (AtlasAssistant: native/clipboard), `analytics.offlinePack` (OfflinePackage: indirme + silme), `analytics.reportCreated` (ReportDialog) artık gerçek akışlara bağlı. Kalan iş: **M-07** olay şeması testi ve `docs/olcum-ve-hata-izleme.md` olay tablosunun bu 3 olayla güncellenmesi.
