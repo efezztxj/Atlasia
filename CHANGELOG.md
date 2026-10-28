@@ -1,5 +1,17 @@
 # Atlasia Update
 
+## 2026-10-28 — Görsel boru hattı: yükleme kapıları + teslim işaretleri (T10)
+
+Ayrıntı: `docs/teslimatlar/teslimat-t10-gorsel-hatti-2026-10-28.md`.
+
+- **Boyut kapısı:** 25 MB üstü dosya **decode edilmeden** reddedilir (mobilde OOM riski); hata gerçek boyutu söyler.
+- **HEIC:** iPhone varsayılanı tarayıcıda çözülemiyor; artık "Ayarlar → Kamera → Biçimler → En Uyumlu ya da JPEG" diyen net bir hata var.
+- **EXIF yönü** açıkça istenir (`imageOrientation: "from-image"`): fotoğraf yan yatmaz.
+- **Teslim:** galeri/akış görsellerine `decoding="async"`, ekran dışı rota fotoğrafına `loading="lazy"`. Hero bilinçli olarak `fetchPriority="high"` ve tembel değil (LCP).
+- Kademeli küçültme planı tek yönlü olduğu ve Firestore'daki 180.000 karakter kilidiyle uyumlu olduğu testle kilitli: `imagePipelineT10.test.ts` (7).
+- **Yapılmayan:** WebP/AVIF çıktısı, `toBlob` geçişi, sunucu tarafı `srcset` türevleri — hepsi ölçüm/bağımlılık/onay istiyor (dokümanda gerekçeli).
+- Testler **1292/1292** (161 dosya); bütçe içinde (`entry` 18.938/20.900, toplam JS 1.001.304/1.003.000).
+
 ## 2026-10-28 — Tanıtım filmi (`preload="none"` + poster, T6)
 
 Ayrıntı: `docs/teslimatlar/teslimat-t6-video-2026-10-28.md`.
