@@ -1,5 +1,16 @@
 # Atlasia Update
 
+## 2026-10-28 — Hikâye izleri 24 saatte otomatik ve kalıcı silinir (#131, çözülmüş hali)
+
+#131 paralel Explorer ayrımına dayandığı için olduğu gibi birleşemedi; tek özellik commit'i mevcut yapıya taşındı:
+
+- Üst şeritteki (stories) izler 24 saati doldurunca **otomatik ve kalıcı** silinir; moderatörde kapsam genişler, silme işlemi kayıt altına alınır.
+- Bağlantı değişikliği mevcut `Explorer` bileşenine taşındı (`moderator` bilgisi veri katmanına ve SocialPanel'e geçer).
+- **Bütçe:** yeni silme mantığı toplam JS'i 996.828 bayta çıkardı; toplam bütçe 996.500 → **997.500**.
+
+Typecheck, lint, 1233 test ve build yeşil.
+
+
 ## 2026-10-28 — Firebase 13.1.0 + rules-unit-testing 6 (#82, çözülmüş hali)
 
 - `firebase` ^12.19.0 → **^13.1.0**; `@firebase/rules-unit-testing` 5 → **6** (firebase 13 istiyordu; birlikte alındılar).
