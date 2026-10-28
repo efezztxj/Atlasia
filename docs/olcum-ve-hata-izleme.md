@@ -35,7 +35,7 @@ Sınırlar:
 - `consent_choice{analytics:false}` ret seçildiğinde **gönderilemez**: rıza
   kapısı kapalıyken telemetry kaydı düşürür. Ret oranı bu olaydan okunamaz;
   istenirse rıza öncesi çalışan ayrı bir sunucu sayacı gerekir.
-- `map_open{guest}` misafir modu açılana kadar hep `false` gelir.
+- `map_open{guest}`: T4 ile misafir modu var; kayıtsız açılan harita `true`, oturumlu açılan `false` gelir. Oran = `guest:true` / tüm `map_open`.
 - Yönlendirmeli (popup engelli) sosyal girişte `sign_in` bu sayfada sayılmaz.
 
 ## 3. Aktifleştirme
@@ -93,7 +93,7 @@ Alan adları `src/lib/analytics.ts` içindeki tiplerin **birebir** karşılığ�
 | `app_open` | `standalone` (türetilen `screen`) | `telemetryBootstrap.ts` (ilk görünür kare sonrası) | Kurulu uygulamadan mı, tarayıcıdan mı gelindi |
 | `session_start` | `account` (`cloud`/`device`/`anonymous`) | `telemetryBootstrap.ts` (oturum başı) | Oturum sayısı, hesap türü dağılımı |
 | `cta_click` | `placement` (`hero`/`header`/`how_it_works`/`footer`), `signedIn` | `LandingPage.tsx` → `App.tsx` | Hangi CTA'nın dönüştürdüğü (huni kırılımı) |
-| `map_open` | `guest` | `Explorer.tsx` (oturumlu) · misafirde `App.tsx` | Landing'den haritaya geçiş oranı |
+| `map_open` | `guest` | `Explorer.tsx` (hem oturumlu hem misafir) | Landing'den haritaya geçiş oranı; kayıt duvarının kalkıp kalkmadığı |
 | `signup_start` | — | `AccountAccess.tsx` (kayıt moduna geçiş) | Kayıt formunun açılma oranı |
 | `signup_complete` | `method` (`email`/`google`/`apple`/`phone`/`device`), `account` | `AuthContext.tsx` (kayıt tamamlanınca) | Kayıt dönüşümü + yöntem dağılımı |
 | `sign_in` | `method`, `account` | `AuthContext.tsx`, `AccountAccess.tsx` (sosyal popup) | Geri dönen kullanıcı |

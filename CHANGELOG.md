@@ -1,5 +1,16 @@
 # Atlasia Update
 
+## 2026-10-28 — Misafir modu (T4) ve kayıt sonrası ilk değer (T5)
+
+Ayrıntı: `docs/teslimatlar/teslimat-t4-t5-misafir-2026-10-28.md`.
+**`firestore.rules` değişmedi** — misafirin `request.auth` değeri boştur, yazma sunucuda zaten reddedilir.
+
+- **T4 — Kayıt duvarı kalktı:** Landing'deki her CTA artık giriş ekranını değil **misafir haritasını** açar; `cta_click` sonrası `map_open{guest:true}` düşer. Misafir, herkese açık `places`/`posts`/`stories` kayıtlarını okur (mevcut public okuma kuralı), sahip sorgusu hiç kurulmaz.
+- **Yazma kapısı:** İz ekleme, gönderi/hikâye/yanıt/beğeni, rota oluşturma, yürüyüş kaydı, profil ve bildirimler misafirde tek tek hesap kapısına yönlenir; veri katmanı da yazmayı istemcide reddeder (çift katman). Giriş ekranı kapatılabilir: "Misafir olarak devam et".
+- **T5 — kayıt sonrası ilk değer:** Engellenen eylem niyet olarak hatırlanır (`atlasia.pendingIntent.v1`, 30 dk TTL). Hesap açılınca "iz ekle" isteyen kullanıcı haritayı **ekleme modunda**, "paylaş" isteyen topluluk akışı açık bulur.
+- **Bütçe kararı (ölçümlü):** T4/T5 kodu toplam JS'i 916.296 → **917.290 B** gzip'e çıkardı; eşik 916.500 → **918.000** (yeni bağımlılık yok, gerekçe `scripts/bundle-budget.mjs` içinde yazılı). Kullanıcıya görünen ilk boya 91.539 B (eşik 398.000) ve tanıtım yolculuğu 117.964 B (eşik 425.000) pratikte değişmedi.
+- Yeni testler: `src/config/guestMode.test.ts` (10) + "Misafir olarak devam et" (2) + `App.test.ts` güncellemesi. Toplam **1243/1243** (152 dosya); typecheck, lint, build, SW kabuğu (44/44), `audit:check` yeşil.
+
 ## 2026-10-28 — İsteğe bağlı 6 panel tembel yükleme (#123'ün kazancı, çözülmüş hali)
 
 #123 paralel bir App bölünmesi içerdiği için olduğu gibi birleşemedi; kazancı mevcut `Explorer` yapısına uygulandı, #123'ün yerini bu kayıt alır:
