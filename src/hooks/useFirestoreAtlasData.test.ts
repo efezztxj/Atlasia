@@ -27,6 +27,7 @@ type PostSub = {
 type StorySub = {
   onChange: (page: StoryPage) => void;
   onError?: (error: Error) => void;
+  onExpire?: (expired: Story[]) => void;
   unsubscribe: ReturnType<typeof vi.fn>;
 };
 
@@ -39,6 +40,7 @@ const h = vi.hoisted(() => ({
   listPostsPage: vi.fn<(cursor?: FirestoreCursor) => Promise<FirestorePage<FeedPost>>>(),
   listStoriesPage: vi.fn<(cursor: FirestoreCursor, cutoffMs: number) => Promise<StoryPage>>(),
   listPostReplies: vi.fn<(postId: string) => Promise<FeedReply[]>>(),
+  purgeExpiredStories: vi.fn<(opts: { uid: string; moderator?: boolean; now?: number }) => Promise<number>>(),
   addPlace: vi.fn<(input: NewPlaceInput) => Promise<Place>>(),
   removePlace: vi.fn<(id: string, uid: string) => Promise<void>>(),
   addPost: vi.fn<(input: NewPostInput) => Promise<void>>(),
@@ -92,14 +94,16 @@ vi.mock("../lib/firestoreData", async (importOriginal) => {
     subscribeStories: (
       onChange: (page: StoryPage) => void,
       onError?: (error: Error) => void,
+      onExpire?: (expired: Story[]) => void,
     ) => {
       const unsubscribe = vi.fn();
-      h.storySubs.push({ onChange, onError, unsubscribe });
+      h.storySubs.push({ onChange, onError, onExpire, unsubscribe });
       return unsubscribe;
     },
     listPostsPage: h.listPostsPage,
     listStoriesPage: h.listStoriesPage,
     listPostReplies: h.listPostReplies,
+    purgeExpiredStories: h.purgeExpiredStories,
     addPlace: h.addPlace,
     removePlace: h.removePlace,
     addPost: h.addPost,
@@ -180,6 +184,7 @@ beforeEach(() => {
   h.listPostsPage.mockReset().mockResolvedValue(emptyPostPage);
   h.listStoriesPage.mockReset().mockResolvedValue(emptyStoryPage);
   h.listPostReplies.mockReset().mockResolvedValue([]);
+  h.purgeExpiredStories.mockReset().mockResolvedValue(0);
   h.addPlace.mockReset().mockImplementation(async (input) => ({
     id: "olusan-yer",
     title: input.title,
@@ -570,5 +575,54 @@ describe("useFirestoreAtlasData orkestrasyonu", () => {
 
     unmount();
     expect(h.ownedSubs[1].unsubscribe).toHaveBeenCalledTimes(1);
+  });
+
+  it("oturum açılışında ve moderatör yetkisi geldiğinde süresi dolan story temizliğini çalıştırır; 24 saati aşan story'yi fiziksel silip tail'e sızdırmaz", async () => {
+    const { result, rerender } = renderData({ uid: "u1", moderator: false });
+    expect(h.purgeExpiredStories).toHaveBeenCalledTimes(1);
+    expect(h.purgeExpiredStories).toHaveBeenLastCalledWith({ uid: "u1", moderator: false });
+
+    const expiringOwn: Story = { ...story("st-expiring", NOW - 86_400_000 + 10_000), authorUid: "u1" };
+    const liveOwn: Story = { ...story("st-live", NOW - 60_000), authorUid: "u1" };
+    const tailLive: Story = { ...story("st-tail", NOW - 120_000), authorUid: "u2" };
+
+    act(() =>
+      h.storySubs[0].onChange({
+        items: [liveOwn, expiringOwn],
+        cursor: cursor("st-expiring"),
+        hasMore: true,
+        cutoffMs: NOW - 86_400_000,
+      }),
+    );
+
+    h.listStoriesPage.mockResolvedValueOnce({
+      items: [tailLive],
+      cursor: null,
+      hasMore: false,
+      cutoffMs: NOW - 86_400_000,
+    });
+    await act(async () => {
+      await result.current.loadMoreStories();
+    });
+
+    // 20 saniye ilerleyince st-expiring 24 saat sınırını aşar
+    vi.setSystemTime(NOW + 20_000);
+    act(() => {
+      h.storySubs[0].onExpire?.([expiringOwn]);
+      h.storySubs[0].onChange({
+        items: [liveOwn],
+        cursor: cursor("st-live"),
+        hasMore: false,
+        cutoffMs: NOW - 86_400_000,
+      });
+    });
+
+    expect(h.removeStory).toHaveBeenCalledTimes(1);
+    expect(h.removeStory).toHaveBeenCalledWith("st-expiring");
+    expect(result.current.stories.map((item) => item.id)).toEqual(["st-live", "st-tail"]);
+
+    // Moderatör bayrağı true olunca tüm kullanıcılar için genel temizlik de tetiklenir
+    rerender({ uid: "u1", moderator: true });
+    expect(h.purgeExpiredStories).toHaveBeenLastCalledWith({ uid: "u1", moderator: true });
   });
 });

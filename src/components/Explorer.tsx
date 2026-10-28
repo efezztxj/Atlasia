@@ -171,6 +171,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
     uid: user!.uid,
     enabled: cloudAccount,
     viewport: mapViewport,
+    moderator,
   });
   // Bulut hesabı varsa yazma/silme işlemleri her zaman Firestore'a gider.
   // İlk canlı snapshot gelene kadar yalnız görünür liste için yerel içerik kullanılır;
@@ -1368,6 +1369,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
         onLoadMoreStories={cloud.loadMoreStories}
         clientId={cloud.clientId}
         currentUid={user!.uid}
+        moderator={moderator}
         uploadPhoto={cloud.uploadPhoto}
         onAddPost={cloud.addPost}
         onRemovePost={cloud.removePost}

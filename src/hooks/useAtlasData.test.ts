@@ -265,6 +265,30 @@ describe("useAtlasData", () => {
     expect(stored<Story[]>(key("stories", "u1"))).toEqual([]);
   });
 
+  it("açık oturumda 24 saati dolduran yerel story'yi hem ekrandan hem localStorage'dan otomatik siler", async () => {
+    vi.useFakeTimers();
+    const t0 = 1_760_000_000_000;
+    vi.setSystemTime(t0);
+    try {
+      seed(key("stories", "u1"), [
+        story("az-kaldi", t0 - DAY + 30_000),
+        story("yeni", t0 - 60_000),
+      ]);
+
+      const { result } = await renderData("u1");
+      expect(result.current.stories.map((item) => item.id)).toEqual(["az-kaldi", "yeni"]);
+
+      act(() => {
+        vi.advanceTimersByTime(60_000);
+      });
+
+      expect(result.current.stories.map((item) => item.id)).toEqual(["yeni"]);
+      expect(stored<Story[]>(key("stories", "u1")).map((item) => item.id)).toEqual(["yeni"]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("uploadPhoto resmi 860px/0.7 kaliteyle sıkıştırıp data URL döndürür", async () => {
     const { result } = await renderData("u1");
     const file = new File(["gorsel"], "şelale.jpg", { type: "image/jpeg" });
