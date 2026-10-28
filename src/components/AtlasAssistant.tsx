@@ -12,7 +12,7 @@ import { goldenHourWindow } from "../utils/sun";
 import { haversineKm } from "../utils/geo";
 import { dailyRainNote, fetchWeatherSeries, optimizeForRain } from "../utils/weather";
 import { fetchOpenMapPlaces, openMapRadiusKm } from "../utils/openMapPlaces";
-import { compressImage } from "../utils/image";
+import { compressImage, photoUploadErrorMessage } from "../utils/image";
 import { cn } from "../utils/cn";
 import {
   buildAppleDirectionsUrl,
@@ -225,7 +225,7 @@ export default function AtlasAssistant({ open, onOpen, onClose, places, view, or
 
   const photoMatch = async (file?: File) => {
     if (!file || lock.current) return;
-    if (!file.type.startsWith("image/") || file.size > 10 * 1024 * 1024) { setError("10 MB'dan küçük bir fotoğraf seç."); return; }
+    if (file.size > 10 * 1024 * 1024) { setError("10 MB'dan küçük bir fotoğraf seç."); return; }
     lock.current = true;
     setLoading("Fotoğrafın ışık ve renk tonlarını okuyorum...");
     try {
@@ -241,7 +241,7 @@ export default function AtlasAssistant({ open, onOpen, onClose, places, view, or
       const local = nearbyPlaces(places, context, 25).filter((place) => green ? ["nature", "camp"].includes(place.category) : ["photo", "history", "beaches", "cities"].includes(place.category));
       add({ role: "user", text: "Bu fotoğrafın atmosferine benzer yerler", photo: dataUrl });
       add({ role: "assistant", text: `Fotoğrafta ${green ? "yeşil" : colors[0] > colors[2] ? "sıcak" : "soğuk"} tonlar baskın. Bu eşleştirme renk ve ışık üzerinden yapılır; mekânı veya mevsimi kesin olarak tanımıyorum. İpucu: benzer ışık için çekim saatini ayrıca sor.`, cards: local.slice(0, 3) });
-    } catch { setError("Fotoğraf okunamadı. JPG, PNG veya WebP ile tekrar dene."); }
+    } catch (failure) { setError(photoUploadErrorMessage(failure, "Fotoğraf okunamadı. JPG, PNG veya WebP ile tekrar dene.")); }
     finally { lock.current = false; setLoading(null); if (fileRef.current) fileRef.current.value = ""; }
   };
 

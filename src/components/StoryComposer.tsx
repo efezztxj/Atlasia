@@ -4,6 +4,7 @@ import { STORY_ACCENTS } from "../data/feed";
 import type { StoryAccent, UploadPhotoKind } from "../types";
 import { mediaUrl } from "../utils/api";
 import { cn } from "../utils/cn";
+import { photoUploadErrorMessage } from "../utils/image";
 import { usePanelAccess } from "../hooks/usePanelAccess";
 
 interface Props {
@@ -48,8 +49,8 @@ export default function StoryComposer({
     setUploading(true);
     try {
       setPhoto(await uploadPhoto(file, "story"));
-    } catch {
-      setError("Fotoğraf yüklenemedi, tekrar dene.");
+    } catch (failure) {
+      setError(photoUploadErrorMessage(failure, "Fotoğraf yüklenemedi, tekrar dene."));
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";

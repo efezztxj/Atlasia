@@ -42,6 +42,7 @@ export default function CookieConsent() {
 
   useEffect(() => {
     const onOpenPreferences = () => {
+      consumePendingCookiePreferences();
       previousFocusRef.current = document.activeElement as HTMLElement | null;
       const current = readCookieConsent();
       setSaved(current);

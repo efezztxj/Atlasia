@@ -43,6 +43,7 @@ vi.mock("../lib/deviceAccounts", () => ({ resetDevicePassword: vi.fn() }));
 
 import AccountAccess from "./AccountAccess";
 import LandingPage from "./LandingPage";
+import NearbyAudioGuide from "./NearbyAudioGuide";
 
 /** axe, jsdom'da hesaplayamadığı için kapatılan kurallar (gerekçeli). */
 const DISABLED_RULES = {
@@ -116,6 +117,21 @@ describe("erişilebilirlik: sayfa kabuğu", () => {
     // Zoom engellenmez (WCAG 1.4.4).
     expect(html).not.toMatch(/user-scalable\s*=\s*no/);
     expect(html).not.toMatch(/maximum-scale\s*=\s*1(?!\d)/);
+  });
+});
+
+describe("erişilebilirlik: yakın sesli rehber ve temsilî tur etiketi (M-25)", () => {
+  it("temsilî site turu uyarısı açıkken axe ihlali yok", async () => {
+    const { container } = render(
+      createElement(NearbyAudioGuide, {
+        location: { lat: 37.9365, lng: 27.3435, accuracy: 8 },
+        places: [],
+        onOpenPlace: () => {},
+      }),
+    );
+
+    expect(container.textContent).toContain("Temsilî tur");
+    expect(await violationsOf(container)).toEqual([]);
   });
 });
 

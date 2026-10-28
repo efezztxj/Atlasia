@@ -5,6 +5,7 @@ import type { CategoryId, UploadPhotoKind } from "../types";
 import { mediaUrl } from "../utils/api";
 import { cn } from "../utils/cn";
 import { formatCoords, reverseName } from "../utils/geo";
+import { photoUploadErrorMessage } from "../utils/image";
 import { storageGet, storageSet } from "../utils/storage";
 import { usePanelAccess } from "../hooks/usePanelAccess";
 
@@ -91,7 +92,7 @@ export default function AddDiscoveryModal({ draft, uploadPhoto, onClose, onSave 
       setPhoto(await uploadPhoto(file, "place"));
     } catch (failure) {
       console.error("[Atlasia] Fotoğraf yüklenemedi:", failure);
-      setError("Fotoğraf yüklenemedi. İstersen fotoğrafsız devam edebilirsin.");
+      setError(photoUploadErrorMessage(failure, "Fotoğraf yüklenemedi. İstersen fotoğrafsız devam edebilirsin."));
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";

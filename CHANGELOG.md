@@ -9,6 +9,14 @@
 
 ## 2026-10-28 — Vite 8 + plugin-react 6 (bekletilen majör alındı)
 ## 2026-10-28 — Denetim A grubu: CSP uyumlu tema, Google popup izni, gizli source map, CRLF (A1–A7)
+## 2026-10-28 — Temsilî site turu etiketi (M-25 / G6), çevrimdışı `/theme-boot.js` önbelleği ve rıza bayrağı düzeltmesi
+
+- **Temsilî site turu etiketi (M-25 · P1 / G6):** `NearbyAudioGuide` artık `isRealPath(tourRoute) === false` olan antik kent turlarında (Efes, Priene, Pompeii, Ostia) kart içinde erişilebilir (`role="note"`) **`Temsilî tur — saha patikası doğrulanmadı; duraklar editör sırasıyla sunulur.`** uyarısı gösteriyor; site turu dışındaki tekil rehber noktalarında veya saha patikası doğrulanmış turlarda göstermiyor (`NearbyAudioGuide.test.ts` — 3 test).
+- **A1 çevrimdışı PWA kabuğu düzeltmesi (`/theme-boot.js`, `atlasia-shell-v8`):** `index.html` içindeki senkron `<script src="/theme-boot.js">` dosyası `public/sw.js` ön önbellek listesine (`SHELL`) ve statik izin listesine (`isAllowedStaticPath`) eklendi; mevcut kurulu PWA istemcilerinin güncellenmesi için kabuk önbelleği `atlasia-shell-v8`'e yükseltildi (`scripts/sw.node-test.mjs`).
+- **Çerez tercihleri bayrak temizliği (`CookieConsent`):** Panel zaten bağlıyken çağrılan `openCookiePreferences()` sonrası `pendingPreferencesOpen` bayrağının bellekte takılı kalmaması için `onOpenPreferences` içinde `consumePendingCookiePreferences()` tüketiliyor.
+- **Fotoğraf yükleme hata iletimi (T10 / M-44):** `AddDiscoveryModal`, `SocialPanel`, `StoryComposer` ve `AtlasAssistant` üzerindeki `catch` blokları artık `ImageInputError` mesajlarını (`photoUploadErrorMessage`) yutmuyor; 25 MB sınırı ve iPhone HEIC ("En Uyumlu") rehberi boş MIME uzantılı `.heic/.heif` dosyaları dahil doğrudan kullanıcıya gösteriliyor.
+
+## 2026-10-28 — Denetim A grubu: CSP uyumlu tema, Google popup izni, gizli source map, CRLF (A1–A7) + C4/E6 erişilebilirlik
 
 Ayrıntı: `docs/teslimatlar/teslimat-denetim-a-csp-hsts-2026-10-28.md`.
 
@@ -19,9 +27,9 @@ Ayrıntı: `docs/teslimatlar/teslimat-denetim-a-csp-hsts-2026-10-28.md`.
 - **A5:** HSTS `includeSubDomains`; `preload` gerekçesiyle yok.
 - **A6:** `sourcemap: "hidden"` + `collect-sourcemaps.mjs` haritaları `dist` dışına taşır; CI artifact (pinli action).
 - **A7:** `.gitattributes eol=lf` + `split(/\r?\n/)` (Windows checkout).
-- Testler **1275/1275** (158 dosya), typecheck/lint/build/`test:scripts`/`test:bundle-budget` yeşil.
+- **C4 / E6:** `PlaceDetails` galeri şeridi küçük görsellerine açıklayıcı `alt` metni eklendi; `BottomPanel` odak düğmesi tek tutarlı `Haritada gör` + `aria-pressed` durumuna geçirildi (`PlaceDetails.accessibility.test.ts`).
 
-## 2026-10-28 — Veri hatası artık kalıcı şerit, yükleme yerleri iskelet (M-18, M-19)
+## 2026-10-28 — Vite 8 + plugin-react 6 (bekletilen majör alındı)
 
 - `vite` ^7.3.7 → **^8.3.5**, `@vitejs/plugin-react` 5.1.1 → **6.1.2** (plugin-react 6, Vite 8 istiyordu; ikisi birlikte alındı). TypeScript 7 hâlâ bekliyor: `typescript-eslint` peer aralığı `<6.1.0`.
 - **Ölçüm (Rolldown):** toplam JS 988.185 bayt gzip (bütçe 1.003.000) — derleyici değişimi toplamı düşürdü; ilk boya ve yolculuklar bütçe içinde. Kategori dağılımı kaydığı için entry/iconsVendor/firebaseAuth/ilk-boya-CSS eşikleri ölçüme ~%3 payla yeniden bağlandı (ayrıntı `scripts/bundle-budget.mjs` içinde).
