@@ -43,7 +43,7 @@ export default function NotificationsPanel({ notifications, unreadCount, onClose
           {notifications.length === 0 ? (
             <div className="p-4 text-center">
               <p className="text-[14px] font-medium">Şimdilik yeni bildirimin yok.</p>
-              <p className="mt-1 text-[13px] leading-relaxed text-mint/75">Kaydettiğin yerler ve rotalar, alttaki Kaydet sekmesinde seni bekler.</p>
+              <p className="mt-1 text-[13px] leading-relaxed text-mint/75">Kaydettiğin yerler ve rotalar, sağ üstteki menüdeki “Kayıtlarım” bölümünde seni bekler.</p>
               <p className="mt-3 text-[11px] text-mint/50">Rapor sonucu bildirimi bu sürümde gönderilmiyor.</p>
             </div>
           ) : notifications.map((n) => (

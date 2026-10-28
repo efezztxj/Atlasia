@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { analytics } from "../lib/analytics";
 import { AlertTriangle, Loader2, Send, X } from "lucide-react";
 import { REPORT_REASONS, createReport, type ReportReason } from "../lib/moderation";
 import { usePanelAccess } from "../hooks/usePanelAccess";
@@ -41,6 +42,7 @@ export default function ReportDialog({ targetType, targetId, targetOwnerUid, tar
     setError(null);
     try {
       await createReport({ targetType, targetId, targetOwnerUid, reason, details: details.trim() || undefined }, reporterUid);
+      analytics.reportCreated({ targetType });
       setDone(true);
       closeTimer.current = window.setTimeout(() => {
         closeTimer.current = null;

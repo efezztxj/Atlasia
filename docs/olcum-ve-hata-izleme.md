@@ -70,6 +70,25 @@ oturumda en fazla **200** olay, tek değerde en fazla **300** karakter.
 > bağımlılıksız ve JSON tabanlı. Sentry'ye bağlanmak istenirse araya küçük bir aktarıcı (Cloudflare
 > Worker) yazılır: gelen JSON → Sentry `store` API'si. Bu, paket bütçesine 0 kB ekler.
 
+## 4b. Olay kataloğu (hangi olay, hangi alan, nerede tetiklenir)
+
+Alan adları `src/lib/analytics.ts` içindeki tiplerin **birebir** karşılığıdır; `src/config/telemetryCatalog.test.ts` bunu kaynak dosyalara karşı doğrular (alan adı değişirse test kırılır).
+
+| Olay | Alanlar | Tetiklendiği yer | Ne ölçülür |
+|---|---|---|---|
+| `app_open` | `standalone` (türetilen `screen`) | `App.tsx` (ilk görünür kare sonrası) | Kurulu uygulamadan mı, tarayıcıdan mı gelindi |
+| `session_start` | `account` (`cloud`/`device`/`anonymous`) | `App.tsx` (oturum başı) | Oturum sayısı, hesap türü dağılımı |
+| `sign_up` | `account` | `AuthContext.tsx` (kayıt tamamlanınca) | Kayıt dönüşümü |
+| `sign_in` | `account` | `AuthContext.tsx` (giriş tamamlanınca) | Geri dönen kullanıcı |
+| `place_created` | `account`, `category`, `hasPhoto` | `useFirestoreAtlasData.ts` | Hangi kategori içerik üretiyor |
+| `route_published` | `account`, `visibility`, `stops` | `useFirestoreAtlasData.ts` | Yayınlanan rota uzunluğu/görünürlüğü |
+| `post_created` | `hasPhoto`, `kind` (`post`/`story`) | `useFirestoreAtlasData.ts` | Sosyal katman canlılığı |
+| `share` | `channel` (`native`/`clipboard`/`link`), `target`, `ok` | `AtlasAssistant.tsx` | Paylaşım yolunun tutup tutmadığı (native sheet vs panoya kopyalama) |
+| `offline_pack` | `action` (`download`/`delete`), `ok` | `OfflinePackage.tsx` | Çevrimdışı paketin gerçekten indirilebildiği |
+| `report_created` | `targetType` | `ReportDialog.tsx` | Moderasyon yükünün nerede oluştuğu |
+
+**Kural:** yeni bir olay eklenirse (1) `analytics.ts` tipi, (2) tetiklendiği gerçek bir kullanıcı akışı, (3) bu tablodaki satır — üçü **aynı teslimatta** yazılır. Çağrılmayan olay tanımlamak yasak: 2026-10-27'de `share`, `offline_pack`, `report_created` tam olarak bu yüzden ölü duruyordu.
+
 ## 5. Toplayıcı seçenekleri
 
 | Seçenek | Kurulum | Not |

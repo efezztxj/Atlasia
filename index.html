@@ -57,10 +57,47 @@
         }
       })();
     </script>
+    <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Atlasia" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+    <!-- Yapısal veri: arama motorları ve paylaşım önizlemeleri için.
+         Yalnız doğru olan alanlar yazılır; puan/fiyat gibi doğrulanamayan
+         değerler bilinçli olarak yoktur. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://atlasia.pages.dev/#organization",
+            "name": "Atlasia",
+            "url": "https://atlasia.pages.dev/",
+            "logo": "https://atlasia.pages.dev/icons/icon-512.png"
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://atlasia.pages.dev/#website",
+            "url": "https://atlasia.pages.dev/",
+            "name": "Atlasia",
+            "inLanguage": "tr-TR",
+            "publisher": { "@id": "https://atlasia.pages.dev/#organization" }
+          },
+          {
+            "@type": "WebApplication",
+            "name": "Atlasia",
+            "url": "https://atlasia.pages.dev/uygulama/",
+            "applicationCategory": "TravelApplication",
+            "operatingSystem": "Web",
+            "inLanguage": "tr-TR",
+            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "TRY" },
+            "description": "Keşif haritası, gezgin izleri, rota planlama ve konum tabanlı sesli rehber."
+          }
+        ]
+      }
+    </script>
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" type="image/png" href="/icons/icon-512.png" />
     <link rel="apple-touch-icon" href="/icons/icon-512.png" />
