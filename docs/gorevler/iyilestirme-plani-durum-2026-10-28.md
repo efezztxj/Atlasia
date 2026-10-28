@@ -29,9 +29,9 @@ Plan sırası: `T1 → T2 → T3 → T12 → T11 → T7 → T4 → T5 → T8 →
 | T14 | Klavye: skip-link + `:focus-visible` | ✅ | "İçeriğe geç" → `#kesfet` (`tabIndex={-1}`); tek `:focus-visible` bloğu |
 | T15 | Hareket azaltma | ✅ | `prefers-reduced-motion` bloğunda `scroll-behavior: auto !important` |
 | T16 | Semantik (tek H1) | ✅ | Tek `h1` = "Dünyayı merakınla keşfet."; marka yazısı `aria-hidden` |
-| T17 | Prerender/SSG (SEO) | ⛔ bekliyor | Landing istemci tarafında render ediliyor; JS'siz HTML'de metin yok |
-| T18 | Footer'da dil + yasal bağlantılar | ⛔ bekliyor | — |
-| T19 | İçerik/SEO meta seti | ⛔ bekliyor | — |
+| T17 | Prerender/SSG (SEO) | ⛔ **sıradaki** | Landing istemci tarafında render ediliyor; JS'siz HTML'de metin yok |
+| T18 | Footer'da dil + yasal bağlantılar | ✅ | 3 yasal metin + "Çerez tercihleri" (rıza geri alma) + "Site dili: Türkçe (tr)" — `footerT18.test.ts` (3) |
+| T19 | İçerik/SEO meta seti | ✅ | `canonical`, `robots`, `hreflang` + `x-default`, taze `lastmod` — `seoMetaT19.test.ts` (6) |
 | T20 | Güven sinyalleri (sosyal kanıt) | ⛔ bekliyor | sahte sayaç yazılmaz; gerçek veri gerekir |
 | T21 | Basın/iletişim yüzeyi | ⛔ bekliyor | — |
 
@@ -39,18 +39,19 @@ Plan sırası: `T1 → T2 → T3 → T12 → T11 → T7 → T4 → T5 → T8 →
 
 | Ölçüm | Değer | Eşik | Marj |
 |---|---|---|---|
-| İlk HTML seti (gzip) | 126.774 B | 129.400 B | 2.626 B |
-| Toplam JS (gzip) | 997.923 B | 998.500 B | **577 B** |
+| İlk HTML seti (gzip) | 127.069 B | 129.400 B | 2.331 B |
+| Toplam JS (gzip) | 997.981 B | 998.500 B | **519 B** |
 | Toplam CSS (gzip) | 34.988 B | 35.700 B | 712 B |
-| Tanıtım yolculuğu (gzip) | 126.774 B | 129.400 B | 2.626 B |
-| Uygulama kabuğu (gzip) | 586.968 B | 603.400 B | 16.432 B |
-| `entry` (bizim kod) | 20.839 B | 20.900 B | **61 B** |
+| Tanıtım yolculuğu (gzip) | 127.069 B | 129.400 B | 2.331 B |
+| Uygulama kabuğu (gzip) | 587.262 B | 603.400 B | 16.138 B |
+| `entry` (bizim kod) | 20.888 B | 20.900 B | **12 B** |
 
 Eşik kuralı: `scripts/bundle-budget.mjs` içindeki sayı **yalnız** yeni bir ölçüm
 ve yazılı gerekçeyle değişir; testi yeşile çevirmek için asla değişmez. #127'den
 beri **bayatlama kapısı** var: sahibi olduğumuz eşikler ölçümün %20'sinden fazla
-üstünde olamaz. `entry` marjı 61 B — girişe (landing + App kabuğu) yeni kod
-eklemeden önce `npm run build` ile ölçüm alın.
+üstünde olamaz. `entry` marjı **12 B** — girişe (landing + App kabuğu) yeni kod eklemeden
+önce `npm run build` ile ölçüm alın; sığmıyorsa doğru çözüm eşiği yükseltmek
+değil, footer/SSS gibi aşağıdaki blokları tembel parçaya taşımaktır (§3.4).
 
 ## 3. Açık kararlar (insan onayı ister)
 

@@ -15,6 +15,8 @@ import {
   X,
 } from "lucide-react";
 import type { LegalDocumentType } from "../content/legal";
+// T18: çerez tercihleri landing'den de açılabilmeli (KVKK: geri alma hakkı).
+import { openCookiePreferences } from "../lib/cookieConsent";
 
 const LegalNotice = lazy(() => import("./LegalNotice"));
 
@@ -293,6 +295,8 @@ export default function LandingPage({ onStart }: Props) {
           <div>
             <p className="font-display text-lg font-semibold text-mint">atlasia<span className="text-sun">.</span></p>
             <p className="mt-2 max-w-[280px] leading-relaxed">Merak ettiğin her yer için sakin bir keşif defteri. Reklamsız, izinsiz konum okumaz.</p>
+            {/* T18: tek dil — iddia ile <html lang> aynı olsun. */}
+            <p className="mt-2 text-[11px] text-mint/35" lang="tr">Site dili: Türkçe (tr)</p>
           </div>
           <nav aria-label="Yasal" className="flex flex-col gap-2">
             <span className="text-[10px] font-semibold tracking-[0.16em] text-mint/35 uppercase">Yasal</span>
@@ -301,6 +305,15 @@ export default function LandingPage({ onStart }: Props) {
                 {label}
               </button>
             ))}
+            {/* T18: rıza verildikten sonra fikir değiştirme yolu her ekranda
+                bulunmalı; panel yalnız uygulama ayarlarında kalmasın. */}
+            <button
+              type="button"
+              onClick={openCookiePreferences}
+              className="min-h-8 text-left text-[12px] text-mint/70 transition hover:text-sun"
+            >
+              Çerez tercihleri
+            </button>
           </nav>
           <nav aria-label="Ürün" className="flex flex-col gap-2">
             <span className="text-[10px] font-semibold tracking-[0.16em] text-mint/35 uppercase">Ürün</span>
