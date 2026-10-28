@@ -61,7 +61,39 @@ jobs:
       # → zod). CI'da sürüm sabit `npx` ile çalışır, üretim ve yerel ağaç temiz
       # kalır. G4 matrisi bu kararı belgeliyor.
       - name: Lighthouse mobil (perf ≥90, a11y ≥95, BP ≥95, SEO ≥95)
-        run: npx --yes @lhci/cli@0.15.1 autorun
+        id: lighthouse
+        run: |
+          set -o pipefail
+          npx --yes @lhci/cli@0.15.1 autorun 2>&1 | tee lighthouse.log
+
+      # Adım logu Actions API'sinden okunamıyor (results-receiver EOF). Kapı
+      # düştüğünde nedeni görünür kılmak için son satırlar annotation ve iş
+      # özetine taşınır — kural testlerindeki desenin aynısı.
+      - name: Lighthouse hatasını annotation'a taşı
+        if: failure() && steps.lighthouse.outcome == 'failure'
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          path = Path("lighthouse.log")
+          raw = path.read_text(encoding="utf-8", errors="replace") if path.exists() else "(lighthouse.log yok: adım tarayıcı açılmadan düştü)"
+          lines = [line for line in raw.splitlines() if line.strip()]
+          interesting = [line for line in lines if any(k in line.lower() for k in
+                         ("error", "failed", "assert", "score", "budget", "chrome", "timeout", "✕", "×"))]
+          body = "\n".join((interesting[-25:] or lines[-25:]))[-6000:]
+
+          summary = os.environ.get("GITHUB_STEP_SUMMARY")
+          if summary:
+              with open(summary, "a", encoding="utf-8") as handle:
+                  handle.write("## Lighthouse — başarısız\n\n```\n" + body + "\n```\n")
+
+          chunk = 3800
+          parts = [body[i:i + chunk] for i in range(0, len(body), chunk)][:3] or ["(çıktı yok)"]
+          for index, part in enumerate(parts, start=1):
+              escaped = part.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+              print(f"::error title=Lighthouse hatasi {index}/{len(parts)}::{escaped}")
+          PY
 
       - name: Upload Lighthouse reports
         if: always()
