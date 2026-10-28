@@ -1,5 +1,18 @@
 # Atlasia Update
 
+## 2026-10-28 — Dev-tooling kısmi güncelleme (#79, çözülebildiği kadarıyla)
+
+#79'un güncel main'de uygulanabilir kısmı alındı; üç paket gerekçeli olarak bekletildi:
+
+- **Alınan:** `tailwindcss` + `@tailwindcss/vite` 4.1.17 → 4.3.3, `eslint` 10.13.0, `globals` 17.13.0.
+- **Bekletilen — `@types/node` 26:** mevcut tsconfig (`lib: ES2020`) altında kurallar testi tiplerini kırıyor; 22'de kaldı.
+- **Bekletilen — `@vitejs/plugin-react` 6:** Vite 8 istiyor (bizde 7); Vite 8 yükseltmesiyle birlikte alınacak.
+- **Bekletilen — `typescript` 7:** `typescript-eslint` henüz TS 7 desteklemiyor (lint tamamen kırılıyor); destek gelince `baseUrl` → göreli `paths` geçişiyle birlikte alınacak (denendi, çalışıyor).
+- `@firebase/rules-unit-testing` 6, firebase 13 istediği için Firebase grubuyla birlikte ele alınır.
+
+Typecheck, lint, 1202 test ve build yeşil.
+
+
 ## 2026-10-28 — MapLibre GL 6.15.0 (#81, çözülmüş hali)
 
 - `maplibre-gl` 6.4.1 → **6.15.0** (tam sürüm sabitli; güvenlik tabanı 6.4.1'in üstünde, `dependencySecurity` kapısı yeşil).
