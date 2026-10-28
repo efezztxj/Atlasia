@@ -87,7 +87,8 @@ Firebase konsolunda:
 - Minimum TLS: en az 1.2.
 - Always Use HTTPS: açık.
 - Automatic HTTPS Rewrites: açık olabilir; uygulama yine yalnız HTTPS kaynak kullanmalıdır.
-- HSTS şu anda uygulama yanıtında bir yıllık, `includeSubDomains` ve `preload` olmadan gönderilir. Tüm alt alanlar doğrulanmadan bu iki seçenek eklenmez.
+- HSTS bir yıllık ve **`includeSubDomains`** ile gönderilir (A5, 2026-10-28). `preload` **bilinçli olarak yok**: preload listesine girmek kök alan adında (apex) başvuru ve uzun süre geri dönüşsüzlük ister; kök alan Cloudflare'in (`pages.dev`), bizim alanımız yalnız bir alt alan. Özel alan adına geçilince tek satırlık ekleme yeterli.
+- Tema önyüklemesi artık satır içi `<script>` değil, `/theme-boot.js` (§A1): `script-src 'self'` altında satır içi betik engelleniyordu.
 - Kullanılmayan Cloudflare Access, Worker route veya Page Rule bırakılmaz.
 
 ## 6. Preview duman testi

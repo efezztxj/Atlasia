@@ -7,6 +7,25 @@ import { describeCondition, parseRules, summarize, toMarkdown } from "./rules-in
 const rulesPath = fileURLToPath(new URL("../firestore.rules", import.meta.url));
 const source = readFileSync(rulesPath, "utf8");
 
+describe("rules-inventory — A7: satır sonları", () => {
+  it("CRLF metni LF ile aynı blokları üretir (Windows checkout)", () => {
+    const lf = [
+      "service cloud.firestore {",
+      "  match /databases/{database}/documents {",
+      "    match /a/{id} {",
+      "      allow get: if true;",
+      "    }",
+      "  }",
+      "}",
+    ].join("\n");
+    // Windows'ta `git checkout` dosyayı CRLF'e çevirebilir; ayrıştırıcı aynı
+    // sonucu vermezse kural envanteri/emülatör testi sessizce kayardı.
+    const crlf = lf.replace(/\n/g, "\r\n");
+    assert.deepEqual(parseRules(crlf), parseRules(lf));
+    assert.equal(parseRules(crlf).length, parseRules(lf).length);
+  });
+});
+
 describe("rules-inventory — ayrıştırıcı", () => {
   it("küçük bir kural metnini blok/blok izler", () => {
     const mini = [

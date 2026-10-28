@@ -26,8 +26,10 @@ describe("T7 · kritik yol", () => {
   it("tanıtım alt bloğu (SSS + footer) tembel parçada", () => {
     expect(landing).toContain('const LandingFooter = lazy(() => import("./LandingFooter"))');
     expect(landing).toContain("<LandingFooter");
-    // SSS ve footer JSX'i artık giriş paketinde değil.
-    expect(landing).not.toContain('id="sss"');
+    // SSS ve footer JSX'i artık giriş paketinde değil; yalnız mobil menüdeki
+    // `#sss` bağlantısı boşa düşmesin diye Suspense fallback tek bir çapa tutar.
+    expect(landing).not.toContain("<section id=\"sss\"");
+    expect(landing).toContain('<div id="sss" aria-hidden');
     expect(landing).not.toContain("<footer");
     expect(footer).toContain('id="sss"');
     expect(footer).toContain("<footer");
@@ -35,7 +37,7 @@ describe("T7 · kritik yol", () => {
 
   it("alt bloğun yükleme yer tutucusu kaymayı sınırlar", () => {
     // Yer tutucu yükseklik + aynı zemin rengi: parça gelince düzen zıplamaz.
-    expect(landing).toMatch(/fallback=\{<div aria-hidden className="min-h-\[5\d\dpx\] bg-\[#f1f0e9\]" \/>\}/);
+    expect(landing).toMatch(/<div id="sss" aria-hidden className="min-h-\[5\d\dpx\] bg-\[#f1f0e9\]" \/>/);
   });
 
   it("rıza paneli tembel yüklenir ve yerinde bağlıdır", () => {

@@ -478,6 +478,7 @@ export default function SocialPanel({
                         alt=""
                         className="size-full rounded-full object-cover"
                         loading="lazy"
+                        decoding="async"
                       />
                     ) : (
                       <Avatar name={s.author} className="size-full" textClass="text-[13px]" />
@@ -640,6 +641,7 @@ export default function SocialPanel({
                         src={img}
                         alt=""
                         loading="lazy"
+                        decoding="async"
                         className="mt-2 max-h-[220px] w-full rounded-xl object-cover ring-1 ring-white/10"
                       />
                     )}

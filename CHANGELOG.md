@@ -1,5 +1,20 @@
 # Atlasia Update
 
+## 2026-10-28 — Denetim A grubu güvenlik yamaları (CSP tema/Google popup, HSTS, gizli source map, CRLF), T7/T10 kurtarma ve temsilî tur etiketi (M-25)
+
+- **Üretim CSP düzeltmeleri + çevrimdışı kabuk (A1, A2, A5):**
+  - **A1 (`/theme-boot.js`):** `index.html` içindeki satır içi tema betiği üretimde `script-src 'self'` tarafından engelleniyordu; betik `/theme-boot.js` dosyasına taşındı (`'unsafe-inline'` açılmadı) ve PWA çevrimdışı açılışta temanın kaybolmaması için `public/sw.js` ön önbellek kabuğuna (`SHELL` + `isAllowedStaticPath`) eklendi.
+  - **A2 (`apis.google.com`):** Firebase Google `signInWithPopup` akışının kullandığı `https://apis.google.com` kökeni `public/_headers` içinde `script-src`, `connect-src` ve `frame-src` listelerine eklendi.
+  - **A5 (`HSTS includeSubDomains`):** `Strict-Transport-Security` başlığı `max-age=31536000; includeSubDomains` olarak sıkılaştırıldı (`preload` bilinçli olarak `pages.dev` paylaşımlı kök alanı nedeniyle hariç tutuldu).
+- **Gizli source map + CI artifact ve CRLF koruması (A3, A4, A6, A7):**
+  - **A6 (`sourcemap: "hidden"`):** `vite.config.ts` gizli kaynak haritası üretiyor, `scripts/collect-sourcemaps.mjs` postbuild adımında `.map` dosyalarını `dist/` dışına (`sourcemaps/`) taşıyor ve `.github/workflows/ci.yml` SHA-pinli `actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9` ile 7 günlük CI artifact olarak saklıyor.
+  - **A3/A4/A7:** `Explorer` ve `TrackRecorderPanel` SDK başlatmayan `lib/firebaseConfig` modülünü okuyor; `legal.ts` `_GRECAPTCHA` açıklaması gerçeğe uyarlandı; `.gitattributes` ve `split(/\r?\n/)` ile Windows CRLF kural ayrıştırıcı kayması kapatıldı (`securityPosture.test.ts` — 10 test).
+- **T7 tembel yükleme yarış düzeltmeleri + T10 görsel boru hattı kapıları:**
+  - `CookieConsent` henüz inmeden tıklanan **Çerez tercihleri** isteği `consumePendingCookiePreferences()` bayrağıyla yakalanıyor; `LandingPage` alt `Suspense` yer tutucusu `id="sss"` çapasını koruyor.
+  - `src/utils/image.ts` 25 MB decode öncesi bellek kapısı, HEIC/HEIF için iOS **En Uyumlu** yönlendirmesi ve EXIF `imageOrientation: "from-image"` desteği kazandı; `PlaceDetails`, `PlaceImage`, `RecordsDock` ve `SocialPanel` görsellerine `decoding="async"` / `loading="lazy"` eklendi (`imagePipelineT10.test.ts` — 7 test).
+- **Temsilî site turu etiketi (M-25 · P1 / G6):** `NearbyAudioGuide` artık `isRealPath(tourRoute) === false` olan antik kent turlarında kart içinde açık **`Temsilî tur — saha patikası doğrulanmadı; duraklar editör sırasıyla sunulur.`** uyarısı gösteriyor (`NearbyAudioGuide.test.ts` — 3 test).
+- **T1 Worker paketi (`PR #146`):** `workers/telemetry/` Cloudflare Worker paketi ve 8 sözleşme testi (`npm run test:telemetry-worker`) `main` dalına alındı.
+
 ## 2026-10-28 — Vite 8 + plugin-react 6 (bekletilen majör alındı)
 
 - `vite` ^7.3.7 → **^8.3.5**, `@vitejs/plugin-react` 5.1.1 → **6.1.2** (plugin-react 6, Vite 8 istiyordu; ikisi birlikte alındı). TypeScript 7 hâlâ bekliyor: `typescript-eslint` peer aralığı `<6.1.0`.

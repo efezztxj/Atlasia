@@ -13,7 +13,7 @@ Plan sırası: `T1 → T2 → T3 → T12 → T11 → T7 → T4 → T5 → T8 →
 
 | # | Madde | Durum | Kanıt |
 |---|---|---|---|
-| T1 | Ölçüm altyapısı (toplayıcı + panel) | 🟡 **kısmi — kod + kurulum rehberi hazır** | `src/lib/telemetry.ts`, `telemetryBootstrap.ts`; Worker kodu + Pages env adımları `docs/gorevler/t1-toplayici-kurulum.md`. Kalan: operatör deploy + `VITE_TELEMETRY_ENDPOINT` |
+| T1 | Ölçüm altyapısı (toplayıcı + panel) | 🟡 **kısmi — kod + deployable Worker paketi hazır** | `src/lib/telemetry.ts`, `telemetryBootstrap.ts`; `workers/telemetry/` (`src/index.js`, `wrangler.toml`, `worker.node-test.mjs` — 8 sözleşme testi) + `docs/gorevler/t1-toplayici-kurulum.md`. Kalan: operatör `wrangler deploy` + `VITE_TELEMETRY_ENDPOINT` |
 | T2 | Huni olayları (landing→harita→kayıt) | ✅ | 16 olay: `analytics.ts`; katalog testi `src/config/telemetryCatalog.test.ts`; bağlama testi `src/config/siteSurface.test.ts` |
 | T3 | Baseline tablosu + cihaz ölçümü | 🟡 **kısmi** — paket ölçüldü, CWV/Search Console ölçülmedi | `docs/baseline.md`; ölçüm protokolü `docs/gorevler/t3-olcum-protokolu.md` (komutlar, tuzaklar, sonuç tablosu) |
 | T4 | Misafir modu (kayıt duvarını kaldırma) | ✅ | CTA → misafir haritası; **kural değişmedi** (`request.auth` boş → yazma sunucuda reddedilir); `src/config/guestMode.test.ts` (10 test) |
@@ -22,7 +22,7 @@ Plan sırası: `T1 → T2 → T3 → T12 → T11 → T7 → T4 → T5 → T8 →
 | T7 | Landing CTA/çerez yerleşimi (1440×900 tıklanabilirlik, mobil sheet) | ✅ | `LandingPage.tsx`, `CookieConsent.tsx` (`bottom-[calc(66px+safe-area)]`, `md:right-6 md:bottom-6`), z-index: menü 95 > çerez 90 |
 | T8 | Onboarding / ilk rota akışı | ✅ | `Onboarding.tsx` misafir notu + `askAccount(..., "route")`; panel `FIRST_ROUTE_KEY`'e bağlı; `onboarding_choice` olayı — `onboardingT8.test.ts` (8) |
 | T9 | Giriş ekranı sürtünmesi (önce Google) | ✅ | `AccountAccess.tsx` + `AccountAccess.t9.test.ts` (7 test) |
-| T10 | Görsel boru hattı (foto optimize) | ⛔ **ölçüm bekliyor** | Protokol: `docs/gorevler/t3-olcum-protokolu.md`; tarayıcı/kota ölçümü olmadan boru hattı kurulmaz |
+| T10 | Görsel boru hattı (foto optimize) | 🟡 **kısmi — kod tarafı bitti, cihaz ölçümü bekliyor** | 25 MB decode öncesi kapı, HEIC "En Uyumlu" rehberi, EXIF `from-image`, tüm yüzeylerde `decoding="async"`, kenar panelde `loading="lazy"` — `imagePipelineT10.test.ts` (7). Hero srcset/WebP için gerçek cihaz LCP ölçümü şart (`teslimat-t10-gorsel-hatti-2026-10-28.md`) |
 | T11 | Firebase'i ilk setten çıkarma | ✅ | İlk boya JS **100.288 B** gzip; `firebase-vendor` ilk sette değil (`npm run build` tablosu) |
 | T12 | Kontrast düzeltmeleri (eyebrow/başlık) | ✅ | `#a37c35 → #8f6224` (4,66:1), `#ba8f45 → #9c7029` (3,86:1); `src/config/landingContrast.test.ts` |
 | T13 | Mobil menü (768 px altı) | ✅ | Hamburger + `role="dialog"` panel, Escape/Tab tuzağı/odak iadesi — `src/config/landingA11y.test.ts` |
@@ -32,19 +32,21 @@ Plan sırası: `T1 → T2 → T3 → T12 → T11 → T7 → T4 → T5 → T8 →
 | T17 | Prerender/SSG (SEO) | 🟡 **kısmi — bilinçli** | JS'siz HTML'de gerçek metin var (`<noscript>`, `landingStatic.ts` + vite `transformIndexHtml`); tam SSG/hidrasyon yapılmadı (tarayıcısız ortamda doğrulanamaz). `prerenderT17.test.ts` (6) |
 | T18 | Footer'da dil + yasal bağlantılar | ✅ | 3 yasal metin + "Çerez tercihleri" (rıza geri alma) + "Site dili: Türkçe (tr)" — `footerT18.test.ts` (3) |
 | T19 | İçerik/SEO meta seti | ✅ | `canonical`, `robots`, `hreflang` + `x-default`, taze `lastmod` — `seoMetaT19.test.ts` (6) |
-| T20 | Güven sinyalleri (sosyal kanıt) | ⛔ **insan girdisi gerekli** | Sahte sayaç yazılmaz. Bugünkü dürüst güven sinyalleri zaten var ("reklam ve takip pikseli yok", "konum onayla") ve `footerT18`/`siteSurface` ile kilitli. Gerçek kullanıcı/rota sayısı için toplayıcı (T1) gerekli |
+| T20 | Güven sinyalleri (sosyal kanıt) | ⛔ **karar gerekiyor (T11 ile çakışıyor)** | Sahte sayaç yazılmaz. Bugünkü dürüst güven sinyalleri zaten var ("reklam ve takip pikseli yok", "konum onayla") ve `footerT18`/`siteSurface` ile kilitli. Gerçek kullanıcı/rota sayısı için toplayıcı (T1) gerekli |
 | T21 | Basın/iletişim yüzeyi | ⛔ **hukuk onayı bekliyor** | Gerçek e-posta/künye olmadan yayınlanmaz (`docs/mvp-cikis-plani-2026-10-27.md` P0-1). Footer yüzeyi T18'de hazır |
 
-## 2. Bütçe ve eşikler (bugünkü ölçüm)
+## 2. Bütçe ve eşikler (bugünkü ölçüm — Vite 8 / Rolldown)
 
 | Ölçüm | Değer | Eşik | Marj |
 |---|---|---|---|
-| İlk HTML seti (gzip) | 126.334 B | 129.400 B | 3.066 B |
-| Toplam JS (gzip) | 1.002.430 B | 1.003.000 B | **570 B** |
-| Toplam CSS (gzip) | 35.247 B | 35.700 B | 453 B |
-| Tanıtım yolculuğu (gzip) | 126.334 B | 129.400 B | 3.066 B |
-| Uygulama kabuğu (gzip) | 586.528 B | 603.400 B | 16.872 B |
-| `entry` (bizim kod) | 19.251 B | 20.900 B | **1.649 B** |
+| İlk HTML seti (gzip) | 126.982 B | 129.400 B | 2.418 B |
+| Toplam JS (gzip) | 990.996 B | 1.003.000 B | **12.004 B** |
+| Toplam CSS (gzip) | 35.504 B | 35.700 B | 196 B |
+| İlk boya CSS (gzip) | 25.385 B | 26.100 B | 715 B |
+| İlk boya JS (gzip) | 98.994 B | 102.200 B | 3.206 B |
+| Tanıtım yolculuğu (gzip) | 126.982 B | 129.400 B | 2.418 B |
+| Uygulama kabuğu (gzip) | 579.466 B | 603.400 B | 23.934 B |
+| `entry` (bizim kod) | 16.574 B | 16.700 B | **126 B** |
 
 Eşik kuralı: `scripts/bundle-budget.mjs` içindeki sayı **yalnız** yeni bir ölçüm
 ve yazılı gerekçeyle değişir; testi yeşile çevirmek için asla değişmez. #127'den
@@ -75,7 +77,15 @@ kod eklemeden önce yine `npm run build` ile ölçüm alın.
    ve `CookieConsent` tembel parçada; `CookieConsentBoundary` ile tembel rıza
    parçası indirilemezse uygulama düşmez ve "Tekrar dene" / footer "Çerez
    tercihleri" tetiklemesi taze `lazy()` fabrikasıyla parçayı yeniden yükler.
-5. **T20 güven sinyalleri:** gerçek kullanıcı/rota sayısı olmadan sosyal kanıt
-   yazılmayacak; sayı üretilmesi gerekiyorsa kaynağı da yazılmalı.
+5. **T20 güven sinyalleri — T11 ile doğrudan çakışıyor.** En dürüst sosyal kanıt
+   ("son yayınlanan rotalar", "bu hafta eklenen izler") **gerçek veridir** ve
+   Firestore'dan okunur. Ama T11 kabul kriteri "landing'in ağ panelinde Firebase
+   görünmeyecek" diyor; bu tür bir blok, Firebase SDK'sını tanıtım sayfasına geri
+   getirir ve T11'i geri alır. Üç yol var, hepsi **karar** istiyor:
+   (a) T20'den vazgeç, mevcut dürüst güven maddeleri kalsın (statüko),
+   (b) build-time gömülü **tarihli** sayılar (ör. "28 Ekim 2026: 412 herkese açık
+       rota") — landing'de Firebase yok, ama sayı bayatlar ve günlük iş gerekir,
+   (c) ayrı bir `/kesfet/` sayfasında canlı kanıt — landing temiz kalır.
+   Sahte sayaç hiçbir durumda yazılmaz.
 6. **T21 basın/iletişim:** gerçek e-posta ve künye hukuk onayı bekliyor
    (`docs/mvp-cikis-plani-2026-10-27.md` P0-1).

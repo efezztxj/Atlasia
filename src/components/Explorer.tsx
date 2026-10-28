@@ -36,7 +36,7 @@ import { useAtlasData } from "../hooks/useAtlasData";
 import { useFirestoreAtlasData } from "../hooks/useFirestoreAtlasData";
 import { useTheme } from "../hooks/useTheme";
 import type { InstallAppController } from "../hooks/useInstallApp";
-import { isCloudReady, firebaseConfigSummary } from "../lib/firebase";
+import { isCloudReady, firebaseConfigSummary } from "../lib/firebaseConfig";
 import type { PlaceViewport } from "../lib/firestoreData";
 import { ROUTE_OPEN_MESSAGES, openPublishedRoute } from "../lib/publishedRouteOpen";
 import { placeDeleteErrorMessage } from "../lib/firestoreValue";

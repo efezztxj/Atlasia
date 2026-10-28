@@ -41,6 +41,10 @@ export default defineConfig(({ mode }) => {
       },
     },
     build: {
+      // A6: kaynak haritası üretilir ama bundle içine `sourceMappingURL` yazılmaz;
+      // postbuild adımı `.map` dosyalarını `dist/` dışına taşır (yayında URL yok,
+      // CI artifact olarak saklanır).
+      sourcemap: "hidden",
       rollupOptions: {
         output: {
           manualChunks(id) {

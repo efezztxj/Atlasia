@@ -251,6 +251,7 @@ test("install: hash'li ve lazy uygulama parçalarıyla kabuğu saklar, skipWaiti
   const shell = await harness.caches.open(SHELL_CACHE);
   for (const path of [
     "/",
+    "/theme-boot.js",
     "/manifest.webmanifest",
     "/assets/app.js",
     "/assets/app.css",

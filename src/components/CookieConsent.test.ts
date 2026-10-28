@@ -8,10 +8,12 @@ import { storageRemove } from "../utils/storage";
 import {
   COOKIE_CONSENT_NAME,
   COOKIE_CONSENT_STORAGE_KEY,
+  consumePendingCookiePreferences,
   expireCookie,
   openCookiePreferences,
   readCookieConsent,
   readRawCookie,
+  resetPendingCookiePreferencesForTests,
 } from "../lib/cookieConsent";
 import CookieConsent from "./CookieConsent";
 import { SettingsContent } from "./SettingsPanel";
@@ -21,10 +23,14 @@ function resetConsentState() {
   storageRemove(COOKIE_CONSENT_STORAGE_KEY);
 }
 
-beforeEach(resetConsentState);
+beforeEach(() => {
+  resetConsentState();
+  resetPendingCookiePreferencesForTests();
+});
 afterEach(() => {
   cleanup();
   resetConsentState();
+  resetPendingCookiePreferencesForTests();
 });
 
 describe("CookieConsent", () => {
@@ -119,6 +125,26 @@ describe("CookieConsent", () => {
     expect(card).not.toBeNull();
     expect(card?.className).toContain("fixed");
     expect(card?.className).toContain("z-[90]");
+  });
+
+  it("panel yüklenmeden gelen 'çerez tercihleri' isteği kaybolmaz (tembel yükleme)", () => {
+    // T7: panel artık `lazy()`. Kullanıcı, parça inerken footer'daki düğmeye
+    // basarsa olay dinleyicisi henüz yok — istek bayrakta beklemeli.
+    openCookiePreferences();
+    expect(consumePendingCookiePreferences()).toBe(true);
+    expect(consumePendingCookiePreferences()).toBe(false); // bir kez tüketilir
+
+    // Aynı akışın kullanıcıya görünen hâli: istek → panel bağlanır → açılır.
+    openCookiePreferences();
+    render(createElement(CookieConsent));
+    expect(screen.getByRole("button", { name: "Yalnız zorunlularla devam et" })).toBeTruthy();
+    // Kayıtlı rıza yoksa ilk kart zaten açıktır; ayırt etmek için kapatıp
+    // yeniden istek gönderiyoruz.
+    fireEvent.click(screen.getByRole("button", { name: "Yalnız zorunlularla devam et" }));
+    cleanup();
+    openCookiePreferences();
+    render(createElement(CookieConsent));
+    expect(screen.getByRole("heading", { name: "Çerez ve cihaz depolaması" })).toBeTruthy();
   });
 
   it("main.tsx içinde NetworkStatus ve UpdateNotice yanında bağlıdır", () => {

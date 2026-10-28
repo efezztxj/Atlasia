@@ -46,26 +46,10 @@
     <link rel="alternate" hreflang="tr" href="https://atlasia.pages.dev/" />
     <link rel="alternate" hreflang="x-default" href="https://atlasia.pages.dev/" />
     <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
-    <script>
-      (function () {
-        var theme = "light";
-        try {
-          var storedTheme = localStorage.getItem("atlasia.theme.v1");
-          if (storedTheme === "light" || storedTheme === "dark" || storedTheme === "midnight") {
-            theme = storedTheme;
-          }
-        } catch (error) {
-          // Storage may be disabled; the accessible default remains light.
-        }
-        var root = document.documentElement;
-        root.dataset.theme = theme;
-        root.style.colorScheme = theme === "light" ? "light" : "dark";
-        var themeColor = document.querySelector('meta[name="theme-color"]');
-        if (themeColor) {
-          themeColor.content = theme === "light" ? "#ffffff" : theme === "midnight" ? "#071827" : "#021512";
-        }
-      })();
-    </script>
+    <!-- A1: CSP `script-src 'self'` satır içi betiği engelliyordu. Aynı mantık
+         senkron dış dosyada: yine ilk boyadan önce çalışır, FOUC olmaz ve
+         `'unsafe-inline'` açmak gerekmez. -->
+    <script src="/theme-boot.js"></script>
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Atlasia" />

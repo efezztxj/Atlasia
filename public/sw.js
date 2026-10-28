@@ -11,6 +11,7 @@ const TILE_SIZE_HEADER = "x-atlasia-content-size";
 // P15: kullanıcının indirdiği saha paketleri. LRU kırpmasına girmez; yalnız kullanıcı silince silinir.
 const PACK_CACHE = "atlasia-packs-v1";
 const SHELL = [
+  "/theme-boot.js",
   "/manifest.webmanifest",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
@@ -87,7 +88,8 @@ function isSafeShellResponse(response) {
 }
 
 function isAllowedStaticPath(path) {
-  return path === "/manifest.webmanifest"
+  return path === "/theme-boot.js"
+    || path === "/manifest.webmanifest"
     || path.startsWith("/assets/")
     || path.startsWith("/icons/")
     || path.startsWith("/images/");

@@ -128,6 +128,7 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDele
                 key={photo.url}
                 src={photo.url}
                 alt={`${place.title}${photo.nearby ? " yakın çevresi" : ""}, galeri fotoğrafı ${index + 1}`}
+                decoding="async"
                 className="size-full object-cover"
                 onLoad={() => setImageLoaded(true)}
                 onError={() => {
@@ -160,7 +161,7 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDele
           <nav aria-label="Yer fotoğrafları" className="thin-scroll flex shrink-0 gap-2 overflow-x-auto px-4 py-3">
             {photos.map((item, photoIndex) => (
               <button key={item.url} type="button" aria-label={`${photoIndex + 1}. fotoğrafı göster`} aria-current={photoIndex === index ? "true" : undefined} onClick={() => setIndex(photoIndex)} className={`h-14 w-[76px] shrink-0 overflow-hidden rounded-lg border-2 ${photoIndex === index ? "border-sun" : "border-transparent"}`}>
-                <img src={item.url} alt="" className="size-full object-cover" loading="lazy" />
+                <img src={item.url} alt="" className="size-full object-cover" loading="lazy" decoding="async" />
               </button>
             ))}
           </nav>
