@@ -89,9 +89,13 @@ export default function CookieConsent() {
   return (
     <>
       {open && (
+        // Yerleşim kararı (T7): hero CTA'sı ekranın solunda durur; bu yüzden
+        // masaüstünde kart sağ alt köşeye yaslanır ve "Dünyayı keşfet" düğmesini
+        // hiçbir genişlikte örtmez. Mobilde tam genişlikte alt sayfa olur ve
+        // güvenli alanı (çentik/gesture çubuğu) hesaba katar.
         <section
           aria-labelledby="cookie-consent-title"
-          className="thin-scroll fixed bottom-[calc(66px+env(safe-area-inset-bottom))] left-3 z-[90] max-h-[calc(100dvh-2rem)] w-[calc(100%-24px)] max-w-[420px] overflow-y-auto rounded-3xl border border-leaf/25 bg-ink-2 p-4 text-mint shadow-2xl md:bottom-6 md:left-6"
+          className="thin-scroll fixed inset-x-0 bottom-[calc(66px+env(safe-area-inset-bottom))] z-[90] max-h-[70dvh] w-full overflow-y-auto rounded-t-3xl border border-leaf/25 bg-ink-2 px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] text-mint shadow-2xl md:inset-x-auto md:right-6 md:bottom-6 md:max-h-dvh md:w-96 md:rounded-3xl md:p-4"
         >
           <div className="flex items-start gap-3">
             <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-xl bg-leaf/10 text-leaf">

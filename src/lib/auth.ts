@@ -1,9 +1,15 @@
 import type { ActionCodeSettings, Auth, User } from "firebase/auth";
 import { AccountError, normalizeEmail, type AtlasAccount, type SignupDetails } from "./accountTypes";
-import { firebaseApp, isCloudReady } from "./firebase";
+import { isCloudReady } from "./firebaseConfig";
 
-/** Auth ve Firestore her zaman aynı Firebase uygulamasını kullanır. */
-export const authConfigured = isCloudReady && firebaseApp !== null;
+/**
+ * Auth her zaman `lib/firebase.ts` içindeki tek Firebase uygulamasını kullanır,
+ * ama o modül SDK'yı başlattığı için burada STATİK import edilmez: ilk yükleme
+ * grafiğinde firebase-vendor bulunmamalı (landing bütçesi). Hazırlık durumu
+ * yalnız ortam değişkenlerinden türetilir; gerçek SDK `getAtlasAuth()` içinde
+ * dinamik olarak yüklenir. Firebase başlatılamazsa `auth/not-configured` döner.
+ */
+export const authConfigured = isCloudReady;
 export const authBackend = authConfigured ? "firebase" : "device";
 
 const EMAIL_ACTION_SETTINGS: ActionCodeSettings = {
@@ -15,10 +21,10 @@ let authPromise: Promise<Auth> | null = null;
 
 /** Firebase Authentication SDK'sını yalnız gerçekten gerektiğinde yükler. */
 export function getAtlasAuth(): Promise<Auth> {
-  const app = firebaseApp;
-  if (!authConfigured || !app) return Promise.reject(new Error("auth/not-configured"));
-  authPromise ??= import("firebase/auth").then(({ getAuth }) => {
-    const auth = getAuth(app);
+  if (!authConfigured) return Promise.reject(new Error("auth/not-configured"));
+  authPromise ??= Promise.all([import("firebase/auth"), import("./firebase")]).then(([{ getAuth }, { firebaseApp }]) => {
+    if (!firebaseApp) throw new Error("auth/not-configured");
+    const auth = getAuth(firebaseApp);
     auth.languageCode = "tr";
     return auth;
   });

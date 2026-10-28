@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Atlasia · 10 Yenilikçi Fikir</title>
+<style>
+  :root{
+    --ink:#020d17; --ink2:#061819;
+    --mint:#7ee0b8; --gold:#f3c870; --cream:#f1f0e9;
+    --warn:#e87a60;
+    --line:rgba(255,255,255,.10);
+    --muted:rgba(222,240,235,.56);
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--ink);color:var(--cream);line-height:1.5;
+    font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    background-image:
+      radial-gradient(1100px 620px at 84% -8%, rgba(243,200,112,.13), transparent 62%),
+      radial-gradient(900px 520px at 2% 22%, rgba(126,224,184,.07), transparent 60%);
+    background-attachment:fixed;
+  }
+  .wrap{max-width:1240px;margin:0 auto;padding:0 22px}
+  a{color:inherit}
+
+  header{padding:64px 0 34px;border-bottom:1px solid var(--line)}
+  .eyebrow{display:flex;align-items:center;gap:12px;font-size:10px;letter-spacing:.32em;
+    text-transform:uppercase;color:var(--gold);font-weight:700}
+  .eyebrow::before{content:"";width:34px;height:1px;background:var(--gold)}
+  h1{margin:22px 0 0;font-size:clamp(46px,9.4vw,112px);line-height:.86;
+    letter-spacing:-.05em;font-weight:700}
+  h1 em{font-style:normal;color:var(--gold)}
+  .lede{margin:26px 0 0;max-width:660px;font-size:17px;color:rgba(241,240,233,.74)}
+  .lede b{color:var(--cream);font-weight:600}
+  .rules{display:grid;gap:1px;margin-top:30px;background:var(--line);
+    border:1px solid var(--line);grid-template-columns:1fr}
+  @media(min-width:760px){.rules{grid-template-columns:repeat(3,1fr)}}
+  .rule{background:var(--ink);padding:16px 18px;font-size:13px;color:var(--muted)}
+  .rule b{display:block;color:var(--cream);font-size:12px;letter-spacing:.14em;
+    text-transform:uppercase;margin-bottom:6px;font-weight:700}
+
+  /* filtre */
+  .bar{position:sticky;top:0;z-index:9;display:flex;flex-wrap:wrap;gap:8px;
+    padding:16px 0;background:rgba(2,13,23,.92);backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line)}
+  .chip{border:1px solid var(--line);background:rgba(255,255,255,.02);color:var(--muted);
+    font:inherit;font-size:12px;letter-spacing:.06em;padding:8px 14px;cursor:pointer;
+    transition:.15s}
+  .chip:hover{color:var(--cream);border-color:rgba(255,255,255,.28)}
+  .chip[aria-pressed="true"]{background:var(--gold);border-color:var(--gold);
+    color:#0b120e;font-weight:700}
+
+  .sec{display:flex;align-items:baseline;gap:14px;margin:54px 0 22px;
+    font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--gold);font-weight:700}
+  .sec::after{content:"";flex:1;height:1px;background:var(--line)}
+
+  .grid{display:grid;gap:14px;grid-template-columns:1fr}
+  @media(min-width:720px){.grid{grid-template-columns:1fr 1fr}}
+  @media(min-width:1080px){.grid{grid-template-columns:repeat(3,1fr)}}
+
+  .card{
+    position:relative;border:1px solid var(--line);background:linear-gradient(180deg,rgba(255,255,255,.028),rgba(255,255,255,0));
+    padding:22px 20px 20px;display:flex;flex-direction:column;gap:12px;
+    transition:.18s;overflow:hidden;
+  }
+  .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;
+    background:var(--gold);opacity:0;transition:.18s}
+  .card:hover{border-color:rgba(243,200,112,.38);transform:translateY(-2px)}
+  .card:hover::before{opacity:1}
+  .card[data-kind="top"]{background:linear-gradient(180deg,rgba(243,200,112,.09),rgba(243,200,112,.01))}
+  .card[hidden]{display:none}
+
+  .top-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+  .num{font-size:11px;letter-spacing:.22em;color:var(--gold);font-weight:700}
+  .badge{font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;padding:4px 8px;
+    border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+  .badge.b0{color:var(--mint);border-color:rgba(126,224,184,.34)}
+  .badge.bp{color:var(--gold);border-color:rgba(243,200,112,.34)}
+  .card h3{margin:0;font-size:21px;letter-spacing:-.025em;line-height:1.15;font-weight:600}
+  .pitch{margin:0;font-size:14px;color:rgba(241,240,233,.86)}
+  .why{margin:0;font-size:13px;color:var(--muted);padding-left:12px;
+    border-left:1px solid rgba(126,224,184,.4)}
+  .why b{color:var(--mint);font-weight:600}
+  .meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto;padding-top:6px}
+  .meta span{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--muted);border:1px solid var(--line);padding:4px 8px}
+  .meta span.k{color:rgba(241,240,233,.82)}
+  .risk{margin:0;font-size:12px;color:rgba(232,122,96,.86);line-height:1.45}
+  .risk b{color:var(--warn);font-weight:700}
+
+  /* 30 gün */
+  .plan{display:grid;gap:1px;background:var(--line);border:1px solid var(--line);margin-top:6px}
+  @media(min-width:860px){.plan{grid-template-columns:repeat(3,1fr)}}
+  .step{background:var(--ink);padding:24px 20px}
+  .step .n{font-size:34px;font-weight:700;letter-spacing:-.04em;color:var(--gold);line-height:1}
+  .step h4{margin:10px 0 6px;font-size:16px;letter-spacing:-.02em}
+  .step p{margin:0;font-size:13px;color:var(--muted)}
+  .step small{display:block;margin-top:10px;font-size:10.5px;letter-spacing:.14em;
+    text-transform:uppercase;color:rgba(126,224,184,.8)}
+
+  footer{margin-top:64px;padding:30px 0 60px;border-top:1px solid var(--line);
+    color:var(--muted);font-size:13px}
+  footer b{color:var(--cream)}
+  .foot-note{border-left:2px solid var(--warn);padding-left:14px;margin:0 0 18px;
+    color:rgba(241,240,233,.7);max-width:760px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="eyebrow">Atlasia · pazarlama fikirleri · video yok</div>
+    <h1>10 fikir.<br><em>Sıfır klip.</em></h1>
+    <p class="lede">
+      Dördü reklam filmi oldu, sırada 8 konsept var. Ama <b>reklam, sadece bir tanıtım yolu</b>.
+      Aşağıdakiler reklam değil — <b>dağıtım, topluluk ve kanıt</b> kurma yolları.
+      Hepsi ₺0 ya da ₺1.500 altında başlayabilir.
+    </p>
+    <div class="rules">
+      <div class="rule"><b>Kural 1 · ölçmeden başlama</b>UTM + pixel + tek dönüşüm kurulmadan hiçbiri başlamaz.</div>
+      <div class="rule"><b>Kural 2 · ₺0 varyantı önce</b>Storage/Blaze gerektiren her fikir, ücretsiz hâliyle başlar.</div>
+      <div class="rule"><b>Kural 3 · seri, tek sefer değil</b>Bir kez yapılan iyi fikir, 4 kez tekrarlanan ortalama fikirden zayıftır.</div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="bar" role="group" aria-label="Fikir filtresi">
+    <button class="chip" data-f="all" aria-pressed="true">Hepsi · 10</button>
+    <button class="chip" data-f="zero" aria-pressed="false">₺0 ile başlar</button>
+    <button class="chip" data-f="fast" aria-pressed="false">Bu hafta başlar</button>
+    <button class="chip" data-f="loop" aria-pressed="false">Kendi kendini besler</button>
+  </div>
+
+  <div class="sec">Başla buradan · ilk 30 gün</div>
+  <div class="plan">
+    <div class="step">
+      <div class="n">01</div>
+      <h4>Rota Kliniği</h4>
+      <p>Haftada 1 canlı yayın, 25 dakika. Kısıtı ver, rotayı canlı kur. Her yayın 3–4 klip üretir.</p>
+      <small>1 hafta · en hızlı geri bildirim</small>
+    </div>
+    <div class="step">
+      <div class="n">02</div>
+      <h4>Hava Widget'ı</h4>
+      <p>Blog ve hostel sitelerine gömülen ücretsiz kutu. Bugün kur, 6 ay sonra trafik getirir.</p>
+      <small>3 gün + yayma · birikimli</small>
+    </div>
+    <div class="step">
+      <div class="n">03</div>
+      <h4>Kayıp 200 Metre</h4>
+      <p>Harita eksik başlıyor, halkalar yüründükçe açılıyor. Ürün ile reklamı aynı şeye çevirir.</p>
+      <small>3 hafta · kimlik</small>
+    </div>
+  </div>
+
+  <div class="sec">Fikirler</div>
+  <div class="grid" id="grid">
+
+    <article class="card" data-cost="0" data-fast="0" data-loop="1">
+      <div class="top-row"><span class="num">01</span><span class="badge b0">₺0</span></div>
+      <h3>Kayıp 200 Metre Haritası</h3>
+      <p class="pitch">Harita <b>eksik</b> başlıyor. Bilinen her noktanın etrafındaki 200 metrelik halka kapalı; oraya yürüyüp iz bırakan biri halkayı açıyor.</p>
+      <p class="why"><b>Neden yeni:</b> Herkes kusursuz, dolu harita vaat ediyor. Sen eksiği ürün yapıyorsun. İnsan reklamı izlemiyor, katılıyor.</p>
+      <p class="risk"><b>Risk:</b> Veri azken harita boş görünür. 12 halkanın 3'ünü kurucu ekiple önden aç.</p>
+      <div class="meta"><span class="k">ürün + pazarlama</span><span>3–6 ay</span><span>haversineKm</span></div>
+    </article>
+
+    <article class="card" data-cost="500" data-fast="1" data-loop="1">
+      <div class="top-row"><span class="num">02</span><span class="badge bp">₺0–500</span></div>
+      <h3>Şehir Radyosu</h3>
+      <p class="pitch">Kullanıcılar bir noktaya <b>15 saniyelik ses</b> bırakıyor. Her hafta 3 dakikalık bölüm: "Radyo Atlasia — 04. bölüm: Efes."</p>
+      <p class="why"><b>Neden yeni:</b> Herkes video dolduruyor, kimse ses doldurmuyor. Ses yürürken dinleniyor — ürünün ritmiyle aynı. Sesli not bırakmak kameraya girmekten çok daha kolay.</p>
+      <p class="risk"><b>Risk:</b> Ses yükleme = Storage = Blaze. ₺0 yolu: ses DM/e-posta ile gelsin, kurguyu sen yap.</p>
+      <div class="meta"><span class="k">marka</span><span>2–4 ay</span><span>MediaRecorder</span></div>
+    </article>
+
+    <article class="card" data-cost="0" data-fast="1" data-loop="1">
+      <div class="top-row"><span class="num">03</span><span class="badge b0">₺0</span></div>
+      <h3>Rota Takası</h3>
+      <p class="pitch">İki şehirden iki kişi eşleşiyor ve <b>birbirinin şehrine rota çiziyor</b>. "Sen benim İzmir'imi gez, ben senin İstanbul'unu."</p>
+      <p class="why"><b>Neden yeni:</b> "Arkadaşını getir" getirmez; rota takası <b>karşılıklı borç</b> yaratır. Üstelik ürünün en güçlü özelliğini reklam yapmadan gösterir.</p>
+      <p class="risk"><b>Risk:</b> Eşleşenler işi yapmaz. 30 kişiyle başla, %50 tamamlama normaldir.</p>
+      <div class="meta"><span class="k">büyüme döngüsü</span><span>hemen</span><span>sıfır yeni kod</span></div>
+    </article>
+
+    <article class="card" data-cost="0" data-fast="1" data-loop="0">
+      <div class="top-row"><span class="num">04</span><span class="badge b0">₺0</span></div>
+      <h3>200 Metre Raporu</h3>
+      <p class="pitch">12 turistik noktada birer saatlik insan sayımı. Sonuç: <b>"200 metre sonrasında kalabalık ortalama %X azalıyor."</b></p>
+      <p class="why"><b>Neden yeni:</b> Türkiye'de turizm içeriği ya gezi yazısı ya sponsorlu liste; <b>veriyle konuşan yok</b>. Rapor, senin iddianın kanıtı olur.</p>
+      <p class="risk"><b>Risk:</b> "Bilimsel değil" eleştirisi. Başlıkta "ölçtük" de, metodolojiyi açık yaz.</p>
+      <div class="meta"><span class="k">basın</span><span>bir hafta sonu</span><span>teknoloji gerekmez</span></div>
+    </article>
+
+    <article class="card" data-cost="0" data-fast="0" data-loop="1">
+      <div class="top-row"><span class="num">05</span><span class="badge b0">✓ yapıldı</span></div>
+      <h3>Hava Widget'ı · çalışıyor</h3>
+      <p class="pitch">Herkese açık, gömülebilir kutu: <b>"Bu hafta sonu nereye?"</b> Hangi gün gitmeli, hangi rota. Blog, hostel ve yerel haber siteleri kendi sayfasına koyar.</p>
+      <p class="why"><b>Neden yeni:</b> Reklam vermeden <b>dağıtım</b> kuruyorsun. Kutu başkasının sitesinde, sunucu senin, maliyet sıfır (open-meteo keyless).</p>
+      <p class="risk"><b>Risk:</b> Kimse yabancı kutu istemez. Markayı küçült, kutunun kendi başına işe yaramasını sağla.</p>
+      <div class="meta"><span class="k">SEO + backlink</span><span>çalışıyor</span><span>reklam/widget/</span></div>
+    </article>
+
+    <article class="card" data-cost="2000" data-fast="0" data-loop="0">
+      <div class="top-row"><span class="num">06</span><span class="badge bp">₺0–2.000</span></div>
+      <h3>Sessiz Saat</h3>
+      <p class="pitch">Bir ören yeri ya da müzede <b>kapanıştan sonra</b> 30 kişilik yürüyüş. Herkes kulaklıkta, uygulamanın sesli anlatımıyla. Bilet yok, davet var.</p>
+      <p class="why"><b>Neden yeni:</b> Uygulamanın reklamını değil, <b>vaadini bir gece boyunca gerçek</b> yapıyorsun. 30 katılımcı = 30 içerik üreticisi.</p>
+      <p class="risk"><b>Risk:</b> İzin süreci. "Etkinlik" değil "test yürüyüşü" olarak tanımla.</p>
+      <div class="meta"><span class="k">gerçek dünya</span><span>tek gece</span><span>#grup daveti</span></div>
+    </article>
+
+    <article class="card" data-cost="1500" data-fast="0" data-loop="0">
+      <div class="top-row"><span class="num">07</span><span class="badge bp">₺1.500</span></div>
+      <h3>Esnaf Kartı</h3>
+      <p class="pitch">Noktaya 200 m mesafedeki kafelerin tezgâhına A5 kart: bir yüzünde <b>"200 metre gerisi: şu rota"</b> + QR, diğer yüzünde mekânın adı.</p>
+      <p class="why"><b>Neden yeni:</b> Tabela kiralama değil, <b>karşılıklı fayda</b>. Esnaf turisti oturtsun ister, sen yürütsün — ikisi de olur. Kart fiziksel, cebe girer.</p>
+      <p class="risk"><b>Risk:</b> Kart çöpe gider. "Reklam" gibi değil "şehrin küçük haritası" gibi tasarla.</p>
+      <div class="meta"><span class="k">fiziksel dağıtım</span><span>kalıcı</span><span>#r=token ile ölçüm</span></div>
+    </article>
+
+    <article class="card" data-cost="0" data-fast="1" data-loop="1">
+      <div class="top-row"><span class="num">08</span><span class="badge b0">₺0</span></div>
+      <h3>Ters Rota</h3>
+      <p class="pitch">Haftalık seri: <b>"Bu hafta: İzmir'in en çirkin rotası."</b> Sanayi mahallesi, işlek kavşak, en sıradan simitçi. Ama gerçek.</p>
+      <p class="why"><b>Neden yeni:</b> Herkes gizli cennet satıyor, kimse "sıradan olan da bir yer" demiyor. Karşıt içerik en hızlı kimlik kurma yolu — ve daha dürüst.</p>
+      <p class="risk"><b>Risk:</b> "Kötü yeri niye gösteriyorsun" tepkisi. "Sıradan" de, "kötü" deme; insanı değil bakışı eleştir.</p>
+      <div class="meta"><span class="k">karşıt içerik</span><span>haftalık</span><span>elle yazılan rota</span></div>
+    </article>
+
+    <article class="card" data-cost="0" data-fast="1" data-loop="1">
+      <div class="top-row"><span class="num">09</span><span class="badge b0">₺0</span></div>
+      <h3>Rota Kliniği</h3>
+      <p class="pitch">Haftada bir, 25 dakika canlı: <i>"3 saatim var, 2 çocuk, yağmur ihtimali yüksek."</i> Rotayı <b>canlı canlı</b> kuruyorsun ve neden o sırayı seçtiğini anlatıyorsun.</p>
+      <p class="why"><b>Neden yeni:</b> Tanıtım değil, <b>iş yaparken izlenmek</b>. "Neden bu sıra?" gerçek bir özellik — canlıda hiçbir şey uydurmuyorsun.</p>
+      <p class="risk"><b>Risk:</b> İlk 2 yayın boş geçer. Boş yayını klip üretim tesisi olarak gör.</p>
+      <div class="meta"><span class="k">canlı yayın</span><span>haftalık</span><span>1 yayın = 4 klip</span></div>
+    </article>
+
+    <article class="card" data-cost="0" data-fast="0" data-loop="0">
+      <div class="top-row"><span class="num">10</span><span class="badge b0">₺0</span></div>
+      <h3>İz Yarışı</h3>
+      <p class="pitch"><b>"İzmir vs İstanbul — bu ay kim daha çok iz bıraktı?"</b> Şehir başına iz sayısı, toplam km, en çok gezilen mahalle. Kazanana "Ayın Şehri".</p>
+      <p class="why"><b>Neden yeni:</b> Rekabet, davetten güçlü. Burada rekabet kişisel değil <b>şehirsel</b> — kaybetmek kimseyi utandırmıyor, savunmaya geçiriyor.</p>
+      <p class="risk"><b>Risk:</b> Kota + boş tablo. Mahalle yarışıyla başla (Karşıyaka vs Alsancak), sonra şehre çık.</p>
+      <div class="meta"><span class="k">topluluk</span><span>sezonluk</span><span>günlük özet belgesi</span></div>
+    </article>
+
+  </div>
+
+  <div class="sec">Dürüst notlar</div>
+  <footer>
+    <p class="foot-note">
+      Bunların hiçbiri tek başına "2.000 tıklama" getirmez. Yukarıdakiler <b>reklam değil</b>;
+      reklamın üstüne bineceği zemin. İlk üçü birlikte çalışır çünkü üçü farklı iş yapar:
+      <b>kliniği</b> geri bildirim, <b>widget'ı</b> trafik, <b>kayıp haritayı</b> kimlik üretir.
+    </p>
+    <p>
+      Detaylı hâli (kod bağlantıları, ilk 3 adım, ölçüm, riskler): <b>reklam/10-yenilikci-fikir.md</b><br>
+      Reklam filmi konseptleri: <b>reklam/reels/00-konseptler.md</b> · Teslim: <b>reklam/reels/teslim.md</b><br>
+      <span style="color:rgba(222,240,235,.38)">Fiyatlar 2026 tahmini. Blaze/Storage açık onay olmadan açılmaz; her fikrin ₺0 varyantı önce.</span>
+    </p>
+  </footer>
+</div>
+
+<script>
+  var cards = [].slice.call(document.querySelectorAll('.card'));
+  var chips = [].slice.call(document.querySelectorAll('.chip'));
+  function apply(f){
+    chips.forEach(function(c){ c.setAttribute('aria-pressed', String(c.dataset.f === f)); });
+    cards.forEach(function(el){
+      var show = f === 'all'
+        || (f === 'zero' && el.dataset.cost === '0')
+        || (f === 'fast' && el.dataset.fast === '1')
+        || (f === 'loop' && el.dataset.loop === '1');
+      el.hidden = !show;
+    });
+  }
+  chips.forEach(function(c){ c.addEventListener('click', function(){ apply(c.dataset.f); }); });
+</script>
+</body>
+</html>

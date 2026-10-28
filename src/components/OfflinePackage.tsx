@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { analytics } from "../lib/analytics";
 import { Download, HardDrive, Loader2, Trash2, WifiOff, X } from "lucide-react";
 import type { BBox } from "../utils/offlineCache";
 import {
@@ -48,8 +49,10 @@ export default function OfflinePackage({ bbox }: Props) {
     setProgress(null);
     setPacks(listPacks());
     if ("message" in result) {
+      analytics.offlinePack({ action: "download", ok: false });
       setMessage({ tone: "warn", text: result.message });
     } else if (result.pack.status === "complete") {
+      analytics.offlinePack({ action: "download", ok: true });
       setName("");
       setMessage({ tone: "ok", text: `“${result.pack.name}” hazır: ${formatBytes(result.pack.bytes)}. Bu alan internetsiz açılır.` });
     } else {
@@ -61,8 +64,10 @@ export default function OfflinePackage({ bbox }: Props) {
     setDeleting(pack.id);
     try {
       await deletePack(pack.id);
+      analytics.offlinePack({ action: "delete", ok: true });
       setMessage({ tone: "ok", text: `“${pack.name}” silindi.` });
     } catch {
+      analytics.offlinePack({ action: "delete", ok: false });
       setMessage({ tone: "warn", text: "Paket silinemedi. Tekrar dene." });
     } finally {
       setDeleting(null);

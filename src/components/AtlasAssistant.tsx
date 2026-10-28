@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { analytics } from "../lib/analytics";
 import { ArrowDown, ArrowUp, Bookmark, Check, ChevronDown, Clock3, ExternalLink, ImagePlus, MapPin, Navigation, RotateCcw, Send, Sparkles, ThumbsDown, ThumbsUp } from "lucide-react";
 import type { AtlasRoute, Place, RouteBrief, ViewState } from "../types";
 import { useCollections } from "../hooks/useCollections";
@@ -312,13 +313,16 @@ function RouteResult({ route, approved, saved, onConfirm, onStop, onReorder, onS
     const text = `${route.routeTitle}\n${stops.map((stop) => `${stop.order}. ${stop.name}: ${stop.startTime}`).join("\n")}${externalLinks ? `\n${externalLinks}` : ""}`;
     setShareError(null);
     try {
+      const channel = typeof navigator.share === "function" ? "native" : "clipboard";
       if (navigator.share) await navigator.share({ title: route.routeTitle, text });
       else if (navigator.clipboard) await navigator.clipboard.writeText(text);
       else throw new Error("clipboard-yok");
       setShared(true);
+      analytics.share({ channel, target: "route", ok: true });
     } catch (failure) {
       // Kullanıcının kendi iptali hata değildir.
       if ((failure as { name?: string })?.name === "AbortError") return;
+      analytics.share({ channel: typeof navigator.share === "function" ? "native" : "clipboard", target: "route", ok: false });
       setShareError("Paylaşılamadı. Aşağıdaki harita bağlantılarını tek tek açıp kopyalayabilirsin.");
     }
   };
