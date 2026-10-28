@@ -9,7 +9,7 @@
  *
  * Kapsam (kalıcı kullanıcı verilerine — places, posts, routes, tracks, userProfiles,
  * friendships, bans, moderators, reports, verifications — ASLA dokunmaz):
- *  1. `stories`                  : `createdAt` > 48 saat (24s canlı pencere + 24s güvenlik payı; en az >=25s)
+ *  1. `stories`                  : `createdAt` > 24 saat (24 saatlik canlı ömür dolunca fiziksel silinir; en az >=24s)
  *  2. `friendDeclines`           : `createdAt` > 7 gün (geçici ret bildirim kanıtı)
  *  3. `groups/* /joinAttempts`   : `windowStart` > 24 saat (15 dk hız sınırı penceresi)
  *  4. `groups/* /invites`        : `createdAt` > 30 gün (veya `--include-orphans` ile silinmiş grup)
@@ -29,7 +29,7 @@ export const DEFAULT_CLEANUP_MAX_DELETES = 2_000;
 export const COMMIT_BATCH_SIZE = 200;
 
 export const DEFAULT_RETENTION_POLICY = Object.freeze({
-  storiesHours: 48,
+  storiesHours: 24,
   friendDeclinesDays: 7,
   joinAttemptsHours: 24,
   invitesDays: 30,
@@ -124,9 +124,9 @@ export function validateCleanupOptions(opts, env = process.env) {
   if (!Number.isInteger(opts.maxDeletes) || opts.maxDeletes < 1 || opts.maxDeletes > 10_000) {
     throw new Error("`--max-deletes` 1 ile 10000 arasında tam sayı olmalıdır.");
   }
-  if (!Number.isFinite(opts.policy.storiesHours) || opts.policy.storiesHours < 25) {
+  if (!Number.isFinite(opts.policy.storiesHours) || opts.policy.storiesHours < 24) {
     throw new Error(
-      "Canlı hikâye kilidi: `--stories-hours` en az 25 saat olmalıdır (24 saatlik canlı hikâyeler silinemez).",
+      "Canlı hikâye kilidi: `--stories-hours` en az 24 saat olmalıdır (24 saatten genç canlı hikâyeler silinemez).",
     );
   }
 
@@ -454,7 +454,7 @@ Seçenekler:
   --include-orphans               Silinmiş grup/gönderi altındaki yetim kayıtları da temizler
   --max-reads <sayi>              Maksimum okuma tavanı (varsayılan: 5000)
   --max-deletes <sayi>            Maksimum silme tavanı (varsayılan: 2000)
-  --stories-hours <saat>          Hikâye saklama süresi (varsayılan: 48, minimum: 25)`);
+  --stories-hours <saat>          Hikâye saklama süresi (varsayılan: 24, minimum: 24)`);
 }
 
 export async function runCleanupCli(argv = process.argv.slice(2), io = {}) {
