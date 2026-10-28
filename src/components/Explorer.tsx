@@ -24,6 +24,7 @@ const AtlasAssistant = lazy(() => import("./AtlasAssistant"));
 const StreetPeek = lazy(() => import("./StreetPeek"));
 const AddDiscoveryModal = lazy(() => import("./AddDiscoveryModal"));
 import RecordsDock from "./RecordsDock";
+import DataErrorBar, { type DataErrorKind } from "./DataErrorBar";
 import RouteEditor from "./RouteEditor";
 import { useAuth } from "../contexts/AuthContext";
 import { analytics } from "../lib/analytics";
@@ -230,16 +231,26 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
         loadMoreStories: async () => {},
       };
 
-  // Kullanıcıya bulut bağlantısı durumunu bildir
+  // M-18: veri hatası artık Toast değil KALICI şerit. Toast 3,2 sn sonra
+  // kayboluyordu; kullanıcı neden yerel veri gördüğünü bilmiyor ve tekrar
+  // deneme yolu kalmıyordu. Şerit veri gelince kendiliğinden kalkar.
+  const [retryRequested, setRetryRequested] = useState(false);
   useEffect(() => {
-    if (cloudAccount && !remote.ready && remote.error) {
-      setToast("Canlı veriler yüklenemedi. Yeni işlemler için bağlantını kontrol et.");
-      console.warn("[Atlasia] Config özeti:", firebaseConfigSummary);
-    } else if (!isCloudReady) {
-      setToast("Firebase yapılandırması eksik, yerel veri kullanılıyor.");
+    if (cloudAccount && remote.error) {
       console.warn("[Atlasia] Config özeti:", firebaseConfigSummary);
     }
-  }, [cloudAccount, remote.ready, remote.error]);
+    if (remote.ready && retryRequested) setRetryRequested(false);
+  }, [cloudAccount, remote.ready, remote.error, retryRequested]);
+  const retrying = retryRequested && !remote.ready && !remote.error;
+  const dataIssue: DataErrorKind | null = !isCloudReady
+    ? "config"
+    : cloudAccount && (Boolean(remote.error) || retrying)
+      ? "remote"
+      : null;
+  const handleRetryData = useCallback(() => {
+    setRetryRequested(true);
+    remote.retry();
+  }, [remote]);
   const { blockedSet, isBlocked } = useBlocks(user?.uid);
   // Tazelik okuması giriş şartlı (kural: signedIn); cihaz hesabında abone olunmaz.
   const freshness = useFreshness(freshnessReaderUid(user));
@@ -1155,6 +1166,14 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
          unreadCount={unreadCount}
        />
 
+      {dataIssue && (
+        <DataErrorBar
+          kind={dataIssue}
+          retrying={retrying}
+          onRetry={dataIssue === "remote" ? handleRetryData : undefined}
+        />
+      )}
+
       {/* Hero - her ekranda göster, sadece mobil için özel stil */}
       <nav
         aria-label="Karşılama"
@@ -1424,6 +1443,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
         onRequestPrecise={handleLocate}
         posts={filteredPosts}
         stories={filteredStories}
+        feedLoading={(cloudAccount || guest) && !remote.ready}
         hasMorePosts={cloud.hasMorePosts}
         hasMoreStories={cloud.hasMoreStories}
         loadingMorePosts={cloud.loadingMorePosts}

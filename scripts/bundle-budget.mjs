@@ -101,6 +101,15 @@ const DEFAULT_DIST = fileURLToPath(new URL("../dist", import.meta.url));
  *   appShell  585.711 -> 586.617  (+906)
  *   toplam JS 984.682 -> 996.818  (main bu turda 997.500'e çıkardı)
  *   entry eşiği 20.400 -> 21.200 (ölçüme %3,2 pay)
+ *
+ * 2026-10-28 (M-18 + M-19) — Türkçe UX onarımı ilk kez KENDİ kodumuzu büyüttü:
+ * kalıcı veri hatası şeridi (`DataErrorBar`) + üç yükleme iskeleti
+ * (`Skeletons`) ve hook'taki `retry` sayacı = +1,6 KB gzip (lazy parçalarda).
+ * Ölçüm 999.547 idi; eşik 999.400'ü 147 B aştı. Önce kod küçültüldü
+ * (4 ikon → 1, tekrar eden sınıflar, `satisfies` ile COPY tablosu, gereksiz
+ * data attribute'ları silindi = −1,2 KB) ama yetmedi. Bu yüzden eşik
+ * **1.001.500**'e (ölçüm +%0,2) bağlandı. Vendor büyümesi DEĞİL, özellik kodu;
+ * sıradaki özellikte lazy parçada küçültme ya da gerçek bir silme beklenir.
  */
 export const BUNDLE_BUDGET = Object.freeze({
   // 2026-10-28 (T4/T5 misafir + T8 onboarding + moderasyon İncelenenler sekmesi):
@@ -108,7 +117,7 @@ export const BUNDLE_BUDGET = Object.freeze({
   // "İncelenenler" görünümü ve işlem/hedef türüne göre gruplama (+608 B, yalnız
   // ReportsPanel lazy parçasında; yeni bağımlılık yok, ilk boya/landing/appShell
   // 0 B değişti) ile ölçüm **998.658 B** oldu → eşik ~%0,07 payla 999.400 B.
-  totalJsGzipBytes: 999_400,
+  totalJsGzipBytes: 1_001_500,
   totalCssGzipBytes: 35_700,
   initialGzipBytes: 129_400,
   // İlk HTML ile gelen gerçek ilk boya maliyeti (lazy chunk'lar hariç).

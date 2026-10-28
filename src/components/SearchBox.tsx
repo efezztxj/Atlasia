@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { SearchListSkeleton } from "./Skeletons";
 import { Loader2, MapPin, Search, SlidersHorizontal, Sparkles, Star, X } from "lucide-react";
 import type { Place } from "../types";
 import { normalize, searchWorld, type SearchResult } from "../utils/geo";
@@ -229,9 +230,7 @@ export default function SearchBox({ places, onPick, onOpenFilters, autoFocus = f
                 {error ? "Harita aramasına ulaşılamadı. Kayıtlı yerleri kullanabilir veya biraz sonra tekrar deneyebilirsin." : "Sonuç bulunamadı. Yer adını veya şehir adını farklı yazmayı dene."}
               </p>
             )}
-            {combined.length === 0 && loading && (
-              <p className="px-3 py-3 text-[12px] text-mint/55">Dünya taranıyor…</p>
-            )}
+            {combined.length === 0 && loading && <SearchListSkeleton count={4} />}
             {combined.map((r) => (
               <button
                 key={r.id}

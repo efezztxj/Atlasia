@@ -180,8 +180,8 @@ Her satır: **durum · kanıt · eksik.**
 | # | Durum | Kanıt | Eksik / yapılacak |
 |---|---|---|---|
 | **M-17** | ✅ Var | MapLibre + 3 altlık + katman sayfası (`MapLayersSheet`), mobil kapsül 3 düğme | — |
-| **M-18** | ⚠️ Kısmi | `App.tsx:174-183` veri hatasında **tek seferlik `setToast`** | Feed/harita yüklenemezse: toast kayboluyor, **tekrar dene yok**, sessizce yerel veriye düşüyor. Kalıcı hata şeridi + "Yeniden dene" gerekli. **P0** |
-| **M-19** | ⚠️ Kısmi | İskelet yalnız `RecordsDock:125`'te | Feed, arama sonuçları ve yer detayında iskelet yok → boş ekran algısı. **P1** |
+| **M-18** | ✅ Kapandı (2026-10-28) | `DataErrorBar.tsx` + `useFirestoreAtlasData.retry()` | Toast yerine **kalıcı şerit**: durum ekranda kalır, "Yeniden dene" abonelikleri yeniden kurar (`generation` sayacı), veri gelince şerit kendiliğinden kalkar. Yapılandırma eksikliğinde düğme yok (denenecek şey yok). Test: `DataErrorBar.test.ts` 4, hook `retry` 1. |
+| **M-19** | ✅ Kapandı (2026-10-28) | `Skeletons.tsx` → feed (`SocialPanel`), arama (`SearchBox`), galeri (`PlaceDetails`) | Üç yükleme noktası iskeletlendi; shimmer katmanı `aria-hidden`, ekran okuyucu tek `role="status"` cümlesi okur. Test: `Skeletons.test.ts` 4. |
 | **M-20** | ⚠️ Kısmi | `PlaceDetails` zengin (foto, not, hava, yakın tarih) | Açılış saati/ücret/telefon **kasıtlı olarak yok** ("doğrulanmadı" deniyor). Dürüst ama kullanıcı beklentisi yönetilmeli. **Bilgi** |
 | **M-21** | ✅ Var | `SearchBox` + geçmiş + `photon` | — |
 

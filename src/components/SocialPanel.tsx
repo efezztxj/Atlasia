@@ -38,6 +38,7 @@ import type { SocialTarget } from "../utils/inviteLink";
 const GroupsPanel = lazy(() => import("./GroupsPanel"));
 import { blockUser } from "../lib/moderation";
 import { friendlyDataError } from "../lib/firestoreValue";
+import { FeedSkeleton } from "./Skeletons";
 
 const SEEN_KEY = "atlasia.feed.seen.v1";
 const NEARBY_KM = 900;
@@ -58,6 +59,8 @@ interface Props {
   hasMorePosts: boolean;
   hasMoreStories: boolean;
   loadingMorePosts: boolean;
+  /** M-19: ilk canlı yükleme sürüyor mu (feed iskeleti için). */
+  feedLoading?: boolean;
   loadingMoreStories: boolean;
   onLoadMorePosts: () => Promise<void>;
   onLoadMoreStories: () => Promise<void>;
@@ -92,6 +95,7 @@ export default function SocialPanel({
   hasMorePosts,
   hasMoreStories,
   loadingMorePosts,
+  feedLoading = false,
   loadingMoreStories,
   onLoadMorePosts,
   onLoadMoreStories,
@@ -528,7 +532,13 @@ export default function SocialPanel({
 
         {/* Gönderiler */}
         <div className="px-3 py-2">
-          {visiblePosts.length === 0 && (
+          {feedLoading && visiblePosts.length === 0 && (
+            <div className="pt-1">
+              <FeedSkeleton count={3} />
+            </div>
+          )}
+
+          {!feedLoading && visiblePosts.length === 0 && (
             <div className="px-3 py-10 text-center">
               <Sparkles className="mx-auto mb-2 size-5 text-leaf/70" />
               <p className="text-[12.5px] text-mint/60">

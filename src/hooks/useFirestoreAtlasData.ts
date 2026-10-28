@@ -90,6 +90,10 @@ export function useFirestoreAtlasData({
 }: UseFirestoreAtlasDataArgs) {
   const [loaded, setLoaded] = useState<SourceState<boolean>>(initialLoaded);
   const [errors, setErrors] = useState<SourceState<Error | null>>(initialErrors);
+  // M-18: "Yeniden dene" için abonelikleri yeniden kurma sayacı. Abonelikler
+  // effect'lerde kurulduğundan, hata sonrası tek yol onları yeniden çalıştırmak;
+  // her effect bu sayacı bağımlılık olarak görür (kaynak sorguları ucuz, kısa).
+  const [generation, setGeneration] = useState(0);
   const [viewportPlaces, setViewportPlaces] = useState<Place[]>([]);
   const [ownedPlaces, setOwnedPlaces] = useState<Place[]>([]);
   const [postHead, setPostHead] = useState<FeedPost[]>([]);
@@ -168,7 +172,7 @@ export function useFirestoreAtlasData({
     return () => {
       sessionRef.current += 1;
     };
-  }, [uid, enabled]);
+  }, [uid, enabled, generation]);
 
   // Sahip sorgusu viewport'tan bağımsızdır; kullanıcı kendi tüm izlerine erişir.
   // Misafirin sahibi olduğu kayıt yoktur, bu abonelik hiç kurulmaz.
@@ -182,7 +186,7 @@ export function useFirestoreAtlasData({
       },
       (error) => markError("ownerPlaces", error),
     );
-  }, [uid, enabled, guest, markError, markLoaded]);
+  }, [uid, enabled, guest, generation, markError, markLoaded]);
 
   const viewportZoom = viewport?.zoom;
   const viewportWest = viewport?.bounds.west;
@@ -234,6 +238,7 @@ export function useFirestoreAtlasData({
     viewportSouth,
     viewportEast,
     viewportNorth,
+    generation,
     markError,
     markLoaded,
   ]);
@@ -262,7 +267,7 @@ export function useFirestoreAtlasData({
       },
       (error) => markError("posts", error),
     );
-  }, [uid, enabled, guest, markError, markLoaded]);
+  }, [uid, enabled, guest, generation, markError, markLoaded]);
 
   useEffect(() => {
     // Süresi dolan story temizliği sunucuda silme yapar: misafirde hiç koşmaz.
@@ -332,7 +337,7 @@ export function useFirestoreAtlasData({
       (error) => markError("stories", error),
       deleteDeletableExpiredStories,
     );
-  }, [uid, enabled, guest, deleteDeletableExpiredStories, markError, markLoaded]);
+  }, [uid, enabled, guest, generation, deleteDeletableExpiredStories, markError, markLoaded]);
 
   const loadMorePosts = useCallback(async () => {
     const cursor = postCursorRef.current;
@@ -510,6 +515,13 @@ export function useFirestoreAtlasData({
     });
   };
 
+  /** M-18: hata şeridindeki "Yeniden dene". Durumu sıfırlar ve abonelikleri kurar. */
+  const retry = useCallback(() => {
+    setLoaded(initialLoaded);
+    setErrors(initialErrors);
+    setGeneration((value) => value + 1);
+  }, []);
+
   const error = Object.values(errors).find((value): value is Error => value !== null) ?? null;
   // Misafirde sahip sorgusu bilinçli olarak kurulmaz; bu yüzden `ownerPlaces`
   // hiç "yüklendi" olmaz ve dört kaynağın hepsini beklemek haritayı sonsuza
@@ -532,6 +544,7 @@ export function useFirestoreAtlasData({
   return {
     ready,
     error,
+    retry,
     clientId: uid,
     places,
     posts,

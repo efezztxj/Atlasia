@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from "react";
+import { GallerySkeleton } from "./Skeletons";
 import {
   Ban,
   Bookmark,
@@ -142,11 +143,15 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDele
               </figcaption>
             </>
           ) : (
-            <div className="flex size-full flex-col items-center justify-center gap-3 px-6 text-center">
-              <Camera size={30} className="text-sun" />
-              <p className="text-sm">{loading ? "Bu çevredeki fotoğraflar aranıyor..." : allPhotos.length ? "Fotoğraflar şu an yüklenemiyor." : "Bu noktaya henüz fotoğraf eklenmemiş."}</p>
-              {failed.length > 0 && <button type="button" onClick={() => setFailed([])} className="min-h-10 text-sm text-sun underline">Tekrar dene</button>}
-            </div>
+            loading ? (
+              <GallerySkeleton />
+            ) : (
+              <div className="flex size-full flex-col items-center justify-center gap-3 px-6 text-center">
+                <Camera size={30} className="text-sun" />
+                <p className="text-sm">{allPhotos.length ? "Fotoğraflar şu an yüklenemiyor." : "Bu noktaya henüz fotoğraf eklenmemiş."}</p>
+                {failed.length > 0 && <button type="button" onClick={() => setFailed([])} className="min-h-10 text-sm text-sun underline">Tekrar dene</button>}
+              </div>
+            )
           )}
           {photos.length > 1 && (
             <>

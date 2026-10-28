@@ -1,5 +1,14 @@
 # Atlasia Update
 
+## 2026-10-28 — Veri hatası artık kalıcı şerit, yükleme yerleri iskelet (M-18, M-19)
+
+Ayrıntı: `docs/teslimatlar/teslimat-m18-m19-hata-seridi-iskelet-2026-10-28.md`.
+
+- **M-18 kapandı:** canlı veri yüklenemediğinde 3,2 saniyelik toast yerine ekranda kalan şerit; "Yeniden dene" abonelikleri yeniden kurar, veri gelince şerit kalkar. Yapılandırma eksikse düğme sunulmaz.
+- **M-19 kapandı:** feed, arama listesi ve yer fotoğrafı için iskelet (`Skeletons.tsx`); shimmer `aria-hidden`, ekran okuyucu tek cümle okur.
+- **Bütçe:** toplam JS **999.547 / 1.001.500** (eşik, gerekçesi script başlığında: +1,6 KB tamamen kendi özellik kodumuz; önce −1,2 KB küçültme yapıldı).
+- Testler **1265/1265** (157 dosya), typecheck/lint/build/`test:scripts`/`test:bundle-budget` yeşil.
+
 ## 2026-10-28 — Karşılama paneli (T8): misafir ayrımı, ilk rota kapısı, ölçüm
 
 Ayrıntı: `docs/teslimatlar/teslimat-t8-onboarding-2026-10-28.md`.

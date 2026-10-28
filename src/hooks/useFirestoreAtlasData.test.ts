@@ -336,6 +336,38 @@ describe("useFirestoreAtlasData orkestrasyonu", () => {
     expect(result.current.ready).toBe(true);
   });
 
+  it("retry (M-18): hatayı temizler ve abonelikleri yeniden kurar", () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { result } = renderData();
+
+    act(() => h.postSubs[0].onError?.(new Error("posts izni yok")));
+    expect(result.current.error).toBeInstanceOf(Error);
+    expect(result.current.ready).toBe(false);
+    const postsBefore = h.postSubs.length;
+    const storiesBefore = h.storySubs.length;
+
+    // Hata şeridindeki düğme: durum sıfırlanır, kaynaklar yeniden abone olunur.
+    act(() => result.current.retry());
+    expect(result.current.error).toBeNull();
+    expect(result.current.ready).toBe(false);
+    expect(h.postSubs.length).toBe(postsBefore + 1);
+    expect(h.storySubs.length).toBe(storiesBefore + 1);
+    // Eski abonelik sızdırmaz: eskiler kapatılır.
+    expect(h.postSubs[0].unsubscribe).toHaveBeenCalled();
+
+    // Yeni aboneliklerden veri gelince şerit kalkar (ready).
+    advanceViewport();
+    act(() => {
+      h.ownedSubs.at(-1)?.onChange([]);
+      h.postSubs.at(-1)?.onChange(emptyPostPage);
+      h.storySubs.at(-1)?.onChange(emptyStoryPage);
+      (h.overviewSubs.at(-1) ?? h.viewportSubs.at(-1))?.onChange([]);
+    });
+    expect(result.current.error).toBeNull();
+    expect(result.current.ready).toBe(true);
+    errorSpy.mockRestore();
+  });
+
   it("viewport sorgusunu 300 ms debounce eder; dar pencerede viewport, genişte overview seçer", () => {
     const narrow: PlaceViewport = {
       zoom: 10,
