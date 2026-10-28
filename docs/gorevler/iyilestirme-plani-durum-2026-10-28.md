@@ -23,7 +23,7 @@ Plan sırası: `T1 → T2 → T3 → T12 → T11 → T7 → T4 → T5 → T8 →
 | T8 | Onboarding / ilk rota akışı | ✅ | `Onboarding.tsx` misafir notu + `askAccount(..., "route")`; panel `FIRST_ROUTE_KEY`'e bağlı; `onboarding_choice` olayı — `onboardingT8.test.ts` (8) |
 | T9 | Giriş ekranı sürtünmesi (önce Google) | ✅ | `AccountAccess.tsx` + `AccountAccess.t9.test.ts` (7 test) |
 | T10 | Görsel boru hattı (foto optimize) | ⛔ bekliyor | gerçek tarayıcı/cihaz ölçümü ister |
-| T11 | Firebase'i ilk setten çıkarma | ✅ | İlk boya JS **91.254 B** gzip; `firebase-vendor` ilk sette değil (`npm run build` tablosu) |
+| T11 | Firebase'i ilk setten çıkarma | ✅ | İlk boya JS **100.287 B** gzip; `firebase-vendor` ilk sette değil (`npm run build` tablosu) |
 | T12 | Kontrast düzeltmeleri (eyebrow/başlık) | ✅ | `#a37c35 → #8f6224` (4,66:1), `#ba8f45 → #9c7029` (3,86:1); `src/config/landingContrast.test.ts` |
 | T13 | Mobil menü (768 px altı) | ✅ | Hamburger + `role="dialog"` panel, Escape/Tab tuzağı/odak iadesi — `src/config/landingA11y.test.ts` |
 | T14 | Klavye: skip-link + `:focus-visible` | ✅ | "İçeriğe geç" → `#kesfet` (`tabIndex={-1}`); tek `:focus-visible` bloğu |

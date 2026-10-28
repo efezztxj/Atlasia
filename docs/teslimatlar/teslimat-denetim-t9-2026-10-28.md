@@ -1,5 +1,10 @@
 # Teslimat — Denetim düzeltmeleri + T9 (giriş ekranı sürtünmesi) · 2026-10-28
 
+> **Not (2026-10-28, main'e taşıma):** Bu belgedeki ölçümler taşınmadan
+> önceki dala aittir. Bu dalda güncel sayılar `docs/baseline.md` ve son teslim
+> notlarındadır (toplam JS 997.981 / 998.500 · `entry` 20.888 / 20.900 ·
+> ilk boya JS 100.287 / 102.200 · ilk HTML seti 127.069 / 129.400).
+
 ## Görev ve branch
 
 - Görev: kullanıcı isteği — "sıkıntıları kontrol et, denetle, sonra devam et".
