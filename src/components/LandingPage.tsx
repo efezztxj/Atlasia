@@ -295,7 +295,14 @@ export default function LandingPage({ onStart }: Props) {
 
       {/* Alt blok (SSS + footer) `entry` dışında: ekranın altında, ilk boya
           için gerekli değil. Yükseklik fallback'i kaymayı sınırlar. */}
-      <Suspense fallback={<div aria-hidden className="min-h-[520px] bg-[#f1f0e9]" />}>
+      <Suspense
+        fallback={
+          // Yer tutucu aynı zamanda `#sss` çapasıdır: mobil menüdeki "Sık
+          // sorulanlar" bağlantısı, parça inerken de hedef bulur (yoksa
+          // yavaş ağda tıklama sessizce hiçbir şey yapmıyordu).
+          <div id="sss" aria-hidden className="min-h-[520px] bg-[#f1f0e9]" />
+        }
+      >
         <LandingFooter onLegal={setLegal} onStart={onStart} />
       </Suspense>
 

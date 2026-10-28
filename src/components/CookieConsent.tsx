@@ -3,6 +3,7 @@ import { ShieldCheck, X } from "lucide-react";
 import {
   COOKIE_CONSENT_EVENT,
   COOKIE_PREFERENCES_EVENT,
+  consumePendingCookiePreferences,
   readCookieConsent,
   saveCookieConsent,
   saveEssentialCookieConsent,
@@ -51,6 +52,9 @@ export default function CookieConsent() {
 
     window.addEventListener(COOKIE_PREFERENCES_EVENT, onOpenPreferences);
     window.addEventListener(COOKIE_CONSENT_EVENT, onConsentChanged);
+    // Panel tembel yüklendiği için, bağlanmadan önce yapılan "çerez tercihleri"
+    // tıklaması olayı kaçırırdı; bayrak burada tüketilir.
+    if (consumePendingCookiePreferences()) onOpenPreferences();
     return () => {
       window.removeEventListener(COOKIE_PREFERENCES_EVENT, onOpenPreferences);
       window.removeEventListener(COOKIE_CONSENT_EVENT, onConsentChanged);

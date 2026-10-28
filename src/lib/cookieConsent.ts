@@ -150,9 +150,30 @@ export function saveEssentialCookieConsent(now = new Date()) {
   return saveCookieConsent({}, now);
 }
 
+/**
+ * Rıza panelini açma isteği. Panel artık tembel parçadır (T7): ilk karede
+ * henüz bağlanmamış olabilir. Bu yüzden istek hem olayla duyurulur hem de
+ * **bayrak** olarak saklanır; panel bağlanınca `consumePendingCookiePreferences`
+ * ile bir kez tüketilir. Aksi hâlde hızlı tıklama sessizce kayboluyordu.
+ */
+let pendingPreferencesOpen = false;
+
 export function openCookiePreferences(): void {
   if (typeof window === "undefined") return;
+  pendingPreferencesOpen = true;
   window.dispatchEvent(new CustomEvent(COOKIE_PREFERENCES_EVENT));
+}
+
+/** Panel bağlanırken çağırır: kaçırılmış bir açma isteği var mı? */
+export function consumePendingCookiePreferences(): boolean {
+  const pending = pendingPreferencesOpen;
+  pendingPreferencesOpen = false;
+  return pending;
+}
+
+/** Testlerde sıfırlar. */
+export function resetPendingCookiePreferencesForTests(): void {
+  pendingPreferencesOpen = false;
 }
 
 export function formatConsentDate(isoDate: string): string {

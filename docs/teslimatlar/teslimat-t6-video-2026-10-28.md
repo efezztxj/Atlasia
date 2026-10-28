@@ -42,15 +42,16 @@ okunabilir bağlantı var.
 
 | Ölçüm | Önce | Sonra | Eşik |
 |---|---|---|---|
-| `entry` | 18.344 B | **18.897 B** (+544) | 20.900 (değişmedi) |
-| İlk boya JS | 97.743 B | **98.296 B** | 102.200 (değişmedi) |
-| İlk HTML seti | 125.351 B | **125.991 B** | 129.400 (değişmedi) |
-| Toplam JS | 999.785 B | **1.000.370 B** | 1.001.000 → **1.002.000** |
+| `entry` | 18.344 B | **18.936 B** (+559) | 20.900 (değişmedi) |
+| İlk boya JS | 97.743 B | **98.281 B** | 102.200 (değişmedi) |
+| İlk HTML seti | 125.351 B | **125.996 B** | 129.400 (değişmedi) |
+| Toplam JS | 999.785 B | **1.001.069 B** | 999.400 (main) → **1.003.000** |
 | SW kabuğu | 44/44 | **46/46** varlık | ✅ |
 
 Video **JS paketine girmez**; `dist/social/goreme-yuruyus.mp4` olarak durur ve
 yalnız oynatma anında istenir. Toplam JS eşiği tek seferde ölçüme göre
-1.002.000'e çekildi (pay 1.636 B), gerekçe `scripts/bundle-budget.mjs` içinde.
+1.003.000'e çekildi (pay 1.981 B; `main`'in moderasyon "İncelenenler" payı dahil),
+gerekçe `scripts/bundle-budget.mjs` içinde. Sayılar birleşme sonrası ölçümdür.
 
 ## 5. Kapılar
 

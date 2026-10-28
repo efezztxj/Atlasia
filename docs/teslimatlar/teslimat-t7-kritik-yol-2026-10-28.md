@@ -16,6 +16,8 @@ Onun yerine **ilk boya için gerekmeyen** iki blok giriş paketinden çıkarıld
 | **Rıza paneli** (`CookieConsent`) | Overlay; kapanana kadar haritayı engellemiyor, ilk kareyi belirlemiyor. | `lazy(() => import("./components/CookieConsent"))` + `Suspense` |
 
 Fallback `min-h-[520px] bg-[#f1f0e9]`: parça gelince düzen zıplamasın (CLS).
+Aynı yer tutucu `id="sss"` taşır: mobil menüdeki "Sık sorulanlar" bağlantısı
+parça inerken de hedef bulur (yoksa yavaş ağda tıklama sessizce ölüyordu).
 
 ## 2. Ölçüm (aynı ağaçta, `npm ci` + `npm run build`)
 
@@ -58,9 +60,12 @@ JS eşiği 1.001.000'e çekildi (pay 1.215 B, %0,12; bayatlama kapısı rahat).
 ## 5. Riskler
 
 1. **Tembel yükleme başarısız olursa** (ağ hatası) alt blok görünmez; rıza
-   paneli de gelmez. Rıza paneli kritik olduğu için `Suspense fallback={null}`
-   ile sessiz kalır — kullanıcı ayarlardan yeniden açabilir. Kalıcı çözüm
-   (chunk hatasında yeniden dene) ayrı iş.
+   paneli de gelmez. Kalıcı çözüm (chunk hatasında yeniden dene) ayrı iş.
+   **Denetimde bulunan ve düzeltilen gerçek kusur:** panel `lazy()` olduğu için
+   parça inerken yapılan "Çerez tercihleri" tıklaması olay dinleyicisi olmadığı
+   için kayboluyordu. Artık istek `openCookiePreferences()` içinde bayrağa da
+   yazılır, panel bağlanınca `consumePendingCookiePreferences()` ile bir kez
+   tüketilir (`CookieConsent.test.ts` bunu kilitler).
 2. **İlk açılışta 1 kare gecikme:** rıza paneli bir chunk indirmesi kadar sonra
    görünür; ölçülen ilk boya JS'i 2,5 KB küçüldüğü için net kazanç.
 3. Fallback yüksekliği (520 px) masaüstünde gerçek yükseklikten küçük olabilir;
