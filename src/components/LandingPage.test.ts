@@ -1,14 +1,16 @@
 // @vitest-environment jsdom
 import { createElement } from "react";
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import LandingPage from "./LandingPage";
 
 afterEach(() => cleanup());
 
 describe("landing CTA hiyerarşisi (T8)", () => {
-  it("hero'da tek birincil CTA'yı gösterir; alt eylemler ikincil/üçüncül kalır", () => {
+  it("hero'da tek birincil CTA'yı gösterir; alt eylemler ikincil/üçüncül kalır", async () => {
     render(createElement(LandingPage, { onStart: vi.fn() }));
+    // Alt blok (footer) tembel parçada: üçüncül CTA geldikten sonra say.
+    await waitFor(() => expect(document.querySelectorAll('[data-cta-level="tertiary"]')).toHaveLength(1));
 
     const primary = screen.getByRole("button", { name: /Dünyayı keşfet/i });
     expect(primary.getAttribute("data-cta-level")).toBe("primary");
@@ -28,9 +30,10 @@ describe("landing CTA hiyerarşisi (T8)", () => {
     expect(menuCta.className).toContain("bg-[#f3c870]");
   });
 
-  it("yerleşim CTA'ları doğru kaynakla aynı başlangıç akışını açar", () => {
+  it("yerleşim CTA'ları doğru kaynakla aynı başlangıç akışını açar", async () => {
     const onStart = vi.fn();
     render(createElement(LandingPage, { onStart }));
+    await waitFor(() => expect(document.querySelectorAll('[data-cta-level="tertiary"]')).toHaveLength(1));
 
     fireEvent.click(screen.getByRole("button", { name: /Dünyayı keşfet/i }));
     fireEvent.click(document.querySelector('[data-cta-level="secondary"]')!);

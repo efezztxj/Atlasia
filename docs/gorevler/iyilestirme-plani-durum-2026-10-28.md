@@ -39,19 +39,20 @@ Plan sırası: `T1 → T2 → T3 → T12 → T11 → T7 → T4 → T5 → T8 →
 
 | Ölçüm | Değer | Eşik | Marj |
 |---|---|---|---|
-| İlk HTML seti (gzip) | 127.763 B | 129.400 B | 1.637 B |
-| Toplam JS (gzip) | 998.004 B | 998.500 B | **519 B** |
+| İlk HTML seti (gzip) | 125.351 B | 129.400 B | 4.049 B |
+| Toplam JS (gzip) | 999.785 B | 1.001.000 B | **1.215 B** |
 | Toplam CSS (gzip) | 34.988 B | 35.700 B | 712 B |
-| Tanıtım yolculuğu (gzip) | 127.763 B | 129.400 B | 1.637 B |
-| Uygulama kabuğu (gzip) | 587.958 B | 603.400 B | 16.138 B |
-| `entry` (bizim kod) | 20.889 B | 20.900 B | **12 B** |
+| Tanıtım yolculuğu (gzip) | 125.351 B | 129.400 B | 4.049 B |
+| Uygulama kabuğu (gzip) | 585.544 B | 603.400 B | 17.856 B |
+| `entry` (bizim kod) | 18.344 B | 20.900 B | **2.556 B** |
 
 Eşik kuralı: `scripts/bundle-budget.mjs` içindeki sayı **yalnız** yeni bir ölçüm
 ve yazılı gerekçeyle değişir; testi yeşile çevirmek için asla değişmez. #127'den
 beri **bayatlama kapısı** var: sahibi olduğumuz eşikler ölçümün %20'sinden fazla
-üstünde olamaz. `entry` marjı **12 B** — girişe (landing + App kabuğu) yeni kod eklemeden
-önce `npm run build` ile ölçüm alın; sığmıyorsa doğru çözüm eşiği yükseltmek
-değil, footer/SSS gibi aşağıdaki blokları tembel parçaya taşımaktır (§4.4).
+üstünde olamaz. `entry` payı **2.556 B** — 2026-10-28'de SSS/footer ve rıza paneli tembel
+parçaya taşındı (`teslimat-t7-kritik-yol-2026-10-28.md`); pay 12 B'den 2,5 KB'ye
+çıktı ve toplam JS eşiği ölçüme bağlı olarak 1.001.000'e çekildi. Girişe yeni
+kod eklemeden önce yine `npm run build` ile ölçüm alın.
 
 
 ## 3. Dış kontrol durumu (2026-10-28, son tur)
@@ -70,11 +71,9 @@ değil, footer/SSS gibi aşağıdaki blokları tembel parçaya taşımaktır (§
    mü? İkisi de kod değişikliği istemiyor; tek zorunlu adım
    `VITE_TELEMETRY_ENDPOINT`.
 3. **T6 video:** barındırma nerede olacak (repo dışı, `preload="none"` + poster)?
-4. **`entry` payı (12 B):** sıradaki landing işi bütçeye sığmazsa iki dürüst yol
-   var, ikisi de davranış değişikliği olduğu için **onay istiyor**:
-   (a) footer + SSS'yi tembel parçaya taşı (CLS riski: aşağıda, ekran dışı),
-   (b) `CookieConsent`'i `lazy()` yap (ilk açılışta panel bir kare sonra gelir).
-   Eşiği yükseltmek üçüncü ve **yanlış** yol.
+4. ~~`entry` payı~~ **kapandı (2026-10-28):** iki yol da uygulandı — SSS/footer
+   ve `CookieConsent` tembel parçada; pay 2.556 B. Açık kalan tek nokta: tembel
+   parça indirilemezse rıza paneline erişim (yeniden deneme) ayrı iş.
 5. **T20 güven sinyalleri:** gerçek kullanıcı/rota sayısı olmadan sosyal kanıt
    yazılmayacak; sayı üretilmesi gerekiyorsa kaynağı da yazılmalı.
 6. **T21 basın/iletişim:** gerçek e-posta ve künye hukuk onayı bekliyor

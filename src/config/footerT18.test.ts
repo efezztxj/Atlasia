@@ -8,7 +8,7 @@
  * hiçbir yerde yazmıyordu.
  */
 import { createElement } from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import LandingPage from "../components/LandingPage";
 import { COOKIE_PREFERENCES_EVENT } from "../lib/cookieConsent";
@@ -16,26 +16,27 @@ import { COOKIE_PREFERENCES_EVENT } from "../lib/cookieConsent";
 afterEach(() => cleanup());
 
 describe("T18 · footer yüzeyi", () => {
-  it("üç yasal metin ve çerez tercihleri aynı nav'da", () => {
+  // Alt blok tembel parçadır (T7 bütçesi): varlığı `findBy*` ile beklenir.
+  it("üç yasal metin ve çerez tercihleri aynı nav'da", async () => {
     render(createElement(LandingPage, { onStart: vi.fn() }));
-    const nav = screen.getByRole("navigation", { name: "Yasal" });
+    const nav = await screen.findByRole("navigation", { name: "Yasal" });
     for (const label of ["Gizlilik", "KVKK aydınlatma", "Kullanım koşulları", "Çerez tercihleri"]) {
       expect(nav.textContent).toContain(label);
     }
   });
 
-  it("çerez tercihleri düğmesi rıza panelini açar (olayı yayar)", () => {
+  it("çerez tercihleri düğmesi rıza panelini açar (olayı yayar)", async () => {
     const onOpen = vi.fn();
     window.addEventListener(COOKIE_PREFERENCES_EVENT, onOpen);
     render(createElement(LandingPage, { onStart: vi.fn() }));
-    fireEvent.click(screen.getByRole("button", { name: "Çerez tercihleri" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Çerez tercihleri" }));
     window.removeEventListener(COOKIE_PREFERENCES_EVENT, onOpen);
-    expect(onOpen).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(onOpen).toHaveBeenCalledTimes(1));
   });
 
-  it("site dili yazılı ve `lang` ile tutarlı", () => {
+  it("site dili yazılı ve `lang` ile tutarlı", async () => {
     render(createElement(LandingPage, { onStart: vi.fn() }));
-    const line = screen.getByText(/Site dili: Türkçe \(tr\)/);
+    const line = await screen.findByText(/Site dili: Türkçe \(tr\)/);
     expect(line.getAttribute("lang")).toBe("tr");
   });
 });

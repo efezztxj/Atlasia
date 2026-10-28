@@ -16,6 +16,10 @@ import {
  * gerçekten bağlı olduğunu doğrular.
  */
 const landing = readFileSync("src/components/LandingPage.tsx", "utf8");
+// 2026-10-28: SSS + footer tembel parçaya taşındı; metin yüzeyin tamamında
+// aranır (JS'siz HTML ile React metni aynı olmalı).
+const landingFooter = readFileSync("src/components/LandingFooter.tsx", "utf8");
+const landingSurface = `${landing}\n${landingFooter}`;
 const viteConfig = readFileSync("vite.config.ts", "utf8");
 const indexHtml = readFileSync("index.html", "utf8");
 const html = renderLandingStaticHtml();
@@ -58,15 +62,15 @@ describe("T17 · noscript içerik", () => {
   it("metin uydurma değil: her dize tanıtım sayfasında da geçer", () => {
     // Başlık JSX'te <span> ile bölünmüş: parçaları ayrı ayrı ara.
     for (const fragment of ["Dünyayı", "merakınla", "keşfet."]) {
-      expect(landing, `"${fragment}" LandingPage'de yok`).toContain(fragment);
+      expect(landingSurface, `"${fragment}" tanıtım yüzeyinde yok`).toContain(fragment);
     }
     for (const step of LANDING_STATIC.steps) {
-      expect(landing, `"${step.title}" LandingPage'de yok`).toContain(step.title);
-      expect(landing, `"${step.text}" LandingPage'de yok`).toContain(step.text);
+      expect(landingSurface, `"${step.title}" tanıtım yüzeyinde yok`).toContain(step.title);
+      expect(landingSurface, `"${step.text}" tanıtım yüzeyinde yok`).toContain(step.text);
     }
     for (const faq of LANDING_STATIC.faqs) {
-      expect(landing, `"${faq.question}" LandingPage'de yok`).toContain(faq.question);
-      expect(landing, `"${faq.answer}" LandingPage'de yok`).toContain(faq.answer);
+      expect(landingSurface, `"${faq.question}" tanıtım yüzeyinde yok`).toContain(faq.question);
+      expect(landingSurface, `"${faq.answer}" tanıtım yüzeyinde yok`).toContain(faq.answer);
     }
   });
 

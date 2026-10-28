@@ -113,7 +113,20 @@ export const BUNDLE_BUDGET = Object.freeze({
   //   ilk boya JS 100.213 / 102.200 · appShell 586.968 / 603.400 (değişmedi)
   // Yani artışın tamamı misafir modu kodudur; kullanıcıya görünen ilk boya
   // eşiklerinin hepsi payla içinde kaldı, yalnız toplam JS eşiği aşıldı.
-  totalJsGzipBytes: 998_500,
+  //
+  // 2026-10-28 (kritik yol ayrımı) — giriş paketindeki pay 20.915 / 20.900'e
+  // dayanmıştı. İki blok `entry` dışına alındı (ölçüm: `npm ci` + `npm run build`):
+  //   LandingFooter (SSS + footer) lazy  ·  CookieConsent lazy
+  //   entry           20.915 -> **18.344**  (−2.571)  · eşik 20.900 (değişmedi)
+  //   ilk boya JS    100.314 -> **97.743**  (−2.571)  · eşik 102.200 (değişmedi)
+  //   ilk HTML seti  127.918 -> **125.351** (−2.567)  · eşik 129.400 (değişmedi)
+  //   toplam JS      998.070 -> **999.785** (+1.715)  · eşik 998.500 -> 1.001.000
+  // Toplam JS neden büyüdü: ayrı chunk'lar tek tek daha kötü sıkışır (4,3 KB ve
+  // 6,2 KB ham parçalar) ve chunk sarmalayıcı/preload yardımcısı eklenir. Yani
+  // bu, kullanıcıya **daha hızlı ilk boya** karşılığında ödenen ~1,7 KB'dir;
+  // indirilen toplam bayt artmaz (aynı kod, farklı zaman). Eşik bu ölçüme göre
+  // 1.001.000'e çekildi: pay 1.215 B (%0,12), bayatlama kapısı rahat.
+  totalJsGzipBytes: 1_001_000,
   totalCssGzipBytes: 35_700,
   initialGzipBytes: 129_400,
   // İlk HTML ile gelen gerçek ilk boya maliyeti (lazy chunk'lar hariç).

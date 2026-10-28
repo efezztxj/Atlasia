@@ -8,18 +8,24 @@ import { describe, expect, it } from "vitest";
  */
 
 const landing = readFileSync("src/components/LandingPage.tsx", "utf8");
+// 2026-10-28: SSS + footer `entry` paketinden çıktı (tembel parça). Tanıtım
+// yüzeyinin tamamı iki dosyadır; sözleşme ikisini birlikte okur.
+const landingFooter = readFileSync("src/components/LandingFooter.tsx", "utf8");
+const landingSurface = `${landing}\n${landingFooter}`;
 const indexHtml = readFileSync("index.html", "utf8");
 const sitemap = readFileSync("public/sitemap.xml", "utf8");
 const robots = readFileSync("public/robots.txt", "utf8");
 
 describe("tanıtım sayfası · yasal erişim", () => {
   it("gizlilik, KVKK ve kullanım koşulları bağlantıları tanıtım sayfasından açılır", () => {
-    expect(landing).toContain('{ type: "privacy", label: "Gizlilik" }');
-    expect(landing).toContain('{ type: "kvkk", label: "KVKK aydınlatma" }');
-    expect(landing).toContain('{ type: "terms", label: "Kullanım koşulları" }');
+    expect(landingFooter).toContain('{ type: "privacy", label: "Gizlilik" }');
+    expect(landingFooter).toContain('{ type: "kvkk", label: "KVKK aydınlatma" }');
+    expect(landingFooter).toContain('{ type: "terms", label: "Kullanım koşulları" }');
     // Yasal metin ağır bir bileşen: yalnız istendiğinde yüklenmeli.
     expect(landing).toContain('lazy(() => import("./LegalNotice"))');
-    expect(landing).toContain("setLegal(type)");
+    expect(landingFooter).toContain("onLegal(type)");
+    // Yasal pencere durumu sayfada; alt blok yalnız haber verir.
+    expect(landing).toContain("onLegal={setLegal}");
   });
 
   it("yasal pencere kapatılabilir (durum sıfırlanır)", () => {
@@ -29,12 +35,13 @@ describe("tanıtım sayfası · yasal erişim", () => {
 
 describe("tanıtım sayfası · güven ve SSS", () => {
   it("sık sorulanlar bölümü ve çapa hedefi var", () => {
-    expect(landing).toContain('id="sss"');
-    expect(landing).toContain('href="#sss"');
-    expect(landing).toContain("const FAQ = [");
+    expect(landingFooter).toContain('id="sss"');
+    // `#sss` bağlantıları: mobil menüde ve footer'ın "Ürün" nav'ında.
+    expect(landingSurface).toContain('href="#sss"');
+    expect(landingFooter).toContain("const FAQ = [");
     // Ayrıntılar JS gerektirmeden açılmalı (erişilebilir, hafif).
-    expect(landing).toContain("<details key={item.q}");
-    expect(landing).toContain("<summary");
+    expect(landingFooter).toContain("<details key={item.q}");
+    expect(landingFooter).toContain("<summary");
   });
 
   it("güven maddeleri abartısız ve ölçülebilir", () => {
@@ -44,8 +51,8 @@ describe("tanıtım sayfası · güven ve SSS", () => {
   });
 
   it("SSS metinleri vaat uydurmaz: fiyat ve konum iddiası dürüst", () => {
-    expect(landing).not.toMatch(/ücretsiz.*sonsuza|garanti|%100/i);
-    expect(landing).toContain("Konum yalnız sen açıkça izin verdiğinde");
+    expect(landingSurface).not.toMatch(/ücretsiz.*sonsuza|garanti|%100/i);
+    expect(landingFooter).toContain("Konum yalnız sen açıkça izin verdiğinde");
   });
 });
 

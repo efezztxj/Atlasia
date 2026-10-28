@@ -123,7 +123,9 @@ describe("CookieConsent", () => {
 
   it("main.tsx içinde NetworkStatus ve UpdateNotice yanında bağlıdır", () => {
     const main = readFileSync("src/main.tsx", "utf8");
-    expect(main).toContain('import CookieConsent from "./components/CookieConsent"');
+    // 2026-10-28: panel tembel yüklenir (ilk boya JS'i küçültmek için);
+    // bağlama yeri ve davranışı aynı: uygulamanın üstünde, Suspense içinde.
+    expect(main).toContain('const CookieConsent = lazy(() => import("./components/CookieConsent"))');
     expect(main).toContain("<CookieConsent />");
     expect(main).toContain("<NetworkStatus />");
     expect(main).toContain("<UpdateNotice />");

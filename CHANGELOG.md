@@ -1,5 +1,15 @@
 # Atlasia Update
 
+## 2026-10-28 — Kritik yol: SSS/footer ve rıza paneli giriş paketinden çıktı (T7)
+
+Ayrıntı: `docs/teslimatlar/teslimat-t7-kritik-yol-2026-10-28.md`.
+
+- **Kapı kırıktı:** `entry` 20.915 / 20.900. Eşik yükseltilmedi; onun yerine ilk boyada gerekmeyen iki blok `lazy()` yapıldı: tanıtımın alt bloğu (`LandingFooter`: SSS + footer) ve rıza paneli (`CookieConsent`).
+- **Sonuç:** `entry` **18.344** (−2.571), ilk boya JS **97.743** (−2.571), ilk HTML seti **125.351** (−2.567). Fallback yüksekliği (520 px) düzen zıplamasını sınırlar.
+- **Toplam JS +1.715 B** (999.785): ayrı chunk'lar daha kötü sıkışır. İndirilen bayt artmıyor, aynı kod daha sonra iniyor. Yalnız toplam JS eşiği 998.500 → **1.001.000** (pay 1.215 B, %0,12); `entry`/ilk boya/ilk HTML/appShell eşikleri değişmedi.
+- **Kilit:** `src/config/criticalPath.test.ts` (4) — iki blok gerçekten tembel, fallback var, eşikler ölçüme bağlı. `siteSurface`, `footerT18`, `prerenderT17`, `LandingPage.test` ve `CookieConsent.test` yeni yüzeye uyarlandı (iddialar zayıflatılmadı).
+- Testler **1281/1281** (158 dosya); typecheck, lint, build, SW 44/44, `test:scripts`, `audit:check` yeşil.
+
 ## 2026-10-28 — JavaScript'siz içerik (T17)
 
 Ayrıntı: `docs/teslimatlar/teslimat-t17-noscript-2026-10-28.md`.
