@@ -61,6 +61,15 @@ describe("T6 · tanıtım filmi", () => {
     expect(sw).not.toMatch(/mp4/);
   });
 
+  it("erişilebilir ad: figure/figcaption (video `aria-label` ile değil)", () => {
+    const block = landing.slice(landing.indexOf("<figure"), landing.indexOf("</figure>"));
+    expect(block).toContain("<figcaption className=\"sr-only\">");
+    expect(block).toContain("tanıtım filmi");
+    expect(block).toContain("<video");
+    // `aria-label` doğrudan <video>'ya konmaz: ekran okuyucularda tutarlı değil.
+    expect(block).not.toContain('aria-label="Kapadokya');
+  });
+
   it("video yoksa okunabilir geri dönüş bağlantısı var", () => {
     const videoTag = landing.slice(landing.indexOf("<video"), landing.indexOf("</video>"));
     expect(videoTag).toMatch(/<a href="\/social\/goreme-yuruyus\.mp4">/);

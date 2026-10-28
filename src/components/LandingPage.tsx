@@ -272,7 +272,10 @@ export default function LandingPage({ onStart }: Props) {
               Videoyu ayrı aç
             </a>
           </div>
-          <div className="mx-auto w-full max-w-[300px] lg:mx-0">
+          <figure className="mx-auto w-full max-w-[300px] lg:mx-0">
+            {/* `aria-label` yerine görünmez başlık: video öğesinin etiketi
+                ekran okuyucularda tutarlı duyurulmuyor (P18 dersi). */}
+            <figcaption className="sr-only">Kapadokya Aşk Vadisi yürüyüşü tanıtım filmi</figcaption>
             <video
               className="aspect-[9/16] w-full rounded-[24px] border border-[#173c37]/15 bg-[#031b18] object-cover shadow-xl"
               controls
@@ -281,13 +284,12 @@ export default function LandingPage({ onStart }: Props) {
               poster="/images/atlasia-earth-hero.jpg"
               width={1080}
               height={1920}
-              aria-label="Kapadokya Aşk Vadisi yürüyüşü tanıtım filmi"
             >
               <source src="/social/goreme-yuruyus.mp4" type="video/mp4" />
               Tarayıcın videoyu oynatamıyor. Klibi{" "}
               <a href="/social/goreme-yuruyus.mp4">doğrudan açabilirsin</a>.
             </video>
-          </div>
+          </figure>
         </div>
       </section>
 

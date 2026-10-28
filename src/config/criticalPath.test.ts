@@ -47,13 +47,13 @@ describe("T7 · kritik yol", () => {
   });
 
   it("eşikler ölçüme bağlı: giriş payı ölçümün üstünde ama %20'den yakın", () => {
-    // Ölçüm (npm ci + npm run build, 2026-10-28): entry 18.888 B.
+    // Ölçüm (npm ci + npm run build, 2026-10-28): entry 18.897 B.
     const entry = threshold("entry");
     expect(entry).toBeGreaterThanOrEqual(18_888);
     expect(entry).toBeLessThan(18_888 * 1.2);
     // Toplam JS eşiği de ölçüme (1.000.364 B) bağlı kalmalı.
     const total = threshold("totalJsGzipBytes");
-    expect(total).toBeGreaterThanOrEqual(1_000_364);
-    expect(total).toBeLessThan(1_000_364 * 1.2);
+    expect(total).toBeGreaterThanOrEqual(1_000_370);
+    expect(total).toBeLessThan(1_000_370 * 1.2);
   });
 });

@@ -42,10 +42,10 @@ okunabilir bağlantı var.
 
 | Ölçüm | Önce | Sonra | Eşik |
 |---|---|---|---|
-| `entry` | 18.344 B | **18.888 B** (+544) | 20.900 (değişmedi) |
-| İlk boya JS | 97.743 B | **98.287 B** | 102.200 (değişmedi) |
+| `entry` | 18.344 B | **18.897 B** (+544) | 20.900 (değişmedi) |
+| İlk boya JS | 97.743 B | **98.296 B** | 102.200 (değişmedi) |
 | İlk HTML seti | 125.351 B | **125.991 B** | 129.400 (değişmedi) |
-| Toplam JS | 999.785 B | **1.000.364 B** | 1.001.000 → **1.002.000** |
+| Toplam JS | 999.785 B | **1.000.370 B** | 1.001.000 → **1.002.000** |
 | SW kabuğu | 44/44 | **46/46** varlık | ✅ |
 
 Video **JS paketine girmez**; `dist/social/goreme-yuruyus.mp4` olarak durur ve
