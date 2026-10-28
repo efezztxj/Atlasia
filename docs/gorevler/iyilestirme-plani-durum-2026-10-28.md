@@ -4,7 +4,7 @@ Bu defter, "Atlasia — İyileştirme Planı" maddelerinin **sırasını ve duru
 tutar. Sıra bağımlılığa göredir: Faz 1 (dönüşüm) ölçüm olmadan başlamaz —
 "iyileşti mi?" sorusu hisle değil sayıyla yanıtlanır.
 
-**Son güncelleme:** 2026-10-28 · **Referans sürüm:** bu dal (T1–T3, T9, T13–T19 + **T4/T5/T6/T7/T8** teslimatı)
+**Son güncelleme:** 2026-10-28 · **Referans sürüm:** bu dal (T1–T3, T9, T13–T19, T10 kod tarafı + **T4/T5/T6/T7/T8** teslimatı)
 **Ölçüm tablosu:** `docs/baseline.md` · **Olay sözleşmesi:** `docs/olcum-ve-hata-izleme.md` §2b/§4b
 
 Plan sırası: `T1 → T2 → T3 → T12 → T11 → T7 → T4 → T5 → T8 → T9 → T6 → T10 → T13 → T14 → T15 → T16 → T18 → T19 → T20 → T21 → T17`

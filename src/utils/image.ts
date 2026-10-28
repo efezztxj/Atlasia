@@ -9,6 +9,23 @@ export const MAX_INPUT_BYTES = 25 * 1024 * 1024;
 
 /** iPhone varsayılanı; tarayıcıların çoğu HEIC'i çözemez. */
 const HEIC_TYPES = new Set(["image/heic", "image/heif", "image/heic-sequence", "image/heif-sequence"]);
+const HEIC_EXT = /\.(heic|heif)$/i;
+
+/**
+ * Kullanıcıya doğrudan gösterilebilecek güvenli Türkçe görsel doğrulama hatası.
+ * Bileşenlerdeki `catch` blokları beklenmeyen teknik hataları sızdırmadan bu
+ * mesajları koruyabilsin diye `photoUploadErrorMessage` ile eşlenir (M-44/T10).
+ */
+export class ImageInputError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ImageInputError";
+  }
+}
+
+export function photoUploadErrorMessage(failure: unknown, fallback: string): string {
+  return failure instanceof ImageInputError ? failure.message : fallback;
+}
 
 /**
  * Bulut kaydı için kademeli küçültme planı. Dışa açık: sıralamanın
@@ -25,15 +42,16 @@ export const CLOUD_PHOTO_ATTEMPTS = Object.freeze([
 
 /** Ortak girdi doğrulaması: tür, boyut ve HEIC yönlendirmesi. */
 function assertUsableImage(file: File): void {
-  if (!file.type.startsWith("image/")) throw new Error("Bu bir görsel değil");
-  if (HEIC_TYPES.has(file.type)) {
-    throw new Error(
+  const mime = file.type.toLowerCase();
+  if (HEIC_TYPES.has(mime) || HEIC_EXT.test(file.name)) {
+    throw new ImageInputError(
       "iPhone HEIC fotoğrafı tarayıcıda açılamıyor. Ayarlar → Kamera → Biçimler → \"En Uyumlu\" seç ya da fotoğrafı JPEG olarak yükle.",
     );
   }
+  if (!mime.startsWith("image/")) throw new ImageInputError("Bu bir görsel değil");
   if (file.size > MAX_INPUT_BYTES) {
     const mb = (file.size / 1024 / 1024).toFixed(1).replace(".", ",");
-    throw new Error(`Fotoğraf çok büyük (${mb} MB). Üst sınır 25 MB; daha küçük bir fotoğraf seç.`);
+    throw new ImageInputError(`Fotoğraf çok büyük (${mb} MB). Üst sınır 25 MB; daha küçük bir fotoğraf seç.`);
   }
 }
 
@@ -56,13 +74,13 @@ function renderCompressed(
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Görsel işlenemedi");
+  if (!ctx) throw new ImageInputError("Görsel işlenemedi");
   ctx.imageSmoothingQuality = "high";
   ctx.drawImage(bitmap as CanvasImageSource, 0, 0, width, height);
 
   const dataUrl = canvas.toDataURL("image/jpeg", quality);
   if (!dataUrl.startsWith("data:image/jpeg;base64,")) {
-    throw new Error("Görsel JPEG biçimine dönüştürülemedi");
+    throw new ImageInputError("Görsel JPEG biçimine dönüştürülemedi");
   }
   return { dataUrl, width, height };
 }
@@ -109,7 +127,7 @@ export async function compressImageWithinLimit(
     closeBitmap(bitmap);
   }
 
-  throw new Error("Fotoğraf güvenli kayıt boyutuna küçültülemedi");
+  throw new ImageInputError("Fotoğraf güvenli kayıt boyutuna küçültülemedi");
 }
 
 async function loadBitmap(file: File): Promise<ImageBitmap | HTMLImageElement> {
@@ -131,7 +149,7 @@ async function loadBitmap(file: File): Promise<ImageBitmap | HTMLImageElement> {
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
-      reject(new Error("Görsel okunamadı"));
+      reject(new ImageInputError("Görsel okunamadı"));
     };
     img.src = url;
   });

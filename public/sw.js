@@ -1,4 +1,4 @@
-const CACHE = "atlasia-shell-v7";
+const CACHE = "atlasia-shell-v8";
 const TILE_CACHE = "atlasia-tiles-v1";
 const TILE_META_CACHE = "atlasia-tile-meta-v1";
 const CACHE_PREFIX = "atlasia-shell-";

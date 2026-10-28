@@ -41,9 +41,12 @@ export default defineConfig(({ mode }) => {
       },
     },
     build: {
-      // A6: kaynak haritası üretilir ama bundle içine `sourceMappingURL` yazılmaz;
-      // postbuild adımı `.map` dosyalarını `dist/` dışına taşır (yayında URL yok,
-      // CI artifact olarak saklanır).
+      // A6: Kaynak haritaları üretilir ama pakete referans YAZILMAZ ("hidden").
+      // Böylece üretimde hata ayıklanabilir (CI artifact), Lighthouse
+      // "valid-source-maps" geçer ve haritalar tarayıcıya ipucu olarak sızmaz.
+      // `postbuild` bunları dist dışına taşır (scripts/collect-sourcemaps.mjs):
+      // Cloudflare `dist` klasörünü yayınladığı için .map dosyaları herkese açık
+      // URL'de kalmaz.
       sourcemap: "hidden",
       rollupOptions: {
         output: {

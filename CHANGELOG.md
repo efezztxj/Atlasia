@@ -1,19 +1,24 @@
 # Atlasia Update
 
-## 2026-10-28 — Denetim A grubu güvenlik yamaları (CSP tema/Google popup, HSTS, gizli source map, CRLF), T7/T10 kurtarma ve temsilî tur etiketi (M-25)
+## 2026-10-28 — Temsilî site turu etiketi (M-25 / G6), çevrimdışı `/theme-boot.js` önbelleği ve rıza bayrağı düzeltmesi
 
-- **Üretim CSP düzeltmeleri + çevrimdışı kabuk (A1, A2, A5):**
-  - **A1 (`/theme-boot.js`):** `index.html` içindeki satır içi tema betiği üretimde `script-src 'self'` tarafından engelleniyordu; betik `/theme-boot.js` dosyasına taşındı (`'unsafe-inline'` açılmadı) ve PWA çevrimdışı açılışta temanın kaybolmaması için `public/sw.js` ön önbellek kabuğuna (`SHELL` + `isAllowedStaticPath`) eklendi.
-  - **A2 (`apis.google.com`):** Firebase Google `signInWithPopup` akışının kullandığı `https://apis.google.com` kökeni `public/_headers` içinde `script-src`, `connect-src` ve `frame-src` listelerine eklendi.
-  - **A5 (`HSTS includeSubDomains`):** `Strict-Transport-Security` başlığı `max-age=31536000; includeSubDomains` olarak sıkılaştırıldı (`preload` bilinçli olarak `pages.dev` paylaşımlı kök alanı nedeniyle hariç tutuldu).
-- **Gizli source map + CI artifact ve CRLF koruması (A3, A4, A6, A7):**
-  - **A6 (`sourcemap: "hidden"`):** `vite.config.ts` gizli kaynak haritası üretiyor, `scripts/collect-sourcemaps.mjs` postbuild adımında `.map` dosyalarını `dist/` dışına (`sourcemaps/`) taşıyor ve `.github/workflows/ci.yml` SHA-pinli `actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9` ile 7 günlük CI artifact olarak saklıyor.
-  - **A3/A4/A7:** `Explorer` ve `TrackRecorderPanel` SDK başlatmayan `lib/firebaseConfig` modülünü okuyor; `legal.ts` `_GRECAPTCHA` açıklaması gerçeğe uyarlandı; `.gitattributes` ve `split(/\r?\n/)` ile Windows CRLF kural ayrıştırıcı kayması kapatıldı (`securityPosture.test.ts` — 10 test).
-- **T7 tembel yükleme yarış düzeltmeleri + T10 görsel boru hattı kapıları:**
-  - `CookieConsent` henüz inmeden tıklanan **Çerez tercihleri** isteği `consumePendingCookiePreferences()` bayrağıyla yakalanıyor; `LandingPage` alt `Suspense` yer tutucusu `id="sss"` çapasını koruyor.
-  - `src/utils/image.ts` 25 MB decode öncesi bellek kapısı, HEIC/HEIF için iOS **En Uyumlu** yönlendirmesi ve EXIF `imageOrientation: "from-image"` desteği kazandı; `PlaceDetails`, `PlaceImage`, `RecordsDock` ve `SocialPanel` görsellerine `decoding="async"` / `loading="lazy"` eklendi (`imagePipelineT10.test.ts` — 7 test).
-- **Temsilî site turu etiketi (M-25 · P1 / G6):** `NearbyAudioGuide` artık `isRealPath(tourRoute) === false` olan antik kent turlarında kart içinde açık **`Temsilî tur — saha patikası doğrulanmadı; duraklar editör sırasıyla sunulur.`** uyarısı gösteriyor (`NearbyAudioGuide.test.ts` — 3 test).
-- **T1 Worker paketi (`PR #146`):** `workers/telemetry/` Cloudflare Worker paketi ve 8 sözleşme testi (`npm run test:telemetry-worker`) `main` dalına alındı.
+- **Temsilî site turu etiketi (M-25 · P1 / G6):** `NearbyAudioGuide` artık `isRealPath(tourRoute) === false` olan antik kent turlarında (Efes, Priene, Pompeii, Ostia) kart içinde erişilebilir (`role="note"`) **`Temsilî tur — saha patikası doğrulanmadı; duraklar editör sırasıyla sunulur.`** uyarısı gösteriyor; site turu dışındaki tekil rehber noktalarında veya saha patikası doğrulanmış turlarda göstermiyor (`NearbyAudioGuide.test.ts` — 3 test).
+- **A1 çevrimdışı PWA kabuğu düzeltmesi (`/theme-boot.js`, `atlasia-shell-v8`):** `index.html` içindeki senkron `<script src="/theme-boot.js">` dosyası `public/sw.js` ön önbellek listesine (`SHELL`) ve statik izin listesine (`isAllowedStaticPath`) eklendi; mevcut kurulu PWA istemcilerinin güncellenmesi için kabuk önbelleği `atlasia-shell-v8`'e yükseltildi (`scripts/sw.node-test.mjs`).
+- **Çerez tercihleri bayrak temizliği (`CookieConsent`):** Panel zaten bağlıyken çağrılan `openCookiePreferences()` sonrası `pendingPreferencesOpen` bayrağının bellekte takılı kalmaması için `onOpenPreferences` içinde `consumePendingCookiePreferences()` tüketiliyor.
+- **Fotoğraf yükleme hata iletimi (T10 / M-44):** `AddDiscoveryModal`, `SocialPanel`, `StoryComposer` ve `AtlasAssistant` üzerindeki `catch` blokları artık `ImageInputError` mesajlarını (`photoUploadErrorMessage`) yutmuyor; 25 MB sınırı ve iPhone HEIC ("En Uyumlu") rehberi boş MIME uzantılı `.heic/.heif` dosyaları dahil doğrudan kullanıcıya gösteriliyor.
+
+## 2026-10-28 — Denetim A grubu: CSP uyumlu tema, Google popup izni, gizli source map, CRLF (A1–A7) + C4/E6 erişilebilirlik
+
+Ayrıntı: `docs/teslimatlar/teslimat-denetim-a-csp-hsts-2026-10-28.md`.
+
+- **A1:** satır içi tema betiği `/theme-boot.js`'e taşındı; `script-src 'self'` altında engelleniyordu.
+- **A2:** `apis.google.com` script/connect/frame direktiflerine eklendi (Firebase Google popup).
+- **A3:** `Explorer` ve `TrackRecorderPanel` SDK'sız `lib/firebaseConfig` kapısını okuyor.
+- **A4:** gizlilik metni `_GRECAPTCHA` gerçeğine göre güncellendi.
+- **A5:** HSTS `includeSubDomains`; `preload` gerekçesiyle yok.
+- **A6:** `sourcemap: "hidden"` + `collect-sourcemaps.mjs` haritaları `dist` dışına taşır; CI artifact (pinli action).
+- **A7:** `.gitattributes eol=lf` + `split(/\r?\n/)` (Windows checkout).
+- **C4 / E6:** `PlaceDetails` galeri şeridi küçük görsellerine açıklayıcı `alt` metni eklendi; `BottomPanel` odak düğmesi tek tutarlı `Haritada gör` + `aria-pressed` durumuna geçirildi (`PlaceDetails.accessibility.test.ts`).
 
 ## 2026-10-28 — Vite 8 + plugin-react 6 (bekletilen majör alındı)
 
@@ -30,6 +35,17 @@
 - **Yürüyüş kaydında Screen Wake Lock (M-26 · P1):** `useTrackRecorder` kayıt başladığında `navigator.wakeLock.request("screen")` alıyor, sekme arka plandan görünür duruma döndüğünde (`visibilitychange`) kilidi yeniliyor, bitiş/vazgeçiş/unmount anında serbest bırakıyor ve düşük güç modunda reddedilse bile GPS kaydını kesintisiz sürdürüyor. `TrackRecorderPanel` kilit durumunu kullanıcıya açıkça bildiriyor.
 - **Tembel rıza parçası kurtarma (T7/T18 açık nokta):** `CookieConsentBoundary` tembel `CookieConsent` parçasının kesintili ağda indirilememesi hâlinde hatanın `AppErrorBoundary`'ye tırmanıp uygulamayı düşürmesini engelliyor; **Tekrar dene** veya footer **Çerez tercihleri** tetiklemesinde taze `lazy()` fabrikasıyla parçayı yeniden yüklüyor.
 - **Test ve doküman kilidi (M-35 · P1):** `ProfilePanel.test.ts` (çift onaylı hesap silme, KVKK veri indirme, çıkış onayı), `CookieConsentBoundary.test.ts`, `LoadingAndRetrySurface.test.ts`, `useFirestoreAtlasData.test.ts` ve `useTrackRecorder.test.ts` eklendi/genişletildi; `docs/moderasyon-akisi.md` PR #140 `İncelenenler` mimarisiyle güncellendi. Mevcut tüm bundle bütçesi eşikleri aşılmadan korundu (`1.002.430 / 1.003.000 B` JS gzip, `25.068 / 25.200 B` ilk boya CSS gzip).
+## 2026-10-28 — Görsel boru hattı: yükleme kapıları + teslim işaretleri (T10)
+
+Ayrıntı: `docs/teslimatlar/teslimat-t10-gorsel-hatti-2026-10-28.md`.
+
+- **Boyut kapısı:** 25 MB üstü dosya **decode edilmeden** reddedilir (mobilde OOM riski); hata gerçek boyutu söyler.
+- **HEIC:** iPhone varsayılanı tarayıcıda çözülemiyor; artık "Ayarlar → Kamera → Biçimler → En Uyumlu ya da JPEG" diyen net bir hata var.
+- **EXIF yönü** açıkça istenir (`imageOrientation: "from-image"`): fotoğraf yan yatmaz.
+- **Teslim:** galeri/akış görsellerine `decoding="async"`, ekran dışı rota fotoğrafına `loading="lazy"`. Hero bilinçli olarak `fetchPriority="high"` ve tembel değil (LCP).
+- Kademeli küçültme planı tek yönlü olduğu ve Firestore'daki 180.000 karakter kilidiyle uyumlu olduğu testle kilitli: `imagePipelineT10.test.ts` (7).
+- **Yapılmayan:** WebP/AVIF çıktısı, `toBlob` geçişi, sunucu tarafı `srcset` türevleri — hepsi ölçüm/bağımlılık/onay istiyor (dokümanda gerekçeli).
+- Testler **1292/1292** (161 dosya); bütçe içinde (`entry` 18.938/20.900, toplam JS 1.001.304/1.003.000).
 
 ## 2026-10-28 — Tanıtım filmi (`preload="none"` + poster, T6)
 

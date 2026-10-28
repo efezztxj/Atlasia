@@ -46,9 +46,8 @@
     <link rel="alternate" hreflang="tr" href="https://atlasia.pages.dev/" />
     <link rel="alternate" hreflang="x-default" href="https://atlasia.pages.dev/" />
     <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
-    <!-- A1: CSP `script-src 'self'` satır içi betiği engelliyordu. Aynı mantık
-         senkron dış dosyada: yine ilk boyadan önce çalışır, FOUC olmaz ve
-         `'unsafe-inline'` açmak gerekmez. -->
+    <!-- A1: CSP `script-src 'self'` satır içi betiği engelliyordu; tema ilk
+         karede uygulanmıyordu. Ayrı dosya, senkron ve ilk boyamadan önce. -->
     <script src="/theme-boot.js"></script>
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />

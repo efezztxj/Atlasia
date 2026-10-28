@@ -2,10 +2,12 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   CLOUD_PHOTO_ATTEMPTS,
+  ImageInputError,
   MAX_CLOUD_PHOTO_CHARS,
   MAX_INPUT_BYTES,
   compressImage,
   compressForLocal,
+  photoUploadErrorMessage,
 } from "../utils/image";
 
 /**
@@ -27,10 +29,29 @@ describe("T10 · yükleme kapıları", () => {
     await expect(compressForLocal(big)).rejects.toThrow(/üst sınır 25 MB/i);
   });
 
-  it("HEIC dosyası net bir çözüm önerisiyle reddedilir", async () => {
+  it("HEIC dosyası (MIME dolu veya boş uzantılı) net bir çözüm önerisiyle reddedilir", async () => {
     const heic = new File([new Uint8Array(10)], "IMG_0001.HEIC", { type: "image/heic" });
     await expect(compressImage(heic)).rejects.toThrow(/HEIC/);
     await expect(compressImage(heic)).rejects.toThrow(/En Uyumlu/);
+
+    // Windows / Chrome dosya seçicisinde .HEIC çoğu kez boş MIME ile gelir.
+    const emptyMimeHeic = new File([new Uint8Array(10)], "IMG_0002.heic", { type: "" });
+    await expect(compressImage(emptyMimeHeic)).rejects.toThrow(/HEIC/);
+    await expect(compressImage(emptyMimeHeic)).rejects.toThrow(/En Uyumlu/);
+  });
+
+  it("tüm fotoğraf yükleme yüzeyleri T10 girdi hatalarını yutmaz (M-44)", () => {
+    expect(photoUploadErrorMessage(new ImageInputError("Özel T10 hatası"), "Genel")).toBe("Özel T10 hatası");
+    expect(photoUploadErrorMessage(new Error("İç teknik hata"), "Genel")).toBe("Genel");
+
+    for (const file of [
+      "src/components/AddDiscoveryModal.tsx",
+      "src/components/SocialPanel.tsx",
+      "src/components/StoryComposer.tsx",
+      "src/components/AtlasAssistant.tsx",
+    ]) {
+      expect(readFileSync(file, "utf8"), file).toContain("photoUploadErrorMessage(");
+    }
   });
 
   it("görsel olmayan dosya hâlâ reddedilir", async () => {
