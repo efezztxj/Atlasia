@@ -81,13 +81,16 @@ veri katmanı kilidi, `firestore.rules`'da herkese açık yazma olmadığı) +
 
 | Ölçüm | Değer | Eşik | Not |
 |---|---|---|---|
-| İlk HTML seti | 117.958 B gzip | 129.400 | |
-| İlk boya JS | 91.536 B gzip | 102.200 | |
+| İlk HTML seti | 126.774 B gzip | 129.400 | |
+| İlk boya JS | 100.213 B gzip | 102.200 | |
 | `entry` (bizim kod) | 20.814 B gzip | 20.900 | +284 B (T4/T5) |
-| Toplam JS | 918.314 B gzip | 997.500 | eşik değişmedi |
-| Toplam CSS | 35.187 B gzip | 35.700 | +95 B (misafir dönüş çubuğu) |
-| Tanıtım yolculuğu | 117.958 B gzip | 129.400 | |
-| Uygulama kabuğu | 517.820 B gzip | 603.400 | |
+| Toplam JS | 997.761 B gzip | 998.500 | +933 B; eşik 997.500 → 998.500 |
+| Toplam CSS | 34.988 B gzip | 35.700 | misafir dönüş çubuğu dahil |
+| Tanıtım yolculuğu | 126.774 B gzip | 129.400 | |
+| Uygulama kabuğu | 586.968 B gzip | 603.400 | |
+
+> Ölçümler `npm ci` (firebase 13.1.0, maplibre 6.15.0, react 19.3.1) sonrası
+> alındı. Eski `node_modules` ile alınan sayılar yanıltıcıydı; bu tablo güncel.
 
 > Eşikler main'de #127 ile **ölçüme bağlandı** (bayatlama kapısı: sahibi
 > olduğumuz kapılar ölçümün %20'sinden fazla üstünde olamaz). Bu teslimat

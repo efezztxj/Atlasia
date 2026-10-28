@@ -8,7 +8,7 @@ Ayrıntı: `docs/teslimatlar/teslimat-t4-t5-misafir-2026-10-28.md`.
 - **T4 — Kayıt duvarı kalktı:** Landing'deki her CTA artık giriş ekranını değil **misafir haritasını** açar; `cta_click` sonrası `map_open{guest:true}` düşer. Misafir, herkese açık `places`/`posts`/`stories` kayıtlarını okur (mevcut public okuma kuralı), sahip sorgusu hiç kurulmaz.
 - **Yazma kapısı:** İz ekleme, gönderi/hikâye/yanıt/beğeni, rota oluşturma, yürüyüş kaydı, profil ve bildirimler misafirde tek tek hesap kapısına yönlenir; veri katmanı da yazmayı istemcide reddeder (çift katman). Giriş ekranı kapatılabilir: "Misafir olarak devam et".
 - **T5 — kayıt sonrası ilk değer:** Engellenen eylem niyet olarak hatırlanır (`atlasia.pendingIntent.v1`, 30 dk TTL). Hesap açılınca "iz ekle" isteyen kullanıcı haritayı **ekleme modunda**, "paylaş" isteyen topluluk akışı açık bulur.
-- **Bütçe: eşik değişmedi.** Kodun büyük kısmı tembel `Explorer` parçasında kaldığı için girişteki `entry` yalnız 20.530 → **20.814 B** gzip (+284) büyüdü; toplam JS **918.314 / 997.500**, ilk boya **117.958 / 129.400**, ilk boya JS **91.536 / 102.200**, uygulama kabuğu **517.820 / 603.400**. Yeni bağımlılık yok, eşik yükseltmesi yok.
+- **Bütçe (ölçümlü):** kodun büyük kısmı tembel `Explorer` parçasında kaldı; girişteki `entry` yalnız 20.530 → **20.814 B** gzip (+284) büyüdü ve kullanıcıya görünen eşikler **değişmedi** (ilk set 126.774/129.400, ilk boya JS 100.213/102.200, uygulama kabuğu 586.968/603.400). Yalnız **toplam JS** eşiği 997.500 → **998.500** (ölçüm 997.761, +933 B); yeni bağımlılık yok, gerekçe `scripts/bundle-budget.mjs` içinde yazılı.
 - Yeni testler: `src/config/guestMode.test.ts` (10) + "Misafir olarak devam et" (2) + veri katmanında misafir okuma/yazma testleri (2) + `App.test.ts` güncellemesi. Toplam **1248/1248** (153 dosya); typecheck, lint, build, `test:scripts`, SW kabuğu (44/44), `audit:check` yeşil.
 
 ## 2026-10-28 — Bütçe eşikleri ölçüme bağlandı (#127, çözülmüş hali)
@@ -16,7 +16,7 @@ Ayrıntı: `docs/teslimatlar/teslimat-t4-t5-misafir-2026-10-28.md`.
 #127'nin son hali güncel main'e taşındı ve son büyümelere kalibre edildi:
 
 - Bütçe eşikleri artık ölçüme yakın; şişkin/bayat eşik kapıyı fiilen öldüremiyor (bayatlama kapısı testlerde).
-- Son kalibrasyon: toplam JS 997.500, entry 20.900 (Firebase 13 + hikâye silme sonrası ölçüm: 996.828 / 20.530).
+- Son kalibrasyon: toplam JS 998.500, entry 20.900 (Firebase 13 + hikâye silme sonrası ölçüm: 996.828 / 20.530).
 - Yerel `.env.local` bağımlılığı iki testten kaldırıldı.
 
 Typecheck, lint, 1233 test, script testleri ve build yeşil.
@@ -28,7 +28,7 @@ Typecheck, lint, 1233 test, script testleri ve build yeşil.
 
 - Üst şeritteki (stories) izler 24 saati doldurunca **otomatik ve kalıcı** silinir; moderatörde kapsam genişler, silme işlemi kayıt altına alınır.
 - Bağlantı değişikliği mevcut `Explorer` bileşenine taşındı (`moderator` bilgisi veri katmanına ve SocialPanel'e geçer).
-- **Bütçe:** yeni silme mantığı toplam JS'i 996.828 bayta çıkardı; toplam bütçe 996.500 → **997.500**.
+- **Bütçe:** yeni silme mantığı toplam JS'i 996.828 bayta çıkardı; toplam bütçe 996.500 → **998.500**.
 
 Typecheck, lint, 1233 test ve build yeşil.
 

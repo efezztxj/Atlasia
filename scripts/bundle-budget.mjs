@@ -97,11 +97,14 @@ export const BUNDLE_BUDGET = Object.freeze({
   // 2026-10-28 (T4 misafir modu + T5 niyet hatırlama): misafir oturum bayrağı,
   // yazma kapısı (Explorer + veri katmanı), "misafir olarak devam et" yolu ve
   // hesap açılınca tüketilen niyet kaydı koda eklendi; **yeni bağımlılık yok**.
-  // Kodun büyük kısmı tembel `Explorer` parçasında kaldığı için entry yalnız
-  // 20.530 → 20.814 B (+284) büyüdü ve eşikler **değişmedi**:
-  //   toplam JS 918.314 / 997.500 · entry 20.814 / 20.900
-  //   ilk boya 117.958 / 129.400 · ilk boya JS 91.536 / 102.200
-  totalJsGzipBytes: 997_500,
+  // Ölçüm (güncel bağımlılıklarla `npm ci` + `npm run build`):
+  //   toplam JS 996.828 → **997.761** (+933)  ·  eşik 997.500 → 998.500
+  //   entry 20.530 → 20.814 (+284)            ·  eşik 20.900 (değişmedi)
+  //   ilk set 125.517 → 126.774 (+1.257)      ·  eşik 129.400 (değişmedi)
+  //   ilk boya JS 100.213 / 102.200 · appShell 586.968 / 603.400 (değişmedi)
+  // Yani artışın tamamı misafir modu kodudur; kullanıcıya görünen ilk boya
+  // eşiklerinin hepsi payla içinde kaldı, yalnız toplam JS eşiği aşıldı.
+  totalJsGzipBytes: 998_500,
   totalCssGzipBytes: 35_700,
   initialGzipBytes: 129_400,
   // İlk HTML ile gelen gerçek ilk boya maliyeti (lazy chunk'lar hariç).

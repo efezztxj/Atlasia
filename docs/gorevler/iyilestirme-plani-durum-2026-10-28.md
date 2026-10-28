@@ -41,7 +41,7 @@ Plan sırası: `T1 → T2 → T3 → T12 → T11 → T7 → T4 → T5 → T8 →
 |---|---|---|---|
 | İlk HTML seti (gzip) | 117.964 B | 439.000 B | bol |
 | Toplam JS (gzip) | 917.290 B | 918.000 B | **710 B** |
-| Toplam CSS (gzip) | 35.187 B | 35.700 B | 513 B |
+| Toplam CSS (gzip) | 34.988 B | 35.700 B | 513 B |
 | Tanıtım yolculuğu (gzip) | 117.964 B | 425.000 B | bol |
 | Uygulama kabuğu (gzip) | 517.449 B | 830.000 B | bol |
 
