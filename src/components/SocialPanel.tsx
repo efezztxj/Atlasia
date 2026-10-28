@@ -26,6 +26,7 @@ import type { FeedPost, FeedReply, Story, StoryAccent, UploadPhotoKind, ViewStat
 import { mediaUrl } from "../utils/api";
 import { cn } from "../utils/cn";
 import { haversineKm } from "../utils/geo";
+import { photoUploadErrorMessage } from "../utils/image";
 import { isStoryAlive, relativeTime } from "../utils/time";
 import { storageGet, storageSet } from "../utils/storage";
 import Avatar from "./Avatar";
@@ -298,7 +299,7 @@ export default function SocialPanel({
       setPhoto(await uploadPhoto(file, "post"));
     } catch (failure) {
       console.error("[Atlasia] Topluluk fotoğrafı yüklenemedi:", failure);
-      setActionError("Fotoğraf yüklenemedi. Bağlantını kontrol edip tekrar deneyebilirsin.");
+      setActionError(photoUploadErrorMessage(failure, "Fotoğraf yüklenemedi. Tekrar deneyebilir ya da fotoğrafsız paylaşabilirsin."));
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";

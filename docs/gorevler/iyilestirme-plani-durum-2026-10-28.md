@@ -4,7 +4,7 @@ Bu defter, "Atlasia — İyileştirme Planı" maddelerinin **sırasını ve duru
 tutar. Sıra bağımlılığa göredir: Faz 1 (dönüşüm) ölçüm olmadan başlamaz —
 "iyileşti mi?" sorusu hisle değil sayıyla yanıtlanır.
 
-**Son güncelleme:** 2026-10-28 (akşam) · **Referans sürüm:** bu dal (T1–T3, T9, T13–T19, T10 kod tarafı + **T4/T5/T6/T7/T8** teslimatı)
+**Son güncelleme:** 2026-10-28 · **Referans sürüm:** bu dal (T1–T3, T9, T13–T19, T10 kod tarafı + **T4/T5/T6/T7/T8** teslimatı)
 **Ölçüm tablosu:** `docs/baseline.md` · **Olay sözleşmesi:** `docs/olcum-ve-hata-izleme.md` §2b/§4b
 
 Plan sırası: `T1 → T2 → T3 → T12 → T11 → T7 → T4 → T5 → T8 → T9 → T6 → T10 → T13 → T14 → T15 → T16 → T18 → T19 → T20 → T21 → T17`
@@ -13,7 +13,7 @@ Plan sırası: `T1 → T2 → T3 → T12 → T11 → T7 → T4 → T5 → T8 →
 
 | # | Madde | Durum | Kanıt |
 |---|---|---|---|
-| T1 | Ölçüm altyapısı (toplayıcı + panel) | 🟡 **kısmi — kod + kurulum rehberi hazır** | `src/lib/telemetry.ts`, `telemetryBootstrap.ts`; Worker kodu + Pages env adımları `docs/gorevler/t1-toplayici-kurulum.md`. Kalan: operatör deploy + `VITE_TELEMETRY_ENDPOINT` |
+| T1 | Ölçüm altyapısı (toplayıcı + panel) | 🟡 **kısmi — kod + deployable Worker paketi hazır** | `src/lib/telemetry.ts`, `telemetryBootstrap.ts`; `workers/telemetry/` (`src/index.js`, `wrangler.toml`, `worker.node-test.mjs` — 8 sözleşme testi) + `docs/gorevler/t1-toplayici-kurulum.md`. Kalan: operatör `wrangler deploy` + `VITE_TELEMETRY_ENDPOINT` |
 | T2 | Huni olayları (landing→harita→kayıt) | ✅ | 16 olay: `analytics.ts`; katalog testi `src/config/telemetryCatalog.test.ts`; bağlama testi `src/config/siteSurface.test.ts` |
 | T3 | Baseline tablosu + cihaz ölçümü | 🟡 **kısmi** — paket ölçüldü, CWV/Search Console ölçülmedi | `docs/baseline.md`; ölçüm protokolü `docs/gorevler/t3-olcum-protokolu.md` (komutlar, tuzaklar, sonuç tablosu) |
 | T4 | Misafir modu (kayıt duvarını kaldırma) | ✅ | CTA → misafir haritası; **kural değişmedi** (`request.auth` boş → yazma sunucuda reddedilir); `src/config/guestMode.test.ts` (10 test) |
@@ -22,8 +22,8 @@ Plan sırası: `T1 → T2 → T3 → T12 → T11 → T7 → T4 → T5 → T8 →
 | T7 | Landing CTA/çerez yerleşimi (1440×900 tıklanabilirlik, mobil sheet) | ✅ | `LandingPage.tsx`, `CookieConsent.tsx` (`bottom-[calc(66px+safe-area)]`, `md:right-6 md:bottom-6`), z-index: menü 95 > çerez 90 |
 | T8 | Onboarding / ilk rota akışı | ✅ | `Onboarding.tsx` misafir notu + `askAccount(..., "route")`; panel `FIRST_ROUTE_KEY`'e bağlı; `onboarding_choice` olayı — `onboardingT8.test.ts` (8) |
 | T9 | Giriş ekranı sürtünmesi (önce Google) | ✅ | `AccountAccess.tsx` + `AccountAccess.t9.test.ts` (7 test) |
-| T10 | Görsel boru hattı (foto optimize) | 🟡 **kısmi — kod tarafı bitti** | 25 MB decode öncesi kapı, HEIC yönlendirmesi, `imageOrientation: "from-image"`, `decoding="async"`/`loading="lazy"` — `imagePipelineT10.test.ts` (7). Kalan: WebP/AVIF + sunucu tarvleri + gerçek cihaz süre ölçümü (onay/ölçüm ister) |
-| T11 | Firebase'i ilk setten çıkarma | ✅ | İlk boya JS **98.998 B** gzip; `firebase-vendor` ilk sette değil (`npm run build` tablosu) |
+| T10 | Görsel boru hattı (foto optimize) | 🟡 **kısmi — kod tarafı bitti, cihaz ölçümü bekliyor** | 25 MB decode öncesi kapı, HEIC "En Uyumlu" rehberi, EXIF `from-image`, tüm yüzeylerde `decoding="async"`, kenar panelde `loading="lazy"` — `imagePipelineT10.test.ts` (7). Hero srcset/WebP için gerçek cihaz LCP ölçümü şart (`teslimat-t10-gorsel-hatti-2026-10-28.md`) |
+| T11 | Firebase'i ilk setten çıkarma | ✅ | İlk boya JS **98.997 B** gzip; `firebase-vendor` ilk sette değil (`npm run build` tablosu) |
 | T12 | Kontrast düzeltmeleri (eyebrow/başlık) | ✅ | `#a37c35 → #8f6224` (4,66:1), `#ba8f45 → #9c7029` (3,86:1); `src/config/landingContrast.test.ts` |
 | T13 | Mobil menü (768 px altı) | ✅ | Hamburger + `role="dialog"` panel, Escape/Tab tuzağı/odak iadesi — `src/config/landingA11y.test.ts` |
 | T14 | Klavye: skip-link + `:focus-visible` | ✅ | "İçeriğe geç" → `#kesfet` (`tabIndex={-1}`); tek `:focus-visible` bloğu |
@@ -35,37 +35,34 @@ Plan sırası: `T1 → T2 → T3 → T12 → T11 → T7 → T4 → T5 → T8 →
 | T20 | Güven sinyalleri (sosyal kanıt) | ⛔ **karar gerekiyor (T11 ile çakışıyor)** | Sahte sayaç yazılmaz. Bugünkü dürüst güven sinyalleri zaten var ("reklam ve takip pikseli yok", "konum onayla") ve `footerT18`/`siteSurface` ile kilitli. Gerçek kullanıcı/rota sayısı için toplayıcı (T1) gerekli |
 | T21 | Basın/iletişim yüzeyi | ⛔ **hukuk onayı bekliyor** | Gerçek e-posta/künye olmadan yayınlanmaz (`docs/mvp-cikis-plani-2026-10-27.md` P0-1). Footer yüzeyi T18'de hazır |
 
-## 2. Bütçe ve eşikler (bugünkü ölçüm)
+## 2. Bütçe ve eşikler (bugünkü ölçüm — Vite 8 / Rolldown)
 
 | Ölçüm | Değer | Eşik | Marj |
 |---|---|---|---|
-| İlk HTML seti (gzip) | 126.954 B | 129.400 B | 2.446 B |
-| Toplam JS (gzip) | 990.802 B | 1.003.000 B | 12.198 B |
+| İlk HTML seti (gzip) | 126.952 B | 129.400 B | 2.448 B |
+| Toplam JS (gzip) | 991.171 B | 1.003.000 B | **11.829 B** |
 | Toplam CSS (gzip) | 35.504 B | 35.700 B | 196 B |
 | İlk boya CSS (gzip) | 25.385 B | 26.100 B | 715 B |
-| İlk boya JS (gzip) | 98.998 B | 102.200 B | 3.202 B |
-| Tanıtım yolculuğu (gzip) | 126.954 B | 129.400 B | 2.446 B |
-| Uygulama kabuğu (gzip) | 579.438 B | 603.400 B | 23.962 B |
-| `entry` (bizim kod) | 16.578 B | 16.700 B | **122 B** |
-
-Ölçüm `main` (`ff35d7d`, Vite 8 / Rolldown) tabanlı dalda `npm run build` ile
-alındı; `firebase-vendor` ilk sette **değil** (T11).
+| İlk boya JS (gzip) | 98.997 B | 102.200 B | 3.203 B |
+| Tanıtım yolculuğu (gzip) | 126.952 B | 129.400 B | 2.448 B |
+| Uygulama kabuğu (gzip) | 579.436 B | 603.400 B | 23.964 B |
+| `entry` (bizim kod) | 16.577 B | 16.700 B | **123 B** |
 
 Eşik kuralı: `scripts/bundle-budget.mjs` içindeki sayı **yalnız** yeni bir ölçüm
 ve yazılı gerekçeyle değişir; testi yeşile çevirmek için asla değişmez. #127'den
 beri **bayatlama kapısı** var: sahibi olduğumuz eşikler ölçümün %20'sinden fazla
-üstünde olamaz. `entry` payı yalnız **122 B**: 2026-10-28'de SSS/footer ve rıza paneli tembel
-parçaya taşındı (`teslimat-t7-kritik-yol-2026-10-28.md`), Vite 8'e geçişte
-yeniden ölçüldü. Girişe yeni kod eklemeden önce `npm run build` ile ölçüm alın;
-bu pay dolduysa eşik **yükseltilmez**, kod tembel parçaya taşınır.
+üstünde olamaz. `entry` payı yalnız **123 B**: 2026-10-28'de SSS/footer ve rıza
+paneli tembel parçaya taşındı (`teslimat-t7-kritik-yol-2026-10-28.md`), Vite 8 /
+Rolldown geçişinde yeniden ölçüldü. Girişe yeni kod eklemeden önce `npm run build`
+ile ölçüm alın; pay dolduysa eşik **yükseltilmez**, kod tembel parçaya taşınır.
 
 
 ## 3. Dış kontrol durumu (2026-10-28, son tur)
 
 | Kontrol | Durum | Not |
 |---|---|---|
-| GitHub Actions CI | ✅ yeşil | `main` ile hizalanmış dal (`31c9cb6`): rules testleri, typecheck, lint, `npm test`, script testleri, build + bütçe |
-| Cloudflare Pages | ✅ yeşil | Aynı commit'te Pages derlemesi geçti (önceden aralıklı kırmızıydı, kod değişikliğinden bağımsızdı) |
+| GitHub Actions CI | ✅ yeşil | `main` ile hizalanmış dal: rules testleri, typecheck, lint, `npm test`, script testleri, build + bütçe |
+| Cloudflare Pages | ✅ yeşil | Önceden aralıklı kırmızıydı (kod değişikliğinden bağımsız); son turlarda geçiyor |
 | Firestore emülatör testleri | ✅ CI'da | Bu ortamda Java/emülatör yok; `firestore.rules` değişmedi |
 
 ## 4. Açık kararlar (insan onayı ister)

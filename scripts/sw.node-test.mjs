@@ -4,7 +4,7 @@ import test from "node:test";
 import vm from "node:vm";
 
 const ORIGIN = "https://atlasia.test";
-const SHELL_CACHE = "atlasia-shell-v7";
+const SHELL_CACHE = "atlasia-shell-v8";
 const TILE_CACHE = "atlasia-tiles-v1";
 const TILE_META_CACHE = "atlasia-tile-meta-v1";
 const PACK_CACHE = "atlasia-packs-v1";
@@ -251,6 +251,7 @@ test("install: hash'li ve lazy uygulama parçalarıyla kabuğu saklar, skipWaiti
   const shell = await harness.caches.open(SHELL_CACHE);
   for (const path of [
     "/",
+    "/theme-boot.js",
     "/manifest.webmanifest",
     "/assets/app.js",
     "/assets/app.css",
