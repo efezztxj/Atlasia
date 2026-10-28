@@ -92,6 +92,15 @@ const DEFAULT_DIST = fileURLToPath(new URL("../dist", import.meta.url));
  *   initial 129.400 · initialJs 102.200 · landing 129.400 · appShell 603.400
  * Vendor eşikleri (react/mapVendor/mapWorker) `main` tarafından yükseltilmişti,
  * aynen korundu — sürüm yükseltmesinde doğal.
+ *
+ * 2026-10-28 (ikinci birleşme) — `main` T13-T16 landing işi + firebase 13.1.0
+ * geldi; kapı `entry` 20.530 B ile kırıldı (doğru davranış). Ölçüm (env'li /
+ * env'siz derleme arasındaki fark ~17 B; eşik ikisinin BÜYÜĞÜNE bağlanır):
+ *   entry      19.721 -> 20.547  (+826)   main'in landing/huni kodu
+ *   tanıtım   125.517 -> 126.422  (+905)
+ *   appShell  585.711 -> 586.617  (+906)
+ *   toplam JS 984.682 -> 996.818  (main bu turda 997.500'e çıkardı)
+ *   entry eşiği 20.400 -> 21.200 (ölçüme %3,2 pay)
  */
 export const BUNDLE_BUDGET = Object.freeze({
   totalJsGzipBytes: 997_500,
@@ -106,7 +115,7 @@ export const BUNDLE_BUDGET = Object.freeze({
     appShell: 603_400,
   }),
   categoryGzipBytes: Object.freeze({
-    entry: 20_900,
+    entry: 21_200,
     reactVendor: 69_500,
     iconsVendor: 10_500,
     firebaseVendor: 164_500,

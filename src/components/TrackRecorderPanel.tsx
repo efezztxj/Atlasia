@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Activity, CircleStop, MapPin, Play, Save, ShieldCheck, Trash2, X } from "lucide-react";
 import type { AtlasRoute, AtlasTrack } from "../types";
 import { cn } from "../utils/cn";
@@ -55,16 +55,19 @@ export default function TrackRecorderPanel({ uid, cloudAccount, onClose, onPrevi
   // Önizleme geri çağrısı her render'da yeniden oluşuyor; ref ile tekrar çizimi önle.
   const previewRef = useRef(onPreview);
   previewRef.current = onPreview;
-  useEffect(() => {
-    if (draft) previewRef.current(decodePolyline(draft.track.polyline));
-  }, [draft]);
 
   /** "Bitir": taslak üretir, yazmaz. */
   const finish = async () => {
     setActionError(null);
     setSavedMsg(null);
     try {
-      setDraft(await recorder.finish());
+      const finished = await recorder.finish();
+      setDraft(finished);
+      // Önizleme, taslak ÜRETİLDİĞİ anda ve aynı elde yayılır. Daha önce bu bir
+      // effect'e bağlıydı: "Vazgeç" tıklaması effect'ten önce çalışabildiği için
+      // temizlenmiş haritaya taslak geri dönebiliyordu (testte flaky, React 19'da
+      // daha sık). Sıra artık kesin: taslak → önizleme, vazgeç → temizleme.
+      previewRef.current(decodePolyline(finished.track.polyline));
     } catch (failure) {
       setActionError(friendlyDataError(failure, "Kayıt tamamlanamadı."));
     }
