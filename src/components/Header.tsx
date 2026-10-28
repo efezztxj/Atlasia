@@ -102,7 +102,7 @@ export default function Header({
         >
           <Compass className="size-4 transition group-hover:rotate-45" />
           Keşfet
-          <span className="hidden rounded-full bg-sun/15 px-1.5 py-0.5 text-[11px] leading-none font-semibold text-sun ring-1 ring-sun/25 min-[390px]:inline">
+          <span className="header-count-badge hidden rounded-full bg-sun/15 px-1.5 py-0.5 text-[11px] leading-none font-semibold text-sun ring-1 ring-sun/25 min-[390px]:inline">
             {placeCount}
           </span>
         </button>
@@ -111,7 +111,9 @@ export default function Header({
           onClick={onAdd}
           className={
             "flex min-h-[44px] items-center gap-2 rounded-full px-3.5 text-[14px] font-bold text-[#10241A] transition active:scale-95 md:px-4 " +
-            (addMode ? "bg-leaf" : "btn-gold")
+            // Aktif durumda zemin yeşile döner: açık temada koyu metin 3,11:1'de
+            // kalıyordu, `text-ink` ise mevcut `.bg-leaf.text-ink` kuralıyla beyaza döner.
+            (addMode ? "bg-leaf text-ink" : "btn-gold text-[#10241A]")
           }
         >
           <Plus className="size-4" strokeWidth={2.6} />

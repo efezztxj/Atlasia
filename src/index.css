@@ -1086,6 +1086,57 @@ html[data-theme="light"] :is(.text-mint\/65, .md\:text-mint\/65):not([class*="ho
 }
 /* P18-LIGHT-AA:end */
 
+/* P19-LIGHT-DANGER:start
+ * Açık temada yıkıcı eylem tonları beyaz kart üzerinde 1,3:1'e düşüyordu:
+ * "Hesaptan çık" (text-red-200/90) ve "Hesabımı ve verilerimi sil" (/80)
+ * pratikte görünmüyordu; aynı tonlar tüm silme ikonlarında da kullanılıyor.
+ * Koyu tema tonları aynen korunur; açık temada kırmızı tonlar AA (4,5:1)
+ * veren koyu kırmızıya çekilir. Kilit: src/config/accessibility.test.ts. */
+html[data-theme="light"] .space-bg :is(
+  .text-red-200,
+  .text-red-200\/90,
+  .text-red-200\/80,
+  .text-red-200\/75,
+  .text-red-200\/70,
+  .text-red-300,
+  .text-red-300\/90,
+  .text-red-300\/70
+) {
+  color: #a02318;
+}
+
+html[data-theme="light"] .space-bg :is(
+  .border-red-300\/20,
+  .border-red-300\/25,
+  .border-red-300\/30,
+  .border-red-300\/40,
+  .border-red-300\/50,
+  .border-red-400\/20
+) {
+  border-color: rgba(160, 35, 24, .32);
+}
+
+/* Hover'da kendi tonuna dönen silme ikonları da açık temada koyu kalsın. */
+html[data-theme="light"] .space-bg :is([class*="hover:text-red-"]):hover {
+  color: #a02318;
+}
+
+/* Altın/yeşil tonlu etiketler kendi %12 zeminlerinde 4,3–4,45:1'de
+ * kalıyordu (aktif profil sekmesi 4,30:1, doğrulama rozeti 4,45:1). */
+html[data-theme="light"] .space-bg :is(.bg-sun\/12.text-sun, button[aria-pressed="true"].text-sun) {
+  color: #6f4712;
+}
+html[data-theme="light"] .space-bg .bg-leaf\/12.text-leaf {
+  color: #0f5a41;
+}
+
+/* Üst çubuktaki keşif sayacı: altın metin krem zeminde 3,79:1'de kalıyordu. */
+html[data-theme="light"] .space-bg .header-count-badge {
+  color: #6f4712;
+  background-color: rgba(154, 99, 28, .12);
+}
+/* P19-LIGHT-DANGER:end */
+
 html[data-theme="light"] body,
 html[data-theme="light"] #root {
   background: var(--light-canvas);
