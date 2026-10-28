@@ -657,4 +657,45 @@ describe("useFirestoreAtlasData orkestrasyonu", () => {
     rerender({ uid: "u1", moderator: true });
     expect(h.purgeExpiredStories).toHaveBeenLastCalledWith({ uid: "u1", moderator: true });
   });
+
+  it("M-18: retry() başarısız abonelikleri kapatıp temiz durumla yeniden abone olur", () => {
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { result } = renderData({ uid: "u1" });
+    act(() => vi.advanceTimersByTime(300));
+
+    expect(h.ownedSubs).toHaveLength(1);
+    expect(h.overviewSubs).toHaveLength(1);
+    expect(h.postSubs).toHaveLength(1);
+    expect(h.storySubs).toHaveLength(1);
+
+    const failure = new Error("ağ bağlantısı koptu");
+    act(() => h.postSubs[0].onError?.(failure));
+    expect(result.current.error).toBe(failure);
+    expect(result.current.ready).toBe(false);
+
+    act(() => result.current.retry());
+    act(() => vi.advanceTimersByTime(300));
+
+    expect(result.current.error).toBeNull();
+    expect(h.ownedSubs[0].unsubscribe).toHaveBeenCalledTimes(1);
+    expect(h.overviewSubs[0].unsubscribe).toHaveBeenCalledTimes(1);
+    expect(h.postSubs[0].unsubscribe).toHaveBeenCalledTimes(1);
+    expect(h.storySubs[0].unsubscribe).toHaveBeenCalledTimes(1);
+    expect(h.ownedSubs).toHaveLength(2);
+    expect(h.overviewSubs).toHaveLength(2);
+    expect(h.postSubs).toHaveLength(2);
+    expect(h.storySubs).toHaveLength(2);
+
+    act(() => {
+      h.ownedSubs[1].onChange([place("p1", NOW)]);
+      h.overviewSubs[1].onChange([place("p1", NOW)]);
+      h.postSubs[1].onChange({ items: [post("po1", NOW)], cursor: null, hasMore: false });
+      h.storySubs[1].onChange({ items: [story("st1", NOW)], cursor: null, hasMore: false, cutoffMs: NOW - 86_400_000 });
+    });
+
+    expect(result.current.ready).toBe(true);
+    expect(result.current.error).toBeNull();
+    expect(result.current.posts).toHaveLength(1);
+    errSpy.mockRestore();
+  });
 });

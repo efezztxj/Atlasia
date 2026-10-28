@@ -135,14 +135,14 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDele
                   setIndex(0);
                 }}
               />
-              {!imageLoaded && <div className="pointer-events-none absolute inset-0 grid place-content-center bg-ink/30 text-sm">Fotoğraf yükleniyor...</div>}
+              {!imageLoaded && <div className="skeleton pointer-events-none absolute inset-0 grid place-content-center bg-ink/30 text-sm">Fotoğraf yükleniyor...</div>}
               <figcaption className="absolute inset-x-0 bottom-0 bg-ink/90 px-4 py-2 text-[11px] text-mint/90">
                 {photo.nearby && <span className="mr-2 text-sun">Yakın çevreden</span>}
                 {photo.source ? <a href={photo.source} target="_blank" rel="noreferrer" className="hover:underline">{photo.credit}</a> : photo.credit}
               </figcaption>
             </>
           ) : (
-            <div className="flex size-full flex-col items-center justify-center gap-3 px-6 text-center">
+            <div className={loading ? "skeleton flex size-full flex-col items-center justify-center gap-3 px-6 text-center" : "flex size-full flex-col items-center justify-center gap-3 px-6 text-center"}>
               <Camera size={30} className="text-sun" />
               <p className="text-sm">{loading ? "Bu çevredeki fotoğraflar aranıyor..." : allPhotos.length ? "Fotoğraflar şu an yüklenemiyor." : "Bu noktaya henüz fotoğraf eklenmemiş."}</p>
               {failed.length > 0 && <button type="button" onClick={() => setFailed([])} className="min-h-10 text-sm text-sun underline">Tekrar dene</button>}
@@ -205,7 +205,7 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDele
             <p className="mt-2 text-[11px] leading-relaxed text-mint/70" data-testid="place-attribution">Kaynak: {place.dataSources.join(" · ")}</p>
           ) : null}
 
-          <Suspense fallback={null}>
+          <Suspense fallback={<div role="status" aria-label="Yakındaki tarihçe yükleniyor" className="skeleton mt-7 h-24 w-full" />}>
             <NearbyHistory key={place.id} place={place} onOpen={onOpenPlace} />
           </Suspense>
 

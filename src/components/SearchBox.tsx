@@ -230,7 +230,12 @@ export default function SearchBox({ places, onPick, onOpenFilters, autoFocus = f
               </p>
             )}
             {combined.length === 0 && loading && (
-              <p className="px-3 py-3 text-[12px] text-mint/55">Dünya taranıyor…</p>
+              <div role="status" className="space-y-2 p-2">
+                <p className="px-1 text-[12px] text-mint/70">Dünya taranıyor…</p>
+                <div aria-hidden className="skeleton h-11 w-full" />
+                <div aria-hidden className="skeleton h-11 w-full" />
+                <div aria-hidden className="skeleton h-11 w-full" />
+              </div>
             )}
             {combined.map((r) => (
               <button

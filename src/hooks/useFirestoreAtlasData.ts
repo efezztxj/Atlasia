@@ -90,6 +90,7 @@ export function useFirestoreAtlasData({
 }: UseFirestoreAtlasDataArgs) {
   const [loaded, setLoaded] = useState<SourceState<boolean>>(initialLoaded);
   const [errors, setErrors] = useState<SourceState<Error | null>>(initialErrors);
+  const [retryCount, setRetryCount] = useState(0);
   const [viewportPlaces, setViewportPlaces] = useState<Place[]>([]);
   const [ownedPlaces, setOwnedPlaces] = useState<Place[]>([]);
   const [postHead, setPostHead] = useState<FeedPost[]>([]);
@@ -145,6 +146,16 @@ export function useFirestoreAtlasData({
     setErrors((current) => ({ ...current, [source]: error }));
   }, []);
 
+  /**
+   * M-18: Başarısız canlı veri aboneliklerini sıfırlayıp yeniden kurar.
+   * Mevcut görünür liste silinmez; hata temizlenir ve abonelikler tazelenir.
+   */
+  const retry = useCallback(() => {
+    setLoaded(initialLoaded);
+    setErrors(initialErrors);
+    setRetryCount((current) => current + 1);
+  }, []);
+
   useEffect(() => {
     setLoaded(initialLoaded);
     setErrors(initialErrors);
@@ -182,7 +193,7 @@ export function useFirestoreAtlasData({
       },
       (error) => markError("ownerPlaces", error),
     );
-  }, [uid, enabled, guest, markError, markLoaded]);
+  }, [uid, enabled, guest, retryCount, markError, markLoaded]);
 
   const viewportZoom = viewport?.zoom;
   const viewportWest = viewport?.bounds.west;
@@ -234,6 +245,7 @@ export function useFirestoreAtlasData({
     viewportSouth,
     viewportEast,
     viewportNorth,
+    retryCount,
     markError,
     markLoaded,
   ]);
@@ -262,7 +274,7 @@ export function useFirestoreAtlasData({
       },
       (error) => markError("posts", error),
     );
-  }, [uid, enabled, guest, markError, markLoaded]);
+  }, [uid, enabled, guest, retryCount, markError, markLoaded]);
 
   useEffect(() => {
     // Süresi dolan story temizliği sunucuda silme yapar: misafirde hiç koşmaz.
@@ -332,7 +344,7 @@ export function useFirestoreAtlasData({
       (error) => markError("stories", error),
       deleteDeletableExpiredStories,
     );
-  }, [uid, enabled, guest, deleteDeletableExpiredStories, markError, markLoaded]);
+  }, [uid, enabled, guest, retryCount, deleteDeletableExpiredStories, markError, markLoaded]);
 
   const loadMorePosts = useCallback(async () => {
     const cursor = postCursorRef.current;
@@ -532,6 +544,7 @@ export function useFirestoreAtlasData({
   return {
     ready,
     error,
+    retry,
     clientId: uid,
     places,
     posts,

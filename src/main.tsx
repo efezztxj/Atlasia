@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App";
 import AppErrorBoundary from "./components/AppErrorBoundary";
+import CookieConsentBoundary from "./components/CookieConsentBoundary";
 // T7/T18: rıza paneli ilk karede gerekmiyor (overlay, kapanana kadar haritayı
 // engellemez). Tembel yüklenince `entry` küçülür; panel bir kare sonra gelir.
 const CookieConsent = lazy(() => import("./components/CookieConsent"));
@@ -28,9 +29,11 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <AppErrorBoundary>
       <App />
-      <Suspense fallback={null}>
-        <CookieConsent />
-      </Suspense>
+      <CookieConsentBoundary load={() => import("./components/CookieConsent")}>
+        <Suspense fallback={null}>
+          <CookieConsent />
+        </Suspense>
+      </CookieConsentBoundary>
       <NetworkStatus />
       {/* Çevrimdışı kabuk güncellemesi: sessizce zorlanmaz, kullanıcıya sorulur. */}
       <UpdateNotice />

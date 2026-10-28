@@ -180,8 +180,8 @@ Her satır: **durum · kanıt · eksik.**
 | # | Durum | Kanıt | Eksik / yapılacak |
 |---|---|---|---|
 | **M-17** | ✅ Var | MapLibre + 3 altlık + katman sayfası (`MapLayersSheet`), mobil kapsül 3 düğme | — |
-| **M-18** | ⚠️ Kısmi | `App.tsx:174-183` veri hatasında **tek seferlik `setToast`** | Feed/harita yüklenemezse: toast kayboluyor, **tekrar dene yok**, sessizce yerel veriye düşüyor. Kalıcı hata şeridi + "Yeniden dene" gerekli. **P0** |
-| **M-19** | ⚠️ Kısmi | İskelet yalnız `RecordsDock:125`'te | Feed, arama sonuçları ve yer detayında iskelet yok → boş ekran algısı. **P1** |
+| **M-18** | ✅ Kapandı (2026-10-28) | `useFirestoreAtlasData.retry()` + `Explorer.tsx` kalıcı `role="alert"` şeridi + `SocialPanel` hata kartı | Canlı veri abonelikleri düşerse kalıcı şerit ve "Yeniden dene" ile abonelikler sıfırlanıp yeniden kurulur |
+| **M-19** | ✅ Kapandı (2026-10-28) | `RecordsDock`, `SocialPanel`, `SearchBox`, `PlaceDetails` `.skeleton` | Akış, uzak arama ve yer detayında sahte boş ekran yerine tema duyarlı `.skeleton` gösteriliyor |
 | **M-20** | ⚠️ Kısmi | `PlaceDetails` zengin (foto, not, hava, yakın tarih) | Açılış saati/ücret/telefon **kasıtlı olarak yok** ("doğrulanmadı" deniyor). Dürüst ama kullanıcı beklentisi yönetilmeli. **Bilgi** |
 | **M-21** | ✅ Var | `SearchBox` + geçmiş + `photon` | — |
 
@@ -193,7 +193,7 @@ Her satır: **durum · kanıt · eksik.**
 | **M-23** | ⚠️ Kısmi | `MAX_CLOUD_PHOTO_CHARS = 180_000`, `storage.rules` **tamamen kapalı** | Fotoğraf **Firestore belgesinin içinde** base64. 50 gönderilik akış dolarsa ≈ 1,8-9 MB indirme; **çoklu foto imkânsız** (1 MiB belge sınırı). **P0 — karar: Storage/Blaze mı, 60-80 KB'ye sıkıştırma mı.** |
 | **M-24** | ✅ Var | `RouteEditor` + yükseklik profili + görünürlük (özel/yayın) | — |
 | **M-25** | ⚠️ Kısmi | `src/data/siteTours.ts` → `isRealPath` **her turda `false`** | Site turlarının yürüme geometrisi yok; çizgi temsilî. Etiket arayüzde görünüyor mu doğrulanmalı. **P1** |
-| **M-26** | ⚠️ Kısmi | `useTrackRecorder.ts` — `timeout` eklendi | **Wake Lock yok** (`wakeLock` hiç geçmiyor): ekran kapanınca kayıt durur. Yürüyüş kaydı için kritik. **P1** |
+| **M-26** | ✅ Kapandı (2026-10-28) | `useTrackRecorder.ts` — `timeout` + `navigator.wakeLock.request("screen")` + `visibilitychange` yenileme | Kayıt boyunca ekran kilidi açık tutulur; desteklenmeyen/düşük güç modunda kayıt kesilmeden uyarı verir |
 | **M-27** | ✅ Var | İz → taslak → onay → kaydet/yayınla akışı | — |
 
 ### 4.5 Sosyal katman
@@ -212,7 +212,7 @@ Her satır: **durum · kanıt · eksik.**
 | # | Durum | Kanıt | Eksik / yapılacak |
 |---|---|---|---|
 | **M-34** | ✅ Var | 3 sekmeli sade profil, hesap bilgileri `<details>`, hesap silme + dışa aktarma (`moderation.ts:1058-1195`) | — |
-| **M-35** | ⚠️ Kısmi | `ProfilePanel` (testi yok) | 42 testsiz dosyanın içinde; hesap silme gibi geri alınamaz akış test edilmiyor. **P1** |
+| **M-35** | ✅ Kapandı (2026-10-28) | `src/components/ProfilePanel.test.ts` | Çift onaylı hesap silme, hata durumunda açık kalma, KVKK JSON dışa aktarma ve çıkış onayı JSDOM testleriyle kilitlendi |
 | **M-36** | ✅ Var | `SettingsPanel` — tema, altlık, erişilebilirlik, konum, kurulum | — |
 
 ### 4.7 Çevrimdışı ve PWA
