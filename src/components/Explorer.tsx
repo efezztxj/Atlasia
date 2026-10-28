@@ -606,8 +606,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
     void logModAction({ action: "report_status", reportId, detail: status });
     if (status === "actioned") {
       const report = queue.find((item) => item.id === reportId);
-      if (report) {
-        // Bildirim kanıtı rapordaki reviewerUid'ye bakar; durum yazıldıktan sonra gönderilir.
+      if (report && report.status !== "actioned") {
         void notifyReportActioned(report, user.uid).catch((error) => {
           console.warn("[Atlasia] Rapor sonucu bildirimi gönderilemedi:", error);
         });
@@ -1458,41 +1457,12 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
       />
       </Suspense>
 
-      {reportsOpen && (
+      {(reportsOpen || (adminOpen && moderator)) && (
         <Suspense fallback={null}>
           <ReportsPanel
-            open={reportsOpen}
-            onClose={() => setReportsOpen(false)}
-            uid={user!.uid}
-            moderator={moderator}
-            myReports={myReports}
-            myReportsError={myReportsError}
-            queue={queue}
-            queueLoading={queueLoading}
-            queueError={queueError}
-            onStatus={handleReportStatus}
-            bans={bans}
-            onBan={handleBan}
-            onLiftBan={handleLiftBan}
-            onWarn={handleWarn}
-            onTakedown={handleTakedown}
-            appeals={appeals}
-            onResolveAppeal={handleResolveAppeal}
-            modActions={modActions}
-            announcements={announcements}
-            onCreateAnnouncement={handleCreateAnnouncement}
-            onDeleteAnnouncement={handleDeleteAnnouncement}
-            onFetchHistory={handleFetchHistory}
-          />
-        </Suspense>
-      )}
-
-      {adminOpen && moderator && (
-        <Suspense fallback={null}>
-          <ReportsPanel
-            open={adminOpen}
-            admin
-            onClose={() => setAdminOpen(false)}
+            open
+            admin={adminOpen && moderator}
+            onClose={() => { setReportsOpen(false); setAdminOpen(false); }}
             uid={user!.uid}
             moderator={moderator}
             myReports={myReports}
