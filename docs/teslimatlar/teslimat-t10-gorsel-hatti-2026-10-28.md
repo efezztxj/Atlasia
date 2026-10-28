@@ -51,12 +51,13 @@ Hero görseli **bilinçli olarak** `fetchPriority="high"` ve tembel değil (LCP)
 
 | Ölçüm | Değer | Eşik |
 |---|---|---|
-| `entry` | 18.938 B gzip | 20.900 |
-| İlk boya JS | 98.283 B gzip | 102.200 |
-| Toplam JS | 1.001.304 B gzip | 1.003.000 |
-| SW kabuğu | 46/46 | ✅ |
+| `entry` | 16.571 B gzip | 16.700 |
+| İlk boya JS | 98.991 B gzip | 102.200 |
+| Toplam JS | 989.865 B gzip | 1.003.000 |
+| `main` (Vite 8/Rolldown) tabanı | 16.180 B entry · 988.185 B toplam JS | — |
+| SW kabuğu | 62/62 | ✅ |
 
-`typecheck` ✅ · `lint --max-warnings=0` ✅ · **1292/1292** (161 dosya) ·
+`typecheck` ✅ · `lint --max-warnings=0` ✅ · **1304/1304** (164 dosya) ·
 `test:scripts` 8 paket `# fail 0` · `build` ✅ · `audit:check` ✅ ·
 `firestore.rules` değişmedi.
 

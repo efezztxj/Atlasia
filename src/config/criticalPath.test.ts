@@ -37,7 +37,9 @@ describe("T7 · kritik yol", () => {
 
   it("alt bloğun yükleme yer tutucusu kaymayı sınırlar", () => {
     // Yer tutucu yükseklik + aynı zemin rengi: parça gelince düzen zıplamaz.
-    expect(landing).toMatch(/fallback=\{<div aria-hidden className="min-h-\[5\d\dpx\] bg-\[#f1f0e9\]" \/>\}/);
+    // Ayrıca `#sss` çapasını taşır (yavaş ağda menü bağlantısı ölmesin).
+    expect(landing).toMatch(/min-h-\[5\d\dpx\] bg-\[#f1f0e9\]/);
+    expect(landing).toMatch(/<div id="sss" aria-hidden/);
   });
 
   it("rıza paneli tembel yüklenir ve yerinde bağlıdır", () => {

@@ -39,17 +39,17 @@ Plan sırası: `T1 → T2 → T3 → T12 → T11 → T7 → T4 → T5 → T8 →
 
 | Ölçüm | Değer | Eşik | Marj |
 |---|---|---|---|
-| İlk HTML seti (gzip) | 126.334 B | 129.400 B | 3.066 B |
-| Toplam JS (gzip) | 1.002.430 B | 1.003.000 B | **570 B** |
-| Toplam CSS (gzip) | 35.247 B | 35.700 B | 453 B |
-| Tanıtım yolculuğu (gzip) | 126.334 B | 129.400 B | 3.066 B |
-| Uygulama kabuğu (gzip) | 586.528 B | 603.400 B | 16.872 B |
-| `entry` (bizim kod) | 19.251 B | 20.900 B | **1.649 B** |
+| İlk HTML seti (gzip) | 127.148 B | 129.400 B | 2.252 B |
+| Toplam JS (gzip) | 989.865 B | 1.003.000 B | 13.135 B |
+| Toplam CSS (gzip) | 35.504 B | 35.700 B | 196 B |
+| Tanıtım yolculuğu (gzip) | 127.148 B | 129.400 B | 2.252 B |
+| Uygulama kabuğu (gzip) | 579.632 B | 603.400 B | 23.768 B |
+| `entry` (bizim kod) | 16.571 B | 16.700 B | **129 B** |
 
 Eşik kuralı: `scripts/bundle-budget.mjs` içindeki sayı **yalnız** yeni bir ölçüm
 ve yazılı gerekçeyle değişir; testi yeşile çevirmek için asla değişmez. #127'den
 beri **bayatlama kapısı** var: sahibi olduğumuz eşikler ölçümün %20'sinden fazla
-üstünde olamaz. `entry` payı **2.012 B** — 2026-10-28'de SSS/footer ve rıza paneli tembel
+üstünde olamaz. `entry` payı **129 B** — 2026-10-28'de SSS/footer ve rıza paneli tembel
 parçaya taşındı (`teslimat-t7-kritik-yol-2026-10-28.md`); pay 12 B'den 2,5 KB'ye
 çıktı ve toplam JS eşiği ölçüme bağlı olarak 1.001.000'e çekildi. Girişe yeni
 kod eklemeden önce yine `npm run build` ile ölçüm alın.
