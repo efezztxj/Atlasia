@@ -1,3 +1,4 @@
+import { lazy, Suspense, useState } from "react";
 import {
   ArrowDown,
   ArrowRight,
@@ -7,11 +8,49 @@ import {
   Route,
   ShieldCheck,
   Sparkles,
+  WifiOff,
+  Ban,
 } from "lucide-react";
+import type { LegalDocumentType } from "../content/legal";
+
+const LegalNotice = lazy(() => import("./LegalNotice"));
 
 interface Props {
   onStart: () => void;
 }
+
+/** Tanıtım sayfasından doğrudan okunabilen yasal metinler. */
+const LEGAL_LINKS: { type: LegalDocumentType; label: string }[] = [
+  { type: "privacy", label: "Gizlilik" },
+  { type: "kvkk", label: "KVKK aydınlatma" },
+  { type: "terms", label: "Kullanım koşulları" },
+];
+
+/** Kısa, dürüst güven maddeleri — abartısız. */
+const TRUST = [
+  { icon: Ban, text: "Reklam ve takip pikseli yok" },
+  { icon: ShieldCheck, text: "Konum yalnız senin onayınla" },
+  { icon: WifiOff, text: "Çevrimdışı paket desteği" },
+];
+
+const FAQ = [
+  {
+    q: "Atlasia ücretsiz mi?",
+    a: "Evet. Uygulamanın tamamı ücretsizdir; reklam göstermiyoruz ve kişisel verini satmıyoruz. Gelecekte ücretli bir katman eklenirse önce mevcut kullanıcılara haber verilir.",
+  },
+  {
+    q: "Konumum sürekli takip ediliyor mu?",
+    a: "Hayır. Konum yalnız sen açıkça izin verdiğinde ve ilgili ekranı kullanırken okunur. Sesli rehber, yakınlık uyarıları ve iz kaydı ayrı ayrı senin onayına bağlıdır; kapattığında çalışmaz.",
+  },
+  {
+    q: "İnternet yokken çalışır mı?",
+    a: "Yüklediğin harita paketi ve son uygulama kabuğu çevrimdışı açılır. Yeni iz bırakma, rota yayınlama ve sosyal işlemler bağlantı gerektirir; kayıtlar bağlantı gelince gönderilir.",
+  },
+  {
+    q: "Verdiğim izleri kim görür?",
+    a: "Yalnızca sen görürsün; izlerin varsayılan olarak özeldir. Yayınlamayı seçersen görünür olur ve dilediğinde geri alabilirsin.",
+  },
+];
 
 const features = [
   {
@@ -35,6 +74,7 @@ const features = [
 ];
 
 export default function LandingPage({ onStart }: Props) {
+  const [legal, setLegal] = useState<LegalDocumentType | null>(null);
   return (
     <main className="landing-page h-dvh overflow-y-auto scroll-smooth bg-[#020d17] text-white">
       <section className="relative isolate min-h-dvh overflow-hidden border-b border-white/10">
@@ -55,7 +95,8 @@ export default function LandingPage({ onStart }: Props) {
           <nav aria-label="Tanıtım menüsü" className="hidden items-center gap-8 text-[13px] text-white/75 md:flex">
             <a href="#kesfet" className="transition hover:text-white">Keşfet</a>
             <a href="#nasil" className="transition hover:text-white">Nasıl çalışır?</a>
-            <a href="#guven" className="transition hover:text-white">Gizlilik</a>
+            <a href="#sss" className="transition hover:text-white">Sık sorulanlar</a>
+            <button type="button" onClick={() => setLegal("privacy")} className="transition hover:text-white">Gizlilik</button>
           </nav>
           <button type="button" onClick={onStart} className="group flex min-h-11 items-center gap-3 border border-white/35 bg-black/15 px-4 text-[12px] font-semibold backdrop-blur-sm transition hover:border-sun hover:bg-sun hover:text-[#15221d] md:px-6">
             Keşfe başla <ArrowRight size={15} className="transition-transform group-hover:translate-x-1" />
@@ -72,6 +113,11 @@ export default function LandingPage({ onStart }: Props) {
               <button type="button" onClick={onStart} className="group flex min-h-[56px] items-center gap-8 bg-[#f3c870] px-6 text-[13px] font-bold text-[#142019] transition hover:bg-white md:px-7">Dünyayı keşfet <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" /></button>
               <a href="#nasil" className="flex min-h-[56px] items-center gap-2 px-4 text-[13px] font-medium text-white/85 transition hover:text-white"><Sparkles size={16} />Atlas AI nasıl çalışır?</a>
             </div>
+            <ul aria-label="Kısa güven notları" className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] text-white/55">
+              {TRUST.map(({ icon: Icon, text }) => (
+                <li key={text} className="flex items-center gap-1.5"><Icon size={13} className="text-[#8fd9b2]" aria-hidden />{text}</li>
+              ))}
+            </ul>
           </div>
         </div>
 
@@ -117,11 +163,55 @@ export default function LandingPage({ onStart }: Props) {
         </div>
       </section>
 
-      <footer className="flex flex-col gap-5 border-t border-white/10 bg-[#020f0d] px-5 py-8 text-[11px] text-mint/45 md:flex-row md:items-center md:justify-between md:px-10 lg:px-16">
-        <p className="font-display text-lg font-semibold text-mint">atlasia<span className="text-sun">.</span></p>
-        <p>© {new Date().getFullYear()} Atlasia · Merak ettiğin her yer</p>
-        <button type="button" onClick={onStart} className="flex items-center gap-2 text-sun">Keşfe başla <ArrowRight size={13} /></button>
+      <section id="sss" aria-labelledby="sss-title" className="border-t border-white/10 bg-[#f1f0e9] px-5 py-16 text-[#102b2a] md:px-10 md:py-24 lg:px-16">
+        <div className="mx-auto max-w-[900px]">
+          <p className="text-[11px] font-semibold tracking-[0.18em] text-[#9a7a3a] uppercase">Sık sorulanlar</p>
+          <h2 id="sss-title" className="font-display mt-3 text-[clamp(30px,4vw,48px)] leading-[1.02] font-semibold tracking-[-0.04em]">
+            Aklında kalan sorular.
+          </h2>
+          <div className="mt-8 divide-y divide-[#102b2a]/10 border-y border-[#102b2a]/10">
+            {FAQ.map((item) => (
+              <details key={item.q} className="group py-4">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-[15px] font-semibold marker:hidden">
+                  {item.q}
+                  <span aria-hidden className="grid size-7 shrink-0 place-items-center rounded-full border border-[#102b2a]/20 text-[15px] leading-none transition group-open:rotate-45">+</span>
+                </summary>
+                <p className="mt-3 max-w-[720px] text-[13.5px] leading-7 text-[#102b2a]/75">{item.a}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <footer className="border-t border-white/10 bg-[#020f0d] px-5 py-10 text-[11px] text-mint/45 md:px-10 lg:px-16">
+        <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+          <div>
+            <p className="font-display text-lg font-semibold text-mint">atlasia<span className="text-sun">.</span></p>
+            <p className="mt-2 max-w-[280px] leading-relaxed">Merak ettiğin her yer için sakin bir keşif defteri. Reklamsız, izinsiz konum okumaz.</p>
+          </div>
+          <nav aria-label="Yasal" className="flex flex-col gap-2">
+            <span className="text-[10px] font-semibold tracking-[0.16em] text-mint/35 uppercase">Yasal</span>
+            {LEGAL_LINKS.map(({ type, label }) => (
+              <button key={type} type="button" onClick={() => setLegal(type)} className="min-h-8 text-left text-[12px] text-mint/70 transition hover:text-sun">
+                {label}
+              </button>
+            ))}
+          </nav>
+          <nav aria-label="Ürün" className="flex flex-col gap-2">
+            <span className="text-[10px] font-semibold tracking-[0.16em] text-mint/35 uppercase">Ürün</span>
+            <a href="#kesfet" className="min-h-8 text-[12px] text-mint/70 transition hover:text-sun">Nasıl çalışır</a>
+            <a href="#sss" className="min-h-8 text-[12px] text-mint/70 transition hover:text-sun">Sık sorulanlar</a>
+            <button type="button" onClick={onStart} className="min-h-8 text-left text-[12px] text-sun">Keşfe başla</button>
+          </nav>
+        </div>
+        <p className="mt-8 border-t border-white/5 pt-5">© {new Date().getFullYear()} Atlasia · Merak ettiğin her yer</p>
       </footer>
+
+      {legal && (
+        <Suspense fallback={null}>
+          <LegalNotice type={legal} onClose={() => setLegal(null)} />
+        </Suspense>
+      )}
     </main>
   );
 }

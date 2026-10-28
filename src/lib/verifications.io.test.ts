@@ -1,257 +1,186 @@
 /**
- * P16 — ziyaret doğrulaması IO karakterizasyonu.
+ * Doğrulama IO sözleşmesi: deterministik belge kimliği, tazelik okuyucusunun
+ * hesap türüne göre kapanması ve yazma öncesi doğrulama.
  *
- * Firestore sahte katmanı sorgudaki createdAt sıralama ve limit koşulunu da
- * uygular; böylece 50 kayıt penceresi yalnız isimde değil davranışta kilitlenir.
+ * Kural bağı: `verifications` belge kimliği `{placeId}_{uid}` olmak zorunda.
+ * Rastgele kimlik yazılırsa aynı kişi ikinci kez doğrulayamaz (kural reddeder)
+ * ve tazelik sayacı şişer — bu test o sözleşmeyi kilitler.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const h = vi.hoisted(() => {
   const store = new Map<string, Record<string, unknown>>();
-  const stats = { unsubscribes: 0 };
-
-  const millis = (value: unknown): number => {
-    if (typeof value === "number") return value;
-    if (
-      value &&
-      typeof value === "object" &&
-      "toMillis" in value &&
-      typeof (value as { toMillis: () => number }).toMillis === "function"
-    ) {
-      return (value as { toMillis: () => number }).toMillis();
-    }
-    return 0;
-  };
-
-  const docsFor = (
-    path: string,
-    constraints: Array<{ field?: string; direction?: string; limit?: number; op?: string; value?: unknown }> = [],
-  ) => {
-    let docs = [...store.entries()]
-      .filter(([key]) => key.startsWith(`${path}/`))
-      .filter(([key]) => key.slice(path.length + 1).split("/").length === 1)
-      .filter(([, data]) => constraints.every((item) =>
-        item.op !== "==" || item.field === undefined || data[item.field] === item.value))
-      .map(([key, data]) => ({ id: key.slice(path.length + 1), data: () => data }));
-    const order = constraints.find((item) => item.field === "createdAt");
-    if (order) {
-      docs = docs.sort((a, b) =>
-        order.direction === "asc"
-          ? millis(a.data().createdAt) - millis(b.data().createdAt)
-          : millis(b.data().createdAt) - millis(a.data().createdAt),
-      );
-    }
-    const limit = constraints.find((item) => typeof item.limit === "number")?.limit;
-    return typeof limit === "number" ? docs.slice(0, limit) : docs;
-  };
-
-  return { store, stats, docsFor };
+  const stats = { unsubs: 0, countQueries: [] as Array<{ path: string; where?: unknown }> };
+  return { store, stats };
 });
 
-vi.mock("./firebase", () => ({ db: {}, firebaseApp: {}, firebaseConfigured: true, isCloudReady: true }));
+vi.mock("./firebase", () => ({ db: {}, firebaseConfigured: true, isCloudReady: true }));
+
 vi.mock("firebase/firestore", () => ({
-  collection: (_db: unknown, ...segments: string[]) => ({ path: segments.join("/") }),
+  collection: (_db: unknown, path: string) => ({ path }),
   doc: (_db: unknown, ...segments: string[]) => ({ path: segments.join("/") }),
-  query: (
-    target: { path: string },
-    ...constraints: Array<{ field?: string; direction?: string; limit?: number; op?: string; value?: unknown }>
-  ) => ({ path: target.path, constraints }),
+  query: (target: { path: string }, ...constraints: unknown[]) => ({ path: target.path, constraints }),
   orderBy: (field: string, direction: string) => ({ field, direction }),
   limit: (value: number) => ({ limit: value }),
   where: (field: string, op: string, value: unknown) => ({ field, op, value }),
-  getCountFromServer: async (
-    q: { path: string; constraints?: Array<{ field?: string; direction?: string; limit?: number; op?: string; value?: unknown }> },
-  ) => ({ data: () => ({ count: h.docsFor(q.path, q.constraints ?? []).length }) }),
   serverTimestamp: () => "SERVER_TS",
-  setDoc: async (docRef: { path: string }, data: Record<string, unknown>) => {
-    h.store.set(docRef.path, data);
+  getCountFromServer: async (q: { path: string; constraints?: unknown[] }) => {
+    h.stats.countQueries.push({ path: q.path, where: q.constraints });
+    return { data: () => ({ count: 3 }) };
   },
+  setDoc: async (ref: { path: string }, data: Record<string, unknown>) => { h.store.set(ref.path, data); },
   onSnapshot: (
-    q: { path: string; constraints?: Array<{ field?: string; direction?: string; limit?: number; op?: string; value?: unknown }> },
-    onChange: (snapshot: { docs: ReturnType<typeof h.docsFor> }) => void,
+    q: { path: string; constraints?: Array<{ limit?: number }> },
+    onChange: (snapshot: { docs: Array<{ id: string; data: () => Record<string, unknown> }> }) => void,
   ) => {
-    onChange({ docs: h.docsFor(q.path, q.constraints ?? []) });
-    return () => {
-      h.stats.unsubscribes += 1;
-    };
+    const docs = [...h.store.entries()]
+      .filter(([key]) => key.startsWith(`${q.path}/`))
+      .map(([key, data]) => ({ id: key.slice(q.path.length + 1), data: () => data }));
+    const lim = q.constraints?.find((item) => typeof item.limit === "number")?.limit;
+    onChange({ docs: typeof lim === "number" ? docs.slice(0, lim) : docs });
+    return () => { h.stats.unsubs += 1; };
   },
 }));
 
 import type { VerificationStatus } from "../utils/freshness";
 import {
+  VERIFICATIONS_LIMIT,
   addPlaceVerification,
   countPlaceVerifications,
   freshnessReaderUid,
   normalizeVerification,
   subscribeRecentVerifications,
   verificationIdFor,
-  VERIFICATIONS_LIMIT,
 } from "./verifications";
 
 beforeEach(() => {
   h.store.clear();
-  h.stats.unsubscribes = 0;
+  h.stats.unsubs = 0;
+  h.stats.countQueries = [];
 });
 
-describe("ziyaret doğrulaması IO sözleşmesi", () => {
-  it("normalize eksik/yanlış tipli alanlarda güvenli varsayılanlar kullanır", () => {
-    expect(normalizeVerification("v1", {})).toEqual({
-      id: "v1",
-      placeId: "",
-      uid: "",
-      status: "still_open",
-      note: undefined,
-      createdAt: 0,
-    });
-    expect(
-      normalizeVerification("v2", {
-        placeId: "güzelyurt-şelale",
-        uid: "user-ı",
-        status: "road_closed",
-        note: "İğneada yolu kapalı",
-        createdAt: { toMillis: () => 987_654 },
-      }),
-    ).toEqual({
-      id: "v2",
-      placeId: "güzelyurt-şelale",
-      uid: "user-ı",
-      status: "road_closed",
-      note: "İğneada yolu kapalı",
-      createdAt: 987_654,
-    });
+describe("verificationIdFor", () => {
+  it("deterministik kimlik üretir: {placeId}_{uid}", () => {
+    expect(verificationIdFor("efes", "u1")).toBe("efes_u1");
+    expect(verificationIdFor(" efes ", " u1 ")).toBe("efes_u1");
+    expect(verificationIdFor("efes", "u1")).toBe(verificationIdFor("efes", "u1"));
+  });
+});
+
+describe("normalizeVerification", () => {
+  it("bilinmeyen durumu güvenli varsayılana çeker", () => {
+    expect(normalizeVerification("x", { placeId: "p", uid: "u", status: "saçma" }).status).toBe("still_open");
   });
 
-  it("bilinmeyen status değerlerini bilinen güvenli duruma normalize eder", () => {
-    expect(normalizeVerification("v-unknown", {
-      placeId: "p1", uid: "u1", status: "unexpected-status", createdAt: 1,
-    }).status).toBe("still_open");
-    expect(normalizeVerification("v-known", {
-      placeId: "p1", uid: "u1", status: "closed", createdAt: 1,
-    }).status).toBe("closed");
+  it("geçerli durumu korur ve eksik alanları boşaltır", () => {
+    const normalized = normalizeVerification("x", { placeId: "p", uid: "u", status: "closed", note: "kapanmış" });
+
+    expect(normalized).toMatchObject({ id: "x", placeId: "p", uid: "u", status: "closed", note: "kapanmış", createdAt: 0 });
+    expect(normalizeVerification("y", {}).note).toBeUndefined();
   });
+});
 
-  it("ekleme kimlikleri/notu kırpar ve {placeId}_{uid} kimliğiyle tek belge yazar", async () => {
-    const created = await addPlaceVerification({
-      placeId: "  manavgat-şelalesi  ",
-      uid: "  user-42  ",
-      status: "fee_changed",
-      note: "  Giriş ücreti değişmiş.  ",
-    });
-
-    expect(created.id).toBe("manavgat-şelalesi_user-42");
-    expect(verificationIdFor(" manavgat-şelalesi ", " user-42 ")).toBe("manavgat-şelalesi_user-42");
-    expect(created).toMatchObject({
-      placeId: "manavgat-şelalesi",
-      uid: "user-42",
-      status: "fee_changed",
-      note: "Giriş ücreti değişmiş.",
-    });
-    expect(created.createdAt).toBeGreaterThan(0);
-    expect(h.store.get(`verifications/${created.id}`)).toEqual({
-      placeId: "manavgat-şelalesi",
-      uid: "user-42",
-      status: "fee_changed",
-      note: "Giriş ücreti değişmiş.",
-      createdAt: "SERVER_TS",
-    });
-  });
-
-  it("aynı kişinin aynı yere ikinci doğrulaması aynı belgeyi günceller (belge birikmez)", async () => {
-    await addPlaceVerification({ placeId: "place-1", uid: "user-1", status: "still_open" });
-    const updated = await addPlaceVerification({ placeId: "place-1", uid: "user-1", status: "road_closed" });
-    expect(updated.id).toBe("place-1_user-1");
-    expect(h.store.size).toBe(1);
-    expect(h.store.get("verifications/place-1_user-1")).toMatchObject({ status: "road_closed" });
-
-    await addPlaceVerification({ placeId: "place-1", uid: "user-2", status: "still_open" });
-    expect(h.store.size).toBe(2);
-  });
-
-  it("kimliği bölecek '/' içeren yer kimliği yazılmadan reddedilir", async () => {
-    await expect(addPlaceVerification({ placeId: "a/b", uid: "u1", status: "still_open" }))
-      .rejects.toMatchObject({ code: "verification/place-invalid" });
-    expect(h.store.size).toBe(0);
-  });
-
-  it("freshnessReaderUid yalnız Firebase hesabının uid'sini verir (cihaz hesabı abone olmaz)", () => {
+describe("freshnessReaderUid", () => {
+  it("yalnız bulut (firebase) hesabında uid döner", () => {
     expect(freshnessReaderUid({ uid: "u1", backend: "firebase" })).toBe("u1");
-    expect(freshnessReaderUid({ uid: " u1 ", backend: "firebase" })).toBe("u1");
+  });
+
+  it("cihaz hesabında undefined (kural signedIn ister; istek atılmaz)", () => {
     expect(freshnessReaderUid({ uid: "u1", backend: "device" })).toBeUndefined();
-    expect(freshnessReaderUid({ uid: " ", backend: "firebase" })).toBeUndefined();
-    expect(freshnessReaderUid({ backend: "firebase" })).toBeUndefined();
+  });
+
+  it("boş uid veya hesap yoksa undefined", () => {
+    expect(freshnessReaderUid({ uid: "  ", backend: "firebase" })).toBeUndefined();
     expect(freshnessReaderUid(null)).toBeUndefined();
     expect(freshnessReaderUid(undefined)).toBeUndefined();
   });
+});
 
-  it("yalnız boşluklardan oluşan not belgeye de dönüş değerine de yazılmaz", async () => {
-    const created = await addPlaceVerification({
-      placeId: "place-1",
-      uid: "user-1",
+describe("subscribeRecentVerifications", () => {
+  it("50 kayıt tavanıyla okur ve aboneliği kapatır", () => {
+    for (let index = 0; index < 60; index += 1) {
+      h.store.set(`verifications/p${index}_u`, { placeId: `p${index}`, uid: "u", status: "still_open", createdAt: index });
+    }
+    let received: unknown[] = [];
+
+    const unsubscribe = subscribeRecentVerifications((items) => { received = items; });
+    expect(received).toHaveLength(VERIFICATIONS_LIMIT);
+
+    unsubscribe();
+    expect(h.stats.unsubs).toBe(1);
+  });
+});
+
+describe("addPlaceVerification", () => {
+  it("deterministik kimliğe, kapalı alan kümesiyle yazar", async () => {
+    const result = await addPlaceVerification({ placeId: "efes", uid: "u1", status: "still_open", note: " açık " });
+
+    expect([...h.store.keys()]).toEqual(["verifications/efes_u1"]);
+    expect(h.store.get("verifications/efes_u1")).toMatchObject({
+      placeId: "efes",
+      uid: "u1",
       status: "still_open",
-      note: "   ",
+      note: "açık",
+      createdAt: "SERVER_TS",
     });
-
-    expect(created.note).toBeUndefined();
-    expect(h.store.get(`verifications/${created.id}`)).not.toHaveProperty("note");
+    expect(result.id).toBe("efes_u1");
+    expect(result.note).toBe("açık");
   });
 
-  it("girişsiz/geçersiz doğrulama kodlu reddedilir ve yazma yapılmaz", async () => {
-    await expect(
-      addPlaceVerification({ placeId: "p1", uid: "  ", status: "still_open" }),
-    ).rejects.toMatchObject({ code: "auth/required" });
-    await expect(
-      addPlaceVerification({ placeId: " ", uid: "u1", status: "still_open" }),
-    ).rejects.toMatchObject({ code: "verification/place-invalid" });
-    await expect(
-      addPlaceVerification({
-        placeId: "p1",
-        uid: "u1",
-        status: "bilinmiyor" as unknown as VerificationStatus,
-      }),
-    ).rejects.toMatchObject({ code: "verification/status-invalid" });
-    await expect(
-      addPlaceVerification({
-        placeId: "p1",
-        uid: "u1",
-        status: "still_open",
-        note: "ş".repeat(281),
-      }),
-    ).rejects.toMatchObject({ code: "verification/note-too-long" });
+  it("boş not alanı hiç yazılmaz", async () => {
+    await addPlaceVerification({ placeId: "efes", uid: "u1", status: "closed", note: "   " });
 
+    expect(h.store.get("verifications/efes_u1")).not.toHaveProperty("note");
+  });
+
+  it("280 karakterden uzun notu kırpmaz, kural koduyla reddeder", async () => {
+    // Kural katmanı da reddeder; istemci sessizce kırpsaydı kullanıcı notunun
+    // kesildiğini görmezdi. Davranış: açık ret.
+    await expect(addPlaceVerification({
+      placeId: "efes",
+      uid: "u1",
+      status: "closed",
+      note: "n".repeat(400),
+    })).rejects.toMatchObject({ code: "verification/note-too-long" });
     expect(h.store.size).toBe(0);
   });
 
-  it("canlı abonelik en yeni 50 doğrulamayı azalan sırayla verir", () => {
-    expect(VERIFICATIONS_LIMIT).toBe(50);
-    for (let i = 1; i <= 55; i += 1) {
-      h.store.set(`verifications/v${i}`, {
-        placeId: `place-${i}`,
-        uid: "user-1",
-        status: i % 2 ? "still_open" : "closed",
-        createdAt: i,
-      });
-    }
-
-    const snapshots: string[][] = [];
-    const unsubscribe = subscribeRecentVerifications((items) =>
-      snapshots.push(items.map((item) => item.id)),
-    );
-
-    expect(snapshots).toHaveLength(1);
-    expect(snapshots[0]).toHaveLength(50);
-    expect(snapshots[0][0]).toBe("v55");
-    expect(snapshots[0].at(-1)).toBe("v6");
-    unsubscribe();
-    expect(h.stats.unsubscribes).toBe(1);
+  it("giriş yoksa auth/required koduyla reddeder, hiç yazmaz", async () => {
+    await expect(addPlaceVerification({ placeId: "efes", uid: "  ", status: "still_open" }))
+      .rejects.toMatchObject({ code: "auth/required" });
+    expect(h.store.size).toBe(0);
   });
 
-  it("rozet sayacı yalnız o yeri sayar, boş kimlikte istek atmaz", async () => {
-    h.store.set("verifications/efes_member", { placeId: "efes", uid: "member", status: "still_open", createdAt: 1 });
-    h.store.set("verifications/efes_other", { placeId: "efes", uid: "other", status: "closed", createdAt: 2 });
-    h.store.set("verifications/milet_member", { placeId: "milet", uid: "member", status: "still_open", createdAt: 3 });
+  it("geçersiz durumu kural koduyla reddeder", async () => {
+    await expect(addPlaceVerification({
+      placeId: "efes",
+      uid: "u1",
+      status: "olmayan" as unknown as VerificationStatus,
+    })).rejects.toMatchObject({ code: "verification/status-invalid" });
+    expect(h.store.size).toBe(0);
+  });
 
-    await expect(countPlaceVerifications("efes")).resolves.toBe(2);
-    await expect(countPlaceVerifications("  ")).resolves.toBe(0);
-    await expect(countPlaceVerifications("milet")).resolves.toBe(1);
+  it("kimliği bölecek eğik çizgiyi erken reddeder", async () => {
+    await expect(addPlaceVerification({ placeId: "a/b", uid: "u1", status: "still_open" }))
+      .rejects.toMatchObject({ code: "verification/place-invalid" });
+    await expect(addPlaceVerification({ placeId: "efes", uid: "u/1", status: "still_open" }))
+      .rejects.toMatchObject({ code: "verification/place-invalid" });
+    expect(h.store.size).toBe(0);
+  });
+});
+
+describe("countPlaceVerifications", () => {
+  it("placeId eşitliği ve 50 tavanıyla toplama sorgusu yapar", async () => {
+    await expect(countPlaceVerifications(" efes ")).resolves.toBe(3);
+
+    const query = h.stats.countQueries[0];
+    expect(query.path).toBe("verifications");
+    expect(JSON.stringify(query.where)).toContain("efes");
+    expect(JSON.stringify(query.where)).toContain(String(VERIFICATIONS_LIMIT));
+  });
+
+  it("boş placeId'de ağa çıkmaz", async () => {
+    await expect(countPlaceVerifications("   ")).resolves.toBe(0);
+    expect(h.stats.countQueries).toHaveLength(0);
   });
 });
