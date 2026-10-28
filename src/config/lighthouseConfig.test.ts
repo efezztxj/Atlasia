@@ -24,7 +24,7 @@ describe("G3 · mobil Lighthouse kapısı", () => {
     // formFactor + screenEmulation ile kurulur (CI'da 39e38e5 ders oldu).
     expect(config.ci.collect.settings.preset).toBeUndefined();
     expect(config.ci.collect.settings.formFactor).toBe("mobile");
-    expect(config.ci.collect.numberOfRuns).toBeGreaterThanOrEqual(2);
+    expect(config.ci.collect.numberOfRuns).toBeGreaterThanOrEqual(3);
     expect(config.ci.collect.settings.screenEmulation.width).toBeLessThanOrEqual(400);
   });
 

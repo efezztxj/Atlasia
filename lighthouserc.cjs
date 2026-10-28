@@ -22,7 +22,7 @@ module.exports = {
       // CI'da `dist` doğrudan servis edilir: ağ gürültüsü ve Cloudflare kenarı
       // ölçüme karışmaz. Yerelde `LHCI_URL` ile canlı adres de ölçülebilir.
       ...(process.env.LHCI_URL ? { url: [url] } : { staticDistDir: "./dist", url: ["/"] }),
-      numberOfRuns: 2,
+      numberOfRuns: 3,
       settings: {
         // DİKKAT: Lighthouse'un `preset` bayrağı yalnız "desktop"/"perf" alır;
         // "mobile" değeri `npx lhci autorun`ı ilk turda düşürdü (CI kanıtı:

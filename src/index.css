@@ -1,6 +1,7 @@
+@import "./styles/fonts.css";
 @import "tailwindcss";
 /* B2: Google Fonts kaldırıldı. Fontlar aynı origin'den (`/fonts/…`) geliyor;
-   @font-face tanımları public/fonts/fonts.css içinde, index.html'de erken
+   @font-face tanımları src/styles/fonts.css içinde (paketlenir), index.html'de
    yüklenir. Tarayıcı yalnız gereken unicode aralığını (TR için latin +
    latin-ext) indirir. */
 
