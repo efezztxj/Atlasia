@@ -127,16 +127,16 @@ export default function LandingPage({ onStart }: Props) {
 
       <section id="kesfet" className="bg-[#f1f0e9] px-5 py-20 text-[#102b2a] md:px-10 md:py-28 lg:px-16">
         <div className="mx-auto max-w-[1280px]">
-          <p className="flex items-center gap-3 text-[10px] font-semibold tracking-[0.28em] text-[#a37c35] uppercase"><span className="h-px w-8 bg-[#a37c35]" />Keşif noktan</p>
+          <p className="flex items-center gap-3 text-[10px] font-semibold tracking-[0.28em] text-[#8f6224] uppercase"><span className="h-px w-8 bg-[#8f6224]" />Keşif noktan</p>
           <div className="mt-8 grid gap-8 md:grid-cols-[1.25fr_.75fr] md:items-end">
-            <h2 className="font-display text-[clamp(48px,7vw,95px)] leading-[0.92] font-semibold tracking-[-0.06em]">Nereye gitmek<br /><span className="text-[#ba8f45]">istersin?</span></h2>
+            <h2 className="font-display text-[clamp(48px,7vw,95px)] leading-[0.92] font-semibold tracking-[-0.06em]">Nereye gitmek<br /><span className="text-[#9c7029]">istersin?</span></h2>
             <p className="max-w-md text-[15px] leading-7 text-[#36504c] md:pb-2">Uzaklara gitmek için önce merak etmek yeter. İlham veren rotalara göz at, sana yakın gelenleri kaydet ve kendi izini haritaya bırak.</p>
           </div>
 
           <div className="mt-16 grid gap-px overflow-hidden border border-[#173c37]/15 bg-[#173c37]/15 md:grid-cols-3">
             {features.map(({ icon: Icon, number, title, text }) => (
               <article key={number} className="bg-[#f1f0e9] p-7 md:min-h-[310px] md:p-9">
-                <div className="flex items-center justify-between"><span className="grid size-12 place-items-center rounded-full border border-[#173c37]/20"><Icon size={20} strokeWidth={1.5} /></span><span className="font-mono text-[11px] text-[#a37c35]">{number}</span></div>
+                <div className="flex items-center justify-between"><span className="grid size-12 place-items-center rounded-full border border-[#173c37]/20"><Icon size={20} strokeWidth={1.5} /></span><span className="font-mono text-[11px] text-[#8f6224]">{number}</span></div>
                 <h3 className="font-display mt-12 text-[25px] font-semibold tracking-tight">{title}</h3>
                 <p className="mt-4 text-[14px] leading-7 text-[#49615d]">{text}</p>
               </article>

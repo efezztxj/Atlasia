@@ -90,6 +90,9 @@ export const BUNDLE_BUDGET = Object.freeze({
   }),
   // Bu parçalar ilk HTML ile preload edilirse lazy sınırı fiilen ortadan kalkar.
   deferredAssetPrefixes: Object.freeze([
+    // T11 (2026-10-28): Firebase SDK'sı landing'de indirilmemeli. Auth ekranı ve
+    // oturum sonrası keşif kabuğu bu parçayı dinamik `import()` ile çeker.
+    "assets/firebase-vendor-",
     "assets/firebase-auth-",
     "assets/map-vendor-",
     "assets/MapView-",
