@@ -61,3 +61,12 @@ değil, footer/SSS gibi aşağıdaki blokları tembel parçaya taşımaktır (§
    mü? İkisi de kod değişikliği istemiyor; tek zorunlu adım
    `VITE_TELEMETRY_ENDPOINT`.
 3. **T6 video:** barındırma nerede olacak (repo dışı, `preload="none"` + poster)?
+4. **`entry` payı (12 B):** sıradaki landing işi bütçeye sığmazsa iki dürüst yol
+   var, ikisi de davranış değişikliği olduğu için **onay istiyor**:
+   (a) footer + SSS'yi tembel parçaya taşı (CLS riski: aşağıda, ekran dışı),
+   (b) `CookieConsent`'i `lazy()` yap (ilk açılışta panel bir kare sonra gelir).
+   Eşiği yükseltmek üçüncü ve **yanlış** yol.
+5. **T20 güven sinyalleri:** gerçek kullanıcı/rota sayısı olmadan sosyal kanıt
+   yazılmayacak; sayı üretilmesi gerekiyorsa kaynağı da yazılmalı.
+6. **T21 basın/iletişim:** gerçek e-posta ve künye hukuk onayı bekliyor
+   (`docs/mvp-cikis-plani-2026-10-27.md` P0-1).
