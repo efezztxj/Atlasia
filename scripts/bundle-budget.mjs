@@ -67,7 +67,15 @@ const DEFAULT_DIST = fileURLToPath(new URL("../dist", import.meta.url));
  * ediyor. Bu bütçe o durumu gizlemez, ölçer; küçültme işi M-03b olarak açık.
  */
 export const BUNDLE_BUDGET = Object.freeze({
-  totalJsGzipBytes: 916_500,
+  // 2026-10-28 (T4 misafir modu + T5 niyet hatırlama): ölçüm **917.290 B**
+  // gzip; önceki eşik 916.500 B'yi 757 B aştı. Eşik, testi yeşile çevirmek
+  // için değil ölçülen yeni gerçek için güncellendi: misafir oturum bayrağı,
+  // yazma kapısı (Explorer + veri katmanı), "misafir olarak devam et" yolu ve
+  // hesap açılınca tüketilen niyet kaydı koda eklendi. **Yeni bağımlılık yok.**
+  // Kullanıcının gördüğü ilk boya 91.539 B (eşik 398.000) ve tanıtım yolculuğu
+  // 117.964 B (eşik 425.000) bu işten pratikte etkilenmedi.
+  // Ayrıntı: CHANGELOG → "Misafir modu (T4) ve kayıt sonrası ilk değer (T5)".
+  totalJsGzipBytes: 918_000,
   totalCssGzipBytes: 35_700,
   initialGzipBytes: 439_000,
   // İlk HTML ile gelen gerçek ilk boya maliyeti (lazy chunk'lar hariç).

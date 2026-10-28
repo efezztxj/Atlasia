@@ -106,6 +106,9 @@ const SuspensionNotice = lazy(() => import("./SuspensionNotice"));
 const WarningNotice = lazy(() => import("./ModerationNotices").then((m) => ({ default: m.WarningNotice })));
 const AnnouncementBanner = lazy(() => import("./ModerationNotices").then((m) => ({ default: m.AnnouncementBanner })));
 const MAP_STYLE_KEY = "atlasia.mapStyle.v1";
+/** T5: misafirken engellenen eylem; hesap açılınca tüketilir. */
+const PENDING_INTENT_KEY = "atlasia.pendingIntent.v1";
+type PendingIntent = "place" | "route" | "feed" | "none";
 /** Cihazda ilk rota oluşturuldu mu (T2 aktivasyon bayrağı). */
 const FIRST_ROUTE_KEY = "atlasia.metrics.firstRoute.v1";
 
@@ -131,9 +134,6 @@ function MapLoadingSkeleton() {
 
 function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
   const mapRef = useRef<MapViewHandle>(null);
-  // T2 huni adımı: harita açılışı (oturumda bir kez). Misafir modu (T4)
-  // geldiğinde aynı olay `guest: true` ile App kapısından da gönderilecek.
-  useEffect(() => { analytics.mapOpen({ guest: false }); }, []);
   // Adım 11: her günün bacağı varsa rota mod ayrımlı çizilir (patika kesikli,
   // yol düz); yoksa durak durak düz çizgiye düşer.
   const drawAtlasRoute = (route: AtlasRoute, preview: boolean) => {
@@ -157,25 +157,59 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
     const coords = route.days.flatMap((day) => decodePolyline(day.polyline));
     if (coords.length > 1) mapRef.current?.drawRoute(coords, preview);
   };
-  const { user, logout } = useAuth();
+  const { user, logout, requireAccount } = useAuth();
+  // T4: misafir = oturum açmamış ama haritayı kullanan kişi. Yazma yolları
+  // burada kapanır; sunucu tarafında da `request.auth == null` olduğu için
+  // kurallar yazmayı reddeder (fail-closed) — kural gevşetmesi yok.
+  const guest = !user;
+  // T2 huni adımı: harita açılışı (oturumda bir kez). Misafir modu (T4)
+  // ayrı sayılır: "kayıt duvarı olmadan haritayı açtı" oranı buradan okunur.
+  useEffect(() => { analytics.mapOpen({ guest }); }, [guest]);
+
+  /**
+   * T5 — kayıt duvarı sonrası ilk değer. Misafirken engellenen eylem
+   * hatırlanır ve hesap açılınca **aynı yere** dönülür: "kaydoldum, şimdi ne
+   * olacak?" sorusunun cevabı boş harita olmaz.
+   */
+  useEffect(() => {
+    if (guest) return;
+    const raw = storageGet(PENDING_INTENT_KEY);
+    if (!raw) return;
+    storageSet(PENDING_INTENT_KEY, "");
+    const [pending, stamp] = raw.split("|");
+    // 30 dakikadan eski niyet bayat sayılır: kullanıcı artık başka bir iş için
+    // giriş yapmış olabilir.
+    if (!stamp || Date.now() - Number(stamp) > 30 * 60 * 1000) return;
+    if (pending === "place") {
+      setToast("Hesabın hazır. Haritada bir noktaya dokunup ilk izini bırak.");
+      setAddMode(true);
+    } else if (pending === "feed") {
+      setToast("Hesabın hazır. Topluluk akışında ilk paylaşımını yapabilirsin.");
+      setFeedOpen(true);
+    } else if (pending === "route") {
+      setToast("Hesabın hazır. Atlas AI'a nereye gitmek istediğini yaz, rotanı çizsin.");
+    }
+    // Yalnız oturum açılışında bir kez: `guest` false olduktan sonra tekrar çalışmaz.
+  }, [guest]);
   const { theme, setTheme } = useTheme();
 
   const [mapViewport, setMapViewport] = useState<PlaceViewport | null>(null);
 
   // Yerel veri yalnız yapılandırmasız mod ve ilk canlı liste görünümü için yedektir.
-  const local = useAtlasData(user!.uid);
+  const local = useAtlasData(user?.uid ?? "", { persist: Boolean(user) });
   // Cihaz hesabı Firestore'a giremez (Rules request.auth ister): okuma/yazma
   // ancak bulut hesabıyla uzaktan olur; cihaz hesabı baştan sona yerel çalışır.
-  const cloudAccount = isCloudAccount(user!.backend);
+  const cloudAccount = user ? isCloudAccount(user.backend) : false;
   const remote = useFirestoreAtlasData({
-    uid: user!.uid,
-    enabled: cloudAccount,
+    uid: user?.uid ?? "",
+    enabled: cloudAccount || guest,
     viewport: mapViewport,
+    guest,
   });
   // Bulut hesabı varsa yazma/silme işlemleri her zaman Firestore'a gider.
   // İlk canlı snapshot gelene kadar yalnız görünür liste için yerel içerik kullanılır;
   // böylece açılış anındaki hızlı bir işlem cihazda mahsur kalmaz.
-  const cloud = cloudAccount
+  const cloud = (cloudAccount || guest)
     ? {
         ...remote,
         places: remote.ready ? remote.places : local.places,
@@ -427,7 +461,11 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
   };
 
   const openRecords = () => { closePanels(); setRecordsOpen(true); };
-  const openProfile = () => { closePanels(); setProfileOpen(true); };
+  const openProfile = () => {
+    if (guest) { askAccount("Profil ve kayıtlar için bir hesap aç ya da giriş yap."); return; }
+    closePanels();
+    setProfileOpen(true);
+  };
   // Hava katmanı: parça yüklenemezse anahtar kapanır; veri durumu Katmanlar
   // sayfasında dürüstçe gösterilir (Windy benzeri katman, utils/mapWeather.ts).
   useEffect(() => {
@@ -784,7 +822,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
     [discoveries, freshness],
   );
   const canManagePlace = useCallback(
-    (place: Place) => place.kind === "user" && (place.authorUid ? place.authorUid === user!.uid : !remote.ready),
+    (place: Place) => Boolean(user) && place.kind === "user" && (place.authorUid ? place.authorUid === user!.uid : !remote.ready),
     [remote.ready, user],
   );
   const myPlaces = useMemo(() => discoveries.filter(canManagePlace), [discoveries, canManagePlace]);
@@ -903,7 +941,21 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
     setToast("Konum işareti kaldırıldı.");
   }, [geo]);
 
+  /**
+   * Misafir bir yazma eylemine kalkarsa: kısa bilgi + giriş/kayıt ekranı.
+   * Eylem geri alınmaz, sayfa durumu korunur; hesap açılınca kullanıcı aynı
+   * haritaya döner (T5: kayıt sonrası ilk değer için doğru zemin).
+   */
+  const askAccount = useCallback((intent: string, resume: PendingIntent = "none") => {
+    setToast(intent);
+    // T5: niyet hatırlanır; hesap açılınca kullanıcı aynı eyleme geri döner.
+    // Zaman damgasıyla: günler sonra açılan oturumda beklenmedik eylem başlamasın.
+    if (resume !== "none") storageSet(PENDING_INTENT_KEY, `${resume}|${Date.now()}`);
+    requireAccount(intent);
+  }, [requireAccount]);
+
   const startAdd = () => {
+    if (guest) { askAccount("İz eklemek için bir hesap aç ya da giriş yap.", "place"); return; }
     closePanels();
     setSpin(false);
     setDrawerOpen(false);
@@ -924,6 +976,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
     photo?: string;
   }) => {
     if (!draft) return;
+    if (guest) { askAccount("İz kaydetmek için bir hesap aç ya da giriş yap."); return; }
     const created = await cloud.addPlace({
       title: data.title,
       region: data.region,
@@ -1087,6 +1140,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
         onOpenRecords={openRecords}
         onOpenProfile={openProfile}
         onOpenNotifications={() => {
+          if (guest) { askAccount("Bildirimler için bir hesap aç ya da giriş yap."); return; }
           const next = !notificationsOpen;
           closePanels();
           setNotificationsOpen(next);
@@ -1155,7 +1209,10 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
           .mobile-walk-fab / .mobile-tab-add / .atlas-launcher. */}
       {!trackRecorderOpen && <button
         type="button"
-        onClick={() => setTrackRecorderOpen(true)}
+        onClick={() => {
+          if (guest) { askAccount("Yürüyüş kaydı için bir hesap aç ya da giriş yap."); return; }
+          setTrackRecorderOpen(true);
+        }}
         aria-label="Yürüyüş kaydını aç"
         title="Yürüyüş kaydı"
 
@@ -1188,8 +1245,8 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
       {trackRecorderOpen && (
         <Suspense fallback={null}>
           <TrackRecorderPanel
-            uid={user!.uid}
-            cloudAccount={user!.backend === "firebase"}
+            uid={user?.uid ?? ""}
+            cloudAccount={user?.backend === "firebase"}
             onClose={() => {
               setTrackRecorderOpen(false);
               // Panel kapanırken yarım kalan önizleme haritada kalmamalı (K-01).
@@ -1332,7 +1389,10 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
         resumeRoute={resumeRoute}
         dockExpanded={false}
         hiddenOnMobile={panelOpen}
-        onOpenRouteEditor={(route) => setRouteEditorRoute(route)}
+        onOpenRouteEditor={(route) => {
+          if (guest) { askAccount("Rota oluşturmak için bir hesap aç ya da giriş yap.", "route"); return; }
+          setRouteEditorRoute(route);
+        }}
         origin={{
           lat: precise?.lat ?? view.lat,
           lng: precise?.lng ?? view.lng,
@@ -1367,14 +1427,14 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
         onLoadMorePosts={cloud.loadMorePosts}
         onLoadMoreStories={cloud.loadMoreStories}
         clientId={cloud.clientId}
-        currentUid={user!.uid}
+        currentUid={user?.uid ?? ""}
         uploadPhoto={cloud.uploadPhoto}
-        onAddPost={cloud.addPost}
+        onAddPost={guest ? () => askAccount("Paylaşmak için bir hesap aç ya da giriş yap.", "feed") : cloud.addPost}
         onRemovePost={cloud.removePost}
-        onAddReply={cloud.addReply}
+        onAddReply={guest ? async () => { askAccount("Yanıt yazmak için bir hesap aç ya da giriş yap."); } : cloud.addReply}
         onLoadReplies={cloud.loadPostReplies}
-        onToggleLike={cloud.toggleLike}
-        onAddStory={cloud.addStory}
+        onToggleLike={guest ? async () => { askAccount("Beğenmek için bir hesap aç ya da giriş yap."); } : cloud.toggleLike}
+        onAddStory={guest ? () => askAccount("Hikâye paylaşmak için bir hesap aç ya da giriş yap.") : cloud.addStory}
         onRemoveStory={cloud.removeStory}
         blockedSet={blockedSet}
         isBlocked={isBlocked}
@@ -1685,7 +1745,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
 export default function Explorer({ installApp }: { installApp: InstallAppController }) {
   const { user } = useAuth();
   return (
-    <CollectionsProvider key={user!.uid}>
+    <CollectionsProvider key={user?.uid ?? "guest"}>
       <ExplorerScreen installApp={installApp} />
     </CollectionsProvider>
   );

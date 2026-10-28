@@ -49,11 +49,14 @@ export function isCloudAccount(backend: "firebase" | "device" | undefined): bool
 
 export function CollectionsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  const uid = user!.uid;
+  // Misafir (T4) hesabı yok ama haritayı kullanıyor: kayıtlar cihazda `guest`
+  // anahtarında tutulur, bulut zinciri hiç kurulmaz. Hesap açılınca anahtar
+  // `atlasia.member.<uid>` olur; misafir kayıtları hesaba karışmaz.
+  const uid = user?.uid ?? "guest";
   const prefix = `atlasia.member.${uid}`;
   // Karar (c) ayrımı: bulut hesabı `users/{uid}` altında eşitlenir,
   // cihaz hesabı bilinçli olarak cihazda kalır. (Madde 12)
-  const cloudCollections = isCloudAccount(user!.backend);
+  const cloudCollections = Boolean(user) && isCloudAccount(user!.backend);
   const [savedPlaces, setSavedPlaces] = useState<Place[]>(() => cloudCollections ? [] : read(`${prefix}.places`, []));
   const [savedRoutes, setSavedRoutes] = useState<AtlasRoute[]>(() => cloudCollections ? [] : read(`${prefix}.routes`, []));
   const [loading, setLoading] = useState(cloudCollections);

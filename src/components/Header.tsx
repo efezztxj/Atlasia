@@ -125,7 +125,7 @@ export default function Header({
             </span>
           )}
         </button>
-        <button type="button" onClick={onOpenProfile} aria-label={`${profileName}: profili aç`} title="Profilim" className="avatar-gold-ring pressable hidden size-11 md:grid">
+        <button type="button" onClick={onOpenProfile} aria-label={profileName ? `${profileName}: profili aç` : "Giriş yap ve hesabını aç"} title="Profilim" className="avatar-gold-ring pressable hidden size-11 md:grid">
           <span className="grid size-full place-items-center bg-ink-2 font-semibold text-sun">
             {profileName?.[0]?.toLocaleUpperCase("tr") ?? <UserRound size={18} />}
           </span>
