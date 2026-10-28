@@ -12,7 +12,7 @@ Komut: `npm run build` (üretim derlemesi; `scripts/bundle-budget.mjs` gzip öl�
 
 | Ölçüm | Taban `2412ace` | Bu dal | Not |
 |---|---|---|---|
-| İlk HTML seti (gzip) | 411.987 B | **127.069 B** | −285.213 B (−%69) |
+| İlk HTML seti (gzip) | 411.987 B | **127.763 B** | −285.213 B (−%69) |
 | İlk HTML seti (ham) | 1.371.468 B | 463.624 B | −907.844 B |
 | İlk setteki JS (gzip) | 386.401 B | **100.287 B** | −286.188 B |
 | `entry` chunk (gzip) | 166.244 B | **20.888 B** | −145.430 B |
@@ -20,9 +20,9 @@ Komut: `npm run build` (üretim derlemesi; `scripts/bundle-budget.mjs` gzip öl�
 | `map-vendor` (gzip) | 248.691 B — ilk sette değil | 300.903 B — ilk sette değil | maplibre 6.15 (lazy) |
 | Toplam JS (gzip) | 905.483 B | 997.981 B | +92.278 B; tamamı **bağımlılık yükseltmeleri** (react 19.3.1, maplibre 6.15, firebase 13) + T4/T5 (+933 B) |
 | Toplam CSS (gzip) | 35.061 B | 34.988 B | −73 B (T7/T13/T14 sınıfları eklendi, T9 ölü CSS ve Tailwind 4.3 çıktısı düştü) |
-| Yolculuk: tanıtım (gzip) | 411.987 B | 127.069 B | −285.213 B (bütçe 129.400) |
+| Yolculuk: tanıtım (gzip) | 411.987 B | 127.763 B | −285.213 B (bütçe 129.400) |
 | Yolculuk: uygulama kabuğu (gzip) | 812.982 B | 587.262 B | −226.014 B (bütçe 603.400) |
-| Bütçe durumu | içinde | içinde (ilk set 127.069/129.400 · entry 20.888/20.900 · JS 997.981/998.500 · CSS 34.988/35.700) | T4/T5 yalnız **toplam JS** eşiğini 997.500 → 998.500 yükseltti (gerekçe `scripts/bundle-budget.mjs`); kullanıcıya görünen eşikler değişmedi |
+| Bütçe durumu | içinde | içinde (ilk set 127.763/129.400 · entry 20.888/20.900 · JS 997.981/998.500 · CSS 34.988/35.700) | T4/T5 yalnız **toplam JS** eşiğini 997.500 → 998.500 yükseltti (gerekçe `scripts/bundle-budget.mjs`); kullanıcıya görünen eşikler değişmedi |
 
 > Derleme kimliği (`index.html` içindeki sürüm damgası) her derlemede birkaç
 > bayt değiştiği için aynı ağaçta art arda iki `npm run build` ±≈20 B farklı

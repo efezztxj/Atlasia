@@ -1,5 +1,14 @@
 # Atlasia Update
 
+## 2026-10-28 — JavaScript'siz içerik (T17)
+
+Ayrıntı: `docs/teslimatlar/teslimat-t17-noscript-2026-10-28.md`.
+
+- **Boş sayfa bitti:** `index.html` gövdesinde yalnız `<div id="root"></div>` vardı; JS engelli tarayıcıda sayfa tamamen boştu. Tanıtım metni (başlık, üç adım, iki SSS, "harita JavaScript gerektirir" notu) derleme sırasında `<noscript>` olarak gömülüyor.
+- **Neden prerender değil:** tam prerender + hidrasyon bu ortamda doğrulanamıyor (tarayıcı yok) ve `entry` marjı 12 B; `<noscript>` JS açıkken render edilmediği için CLS/LCP riski sıfır, hidrasyon gerektirmiyor.
+- **Tek kaynak + sürüklenme kilidi:** metin `src/content/landingStatic.ts`'te; `prerenderT17.test.ts` her dizenin `LandingPage.tsx`'te de geçtiğini doğrular, `index.html`'de kopya metin yasak.
+- **Bütçe:** eşik yükseltilmedi. İlk HTML seti 127.763 / 129.400 (+694 B gzip), JS paketleri ve `entry` (20.888 / 20.900) değişmedi. Testler **1271/1271** (157 dosya).
+
 ## 2026-10-28 — Footer yüzeyi (T18) ve SEO meta seti (T19)
 
 Ayrıntı: `docs/teslimatlar/teslimat-t18-t19-footer-seo-2026-10-28.md`.
