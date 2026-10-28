@@ -40,11 +40,11 @@ Plan sırası: `T1 → T2 → T3 → T12 → T11 → T7 → T4 → T5 → T8 →
 | Ölçüm | Değer | Eşik | Marj |
 |---|---|---|---|
 | İlk HTML seti (gzip) | 127.763 B | 129.400 B | 1.637 B |
-| Toplam JS (gzip) | 997.981 B | 998.500 B | **519 B** |
+| Toplam JS (gzip) | 998.004 B | 998.500 B | **519 B** |
 | Toplam CSS (gzip) | 34.988 B | 35.700 B | 712 B |
 | Tanıtım yolculuğu (gzip) | 127.763 B | 129.400 B | 1.637 B |
 | Uygulama kabuğu (gzip) | 587.262 B | 603.400 B | 16.138 B |
-| `entry` (bizim kod) | 20.888 B | 20.900 B | **12 B** |
+| `entry` (bizim kod) | 20.889 B | 20.900 B | **12 B** |
 
 Eşik kuralı: `scripts/bundle-budget.mjs` içindeki sayı **yalnız** yeni bir ölçüm
 ve yazılı gerekçeyle değişir; testi yeşile çevirmek için asla değişmez. #127'den

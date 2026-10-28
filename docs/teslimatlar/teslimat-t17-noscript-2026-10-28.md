@@ -32,8 +32,8 @@ güncellenmezse test kırılır — iki yerde farklı metin yayınlanamaz.
 ```text
 $ npm run build
 İlk HTML seti: 466.331 B ham / 127.763 B gzip (bütçe 129.400 B)
-Toplam JS: 3.302.659 B ham / 997.981 B gzip (bütçe 998.500 B)
-assets/index-CCl2T_ba.js | entry | 62.665 B | 20.888 B | evet
+Toplam JS: 3.302.659 B ham / 998.004 B gzip (bütçe 998.500 B)
+assets/index-CCl2T_ba.js | entry | 62.665 B | 20.889 B | evet
 Bundle bütçesi içinde.
 SW üretim kabuğu doğrulandı: 44/44 varlık kapsanıyor.
 ```
@@ -56,8 +56,8 @@ SW üretim kabuğu doğrulandı: 44/44 varlık kapsanıyor.
 | Ölçüm | Değer | Eşik | Marj |
 |---|---|---|---|
 | İlk HTML seti | **127.763** B gzip | 129.400 | 1.637 B |
-| `entry` (bizim kod) | 20.888 B gzip | 20.900 | **12 B** |
-| Toplam JS | 997.981 B gzip | 998.500 | 519 B |
+| `entry` (bizim kod) | 20.889 B gzip | 20.900 | **12 B** |
+| Toplam JS | 998.004 B gzip | 998.500 | 519 B |
 | İlk boya JS | 100.287 B gzip | 102.200 | 1.913 B |
 | Uygulama kabuğu | 587.262 B gzip | 603.400 | 16.138 B |
 
