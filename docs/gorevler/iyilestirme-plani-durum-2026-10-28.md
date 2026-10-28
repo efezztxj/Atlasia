@@ -4,7 +4,7 @@ Bu defter, "Atlasia — İyileştirme Planı" maddelerinin **sırasını ve duru
 tutar. Sıra bağımlılığa göredir: Faz 1 (dönüşüm) ölçüm olmadan başlamaz —
 "iyileşti mi?" sorusu hisle değil sayıyla yanıtlanır.
 
-**Son güncelleme:** 2026-10-28 · **Referans sürüm:** bu dal (T1–T3, T9, T13–T19, T10 kod tarafı + **T4/T5/T6/T7/T8** teslimatı)
+**Son güncelleme:** 2026-10-28 (akşam) · **Referans sürüm:** bu dal (T1–T3, T9, T13–T19, T10 kod tarafı + **T4/T5/T6/T7/T8** teslimatı)
 **Ölçüm tablosu:** `docs/baseline.md` · **Olay sözleşmesi:** `docs/olcum-ve-hata-izleme.md` §2b/§4b
 
 Plan sırası: `T1 → T2 → T3 → T12 → T11 → T7 → T4 → T5 → T8 → T9 → T6 → T10 → T13 → T14 → T15 → T16 → T18 → T19 → T20 → T21 → T17`
@@ -23,7 +23,7 @@ Plan sırası: `T1 → T2 → T3 → T12 → T11 → T7 → T4 → T5 → T8 →
 | T8 | Onboarding / ilk rota akışı | ✅ | `Onboarding.tsx` misafir notu + `askAccount(..., "route")`; panel `FIRST_ROUTE_KEY`'e bağlı; `onboarding_choice` olayı — `onboardingT8.test.ts` (8) |
 | T9 | Giriş ekranı sürtünmesi (önce Google) | ✅ | `AccountAccess.tsx` + `AccountAccess.t9.test.ts` (7 test) |
 | T10 | Görsel boru hattı (foto optimize) | 🟡 **kısmi — kod tarafı bitti** | 25 MB decode öncesi kapı, HEIC yönlendirmesi, `imageOrientation: "from-image"`, `decoding="async"`/`loading="lazy"` — `imagePipelineT10.test.ts` (7). Kalan: WebP/AVIF + sunucu tarvleri + gerçek cihaz süre ölçümü (onay/ölçüm ister) |
-| T11 | Firebase'i ilk setten çıkarma | ✅ | İlk boya JS **100.288 B** gzip; `firebase-vendor` ilk sette değil (`npm run build` tablosu) |
+| T11 | Firebase'i ilk setten çıkarma | ✅ | İlk boya JS **98.998 B** gzip; `firebase-vendor` ilk sette değil (`npm run build` tablosu) |
 | T12 | Kontrast düzeltmeleri (eyebrow/başlık) | ✅ | `#a37c35 → #8f6224` (4,66:1), `#ba8f45 → #9c7029` (3,86:1); `src/config/landingContrast.test.ts` |
 | T13 | Mobil menü (768 px altı) | ✅ | Hamburger + `role="dialog"` panel, Escape/Tab tuzağı/odak iadesi — `src/config/landingA11y.test.ts` |
 | T14 | Klavye: skip-link + `:focus-visible` | ✅ | "İçeriğe geç" → `#kesfet` (`tabIndex={-1}`); tek `:focus-visible` bloğu |
@@ -39,28 +39,33 @@ Plan sırası: `T1 → T2 → T3 → T12 → T11 → T7 → T4 → T5 → T8 →
 
 | Ölçüm | Değer | Eşik | Marj |
 |---|---|---|---|
-| İlk HTML seti (gzip) | 126.334 B | 129.400 B | 3.066 B |
-| Toplam JS (gzip) | 1.002.430 B | 1.003.000 B | **570 B** |
-| Toplam CSS (gzip) | 35.247 B | 35.700 B | 453 B |
-| Tanıtım yolculuğu (gzip) | 126.334 B | 129.400 B | 3.066 B |
-| Uygulama kabuğu (gzip) | 586.528 B | 603.400 B | 16.872 B |
-| `entry` (bizim kod) | 19.251 B | 20.900 B | **1.649 B** |
+| İlk HTML seti (gzip) | 126.954 B | 129.400 B | 2.446 B |
+| Toplam JS (gzip) | 990.802 B | 1.003.000 B | 12.198 B |
+| Toplam CSS (gzip) | 35.504 B | 35.700 B | 196 B |
+| İlk boya CSS (gzip) | 25.385 B | 26.100 B | 715 B |
+| İlk boya JS (gzip) | 98.998 B | 102.200 B | 3.202 B |
+| Tanıtım yolculuğu (gzip) | 126.954 B | 129.400 B | 2.446 B |
+| Uygulama kabuğu (gzip) | 579.438 B | 603.400 B | 23.962 B |
+| `entry` (bizim kod) | 16.578 B | 16.700 B | **122 B** |
+
+Ölçüm `main` (`ff35d7d`, Vite 8 / Rolldown) tabanlı dalda `npm run build` ile
+alındı; `firebase-vendor` ilk sette **değil** (T11).
 
 Eşik kuralı: `scripts/bundle-budget.mjs` içindeki sayı **yalnız** yeni bir ölçüm
 ve yazılı gerekçeyle değişir; testi yeşile çevirmek için asla değişmez. #127'den
 beri **bayatlama kapısı** var: sahibi olduğumuz eşikler ölçümün %20'sinden fazla
-üstünde olamaz. `entry` payı **2.012 B** — 2026-10-28'de SSS/footer ve rıza paneli tembel
-parçaya taşındı (`teslimat-t7-kritik-yol-2026-10-28.md`); pay 12 B'den 2,5 KB'ye
-çıktı ve toplam JS eşiği ölçüme bağlı olarak 1.001.000'e çekildi. Girişe yeni
-kod eklemeden önce yine `npm run build` ile ölçüm alın.
+üstünde olamaz. `entry` payı yalnız **122 B**: 2026-10-28'de SSS/footer ve rıza paneli tembel
+parçaya taşındı (`teslimat-t7-kritik-yol-2026-10-28.md`), Vite 8'e geçişte
+yeniden ölçüldü. Girişe yeni kod eklemeden önce `npm run build` ile ölçüm alın;
+bu pay dolduysa eşik **yükseltilmez**, kod tembel parçaya taşınır.
 
 
 ## 3. Dış kontrol durumu (2026-10-28, son tur)
 
 | Kontrol | Durum | Not |
 |---|---|---|
-| GitHub Actions CI | ✅ yeşil | Son commit `67475d7`: rules testleri, typecheck, lint, `npm test`, script testleri, build + bütçe |
-| Cloudflare Pages | ⚠️ aralıklı kırmızı | "Build failed", loglar yalnız dashboard oturumunda. Aynı içerikle `33f07cd` ve `a0346e8` geçti; `dcd7a7c` (T8/T18/T19'dan **önce**) de kırmızıydı → kod değişikliğinden bağımsız görünüyor. Yerel `npm run build` ve CI build adımı yeşil |
+| GitHub Actions CI | ✅ yeşil | `main` ile hizalanmış dal (`31c9cb6`): rules testleri, typecheck, lint, `npm test`, script testleri, build + bütçe |
+| Cloudflare Pages | ✅ yeşil | Aynı commit'te Pages derlemesi geçti (önceden aralıklı kırmızıydı, kod değişikliğinden bağımsızdı) |
 | Firestore emülatör testleri | ✅ CI'da | Bu ortamda Java/emülatör yok; `firestore.rules` değişmedi |
 
 ## 4. Açık kararlar (insan onayı ister)
