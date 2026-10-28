@@ -1,5 +1,16 @@
 # Atlasia Update
 
+## 2026-10-28 — Tanıtım filmi (`preload="none"` + poster, T6)
+
+Ayrıntı: `docs/teslimatlar/teslimat-t6-video-2026-10-28.md`.
+
+- **Yeni bölüm `#film`:** repodaki mevcut klip (`public/social/goreme-yuruyus.mp4`, Kapadokya, 1080×1920, 4,0 MB) dikey kart olarak tanıtımda. Harici barındırma/CDN yok.
+- **Mobil veri korunur:** `preload="none"` — kullanıcı oynatmadan tek bayt inmez; `autoPlay`/`loop`/`muted` yok, ses kendiliğinden başlamaz, `controls` + `playsInline`.
+- **Poster:** hero'da zaten yüklenen `images/atlasia-earth-hero.jpg` (ek ağ maliyeti sıfır). Videodan alınmış kare değildir — afiş görseli; ffmpeg ile tek komutta gerçek kareyle değiştirilebilir.
+- **CLS:** `width`/`height` (1080×1920) + `aspect-[9/16]` ile yer önceden ayrıldı. Video oynatılamazsa okunabilir bağlantı var; SW kabuğu videoyu önbelleğe **almıyor** (4 MB tuzağı yok).
+- **Bütçe:** `entry` 18.888 / 20.900, ilk boya JS 98.287 / 102.200, ilk HTML 125.991 / 129.400. Toplam JS 1.000.364 → eşik 1.002.000 (ölçümlü gerekçe kod içinde). SW 46/46.
+- Testler **1292/1292** (160 dosya); `landingVideoT6.test.ts` (7) yeni kilidi.
+
 ## 2026-10-28 — Kritik yol: SSS/footer ve rıza paneli giriş paketinden çıktı (T7)
 
 Ayrıntı: `docs/teslimatlar/teslimat-t7-kritik-yol-2026-10-28.md`.

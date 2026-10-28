@@ -1,6 +1,13 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { BUNDLE_BUDGET } from "../../scripts/bundle-budget.mjs";
+
+// `scripts/bundle-budget.mjs` tipli değil; eşikleri metinden okuruz.
+const budgetSource = readFileSync("scripts/bundle-budget.mjs", "utf8");
+const threshold = (key: string): number => {
+  const match = budgetSource.match(new RegExp(`${key}\\s*:\\s*([0-9_]+)`));
+  if (!match) throw new Error(`bütçe anahtarı bulunamadı: ${key}`);
+  return Number(match[1].replace(/_/g, ""));
+};
 
 /**
  * T7 uzantısı — kritik yol sözleşmesi.
@@ -40,12 +47,13 @@ describe("T7 · kritik yol", () => {
   });
 
   it("eşikler ölçüme bağlı: giriş payı ölçümün üstünde ama %20'den yakın", () => {
-    const entry = BUNDLE_BUDGET.categoryGzipBytes.entry;
-    // Ölçüm (npm ci + npm run build, 2026-10-28): 18.344 B.
-    expect(entry).toBeGreaterThanOrEqual(18_344);
-    expect(entry).toBeLessThan(18_344 * 1.2);
-    // Toplam JS eşiği de ölçüme (999.785 B) bağlı kalmalı.
-    expect(BUNDLE_BUDGET.totalJsGzipBytes).toBeGreaterThanOrEqual(999_785);
-    expect(BUNDLE_BUDGET.totalJsGzipBytes).toBeLessThan(999_785 * 1.2);
+    // Ölçüm (npm ci + npm run build, 2026-10-28): entry 18.888 B.
+    const entry = threshold("entry");
+    expect(entry).toBeGreaterThanOrEqual(18_888);
+    expect(entry).toBeLessThan(18_888 * 1.2);
+    // Toplam JS eşiği de ölçüme (1.000.364 B) bağlı kalmalı.
+    const total = threshold("totalJsGzipBytes");
+    expect(total).toBeGreaterThanOrEqual(1_000_364);
+    expect(total).toBeLessThan(1_000_364 * 1.2);
   });
 });

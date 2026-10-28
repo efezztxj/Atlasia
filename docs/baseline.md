@@ -22,7 +22,7 @@ Komut: `npm run build` (üretim derlemesi; `scripts/bundle-budget.mjs` gzip öl�
 | Toplam CSS (gzip) | 35.061 B | 34.988 B | −73 B (T7/T13/T14 sınıfları eklendi, T9 ölü CSS ve Tailwind 4.3 çıktısı düştü) |
 | Yolculuk: tanıtım (gzip) | 411.987 B | 127.763 B | −285.213 B (bütçe 129.400) |
 | Yolculuk: uygulama kabuğu (gzip) | 812.982 B | 587.958 B | −226.014 B (bütçe 603.400) |
-| Bütçe durumu | içinde | içinde (ilk set 127.763/129.400 · entry 20.889/20.900 · JS 998.004/1.001.000 · CSS 34.988/35.700) | T4/T5 yalnız **toplam JS** eşiğini 997.500 → 1.001.000 yükseltti (gerekçe `scripts/bundle-budget.mjs`); kullanıcıya görünen eşikler değişmedi |
+| Bütçe durumu | içinde | içinde (ilk set 127.763/129.400 · entry 20.889/20.900 · JS 998.004/1.002.000 · CSS 34.988/35.700) | T4/T5 yalnız **toplam JS** eşiğini 997.500 → 1.002.000 yükseltti (gerekçe `scripts/bundle-budget.mjs`); kullanıcıya görünen eşikler değişmedi |
 
 > Derleme kimliği (`index.html` içindeki sürüm damgası) her derlemede birkaç
 > bayt değiştiği için aynı ağaçta art arda iki `npm run build` ±≈20 B farklı

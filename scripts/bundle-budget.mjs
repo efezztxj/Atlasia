@@ -126,7 +126,16 @@ export const BUNDLE_BUDGET = Object.freeze({
   // bu, kullanıcıya **daha hızlı ilk boya** karşılığında ödenen ~1,7 KB'dir;
   // indirilen toplam bayt artmaz (aynı kod, farklı zaman). Eşik bu ölçüme göre
   // 1.001.000'e çekildi: pay 1.215 B (%0,12), bayatlama kapısı rahat.
-  totalJsGzipBytes: 1_001_000,
+  //
+  // 2026-10-28 (T6 tanıtım filmi) — aynı gün ikinci ölçüm:
+  //   entry          18.344 -> **18.888**  (+544)  · eşik 20.900 (değişmedi)
+  //   ilk boya JS    97.743 -> **98.287**  (+544)  · eşik 102.200 (değişmedi)
+  //   ilk HTML seti 125.351 -> **125.991** (+640)  · eşik 129.400 (değişmedi)
+  //   toplam JS     999.785 -> **1.000.364** (+579) · eşik -> 1.002.000
+  // Video dosyası (4 MB) **JS paketine girmez**: `preload="none"` + poster,
+  // yalnız kullanıcı oynatınca iner; SW kabuğu da `/social/` yolunu kapsamaz.
+  // Pay 1.636 B; sıradaki landing işi yine ölçümle başlamalı.
+  totalJsGzipBytes: 1_002_000,
   totalCssGzipBytes: 35_700,
   initialGzipBytes: 129_400,
   // İlk HTML ile gelen gerçek ilk boya maliyeti (lazy chunk'lar hariç).

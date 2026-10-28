@@ -36,6 +36,7 @@ const TRUST = [
 const MENU_LINKS = [
   { href: "#kesfet", label: "Keşfet" },
   { href: "#nasil", label: "Nasıl çalışır?" },
+  { href: "#film", label: "Tanıtım filmi" },
   { href: "#sss", label: "Sık sorulanlar" },
 ] as const;
 
@@ -241,6 +242,51 @@ export default function LandingPage({ onStart }: Props) {
             <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-6"><Headphones className="text-leaf" size={25} /><h3 className="mt-8 font-display text-2xl font-semibold">Yerinde anlatım</h3><p className="mt-3 text-[13px] leading-6 text-mint/60">Konum izni senin kontrolünde. Ses yalnızca dinlemeyi seçtiğinde başlar.</p></div>
             <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-6 sm:translate-y-8"><MapPin className="text-leaf" size={25} /><h3 className="mt-8 font-display text-2xl font-semibold">Gezgin izleri</h3><p className="mt-3 text-[13px] leading-6 text-mint/60">Kendi keşfini bırak, daha sonra İzlerim bölümünden yönet.</p></div>
             <div id="guven" className="rounded-[28px] border border-white/10 bg-white/[0.04] p-6"><ShieldCheck className="text-sun" size={25} /><h3 className="mt-8 font-display text-2xl font-semibold">Kontrol sende</h3><p className="mt-3 text-[13px] leading-6 text-mint/60">Konum, mikrofon veya ses kendiliğinden açılmaz. Her kritik işlem açık onay ister.</p></div>
+          </div>
+        </div>
+      </section>
+
+
+      {/* T6 — tanıtım filmi. `preload="none"`: video yalnız kullanıcı oynatınca
+          iner (4 MB mobil veri harcamaz). Poster, hero'da zaten yüklenen marka
+          görselidir (ek ağ maliyeti yok, SW kabuğunda da önbellekte).
+          Otomatik oynatma ve ses yok; genişlik/yükseklik CLS için yazılı. */}
+      <section id="film" aria-labelledby="film-title" className="border-t border-[#173c37]/10 bg-[#f1f0e9] px-5 py-16 text-[#102b2a] md:px-10 md:py-24 lg:px-16">
+        <div className="mx-auto grid max-w-[1280px] gap-10 lg:grid-cols-[1fr_auto] lg:items-center">
+          <div className="max-w-[560px]">
+            <p className="text-[10px] font-semibold tracking-[0.28em] text-[#8f6224] uppercase">Tanıtım filmi</p>
+            <h2 id="film-title" className="font-display mt-4 text-[clamp(30px,4vw,52px)] leading-[1.02] font-semibold tracking-[-0.04em]">
+              Bir sırt, bir sabah,<br />bir iz.
+            </h2>
+            <p className="mt-5 text-[15px] leading-7 text-[#36504c]">
+              Kapadokya'da Aşk Vadisi sırtı: araba yok, sadece yürüyorsun. Klip 45 saniye;
+              video yalnız oynat dediğinde iner.
+            </p>
+            <p className="mt-3 text-[13px] leading-6 text-[#49615d]">
+              Ses kapalı başlar. Otomatik oynatma yok, arka planda indirme yok.
+            </p>
+            <a
+              href="/social/goreme-yuruyus.mp4"
+              className="mt-6 inline-flex min-h-[44px] items-center gap-2 border border-[#173c37]/25 px-5 text-[13px] font-semibold transition hover:border-[#173c37] hover:bg-[#173c37] hover:text-[#f1f0e9]"
+            >
+              Videoyu ayrı aç
+            </a>
+          </div>
+          <div className="mx-auto w-full max-w-[300px] lg:mx-0">
+            <video
+              className="aspect-[9/16] w-full rounded-[24px] border border-[#173c37]/15 bg-[#031b18] object-cover shadow-xl"
+              controls
+              playsInline
+              preload="none"
+              poster="/images/atlasia-earth-hero.jpg"
+              width={1080}
+              height={1920}
+              aria-label="Kapadokya Aşk Vadisi yürüyüşü tanıtım filmi"
+            >
+              <source src="/social/goreme-yuruyus.mp4" type="video/mp4" />
+              Tarayıcın videoyu oynatamıyor. Klibi{" "}
+              <a href="/social/goreme-yuruyus.mp4">doğrudan açabilirsin</a>.
+            </video>
           </div>
         </div>
       </section>
