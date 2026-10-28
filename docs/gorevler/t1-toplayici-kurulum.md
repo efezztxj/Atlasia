@@ -12,67 +12,37 @@
   için yeterli (günlük 100 B satır / 1M yazma). Kota aşılırsa toplayıcı 204
   döner, istemci hiçbir şey kaybetmez (olaylar zaten "best effort").
 
-## 1. Toplayıcı Worker (yaklaşık 40 satır)
+## 1. Toplayıcı Worker
 
-`wrangler.toml`:
+Çalışan, testli kaynak ve Analytics Engine şema sözleşmesi
+[`workers/telemetry/`](../../workers/telemetry/) içindedir. Eski kopyala-yapıştır
+örneği yerine bu klasördeki Worker'ı kullan: istemcinin `at` zaman damgasını
+okur, olay özelliklerini allowlist ile doğrular, PII/serbest metni ve hata
+ayrıntılarını saklamaz.
 
-```toml
-name = "atlasia-telemetry"
-main = "src/index.js"
-compatibility_date = "2026-10-01"
+1. Cloudflare hesabında doğru proje/hesapla oturum açıldığını doğrula:
+   `npx --yes wrangler@4.154.0 whoami`.
+2. `workers/telemetry/wrangler.toml` içindeki `ALLOWED_ORIGINS` değerini gerçek
+   Pages üretim kökeniyle (gerekirse açıkça izin verilen preview kökenleriyle)
+   güncelle. CORS bir anti-abuse kontrolü değildir; Worker URL'si herkese açıktır.
+3. Repo kökünden dağıt:
 
-[[analytics_engine_datasets]]
-binding = "EVENTS"
-dataset = "atlasia_events"
-```
+   ```bash
+   npx --yes wrangler@4.154.0 deploy --config workers/telemetry/wrangler.toml
+   ```
 
-`src/index.js` — yalnız şemayı doğrular, kişisel veri kabul etmez:
+4. Çıktıdaki `workers.dev` adresini Pages değişkenine koy. Token'ı repo veya
+   sohbete koyma; Wrangler'ı operatör kendi Cloudflare oturumuyla çalıştırır.
 
-```js
-const ALLOWED = new Set([
-  "app_open", "session_start", "cta_click", "map_open", "onboarding_choice",
-  "signup_start", "signup_complete", "sign_in", "place_created", "route_published",
-  "first_route_created", "audio_guide_start", "post_created", "share",
-  "offline_pack", "report_created", "consent_choice",
-]);
-const MAX_BODY = 4096;
-
-export default {
-  async fetch(request, env) {
-    if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors() });
-    if (request.method !== "POST") return new Response("method", { status: 405 });
-    const body = await request.text();
-    if (body.length > MAX_BODY) return new Response("too large", { status: 413 });
-    let records;
-    try { records = JSON.parse(body); } catch { return new Response("json", { status: 400 }); }
-    if (!Array.isArray(records)) return new Response("shape", { status: 400 });
-    for (const r of records) {
-      if (!r || typeof r.name !== "string" || !ALLOWED.has(r.name)) continue;
-      env.EVENTS.writeDataPoint({
-        blobs: [r.name, String(r.path ?? "/").slice(0, 120)],
-        doubles: [Number(r.ts) || Date.now()],
-        indexes: [r.name], // huni sorgularında filtre
-      });
-    }
-    return new Response(null, { status: 204, headers: cors() });
-  },
-};
-
-function cors() {
-  return {
-    "access-control-allow-origin": "https://atlasia.pages.dev",
-    "access-control-allow-methods": "POST, OPTIONS",
-    "access-control-allow-headers": "content-type",
-    "cache-control": "no-store",
-  };
-}
-```
-
-Yayına alma:
+Worker'ın sözleşme testleri çevrimdışı çalışır:
 
 ```bash
-npx wrangler deploy            # https://atlasia-telemetry.<hesap>.workers.dev
+npm run test:telemetry-worker
 ```
+
+> Bu ajan oturumunda Cloudflare API kimliği bulunmadığı için Worker burada
+> deploy edilmedi. `wrangler deploy` yalnız operatörün yetkili Cloudflare
+> oturumunda çalıştırılmalıdır.
 
 ## 2. Pages ortam değişkeni
 
@@ -103,9 +73,10 @@ npm run build && curl -s https://<deploy>/assets/*.js | grep -c atlasia-telemetr
 #    → >0: uç nokta pakete gömülmüş
 ```
 
-KVKK kontrolü (elle, 1 dakika): gönderilen gövdede yalnız `name`, `path`, `ts`,
-`sessionId` (sekmeye bağlı, hesapla eşlenmez) ve olay alanları bulunur —
-`docs/olcum-ve-hata-izleme.md` §1 listesi.
+KVKK kontrolü (elle, 1 dakika): istemci gövdesinde `name`, `path`, `at`,
+`sessionId` (sekmeye bağlı, hesapla eşlenmez), sürüm ve olay özellikleri bulunur.
+Worker yalnız README'deki sabit kolonlara allowlist alanlarını yazar; hata ayrıntısı,
+serbest metin ve bilinmeyen alanlar atılır — `docs/olcum-ve-hata-izleme.md` §1.
 
 ## 4. Huni sorguları (Analytics Engine → SQL)
 
@@ -117,23 +88,29 @@ WHERE timestamp > NOW() - INTERVAL '7' DAY
   AND blob1 IN ('cta_click', 'map_open', 'onboarding_choice', 'signup_start', 'signup_complete')
 GROUP BY event ORDER BY n DESC;
 
--- Misafir mi üye mi harita açtı
-SELECT blob1 AS event, count() AS n
+-- Landing CTA yerleşimlerine göre kırılım
+SELECT blob4 AS placement, count() AS n
+FROM atlasia_events
+WHERE timestamp > NOW() - INTERVAL '7' DAY AND blob1 = 'cta_click'
+GROUP BY placement ORDER BY n DESC;
+
+-- Misafir / oturumlu harita açılışı (double3: 1=true, 0=false)
+SELECT double3 AS guest, count() AS n
 FROM atlasia_events
 WHERE timestamp > NOW() - INTERVAL '7' DAY AND blob1 = 'map_open'
-GROUP BY event;
+GROUP BY guest;
 ```
 
-Not: `map_open` yük alanı (`guest`) bugün Analytics Engine'e yazılmıyor; alan
-eklemek istersen `blobs` dizisine üçüncü eleman olarak koy — istemci tarafında
-değişiklik **gerekmez** (`TelemetryRecord` zaten `props` taşıyor).
+Analytics Engine alan sırası ve boolean `-1` sentineli için
+[`workers/telemetry/README.md`](../../workers/telemetry/README.md)'e bak.
 
 ## 5. Durum
 
 | Adım | Durum |
 |---|---|
 | İstemci kodu (tipli olaylar, rıza kapısı, gövde şeması) | ✅ bu depoda |
-| Toplayıcı Worker | ⛔ operatörde (yukarıdaki 40 satır) |
+| Toplayıcı Worker kodu/testi | ✅ `workers/telemetry/` |
+| Worker deploy'u ve Analytics Engine binding | ⛔ operatör Cloudflare hesabında |
 | Pages `VITE_TELEMETRY_ENDPOINT` | ⛔ operatörde |
 | Panel/huni görünümü | ⛔ operatörde (§4 SQL veya Plausible köprüsü) |
 

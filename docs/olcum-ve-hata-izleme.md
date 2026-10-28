@@ -122,9 +122,10 @@ Alan adları `src/lib/analytics.ts` içindeki tiplerin **birebir** karşılığ�
 
 ## 5b. T1 durumu — panel kuruldu mu?
 
-**Hayır.** Bu depoda panel/hesap açılmadı; dış servis kimlik bilgisi yok. Kod
-tarafı hazır: olaylar tipli, rıza kapılı ve gövde şeması sabit. Panel için iki
-yol var, ikisi de kod değişikliği gerektirmez:
+**Hayır.** Panel/hesap henüz açılmadı; Worker kaynak kodu ve şema testleri
+[`workers/telemetry/`](../workers/telemetry/) içinde hazır, ancak Cloudflare
+hesabına deploy edilmedi ve Pages uç noktası tanımlı değil. Kod tarafı: olaylar
+tipli, rıza kapılı ve Worker allowlist'iyle doğrulanır. Panel için iki yol var:
 
 1. **Kendi toplayıcın + panel** (önerilen): Cloudflare Worker → Analytics Engine
    (veya D1) → küçük bir okuma sayfası. Huni tanımları `docs/baseline.md` §4'te.
@@ -154,4 +155,4 @@ npx vitest run src/lib/telemetry.test.ts src/lib/analytics.test.ts src/lib/telem
   satır/kolon çözümü için ileride harita yükleme (özel, kimlik doğrulamalı) gerekir.
 - **Çevrimdışı kuyruk yok.** Ağ yoksa kayıt kaybolur (kullanıcı akışını bloke etmemek için bilinçli).
 - **Kayıt düzeyi kullanıcıya ait değil:** oturum kimliği sekmeye bağlıdır, hesapla eşlenmez.
-- **Toplayıcı tarafı bu depoda yok.** Uç nokta senin kontrolünde olmalı; varsayılan olarak kapalıdır.
+- **Toplayıcı henüz deploy edilmedi.** Kaynak [`workers/telemetry/`](../workers/telemetry/) içinde; uç nokta operatör hesabında deploy edilip Pages `VITE_TELEMETRY_ENDPOINT` tanımlanana kadar ağ kapalıdır.
