@@ -37,7 +37,9 @@ describe("App kapısı", () => {
     render(createElement(App));
 
     await waitFor(() => expect(screen.getByRole("button", { name: /Dünyayı keşfet/i })).toBeTruthy());
-    expect(screen.getByRole("heading", { level: 1, name: /atlasia/i })).toBeTruthy();
+    // T14: sayfadaki tek h1 slogandır; `atlasia.` dekoratif bir wordmark (aria-hidden).
+    expect(screen.getByRole("heading", { level: 1, name: /Dünyayı merakınla keşfet/i })).toBeTruthy();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(screen.queryByRole("status", { name: "Harita hazırlanıyor" })).toBeNull();
   });
 });

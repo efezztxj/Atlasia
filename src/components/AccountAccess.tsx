@@ -10,6 +10,7 @@ import { authConfigured, authErrorMessage, getAtlasAuth, requestPasswordReset, s
 import { AccountError, isValidEmail, normalizeEmail, passwordRules, validPassword } from "../lib/accountTypes";
 import { checkPwnedPassword, estimatePasswordStrength, type PasswordExposure } from "../lib/passwordSecurity";
 import { resetDevicePassword } from "../lib/deviceAccounts";
+import { analytics } from "../lib/analytics";
 // Kullanım koşulları/gizlilik metni yalnız ilgili bağlantıya basılınca açılır;
 // ~19 KB'lik metin giriş ekranının başlangıç paketinde durmaz.
 const LegalNotice = lazy(() => import("./LegalNotice"));
@@ -111,6 +112,10 @@ function PasswordField({ id, label = "Şifre", value, onChange, error, fresh = f
 export default function AccountAccess() {
   const { backend, checking, error: sessionError, login, signup } = useAuth();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
+  // T2 huni adımı: kayıt formu ilk kez açıldığında bir kez sayılır.
+  useEffect(() => {
+    if (mode === "signup") analytics.signupStart();
+  }, [mode]);
   const [screen, setScreen] = useState<Screen>("credentials");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -222,7 +227,12 @@ export default function AccountAccess() {
         else sessionStorage.removeItem("atlasia.pendingName");
       } catch { /* Optional display name. */ }
     }
-    await task(provider, async () => { await signInSocial(provider); });
+    await task(provider, async () => {
+      const credential = await signInSocial(provider);
+      // Yönlendirmeli akışta sonuç burada dönmez (null); o durumda sayım
+      // yapılmaz, oturum açılışı bir sonraki açılışta `session_start` ile görünür.
+      if (credential) analytics.signIn({ account: "cloud", method: provider });
+    });
   };
 
   const reset = async (event: FormEvent) => {

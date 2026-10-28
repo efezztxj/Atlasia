@@ -18,6 +18,14 @@
 - **Bütçe kararı (maintainer):** kod bölünmesinin chunk başına küçük tekrar yükü toplam JS'i 906.447 → 908.855 bayta çıkardı; ilk boyadaki −297 KB kazanca karşılık toplam JS bütçesi 908.000 → **909.500** olarak güncellendi. İlk boya ve yolculuk bütçeleri değişmedi.
 - Çakışma çözümleri: bütçe testlerinde iki tarafın testleri de korundu; `uiSurface`/`siteSurface` testleri `Explorer.tsx`'i de kaynak sayar.
 
+## 2026-10-28 — Ölçüm tabanı: huni olayları ve baseline (T1–T3)
+
+Ayrıntı: `docs/teslimatlar/teslimat-t1-t2-t3-olcum-2026-10-28.md`.
+
+- **T2 — Huni olayları:** `cta_click{placement}`, `map_open{guest}`, `signup_start`, `signup_complete{method}`, `first_route_created`, `audio_guide_start`, `consent_choice` eklendi (10 → 16 olay). Landing'in dört CTA'sı yerleşim adıyla sayılıyor; `sign_up` adı `signup_complete` oldu. Tüm olaylar sabit enum/boolean taşır, rıza kapısı aynen geçerli.
+- **T3 — Baseline:** `docs/baseline.md` eklendi (paket ölçümleri dolu; Lighthouse/CWV/Search Console satırları "ölçülmedi" olarak işaretli, ölçüm komutlarıyla).
+- **T1 — Durum:** panel/hesap açılmadı (dış servis kimliği yok); toplayıcı seçenekleri ve tek zorunlu adım (`VITE_TELEMETRY_ENDPOINT`) `docs/olcum-ve-hata-izleme.md` §5b'de.
+- Toplam JS 908.149 B gzip; eşik 908.000 → 909.000 (gerekçe aynı dosyada). Typecheck, lint, 1129 test, build ve SW kabuğu yeşil.
 
 ## 2026-10-28 — Landing hızlı kazançları: Firebase ilk setten çıktı, kontrast ve çerez yerleşimi
 
