@@ -23,7 +23,7 @@ Plan sırası: `T1 → T2 → T3 → T12 → T11 → T7 → T4 → T5 → T8 →
 | T8 | Onboarding / ilk rota akışı | ✅ | `Onboarding.tsx` misafir notu + `askAccount(..., "route")`; panel `FIRST_ROUTE_KEY`'e bağlı; `onboarding_choice` olayı — `onboardingT8.test.ts` (8) |
 | T9 | Giriş ekranı sürtünmesi (önce Google) | ✅ | `AccountAccess.tsx` + `AccountAccess.t9.test.ts` (7 test) |
 | T10 | Görsel boru hattı (foto optimize) | ⛔ bekliyor | gerçek tarayıcı/cihaz ölçümü ister |
-| T11 | Firebase'i ilk setten çıkarma | ✅ | İlk boya JS **100.287 B** gzip; `firebase-vendor` ilk sette değil (`npm run build` tablosu) |
+| T11 | Firebase'i ilk setten çıkarma | ✅ | İlk boya JS **100.288 B** gzip; `firebase-vendor` ilk sette değil (`npm run build` tablosu) |
 | T12 | Kontrast düzeltmeleri (eyebrow/başlık) | ✅ | `#a37c35 → #8f6224` (4,66:1), `#ba8f45 → #9c7029` (3,86:1); `src/config/landingContrast.test.ts` |
 | T13 | Mobil menü (768 px altı) | ✅ | Hamburger + `role="dialog"` panel, Escape/Tab tuzağı/odak iadesi — `src/config/landingA11y.test.ts` |
 | T14 | Klavye: skip-link + `:focus-visible` | ✅ | "İçeriğe geç" → `#kesfet` (`tabIndex={-1}`); tek `:focus-visible` bloğu |
@@ -43,7 +43,7 @@ Plan sırası: `T1 → T2 → T3 → T12 → T11 → T7 → T4 → T5 → T8 →
 | Toplam JS (gzip) | 998.004 B | 998.500 B | **519 B** |
 | Toplam CSS (gzip) | 34.988 B | 35.700 B | 712 B |
 | Tanıtım yolculuğu (gzip) | 127.763 B | 129.400 B | 1.637 B |
-| Uygulama kabuğu (gzip) | 587.262 B | 603.400 B | 16.138 B |
+| Uygulama kabuğu (gzip) | 587.958 B | 603.400 B | 16.138 B |
 | `entry` (bizim kod) | 20.889 B | 20.900 B | **12 B** |
 
 Eşik kuralı: `scripts/bundle-budget.mjs` içindeki sayı **yalnız** yeni bir ölçüm
