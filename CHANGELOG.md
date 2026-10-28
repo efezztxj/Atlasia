@@ -1,5 +1,15 @@
 # Atlasia Update
 
+## 2026-10-28 — Footer yüzeyi (T18) ve SEO meta seti (T19)
+
+Ayrıntı: `docs/teslimatlar/teslimat-t18-t19-footer-seo-2026-10-28.md`.
+
+- **Çerez tercihleri landing'den geri alınabiliyor:** footer'ın "Yasal" nav'ına eklendi; var olan rıza panelini (`atlasia:cookie-preferences`) açar. Yeni bağımlılık yok.
+- **Dil açıkça yazılı:** footer'da "Site dili: Türkçe (tr)" (`lang="tr"`). İkinci yerel ayar olmadığı için **sahte dil seçici yazılmadı**; `<html lang>`, `hreflang="tr"` ve `x-default` aynı şeyi söyler.
+- **SEO:** `canonical`, `robots: index, follow, max-image-preview:large`, `hreflang` + `x-default` eklendi; `sitemap.xml` `lastmod` 2026-10-28'e çekildi. Yapısal veri (Organization/WebSite/WebApplication) korundu, doğrulanamayan puan/oylama yok.
+- **Bütçe:** eşik **yükseltilmedi**. Toplam JS 997.981 / 998.500, ilk boya JS 100.287 / 102.200, ilk HTML seti 127.069 / 129.400, `entry` 20.888 / 20.900 → **marj 12 B**; landing'e dokunacak sıradaki işin önce ölçüm alması ve gerekirse footer'ı tembel parçaya taşıması gerekiyor.
+- Testler **1262/1262** (155 dosya; T18 3 + T19 6 yeni), typecheck/lint/build/`test:scripts`/`audit:check` yeşil.
+
 ## 2026-10-28 — Karşılama paneli (T8): misafir ayrımı, ilk rota kapısı, ölçüm
 
 Ayrıntı: `docs/teslimatlar/teslimat-t8-onboarding-2026-10-28.md`.
