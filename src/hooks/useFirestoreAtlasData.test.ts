@@ -233,6 +233,38 @@ describe("useFirestoreAtlasData orkestrasyonu", () => {
     expect(h.viewportSubs).toEqual([]);
   });
 
+  it("misafir (T4): sahip aboneliği kurulmaz, genel okumalar sürer ve hazır olur", () => {
+    const { result } = renderData({ uid: "", guest: true });
+    advanceViewport();
+
+    // Yazma zaten kapıda; sahip sorgusu da hiç açılmaz.
+    expect(h.ownedSubs).toEqual([]);
+    expect(h.postSubs).toHaveLength(1);
+    expect(h.storySubs).toHaveLength(1);
+    expect(h.overviewSubs.length + h.viewportSubs.length).toBeGreaterThan(0);
+    expect(result.current.ready).toBe(false);
+
+    // Üç genel kaynak yüklenince misafir haritası hazır olur (sahip beklenmez).
+    act(() => {
+      h.overviewSubs[0]?.onChange([place("misafir-yer", NOW)]);
+      h.postSubs[0]?.onChange({ items: [], cursor: null, hasMore: false });
+      h.storySubs[0]?.onChange({ items: [], cursor: null, hasMore: false, cutoffMs: NOW - 86_400_000 });
+    });
+    expect(result.current.ready).toBe(true);
+    expect(result.current.places).toHaveLength(1);
+  });
+
+  it("misafir yazmaya kalkarsa veri katmanı reddeder", async () => {
+    const { result } = renderData({ uid: "", guest: true });
+    advanceViewport();
+    await expect(result.current.addPlace({
+      title: "x", region: "y", category: "history", lng: 1, lat: 1, note: "", author: "m",
+    })).rejects.toThrow(/Misafir/);
+    await expect(result.current.toggleLike("p1")).rejects.toThrow(/Misafir/);
+    expect(h.addPlace).not.toHaveBeenCalled();
+    expect(h.togglePostLike).not.toHaveBeenCalled();
+  });
+
   it("dört kaynak yüklenince ready olur; yerleri kimlikle birleştirip yeniye sıralar", () => {
     const { result } = renderData();
 

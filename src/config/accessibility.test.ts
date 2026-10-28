@@ -1,6 +1,6 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { WCAG_AA_NORMAL, alphaTextContrast, contrastRatio, minimumAaOpacity, parseHex } from "../utils/contrast";
+import { WCAG_AA_NORMAL, alphaTextContrast, composite, contrastRatio, minimumAaOpacity, parseHex } from "../utils/contrast";
 
 /**
  * P18 erişilebilirlik kilidi. Renkler src/index.css'teki token'lardan okunur.
@@ -25,7 +25,7 @@ const midnightStart = css.indexOf('html[data-theme="midnight"] {');
 const midnightBlock = css.slice(midnightStart, css.indexOf("}", midnightStart));
 const THEMES = {
   dark: { mint: token(themeBlock, "mint"), panel: token(themeBlock, "ink-2"), page: token(themeBlock, "ink") },
-  light: { mint: token(lightBlock, "mint"), panel: token(lightBlock, "ink-2"), page: token(lightBlock, "ink") },
+  light: { mint: token(lightBlock, "mint"), panel: token(lightBlock, "ink-2"), page: token(lightBlock, "ink"), leaf: token(lightBlock, "leaf") },
   midnight: { mint: token(midnightBlock, "mint"), panel: token(midnightBlock, "ink-2"), page: token(midnightBlock, "ink") },
 };
 
@@ -138,5 +138,68 @@ describe("P18 regresyon kilidi", () => {
     const opened = (before.match(/@layer[^{]*\{/g) ?? []).length;
     expect(opened).toBe(0);
     expect(css.slice(at, at + 80)).toMatch(/outline:\s*3px solid var\(--color-sun\)/);
+  });
+});
+
+/**
+ * P19 — Açık temada yıkıcı eylemler ve üst çubuk sayacı.
+ * Ölçüm (canlı, açık tema): "Hesaptan çık" 1.39:1, "Hesabımı ve verilerimi sil"
+ * 1.34:1, "İz bırak" aktif durumu 3.11:1, keşif sayacı 3.79:1.
+ */
+describe("P19 açık tema yıkıcı eylem katmanı", () => {
+  const start = css.indexOf("/* P19-LIGHT-DANGER:start");
+  const end = css.indexOf("/* P19-LIGHT-DANGER:end */");
+  const layer = css.slice(start, end);
+
+  it("katman mevcut ve açık temaya kilitli", () => {
+    expect(start).toBeGreaterThan(-1);
+    expect(end).toBeGreaterThan(start);
+    for (const rule of layer.match(/^html\[data-theme="light"\][^{]*\{/gm) ?? []) {
+      expect(rule).toContain('data-theme="light"');
+    }
+    expect(layer).not.toMatch(/^html\[data-theme="dark"\]/m);
+  });
+
+  it("bileşenlerde kullanılan her kırmızı metin tonu katmanda karşılanır", () => {
+    const used = new Set<string>();
+    for (const source of sources.values()) {
+      for (const match of source.matchAll(/\b(text-red-(?:200|300)(?:\/\d+)?)\b/g)) used.add(match[1]);
+    }
+    expect(used.size).toBeGreaterThan(0);
+    for (const cls of used) {
+      const escaped = cls.replace("/", "\\/");
+      expect(layer.includes(`.${escaped}`), `${cls} P19 katmanında yok`).toBe(true);
+    }
+  });
+
+  it("yıkıcı metin açık temanın tüm yüzeylerinde AA verir", () => {
+    const color = /:is\([^)]*text-red-200[^)]*\)\s*\{\s*color:\s*(#[0-9a-fA-F]{6})/s.exec(layer)?.[1];
+    expect(color).toBeTruthy();
+    for (const bg of [THEMES.light.panel, THEMES.light.page, lightCanvas]) {
+      expect(contrastRatio(parseHex(color as string), parseHex(bg)), `${color} @ ${bg}`).toBeGreaterThanOrEqual(WCAG_AA_NORMAL);
+    }
+  });
+
+  it("üst çubuk keşif sayacı altın zemin tonunda AA verir", () => {
+    const color = /\.header-count-badge\s*\{\s*color:\s*(#[0-9a-fA-F]{6})/.exec(layer)?.[1];
+    const tint = /\.header-count-badge\s*\{[^}]*background-color:\s*rgba\(([\d,\s.]+)\)/s.exec(layer)?.[1];
+    expect(color).toBeTruthy();
+    expect(tint).toBeTruthy();
+    const [r, g, b, a] = (tint as string).split(",").map((part) => Number(part.trim()));
+    expect(contrastRatio(parseHex(color as string), composite([r, g, b], parseHex(THEMES.light.panel), a))).toBeGreaterThanOrEqual(WCAG_AA_NORMAL);
+    expect(contrastRatio(parseHex(color as string), parseHex(THEMES.light.page))).toBeGreaterThanOrEqual(WCAG_AA_NORMAL);
+  });
+
+  it("İz bırak aktif durumu beyaz metne geçer ve AA verir", () => {
+    const header = sources.get("Header.tsx") as string;
+    expect(header).toContain("bg-leaf text-ink");
+    expect(css).toMatch(/html\[data-theme="light"\][^{]*\.bg-leaf\.text-ink\s*\{[^}]*color:\s*#ffffff/);
+    expect(contrastRatio(parseHex("#ffffff"), parseHex(THEMES.light.leaf))).toBeGreaterThanOrEqual(WCAG_AA_NORMAL);
+  });
+
+  it("profil sekme çubuğu üç sekme için üç sütun kullanır", () => {
+    const profile = sources.get("ProfilePanel.tsx") as string;
+    expect(profile).toContain("grid grid-cols-3 gap-1.5");
+    expect((profile.match(/\{ id: "profile-/g) ?? []).length).toBe(3);
   });
 });

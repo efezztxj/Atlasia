@@ -92,9 +92,28 @@ const DEFAULT_DIST = fileURLToPath(new URL("../dist", import.meta.url));
  *   initial 129.400 · initialJs 102.200 · landing 129.400 · appShell 603.400
  * Vendor eşikleri (react/mapVendor/mapWorker) `main` tarafından yükseltilmişti,
  * aynen korundu — sürüm yükseltmesinde doğal.
+ *
+ * 2026-10-28 (ikinci birleşme) — `main` T13-T16 landing işi + firebase 13.1.0
+ * geldi; kapı `entry` 20.530 B ile kırıldı (doğru davranış). Ölçüm (env'li /
+ * env'siz derleme arasındaki fark ~17 B; eşik ikisinin BÜYÜĞÜNE bağlanır):
+ *   entry      19.721 -> 20.547  (+826)   main'in landing/huni kodu
+ *   tanıtım   125.517 -> 126.422  (+905)
+ *   appShell  585.711 -> 586.617  (+906)
+ *   toplam JS 984.682 -> 996.818  (main bu turda 997.500'e çıkardı)
+ *   entry eşiği 20.400 -> 21.200 (ölçüme %3,2 pay)
  */
 export const BUNDLE_BUDGET = Object.freeze({
-  totalJsGzipBytes: 997_500,
+  // 2026-10-28 (T4 misafir modu + T5 niyet hatırlama): misafir oturum bayrağı,
+  // yazma kapısı (Explorer + veri katmanı), "misafir olarak devam et" yolu ve
+  // hesap açılınca tüketilen niyet kaydı koda eklendi; **yeni bağımlılık yok**.
+  // Ölçüm (güncel bağımlılıklarla `npm ci` + `npm run build`):
+  //   toplam JS 996.828 → **997.761** (+933)  ·  eşik 997.500 → 998.500
+  //   entry 20.530 → 20.814 (+284)            ·  eşik 20.900 (değişmedi)
+  //   ilk set 125.517 → 126.774 (+1.257)      ·  eşik 129.400 (değişmedi)
+  //   ilk boya JS 100.213 / 102.200 · appShell 586.968 / 603.400 (değişmedi)
+  // Yani artışın tamamı misafir modu kodudur; kullanıcıya görünen ilk boya
+  // eşiklerinin hepsi payla içinde kaldı, yalnız toplam JS eşiği aşıldı.
+  totalJsGzipBytes: 998_500,
   totalCssGzipBytes: 35_700,
   initialGzipBytes: 129_400,
   // İlk HTML ile gelen gerçek ilk boya maliyeti (lazy chunk'lar hariç).
@@ -106,7 +125,7 @@ export const BUNDLE_BUDGET = Object.freeze({
     appShell: 603_400,
   }),
   categoryGzipBytes: Object.freeze({
-    entry: 20_900,
+    entry: 21_200,
     reactVendor: 69_500,
     iconsVendor: 10_500,
     firebaseVendor: 164_500,

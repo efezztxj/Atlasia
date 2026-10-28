@@ -50,6 +50,13 @@ export interface UseFirestoreAtlasDataArgs {
   uid: string;
   enabled?: boolean;
   viewport?: PlaceViewport | null;
+  /**
+   * Misafir okuması (T4). `places`/`posts`/`stories` kuralları zaten herkese
+   * açıktır (`allow get/list: if boundedList(...)`), bu yüzden misafir haritası
+   * **kural değişikliği istemez**. Yazma yolları misafirde hiç çağrılmaz;
+   * çağrılırsa burada hata verir (kural da sunucuda reddeder: fail-closed).
+   */
+  guest?: boolean;
   moderator?: boolean;
 }
 
@@ -78,6 +85,7 @@ export function useFirestoreAtlasData({
   uid,
   enabled = true,
   viewport = null,
+  guest = false,
   moderator = false,
 }: UseFirestoreAtlasDataArgs) {
   const [loaded, setLoaded] = useState<SourceState<boolean>>(initialLoaded);
@@ -163,8 +171,9 @@ export function useFirestoreAtlasData({
   }, [uid, enabled]);
 
   // Sahip sorgusu viewport'tan bağımsızdır; kullanıcı kendi tüm izlerine erişir.
+  // Misafirin sahibi olduğu kayıt yoktur, bu abonelik hiç kurulmaz.
   useEffect(() => {
-    if (!enabled || !isCloudReady || !uid) return;
+    if (!enabled || !isCloudReady || !uid || guest) return;
     return subscribeOwnedPlaces(
       uid,
       (places) => {
@@ -173,7 +182,7 @@ export function useFirestoreAtlasData({
       },
       (error) => markError("ownerPlaces", error),
     );
-  }, [uid, enabled, markError, markLoaded]);
+  }, [uid, enabled, guest, markError, markLoaded]);
 
   const viewportZoom = viewport?.zoom;
   const viewportWest = viewport?.bounds.west;
@@ -184,7 +193,7 @@ export function useFirestoreAtlasData({
   // Harita hareketleri sırasında sorgu fırtınasını önlemek için kısa debounce.
   // Düşük zoom / aşırı geniş sınırlar güvenli overview sayfasına geri düşer.
   useEffect(() => {
-    if (!enabled || !isCloudReady || !uid) return;
+    if (!enabled || !isCloudReady || (!uid && !guest)) return;
     let unsubscribe = () => {};
     const timer = globalThis.setTimeout(() => {
       const onChange = (places: Place[]) => {
@@ -219,6 +228,7 @@ export function useFirestoreAtlasData({
   }, [
     uid,
     enabled,
+    guest,
     viewportZoom,
     viewportWest,
     viewportSouth,
@@ -229,7 +239,7 @@ export function useFirestoreAtlasData({
   ]);
 
   useEffect(() => {
-    if (!enabled || !isCloudReady || !uid) return;
+    if (!enabled || !isCloudReady || (!uid && !guest)) return;
     return subscribePosts(
       (page) => {
         if (postTailRef.current.length > 0) {
@@ -252,10 +262,11 @@ export function useFirestoreAtlasData({
       },
       (error) => markError("posts", error),
     );
-  }, [uid, enabled, markError, markLoaded]);
+  }, [uid, enabled, guest, markError, markLoaded]);
 
   useEffect(() => {
-    if (!enabled || !isCloudReady || !uid) return;
+    // Süresi dolan story temizliği sunucuda silme yapar: misafirde hiç koşmaz.
+    if (!enabled || !isCloudReady || !uid || guest) return;
     let lastSweepMs = 0;
     const runSweep = () => {
       lastSweepMs = Date.now();
@@ -283,10 +294,10 @@ export function useFirestoreAtlasData({
         document.removeEventListener("visibilitychange", handleVisibility);
       }
     };
-  }, [uid, enabled, moderator]);
+  }, [uid, enabled, guest, moderator]);
 
   useEffect(() => {
-    if (!enabled || !isCloudReady || !uid) return;
+    if (!enabled || !isCloudReady || (!uid && !guest)) return;
     return subscribeStories(
       (page) => {
         const now = Date.now();
@@ -321,7 +332,7 @@ export function useFirestoreAtlasData({
       (error) => markError("stories", error),
       deleteDeletableExpiredStories,
     );
-  }, [uid, enabled, deleteDeletableExpiredStories, markError, markLoaded]);
+  }, [uid, enabled, guest, deleteDeletableExpiredStories, markError, markLoaded]);
 
   const loadMorePosts = useCallback(async () => {
     const cursor = postCursorRef.current;
@@ -371,11 +382,13 @@ export function useFirestoreAtlasData({
   }, [markError]);
 
   const uploadPhoto = async (file: File, kind: UploadPhotoKind): Promise<string> => {
+    if (guest) throw new Error("Misafir oturumunda fotoğraf yüklenemez.");
     if (!isCloudReady) throw new Error("Bulut bağlantısı yok, fotoğraf hazırlanamaz.");
     return uploadPhotoFs(file, kind);
   };
 
   const addPlace = async (place: Omit<Place, "id" | "kind" | "createdAt">): Promise<Place> => {
+    if (guest) throw new Error("Misafir oturumunda pin kaydedilemez.");
     if (!isCloudReady) throw new Error("Bulut bağlantısı yok, pin kaydedilemez.");
     const input: NewPlaceInput = {
       uid,
@@ -394,6 +407,7 @@ export function useFirestoreAtlasData({
   };
 
   const removePlace = async (id: string) => {
+    if (guest) throw new Error("Misafir oturumunda pin silinemez.");
     if (!isCloudReady) throw new Error("Bulut bağlantısı yok, pin silinemedi.");
     await removePlaceFs(id, uid);
     setOwnedPlaces((current) => current.filter((place) => place.id !== id));
@@ -401,6 +415,7 @@ export function useFirestoreAtlasData({
   };
 
   const addPost = async (post: Partial<FeedPost>) => {
+    if (guest) throw new Error("Misafir oturumunda gönderi kaydedilemez.");
     if (!isCloudReady) throw new Error("Bulut bağlantısı yok, gönderi kaydedilemez.");
     const input: NewPostInput = {
       uid,
@@ -417,6 +432,7 @@ export function useFirestoreAtlasData({
   };
 
   const removePost = async (id: string) => {
+    if (guest) throw new Error("Misafir oturumunda gönderi silinemez.");
     if (!isCloudReady) return;
     await removePostFs(id);
     setPostHead((current) => {
@@ -437,11 +453,13 @@ export function useFirestoreAtlasData({
   };
 
   const addReply = async (postId: string, author: string, text: string) => {
+    if (guest) throw new Error("Misafir oturumunda yanıt yazılamaz.");
     if (!isCloudReady) throw new Error("Bulut bağlantısı yok, yanıt eklenemez.");
     await addReplyFs(postId, uid, author, text);
   };
 
   const toggleLike = async (postId: string) => {
+    if (guest) throw new Error("Misafir oturumunda beğeni kaydedilemez.");
     if (!isCloudReady) throw new Error("Bulut bağlantısı yok, beğeni kaydedilemez.");
     // Yazma başarısızsa istisna fırlar ve yerel durum değişmez (sahte başarı yok).
     const session = sessionRef.current;
@@ -461,6 +479,7 @@ export function useFirestoreAtlasData({
   };
 
   const addStory = async (story: Partial<Story>) => {
+    if (guest) throw new Error("Misafir oturumunda hikâye kaydedilemez.");
     if (!isCloudReady) throw new Error("Bulut bağlantısı yok, story kaydedilemez.");
     const input: NewStoryInput = {
       uid,
@@ -476,6 +495,7 @@ export function useFirestoreAtlasData({
   };
 
   const removeStory = async (id: string) => {
+    if (guest) throw new Error("Misafir oturumunda hikâye silinemez.");
     if (!isCloudReady) return;
     await removeStoryFs(id);
     setStoryHead((current) => {
@@ -491,7 +511,11 @@ export function useFirestoreAtlasData({
   };
 
   const error = Object.values(errors).find((value): value is Error => value !== null) ?? null;
-  const ready = Object.values(loaded).every(Boolean) && !error;
+  // Misafirde sahip sorgusu bilinçli olarak kurulmaz; bu yüzden `ownerPlaces`
+  // hiç "yüklendi" olmaz ve dört kaynağın hepsini beklemek haritayı sonsuza
+  // kadar boş bırakırdı. Misafir için üç genel kaynak yeterlidir.
+  const readSources = guest ? [loaded.viewportPlaces, loaded.posts, loaded.stories] : Object.values(loaded);
+  const ready = readSources.every(Boolean) && !error;
   const places = useMemo(
     () => sortNewest(mergeRecordsById(viewportPlaces, ownedPlaces)),
     [viewportPlaces, ownedPlaces],

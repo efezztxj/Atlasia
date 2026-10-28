@@ -7,6 +7,8 @@ interface Props {
   onRoute: () => void;
   onLeave: () => void;
   onClose: () => void;
+  /** T8: misafir oturumda seçeneklerin hesap gerektirdiğini önceden söyle. */
+  guest?: boolean;
 }
 
 const OPTIONS = [
@@ -15,7 +17,7 @@ const OPTIONS = [
   { id: "leave", icon: MapPinPlus, title: "Bir iz bırak", desc: "Bildiğin bir yeri haritaya ekle." },
 ] as const;
 
-export default function Onboarding({ onNearby, onRoute, onLeave, onClose }: Props) {
+export default function Onboarding({ onNearby, onRoute, onLeave, onClose, guest = false }: Props) {
   const firstRef = useRef<HTMLButtonElement>(null);
 
   // Esc + odak tuzağı + kapanınca odak dönüşü (P18); ilk seçenek odak alır.
@@ -58,6 +60,17 @@ export default function Onboarding({ onNearby, onRoute, onLeave, onClose }: Prop
         <p className="mt-2 text-[15px] leading-relaxed text-mint/65">
           Üçünden birini seç. İstediğin an değiştirebilirsin.
         </p>
+        {guest && (
+          // T8: kayıt duvarını sürpriz olmaktan çıkar — nerede hesap
+          // isteneceğini baştan söyle, seçim kaybolmuyor.
+          <p
+            role="note"
+            className="mt-3 rounded-xl border border-sun/30 bg-sun/10 px-3.5 py-2.5 text-[13px] leading-relaxed text-mint/80"
+          >
+            Misafir olarak geziyorsun. Harita ve okuma serbest; iz bırakmak ve rota
+            yayımlamak için hesap açman istenecek. Seçtiğin yol kaybolmaz.
+          </p>
+        )}
 
         <div className="mt-6 space-y-2.5">
           {OPTIONS.map((o, i) => (

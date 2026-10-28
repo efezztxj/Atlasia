@@ -11,32 +11,32 @@
 |---|---|
 | `npx tsc --noEmit` | **PASS** (0 hata) |
 | `npx eslint . --max-warnings=0` | **PASS** (0 uyarı) |
-| `npm run test:run` | **PASS** — 149 dosya / **1.202 test** *(2026-10-28 ölçümü)* |
+| `npm run test:run` | **PASS** — 152 dosya / **1.233 test** *(2026-10-28 son ölçüm)* |
 | `npm run test:scripts` | **PASS** — 8/8 paket |
 | `npm run build` | **PASS** — ama paylar kritik (§2) |
 | `verify:sw-shell` | **PASS** — 44/44 |
 
-**2026-10-28 güncel ölçüm** (`main` = `c0b895b` — maplibre 6.15, react 19.3.1 yükseltmeleri dahil):
+**2026-10-28 son ölçüm** (`main` = `a0c4025`, T13-T16 landing + açık tema kontrastı `#133` + firebase 13.1.0 + maplibre 6.15 + react 19.3.1 dahil):
 
 | Ölçüm | Değer | Bütçe | **Kalan pay** |
 |---|---|---|---|
-| **Tanıtım yolculuğu (gzip)** | **125.517 B** | **129.400 B** | **3.883 B (%3,0)** |
-| Uygulama kabuğu (giriş sonrası) | 585.711 B | 603.400 B | 17.689 B (%2,9) |
-| **İlk boya JS (gzip)** | **99.121 B** | **102.200 B** | 3.079 B (%3,0) |
-| İlk boya CSS (gzip) | 24.641 B | 25.200 B | 559 B (%2,2) |
-| entry (uygulama kodu) | 19.721 B | 20.400 B | 679 B (%3,3) |
-| **Toplam JS (gzip)** | **984.682 B** | 986.500 B | **1.818 B (%0,18)** ⚠️ |
-| Toplam CSS (gzip) | 34.820 B | 35.700 B | 880 B (%2,5) |
+| **Tanıtım yolculuğu (gzip)** | **126.558 B** | **129.400 B** | **2.842 B (%2,2)** |
+| Uygulama kabuğu (giriş sonrası) | 586.753 B | 603.400 B | 16.647 B (%2,8) |
+| **İlk boya JS (gzip)** | **99.926 B** | **102.200 B** | 2.274 B (%2,2) |
+| İlk boya CSS (gzip) | 24.883 B | 25.200 B | 317 B (%1,3) |
+| entry (uygulama kodu) | 20.527 B | 21.200 B | 673 B (%3,2) |
+| **Toplam JS (gzip)** | **996.801 B** | 997.500 B | **699 B (%0,07)** ⚠️ |
+| Toplam CSS (gzip) | 35.062 B | 35.700 B | 638 B (%1,8) |
 | `verify:sw-shell` | 44/44 | — | — |
 
-> Bağımlılık yükseltmeleri (`main`): maplibre 6.4.1 → 6.15.0, react 19.3.1. Büyümenin **tamamı vendor** — `entry` 19.722 → 19.721 (bizim kod değişmedi). `mapVendor +52.212`, `mapWorker +18.638`, `reactVendor +8.679`. Tanıtım yalnız react-vendor yüzünden +8.815.
-
-> 27 Ekim (kabuk bölünmesinden önce): tanıtım 413.463 B gzip. Bölünmeyle **413.463 → 116.702** (−%72), bağımlılık artışıyla 125.517.
+> Büyümenin tamamı dış kaynaklı: `main`'in bağımlılık yükseltmeleri (maplibre +52 KB, react +8,7 KB) ve T13-T16 landing işi (entry +826 B). **Kabuk bölünmesi korunuyor:** `dist/index.html` hâlâ yalnız `index-*.css`, `index-*.js`, `react-vendor`, `icons-vendor` çekiyor — firebase ve maplibre yok.
+>
+> 27 Ekim başlangıcı: tanıtım **413.463 B** gzip. Bugün: **126.422 B** (−%69).
 
 Kaynak: 143 dosya · en büyük dosyalar `components/Explorer.tsx` 1.680, `moderation.ts` 1.199, `SocialPanel.tsx` 853, `firestoreData.ts` 809, `MapView.tsx` 785. `App.tsx` artık **58 satır** (giriş kapısı).
 Testi olmayan kaynak dosya: **≈36** (kabuk bölünmesinden sonra; `Explorer` dolaylı kapsanıyor).
 
-**Bilinen sıkışıklık:** `Toplam JS 984.682 / 986.500` (%0,18). Sıradaki özellikte ya lazy parça küçültülecek ya da vendor eşiği ölçümle birlikte gerekçeli yükseltilecek.
+**Bilinen sıkışıklık:** `Toplam JS 996.801 / 997.500` (%0,07). Sıradaki özellikte ya lazy parça küçültülecek ya da vendor eşiği ölçümle birlikte gerekçeli yükseltilecek.
 
 ---
 
@@ -104,6 +104,29 @@ yanlış modülü — `lib/firebase` — mock'luyordu. Gerçek kapı `lib/fireba
 **Kanıt:** aynı 149 dosya / 1.202 test, `.env.local` varken **ve** yokken yeşil.
 
 ---
+
+## 2d. `main` CI kırmızısının kök nedeni (2026-10-28)
+
+`main` = `2ba7b76` üzerinde CI "Unit tests" adımı düştü; log indirme ağdan
+(`results-receiver.actions.githubusercontent.com` → EOF) alınamıyor, annotation
+da yalnız "exit code 1" diyordu. Temiz klonda (`--depth 1`) tekrar üretilemedi
+(152/152, 1233/1233 yeşil, 5 kez). Yerelde tekrarlı koşuda yakalandı — **1/7**:
+
+- `src/components/TrackRecorderPanel.test.ts` → "Vazgeç taslağı atar…"
+- `expected last call to have been called with [ [] ]`, gelen: taslak koordinatları.
+- Kök neden: taslak önizlemesi `useEffect([draft])` ile yayılıyordu; "Vazgeç"
+  `onPreview([])` çağrısı effect'ten önce çalışabildiği için temizlenmiş haritaya
+  taslak geri dönebiliyordu (React 19.3.1'de daha sık).
+
+**Onarım:** önizleme artık taslağın üretildiği yerde, aynı elde yayılıyor
+(`finish()` içinde `setDraft` sonrası); effect kaldırıldı. Sıra kesin:
+taslak → önizleme, vazgeç → temizleme. Sonrasında suite **4/4 tam yeşil**
+(önce 1/7 kırmızı).
+
+**Kalıcı düzeltme (CI görünürlüğü):** `ci.yml`'de unit test adımı artık
+`tee unit-tests.log` ile yazıyor ve `failure()` olduğunda kural testlerindeki
+desenle aynı şekilde annotasyon + iş özeti basıyor. Bir sonraki kırmızıda hangi
+testin düştüğü log indirmeden okunur.
 
 ## 3. Ölçüm katmanı — ~~3 olay tanımlı ama hiç çağrılmıyor~~ **kapandı (2026-10-27)**
 

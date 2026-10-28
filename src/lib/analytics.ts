@@ -15,6 +15,8 @@ export const ANALYTICS_EVENTS = [
   // Dönüşüm hunisi (T2): landing → harita → kayıt.
   "cta_click",
   "map_open",
+  // T8: karşılamadaki seçim (huni: harita açıldı → ne seçti → rota/kayıt).
+  "onboarding_choice",
   "signup_start",
   "signup_complete",
   "sign_in",
@@ -34,6 +36,9 @@ export type AnalyticsEvent = (typeof ANALYTICS_EVENTS)[number];
 /** Landing'deki birincil eylem düğmeleri (huni kırılımı bu değerlerle okunur). */
 export type CtaPlacement = "hero" | "header" | "how_it_works" | "footer";
 
+/** T8 — karşılama panelindeki dört çıkış; serbest metin yok. */
+export type OnboardingChoice = "nearby" | "route" | "leave" | "skip";
+
 /** Kayıt yöntemleri; hiçbiri kimlik taşımaz. Tip olarak tutulur, pakete dizge eklemez. */
 export type SignupMethod = "email" | "google" | "apple" | "phone" | "device";
 
@@ -46,6 +51,8 @@ const ONCE_PER_SESSION = new Set<AnalyticsEvent>([
   "app_open",
   "session_start",
   "map_open",
+  // T8: karşılamadaki seçim (huni: harita açıldı → ne seçti → rota/kayıt).
+  "onboarding_choice",
   "signup_start",
   "first_route_created",
 ]);
@@ -61,6 +68,8 @@ export interface Analytics {
   ctaClick: (props: { placement: CtaPlacement; signedIn: boolean }) => void;
   /** Harita açılışı. Misafir modu gelene kadar `guest` her zaman false. */
   mapOpen: (props: { guest: boolean }) => void;
+  /** T8: karşılamada seçilen yol. `guest` huniyi misafir/üye olarak böler. */
+  onboardingChoice: (props: { choice: OnboardingChoice; guest: boolean }) => void;
   signupStart: () => void;
   /** Plandaki `signup_complete{method}` olayı; `sign_up` adının yerini alır. */
   signupComplete: (props: { method: SignupMethod; account: AccountKind }) => void;
@@ -99,6 +108,7 @@ export function createAnalytics(telemetry?: Telemetry): Analytics {
     sessionStart: (props) => track("session_start", { account: props?.account ?? "anonymous" }),
     ctaClick: (props) => track("cta_click", { placement: props.placement, signedIn: props.signedIn }),
     mapOpen: (props) => track("map_open", { guest: props.guest }),
+    onboardingChoice: (props) => track("onboarding_choice", { choice: props.choice, guest: props.guest }),
     signupStart: () => track("signup_start"),
     signupComplete: (props) => track("signup_complete", { method: props.method, account: props.account }),
     signIn: (props) => track("sign_in", { account: props.account, method: props.method ?? "email" }),
