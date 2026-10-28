@@ -114,22 +114,42 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
 
-      - name: Özet (skorlar ve bütçe)
+      # Skorlar API'den okunabilsin diye NOTICE annotation olarak da basılır
+      # (iş özeti yalnız arayüzde görünüyor).
+      - name: Özet (skorlar ve düşen denetimler)
         if: always()
         run: |
           python3 - <<'PY'
           import glob, json, os
+
           lines = ["## Mobil Lighthouse", "", "| Koşu | Perf | A11y | BP | SEO |", "| --- | --- | --- | --- | --- |"]
+          notices = []
+          failing = {}
           for path in sorted(glob.glob(".lighthouseci/lhr-*.json")):
               data = json.load(open(path, encoding="utf-8"))
               cats = data.get("categories", {})
-              score = lambda key: round((cats.get(key, {}) or {}).get("score") or 0)
-              lines.append("| {} | {} | {} | {} | {} |".format(
-                  os.path.basename(path).replace(".json", ""), score("performance"),
-                  score("accessibility"), score("best-practices"), score("seo")))
+              score = lambda key: round(((cats.get(key, {}) or {}).get("score") or 0) * 100)
+              name = os.path.basename(path).replace(".json", "")
+              lines.append(f"| {name} | {score('performance')} | {score('accessibility')} | "
+                           f"{score('best-practices')} | {score('seo')} |")
+              notices.append(
+                  f"{name}: perf {score('performance')} · a11y {score('accessibility')} · "
+                  f"BP {score('best-practices')} · SEO {score('seo')}")
+              for key, audit in (data.get("audits") or {}).items():
+                  if audit.get("score") is not None and audit["score"] < 1 and audit.get("scoreDisplayMode") == "binary":
+                      failing.setdefault(f"{key}: {audit.get('title')}", 0)
+                      failing[f"{key}: {audit.get('title')}"] += 1
+
           summary = os.environ.get("GITHUB_STEP_SUMMARY")
+          body = "\n".join(lines)
+          if failing:
+              body += "\n\nBaşarısız denetimler:\n\n" + "\n".join(f"- {k}" for k in sorted(failing))
           if summary:
               with open(summary, "a", encoding="utf-8") as handle:
-                  handle.write("\n".join(lines) + "\n")
-          print("\n".join(lines))
+                  handle.write(body + "\n")
+          print(body)
+          for notice in notices:
+              print(f"::notice title=Lighthouse skor::{notice}")
+          for key in sorted(failing):
+              print(f"::notice title=Düşen denetim::{key}")
           PY
