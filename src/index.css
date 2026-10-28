@@ -518,11 +518,6 @@ html[data-theme="dark"] .text-leaf\/80 {
 .auth-device-note svg { flex-shrink: 0; margin-top: 3px; }
 .auth-device-note strong { color: #e2ebd9; font-weight: 600; }
 .auth-email-form .auth-submit { min-height: 46px; margin-top: 20px; border-radius: 8px; font-size: 14px; }
-.auth-secondary-providers { gap: 8px; }
-.auth-secondary-providers > button { display: flex; justify-content: center; min-height: 44px; border: 1px solid #4b6045; border-radius: 8px; background: #142c1d; color: #edf1e2; font-size: 14px; }
-.auth-secondary-providers > button > span { flex: initial; text-align: center; }
-.auth-secondary-providers > button:hover:not(:disabled) { transform: none; border-color: #8ca87f; background: #1b3925; }
-.auth-secondary-providers > button:disabled { opacity: .5; cursor: not-allowed; }
 .auth-login-page .auth-separator { margin: 22px 0 17px; }
 .auth-signup-page .auth-separator { margin: 19px 0 17px; }
 .auth-phone-alternative { display: flex; min-height: 42px; width: 100%; justify-content: center; align-items: center; gap: 7px; margin-top: 5px; color: #e4d194; font-size: 12px; }
@@ -562,7 +557,7 @@ html[data-theme="dark"] .text-leaf\/80 {
   .auth-signup-page .auth-form-wrap { padding-top: 7px; }
   .auth-field > input, .auth-field > select, .auth-input-with-action > input { min-height: 49px; font-size: 16px; }
   .auth-field .auth-input-action { min-height: 45px; }
-  .auth-secondary-providers > button, .auth-email-form .auth-submit { min-height: 48px; }
+  .auth-email-form .auth-submit { min-height: 48px; }
   .auth-forgot { min-height: 36px; }
 
   /* Compact phone shell: map keeps the screen, chrome shrinks to a quarter. */

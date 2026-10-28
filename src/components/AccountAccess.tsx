@@ -298,11 +298,17 @@ export default function AccountAccess() {
     <div className="auth-field"><label htmlFor="account-country">Ülke / bölge</label><select id="account-country" value={country} onChange={(event) => setCountry(event.target.value)} disabled={blocked} autoComplete="country-name"><option>Türkiye</option><option>Kuzey Kıbrıs Türk Cumhuriyeti</option><option>Almanya</option><option>Birleşik Krallık</option><option>Amerika Birleşik Devletleri</option><option>Japonya</option><option>Diğer</option></select></div>
   </>;
   const consent = <div className="auth-consent-wrap"><label className="auth-consent"><input type="checkbox" checked={accepted} onChange={(event) => { setAccepted(event.target.checked); clearField("terms"); }} disabled={blocked} /><span>Kullanım koşullarını kabul ediyorum.</span></label><div className="auth-legal-links"><span>KVKK aydınlatma metnini okudum</span><button type="button" onClick={() => setLegal("kvkk")}>Metni görüntüle</button></div><div className="auth-legal-links"><button type="button" onClick={() => setLegal("terms")}>Kullanım koşulları</button><span>·</span><button type="button" onClick={() => setLegal("privacy")}>Gizlilik açıklaması</button></div><FormError message={errors.terms} /></div>;
-  const providers = <div className="auth-provider-actions auth-secondary-providers">
-    <button type="button" disabled={blocked || !authConfigured} title={!authConfigured ? "Google bağlantısı henüz yapılandırılmadı" : undefined} onClick={() => void social("google")} className="auth-google">{busy === "google" ? <Loader2 className="animate-spin" size={17} /> : <GoogleMark />}<span>Google ile devam et</span></button>
-    {APPLE_AUTH_ENABLED && <button type="button" disabled={blocked || !authConfigured} title={!authConfigured ? "Apple bağlantısı henüz yapılandırılmadı" : undefined} onClick={() => void social("apple")} className="auth-apple">{busy === "apple" ? <Loader2 className="animate-spin" size={17} /> : <Apple size={20} fill="currentColor" />}<span>Apple ile devam et</span></button>}
-  </div>;
-
+  // T9 — birincil yol sosyal giriş. Kural: çalışmayan sağlayıcı HİÇ gösterilmez.
+  // Önceden kapalı "Apple ile giriş yakında" düğmesi tıklanabilir görünüp
+  // hayal kırıklığı yaratıyordu; artık Apple kapalıyken yerine e-posta formunda
+  // mikro metin var. Yapılandırma yoksa (cihaz hesabı) hiç sosyal düğme yok.
+  const socialButtons = [
+    authConfigured ? <button key="google" type="button" disabled={blocked} onClick={() => void social("google")} className="auth-google">{busy === "google" ? <Loader2 className="animate-spin" size={17} /> : <GoogleMark />}<span>Google ile devam et</span></button> : null,
+    authConfigured && APPLE_AUTH_ENABLED ? <button key="apple" type="button" disabled={blocked} onClick={() => void social("apple")} className="auth-apple">{busy === "apple" ? <Loader2 className="animate-spin" size={17} /> : <Apple size={20} fill="currentColor" />}<span>Apple ile devam et</span></button> : null,
+  ].filter((button) => button !== null);
+  const providers = socialButtons.length
+    ? <div className="auth-provider-actions">{socialButtons}</div>
+    : null;
   if (receipt?.recoveryCode) return <AuthFrame><div className="auth-heading"><p className="auth-eyebrow">HESABIN OLUŞTURULDU</p><h2>Kurtarma anahtarını<br />sakla<span>.</span></h2><p>Şifreni unutursan bu anahtarla yenileyebilirsin. E-posta gönderimi olmadığı için anahtar yalnızca burada gösterilir.</p></div><BackendNote /><label className="auth-recovery-label" htmlFor="account-recovery-key">Kurtarma anahtarın</label><output id="account-recovery-key" className="auth-recovery-key">{receipt.recoveryCode}</output><button type="button" className="auth-recovery-copy" onClick={async () => { try { await navigator.clipboard.writeText(receipt.recoveryCode!); setCopyStatus("Anahtar kopyalandı."); } catch { setCopyStatus("Anahtarı seçip elle kopyalayabilirsin."); } }}><Copy size={15} />Anahtarı kopyala</button>{copyStatus && <p role="status" className="auth-form-hint">{copyStatus}</p>}<label className="auth-consent"><input type="checkbox" checked={savedRecovery} onChange={(event) => setSavedRecovery(event.target.checked)} /><span>Anahtarımı güvenli bir yere kaydettim.</span></label><button type="button" disabled={!savedRecovery || blocked} className="auth-submit" onClick={() => void task("finish", async () => { await receipt.finish?.(); })}>{busy === "finish" ? <Loader2 size={18} className="animate-spin" /> : <ArrowRight size={17} />}Hesabımla devam et</button>{error && <Message>{error}</Message>}<p className="auth-form-hint">Bu anahtarı kimseyle paylaşma. Tarayıcı verilerin silinirse anahtar hesabı geri getiremez.</p></AuthFrame>;
 
   const heading = screen === "reset" ? "Şifreni sıfırla" : screen === "recovery" ? "Hesabını geri al" : screen === "code" ? "Telefonunu doğrula" : screen === "phone" ? "Telefonla giriş yap" : mode === "signup" ? "Atlasia’ya üye ol" : "Atlasia’ya giriş yap";
@@ -312,14 +318,15 @@ export default function AccountAccess() {
       <BackendNote />
 
       {screen === "credentials" && <>
-        {mode === "signup" && <>{providers}<div className="auth-separator"><span />veya e-posta ile<span /></div></>}
+        {/* T9: sağlayıcılar her iki modda da formun ÜSTÜNDE; e-posta "veya" altında. */}
+        {providers && <>{providers}<div className="auth-separator"><span />veya e-posta ile<span /></div></>}
         <form onSubmit={(event) => void emailSubmit(event)} noValidate className="auth-email-form">
           {emailField}
           <PasswordField id="account-password" value={password} onChange={(value) => { setPassword(value); clearField("password"); }} error={errors.password} fresh={mode === "signup"} exposure={passwordExposure} disabled={blocked} forgot={mode === "signin" ? <button type="button" disabled={blocked} className="auth-forgot" onClick={() => { setScreen(backend === "device" ? "recovery" : "reset"); setPassword(""); resetMessages(); }}>Şifremi unuttum</button> : undefined} />
           {mode === "signup" && <>{profileFields}{consent}</>}
           <button className="auth-submit" type="submit" disabled={blocked}>{busy === "email" ? <Loader2 size={18} className="animate-spin" /> : mode === "signup" ? <ArrowRight size={16} /> : <LockKeyhole size={16} />}{busy === "email" ? "Lütfen bekle..." : mode === "signup" ? "Hesap oluştur" : "Giriş yap"}</button>
         </form>
-        {mode === "signin" && <><div className="auth-separator"><span />veya<span /></div>{providers}</>}
+        {authConfigured && !APPLE_AUTH_ENABLED && <p className="auth-form-hint">Apple ile giriş yakında. Şimdilik Google veya e-posta ile devam edebilirsin.</p>}
         {PHONE_AUTH_ENABLED && <button type="button" disabled={blocked || !authConfigured} onClick={() => { resetMessages(); setScreen("phone"); }} className="auth-phone-alternative"><Phone size={14} />Telefon numarasıyla giriş yap</button>}
         {!authConfigured && <p className="auth-provider-note">{APPLE_AUTH_ENABLED ? "Google ve Apple bağlantısı henüz etkin değil." : "Google bağlantısı henüz etkin değil."} Bu cihaza özel hesabın için e-posta ve şifre kullan.</p>}
         <p className="auth-bottom-switch">{mode === "signin" ? "Henüz hesabın yok mu?" : "Zaten hesabın var mı?"}<button type="button" disabled={blocked} onClick={switchMode}>{mode === "signin" ? "Üye ol" : "Giriş yap"}</button></p>
