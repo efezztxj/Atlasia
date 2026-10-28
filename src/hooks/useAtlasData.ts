@@ -35,6 +35,8 @@ function clientId() {
 
 const newId = (p: string) => `${p}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 
+const LOCAL_STORY_EXPIRY_REFRESH_MS = 60 * 1000;
+
 /**
  * @param persist `false` → misafir oturumu: yerel depoya hiçbir şey yazılmaz,
  *   başlangıç içeriği boştur. Misafirin kayıtları hesaba karışmaz, çünkü
@@ -55,6 +57,38 @@ export function useAtlasData(uid: string, { persist = true }: { persist?: boolea
       : [],
   );
 
+  useEffect(() => {
+    const pruneExpired = () => {
+      const now = Date.now();
+      setStories((prev) => {
+        const alive = prev.filter((story) => isStoryAlive(story.createdAt, now));
+        return alive.length === prev.length ? prev : alive;
+      });
+    };
+    const timer = globalThis.setInterval(pruneExpired, LOCAL_STORY_EXPIRY_REFRESH_MS);
+    const handleVisibility = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        pruneExpired();
+      }
+    };
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", handleVisibility);
+    }
+    if (typeof window !== "undefined") {
+      window.addEventListener("focus", pruneExpired);
+    }
+    return () => {
+      globalThis.clearInterval(timer);
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", handleVisibility);
+      }
+      if (typeof window !== "undefined") {
+        window.removeEventListener("focus", pruneExpired);
+      }
+    };
+  }, []);
+
+  // Misafirde depolama kapalı: anahtar hiç yazılmaz, içerik hesaba karışmaz.
   useEffect(() => { if (persist) save(placesKey, places); }, [persist, placesKey, places]);
   useEffect(() => { if (persist) save(postsKey, posts); }, [persist, postsKey, posts]);
   useEffect(() => { if (persist) save(storiesKey, stories); }, [persist, storiesKey, stories]);

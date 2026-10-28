@@ -46,8 +46,10 @@ Plan sırası: `T1 → T2 → T3 → T12 → T11 → T7 → T4 → T5 → T8 →
 | Uygulama kabuğu (gzip) | 517.449 B | 830.000 B | bol |
 
 Eşik kuralı: `scripts/bundle-budget.mjs` içindeki sayı **yalnız** yeni bir ölçüm
-ve yazılı gerekçeyle değişir; testi yeşile çevirmek için asla değişmez. JS marjı
-≈200 B olduğu için yeni bağımlılık eklemeden önce `npm run build` ile ölçüm alın.
+ve yazılı gerekçeyle değişir; testi yeşile çevirmek için asla değişmez. #127'den
+beri **bayatlama kapısı** var: sahibi olduğumuz eşikler ölçümün %20'sinden fazla
+üstünde olamaz. `entry` marjı 86 B — girişe (landing + App kabuğu) yeni kod
+eklemeden önce `npm run build` ile ölçüm alın.
 
 ## 3. Açık kararlar (insan onayı ister)
 

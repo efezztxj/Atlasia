@@ -16,6 +16,12 @@ import {
   summarizeBundle,
 } from "./bundle-budget.mjs";
 
+/**
+ * Fixture'lar KB ölçeğinde sahte dist'lerdir; gerçek eşikler onlara göre çok
+ * geniş kalır. Bayatlama denetimi yalnız gerçek build ölçümüne anlamlıdır.
+ */
+const FIXTURE_BUDGET = { ...BUNDLE_BUDGET, staleness: { ...BUNDLE_BUDGET.staleness, maxSlackRatio: 0, minSlackBytes: 0 } };
+
 function writeFixture(distDir, relativePath, content) {
   const fullPath = path.join(distDir, relativePath);
   mkdirSync(path.dirname(fullPath), { recursive: true });
@@ -74,7 +80,7 @@ test("HTML içinden yalnız yerel ilk JS/CSS referanslarını toplar", () => {
 test("geçerli fixture toplamları ve ilk asset setini ölçer", (t) => {
   const summary = summarizeBundle(collectBundleAssets(makeDist(t)));
 
-  assert.equal(evaluateBundleBudget(summary).ok, true);
+  assert.equal(evaluateBundleBudget(summary, FIXTURE_BUDGET).ok, true);
   assert.deepEqual(summary.initialAssetPaths, [
     "assets/index-entry.css",
     "assets/index-entry.js",
@@ -108,7 +114,7 @@ test("ilk boya CSS bütçesi aşılırsa toplam içinde kalsa bile kırar", (t) 
   }
   writeFixture(distDir, "assets/index-entry.css", bloated);
   const summary = summarizeBundle(collectBundleAssets(distDir));
-  const result = evaluateBundleBudget(summary);
+  const result = evaluateBundleBudget(summary, FIXTURE_BUDGET);
 
   assert.ok(summary.totalCssGzipBytes <= BUNDLE_BUDGET.totalCssGzipBytes);
   assert.equal(result.ok, false);
@@ -136,7 +142,7 @@ test("tanıtım yolculuğu bütçesi aşılırsa, toplam içinde kalsa bile kır
   writeFixture(distDir, "assets/index-entry.css", bloated);
 
   const summary = summarizeBundle(collectBundleAssets(distDir));
-  const result = evaluateBundleBudget(summary);
+  const result = evaluateBundleBudget(summary, FIXTURE_BUDGET);
 
   assert.equal(result.ok, false);
   assert.ok(result.violations.some((message) => message.includes("tanıtım yolculuğu")));
@@ -144,7 +150,7 @@ test("tanıtım yolculuğu bütçesi aşılırsa, toplam içinde kalsa bile kır
 
 test("ertelenmesi gereken Firebase vendor ilk setteyse bütçeyi kırar (T11)", (t) => {
   const summary = summarizeBundle(collectBundleAssets(makeDist(t, { initialFirebaseVendor: true })));
-  const result = evaluateBundleBudget(summary);
+  const result = evaluateBundleBudget(summary, FIXTURE_BUDGET);
 
   assert.equal(result.ok, false);
   assert.ok(result.violations.some((message) => message.includes("firebase-vendor-firebase.js")));
@@ -152,7 +158,7 @@ test("ertelenmesi gereken Firebase vendor ilk setteyse bütçeyi kırar (T11)", 
 
 test("ertelenmesi gereken Auth chunk'ı ilk setteyse bütçeyi kırar", (t) => {
   const summary = summarizeBundle(collectBundleAssets(makeDist(t, { initialAuth: true })));
-  const result = evaluateBundleBudget(summary);
+  const result = evaluateBundleBudget(summary, FIXTURE_BUDGET);
 
   assert.equal(result.ok, false);
   assert.ok(result.violations.some((message) => message.includes("firebase-auth-auth.js")));
@@ -184,4 +190,46 @@ test("eksik dist için uygulanabilir hata verir", () => {
     () => collectBundleAssets(path.join(os.tmpdir(), "atlasia-missing-dist-for-test")),
     /npm run build/,
   );
+});
+
+test("bayat eşik build'i kırar (kapı sessizce gevşeyemez)", (t) => {
+  const distDir = makeDist(t);
+  const summary = summarizeBundle(collectBundleAssets(distDir));
+
+  // Gerçek ölçüm ~300 B; eşik 120.200 B → %99 boşluk. Bayatlama denetimi açıkken kırmalı.
+  const result = evaluateBundleBudget(summary, BUNDLE_BUDGET);
+
+  assert.equal(result.ok, false);
+  assert.ok(result.violations.some((message) => message.includes("eşiği bayat")));
+  // Mesaj ne yapılacağını söyler: hedef eşik ve yüzde.
+  assert.ok(result.violations.some((message) => /eşiği ~\d/.test(message)));
+});
+
+test("güncel eşik bayatlama uyarısı üretmez", (t) => {
+  const distDir = makeDist(t);
+  const summary = summarizeBundle(collectBundleAssets(distDir));
+  // Ölçüme %3 payla bağlanmış eşikler → bayat değil.
+  const tight = {
+    ...FIXTURE_BUDGET,
+    staleness: BUNDLE_BUDGET.staleness,
+    categoryGzipBytes: { ...BUNDLE_BUDGET.categoryGzipBytes, entry: Math.ceil(summary.categories.entry.gzipBytes * 1.03) },
+    initialGzipBytes: Math.ceil(summary.initialGzipBytes * 1.03),
+    initialCssGzipBytes: Math.ceil(summary.initialCssGzipBytes * 1.03),
+    initialJsGzipBytes: Math.ceil(summary.initialJsGzipBytes * 1.03),
+    journeyGzipBytes: {
+      landing: Math.ceil(summary.journeys.landing * 1.03),
+      appShell: Math.ceil(summary.journeys.appShell * 1.03),
+    },
+  };
+
+  const result = evaluateBundleBudget(summary, tight);
+
+  assert.equal(result.ok, true, result.violations.join(" | "));
+});
+
+test("satıcı (vendor) kategorileri bayatlama denetiminin dışında", () => {
+  // reactVendor eşiği 66.500; fixture'da 5 B. Vendor sürüm dalgalanması
+  // bayatlama sayılmamalı, aksi halde her bağımlılık yükseltmesi kırılır.
+  assert.notEqual(BUNDLE_BUDGET.staleness.gates.includes("reactVendor"), true);
+  assert.notEqual(BUNDLE_BUDGET.staleness.gates.includes("firebaseVendor"), true);
 });

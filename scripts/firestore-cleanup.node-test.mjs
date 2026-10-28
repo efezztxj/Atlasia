@@ -14,9 +14,10 @@ function isoAgo({ hours = 0, days = 0 }) {
 }
 
 describe("firestore-cleanup (Madde 4 — süresi dolan veri ve yetim temizliği)", () => {
-  it("varsayılan mod dry-run'dır; atlasia-dev ve <25s hikâye eşiği reddedilir", () => {
+  it("varsayılan mod dry-run ve 24 saattir; atlasia-dev ve <24s hikâye eşiği reddedilir", () => {
     const defaults = parseCleanupArgs(["--project", "atlasia-prod"]);
     assert.equal(defaults.apply, false);
+    assert.equal(defaults.policy.storiesHours, 24);
 
     assert.throws(
       () =>
@@ -29,7 +30,7 @@ describe("firestore-cleanup (Madde 4 — süresi dolan veri ve yetim temizliği)
     assert.throws(
       () =>
         validateCleanupOptions(
-          parseCleanupArgs(["--project", "atlasia-prod", "--stories-hours", "24"]),
+          parseCleanupArgs(["--project", "atlasia-prod", "--stories-hours", "23"]),
           { FIREBASE_ACCESS_TOKEN: "tok" },
         ),
       /Canlı hikâye kilidi/,
@@ -47,11 +48,11 @@ describe("firestore-cleanup (Madde 4 — süresi dolan veri ve yetim temizliği)
       false,
     );
 
-    // 60 saatlik süresi dolmuş hikâye -> SİLİNİR
+    // 25 saatlik süresi dolmuş hikâye -> SİLİNİR (24 saat geçti)
     assert.equal(
       evaluateDocumentRetention(
         "stories",
-        { fields: { createdAt: { timestampValue: isoAgo({ hours: 60 }) } } },
+        { fields: { createdAt: { timestampValue: isoAgo({ hours: 25 }) } } },
         { nowMs: NOW },
       ).expired,
       true,

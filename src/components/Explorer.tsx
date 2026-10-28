@@ -194,6 +194,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
   const { theme, setTheme } = useTheme();
 
   const [mapViewport, setMapViewport] = useState<PlaceViewport | null>(null);
+  const [moderator, setModerator] = useState(false);
 
   // Yerel veri yalnız yapılandırmasız mod ve ilk canlı liste görünümü için yedektir.
   const local = useAtlasData(user?.uid ?? "", { persist: Boolean(user) });
@@ -205,6 +206,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
     enabled: cloudAccount || guest,
     viewport: mapViewport,
     guest,
+    moderator,
   });
   // Bulut hesabı varsa yazma/silme işlemleri her zaman Firestore'a gider.
   // İlk canlı snapshot gelene kadar yalnız görünür liste için yerel içerik kullanılır;
@@ -289,7 +291,6 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [reportsOpen, setReportsOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
-  const [moderator, setModerator] = useState(false);
   const [myReports, setMyReports] = useState<Report[]>([]);
   const [myReportsError, setMyReportsError] = useState<string | null>(null);
   const [queue, setQueue] = useState<Report[]>([]);
@@ -1428,6 +1429,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
         onLoadMoreStories={cloud.loadMoreStories}
         clientId={cloud.clientId}
         currentUid={user?.uid ?? ""}
+        moderator={moderator}
         uploadPhoto={cloud.uploadPhoto}
         onAddPost={guest ? () => askAccount("Paylaşmak için bir hesap aç ya da giriş yap.", "feed") : cloud.addPost}
         onRemovePost={cloud.removePost}

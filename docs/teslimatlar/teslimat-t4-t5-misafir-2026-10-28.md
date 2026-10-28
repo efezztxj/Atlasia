@@ -1,7 +1,7 @@
 # Teslimat — Misafir modu (T4) ve kayıt sonrası ilk değer (T5)
 
 **Tarih:** 2026-10-28 · **Görev:** T4 + T5 (kısmi) · **Branch:** `arena/c0403c7e-atlasia`
-**Taban commit:** `117c1ea` (T1–T3, T9, T13–T16 sonrası) · **Kural dosyası:** `firestore.rules` **değişmedi**
+**Taban commit:** `117c1ea` (T1–T3, T9, T13–T16 sonrası) + merge `origin/main` · **Kural dosyası:** `firestore.rules` **değişmedi**
 
 ## Amaç (plandan)
 
@@ -66,7 +66,7 @@ sayılır. Hesap açılınca:
 |---|---|
 | `npm run typecheck` | temiz |
 | `npm run lint` | temiz |
-| `npm run test:run` | **1243/1243** (152 dosya) |
+| `npm run test:run` | **1248/1248** (153 dosya) |
 | `npm run test:scripts` | 8 paket geçti |
 | `npm run build` | bütçe içinde · SW kabuğu 44/44 |
 | `npm run audit:check` | üretim bağımlılıklarında açık yok |
@@ -79,14 +79,19 @@ veri katmanı kilidi, `firestore.rules`'da herkese açık yazma olmadığı) +
 
 ## Ölçüm (bu ağaç)
 
-| Ölçüm | Değer | Eşik |
-|---|---|---|
-| İlk HTML seti | 117.964 B gzip | 439.000 |
-| İlk boya JS | 91.539 B gzip | 398.000 |
-| Toplam JS | 917.290 B gzip | 918.000 |
-| Toplam CSS | 35.187 B gzip | 35.700 |
-| Tanıtım yolculuğu | 117.964 B gzip | 425.000 |
-| Uygulama kabuğu | 517.826 B gzip | 830.000 |
+| Ölçüm | Değer | Eşik | Not |
+|---|---|---|---|
+| İlk HTML seti | 117.958 B gzip | 129.400 | |
+| İlk boya JS | 91.536 B gzip | 102.200 | |
+| `entry` (bizim kod) | 20.814 B gzip | 20.900 | +284 B (T4/T5) |
+| Toplam JS | 918.314 B gzip | 997.500 | eşik değişmedi |
+| Toplam CSS | 35.187 B gzip | 35.700 | +95 B (misafir dönüş çubuğu) |
+| Tanıtım yolculuğu | 117.958 B gzip | 129.400 | |
+| Uygulama kabuğu | 517.820 B gzip | 603.400 | |
+
+> Eşikler main'de #127 ile **ölçüme bağlandı** (bayatlama kapısı: sahibi
+> olduğumuz kapılar ölçümün %20'sinden fazla üstünde olamaz). Bu teslimat
+> hiçbir eşiği yükseltmedi; ölçümler eşiklerin içinde kaldı.
 
 ## Bilinen sınırlar (dürüst kayıt)
 

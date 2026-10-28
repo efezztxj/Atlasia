@@ -12,17 +12,17 @@ Komut: `npm run build` (üretim derlemesi; `scripts/bundle-budget.mjs` gzip öl�
 
 | Ölçüm | Taban `2412ace` | Bu dal `7079387` | Fark |
 |---|---|---|---|
-| İlk HTML seti (gzip) | 411.987 B | **117.964 B** | −294.021 B (−%71) |
+| İlk HTML seti (gzip) | 411.987 B | **117.958 B** | −294.029 B (−%71) |
 | İlk HTML seti (ham) | 1.371.468 B | 433.574 B | −937.894 B |
 | İlk setteki JS (gzip) | 386.401 B | **91.539 B** | −294.861 B |
-| `entry` chunk (gzip) | 166.244 B | **20.533 B** | −145.711 B |
+| `entry` chunk (gzip) | 166.244 B | **20.814 B** | −145.430 B |
 | `firebase-vendor` (gzip) | 149.338 B — ilk sette | 149.339 B — **ertelenmiş** | ilk setten çıktı |
 | `map-vendor` (gzip) | 248.691 B — ilk sette değil | 248.691 B — ilk sette değil | — |
-| Toplam JS (gzip) | 905.483 B | 917.290 B | +11.774 B (ambalaj + T2 olayları + mobil menü + #125 parça bölünmesi + T4/T5 misafir modu) |
+| Toplam JS (gzip) | 905.483 B | 918.314 B | +12.831 B (ambalaj + T2 olayları + mobil menü + #125 parça bölünmesi + T4/T5 misafir modu; #127 sonrası bağımlılık yükseltmeleri ayrı satır) |
 | Toplam CSS (gzip) | 35.061 B | 35.187 B | +126 B (T7 + T13/T14 sınıfları, T9 ölü CSS temizliği, T4 misafir dönüş çubuğu) |
-| Yolculuk: tanıtım (gzip) | 411.987 B | 117.964 B | −294.021 B (bütçe 425.000) |
+| Yolculuk: tanıtım (gzip) | 411.987 B | 117.958 B | −294.029 B (bütçe 129.400) |
 | Yolculuk: uygulama kabuğu (gzip) | 812.982 B | 517.826 B | −295.153 B (bütçe 830.000) |
-| Bütçe durumu | içinde | içinde (JS 917.290/918.000 · CSS 35.187/35.700) | JS marjı **710 B**; T4 nedeniyle eşik 916.500 → 918.000 (gerekçe `scripts/bundle-budget.mjs` içinde) |
+| Bütçe durumu | içinde | içinde (ilk set 117.958/129.400 · entry 20.814/20.900 · JS 918.314/997.500 · CSS 35.187/35.700) | T4/T5 **hiçbir eşiği yükseltmedi**; #127'den beri eşikler ölçüme bağlı (bayatlama kapısı) |
 
 > Derleme kimliği (`index.html` içindeki sürüm damgası) her derlemede birkaç
 > bayt değiştiği için aynı ağaçta art arda iki `npm run build` ±≈20 B farklı
@@ -89,7 +89,7 @@ Olay sözleşmesi T2 ile kodda (bkz. `docs/olcum-ve-hata-izleme.md` §2b), ancak
 |---|---|
 | `npm run typecheck` | temiz |
 | `npm run lint` | temiz |
-| `npm run test:run` | 1243/1243 (152 dosya) |
+| `npm run test:run` | 1248/1248 (153 dosya) |
 | `npm run build` | başarılı, bütçe içinde |
 | `npm run test:scripts` | 19/19 (node test runner) |
 | `npm run verify:sw-shell` | 44/44 varlık |

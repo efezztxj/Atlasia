@@ -8,8 +8,67 @@ Ayrıntı: `docs/teslimatlar/teslimat-t4-t5-misafir-2026-10-28.md`.
 - **T4 — Kayıt duvarı kalktı:** Landing'deki her CTA artık giriş ekranını değil **misafir haritasını** açar; `cta_click` sonrası `map_open{guest:true}` düşer. Misafir, herkese açık `places`/`posts`/`stories` kayıtlarını okur (mevcut public okuma kuralı), sahip sorgusu hiç kurulmaz.
 - **Yazma kapısı:** İz ekleme, gönderi/hikâye/yanıt/beğeni, rota oluşturma, yürüyüş kaydı, profil ve bildirimler misafirde tek tek hesap kapısına yönlenir; veri katmanı da yazmayı istemcide reddeder (çift katman). Giriş ekranı kapatılabilir: "Misafir olarak devam et".
 - **T5 — kayıt sonrası ilk değer:** Engellenen eylem niyet olarak hatırlanır (`atlasia.pendingIntent.v1`, 30 dk TTL). Hesap açılınca "iz ekle" isteyen kullanıcı haritayı **ekleme modunda**, "paylaş" isteyen topluluk akışı açık bulur.
-- **Bütçe kararı (ölçümlü):** T4/T5 kodu toplam JS'i 916.296 → **917.290 B** gzip'e çıkardı; eşik 916.500 → **918.000** (yeni bağımlılık yok, gerekçe `scripts/bundle-budget.mjs` içinde yazılı). Kullanıcıya görünen ilk boya 91.539 B (eşik 398.000) ve tanıtım yolculuğu 117.964 B (eşik 425.000) pratikte değişmedi.
-- Yeni testler: `src/config/guestMode.test.ts` (10) + "Misafir olarak devam et" (2) + `App.test.ts` güncellemesi. Toplam **1243/1243** (152 dosya); typecheck, lint, build, SW kabuğu (44/44), `audit:check` yeşil.
+- **Bütçe: eşik değişmedi.** Kodun büyük kısmı tembel `Explorer` parçasında kaldığı için girişteki `entry` yalnız 20.530 → **20.814 B** gzip (+284) büyüdü; toplam JS **918.314 / 997.500**, ilk boya **117.958 / 129.400**, ilk boya JS **91.536 / 102.200**, uygulama kabuğu **517.820 / 603.400**. Yeni bağımlılık yok, eşik yükseltmesi yok.
+- Yeni testler: `src/config/guestMode.test.ts` (10) + "Misafir olarak devam et" (2) + veri katmanında misafir okuma/yazma testleri (2) + `App.test.ts` güncellemesi. Toplam **1248/1248** (153 dosya); typecheck, lint, build, `test:scripts`, SW kabuğu (44/44), `audit:check` yeşil.
+
+## 2026-10-28 — Bütçe eşikleri ölçüme bağlandı (#127, çözülmüş hali)
+
+#127'nin son hali güncel main'e taşındı ve son büyümelere kalibre edildi:
+
+- Bütçe eşikleri artık ölçüme yakın; şişkin/bayat eşik kapıyı fiilen öldüremiyor (bayatlama kapısı testlerde).
+- Son kalibrasyon: toplam JS 997.500, entry 20.900 (Firebase 13 + hikâye silme sonrası ölçüm: 996.828 / 20.530).
+- Yerel `.env.local` bağımlılığı iki testten kaldırıldı.
+
+Typecheck, lint, 1233 test, script testleri ve build yeşil.
+
+
+## 2026-10-28 — Hikâye izleri 24 saatte otomatik ve kalıcı silinir (#131, çözülmüş hali)
+
+#131 paralel Explorer ayrımına dayandığı için olduğu gibi birleşemedi; tek özellik commit'i mevcut yapıya taşındı:
+
+- Üst şeritteki (stories) izler 24 saati doldurunca **otomatik ve kalıcı** silinir; moderatörde kapsam genişler, silme işlemi kayıt altına alınır.
+- Bağlantı değişikliği mevcut `Explorer` bileşenine taşındı (`moderator` bilgisi veri katmanına ve SocialPanel'e geçer).
+- **Bütçe:** yeni silme mantığı toplam JS'i 996.828 bayta çıkardı; toplam bütçe 996.500 → **997.500**.
+
+Typecheck, lint, 1233 test ve build yeşil.
+
+
+## 2026-10-28 — Firebase 13.1.0 + rules-unit-testing 6 (#82, çözülmüş hali)
+
+- `firebase` ^12.19.0 → **^13.1.0**; `@firebase/rules-unit-testing` 5 → **6** (firebase 13 istiyordu; birlikte alındılar).
+- **Uyumluluk:** 13.0 kırıcı değişiklikleri yalnız `@firebase/ai`'da (Atlasia kullanmıyor); auth/firestore kırıcı değil. `dependencySecurity` kapısındaki sürüm sabiti güncellendi; `@grpc/grpc-js` 1.13.6 override'ı 13'te de aynen geçerli (iç içe kopya yok).
+- **Bütçe kararı (maintainer):** toplam JS 984.686 → 994.802 bayt gzip (firestore/auth parçaları büyüdü; firebaseVendor aksine 159.467'ye küçüldü). Toplam JS bütçesi 986.500 → **996.500**; ilk-boya/yolculuk bütçeleri değişmedi.
+- Typecheck, lint, test ve build yeşil. Kurallar emülatör süiti CI'da koşar.
+
+
+## 2026-10-28 — Dev-tooling kısmi güncelleme (#79, çözülebildiği kadarıyla)
+
+#79'un güncel main'de uygulanabilir kısmı alındı; üç paket gerekçeli olarak bekletildi:
+
+- **Alınan:** `tailwindcss` + `@tailwindcss/vite` 4.1.17 → 4.3.3, `eslint` 10.13.0, `globals` 17.13.0.
+- **Bekletilen — `@types/node` 26:** mevcut tsconfig (`lib: ES2020`) altında kurallar testi tiplerini kırıyor; 22'de kaldı.
+- **Bekletilen — `@vitejs/plugin-react` 6:** Vite 8 istiyor (bizde 7); Vite 8 yükseltmesiyle birlikte alınacak.
+- **Bekletilen — `typescript` 7:** `typescript-eslint` henüz TS 7 desteklemiyor (lint tamamen kırılıyor); destek gelince `baseUrl` → göreli `paths` geçişiyle birlikte alınacak (denendi, çalışıyor).
+- `@firebase/rules-unit-testing` 6, firebase 13 istediği için Firebase grubuyla birlikte ele alınır.
+
+Typecheck, lint, 1202 test ve build yeşil.
+
+
+## 2026-10-28 — MapLibre GL 6.15.0 (#81, çözülmüş hali)
+
+- `maplibre-gl` 6.4.1 → **6.15.0** (tam sürüm sabitli; güvenlik tabanı 6.4.1'in üstünde, `dependencySecurity` kapısı yeşil).
+- **Bütçe kararı (maintainer, şeffaflık notu):** 11 minor sürümde kütüphane büyüdü — mapVendor 248.691 → 290.724, mapWorker 131.810 → 150.448 bayt gzip (toplam +60,7 KB). Bu parçalar ilk boyada DEĞİL, harita açılışında tembel yüklenir ve önbelleklenir; ilk-boya/yolculuk bütçeleri etkilenmedi. Bütçeler: mapVendor 286.000 → 302.500, mapWorker 145.500 → 152.000, toplam JS 925.000 → 986.500.
+- Typecheck, lint, test ve build yeşil.
+
+
+## 2026-10-28 — React 19.3.1 (#80 + #83, çözülmüş hali)
+
+Dependabot dalları eski main'e dayandığı için CI'ları kırık geliyordu; yükseltme güncel main üzerinde taze uygulandı:
+
+- `react` / `react-dom` 19.2.6 → **19.3.1**, `@types/react` / `@types/react-dom` → **19.3.0**.
+- **Bütçe kararı (maintainer):** React 19.3'ün vendor paketi 66.500 → 69.004 bayt gzip büyüdü (kütüphanenin kendi büyümesi); `reactVendor` bütçesi 69.500, toplam JS bütçesi 916.500 → **925.000** yapıldı. İlk-boya ve yolculuk bütçeleri değişmedi.
+- Typecheck, lint, 1202 test ve build yeşil.
+
 
 ## 2026-10-28 — İsteğe bağlı 6 panel tembel yükleme (#123'ün kazancı, çözülmüş hali)
 
