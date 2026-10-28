@@ -51,9 +51,18 @@ ve yazılı gerekçeyle değişir; testi yeşile çevirmek için asla değişmez
 beri **bayatlama kapısı** var: sahibi olduğumuz eşikler ölçümün %20'sinden fazla
 üstünde olamaz. `entry` marjı **12 B** — girişe (landing + App kabuğu) yeni kod eklemeden
 önce `npm run build` ile ölçüm alın; sığmıyorsa doğru çözüm eşiği yükseltmek
-değil, footer/SSS gibi aşağıdaki blokları tembel parçaya taşımaktır (§3.4).
+değil, footer/SSS gibi aşağıdaki blokları tembel parçaya taşımaktır (§4.4).
 
-## 3. Açık kararlar (insan onayı ister)
+
+## 3. Dış kontrol durumu (2026-10-28, son tur)
+
+| Kontrol | Durum | Not |
+|---|---|---|
+| GitHub Actions CI | ✅ yeşil | Son commit `67475d7`: rules testleri, typecheck, lint, `npm test`, script testleri, build + bütçe |
+| Cloudflare Pages | ⚠️ aralıklı kırmızı | "Build failed", loglar yalnız dashboard oturumunda. Aynı içerikle `33f07cd` ve `a0346e8` geçti; `dcd7a7c` (T8/T18/T19'dan **önce**) de kırmızıydı → kod değişikliğinden bağımsız görünüyor. Yerel `npm run build` ve CI build adımı yeşil |
+| Firestore emülatör testleri | ✅ CI'da | Bu ortamda Java/emülatör yok; `firestore.rules` değişmedi |
+
+## 4. Açık kararlar (insan onayı ister)
 
 1. **Misafir cihaz kayıtları:** misafirken cihazda kaydedilen iz/rotalar hesap
    açılınca **taşınmıyor** (bilinçli). Taşıma istenirse T5b olarak ayrı iş.
