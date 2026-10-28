@@ -66,9 +66,16 @@ test("2. Yasal metinler: KVKK aydınlatma modalı açılır, taslak uyarısını
   page,
 }) => {
   await page.goto("/");
+  const consentHeading = page.getByRole("heading", { name: "Çerez ve cihaz depolaması" });
+  await expect(consentHeading).toBeVisible();
   await page.getByRole("button", { name: "Yalnız zorunlularla devam et" }).click();
+  await expect(consentHeading).toBeHidden();
 
-  await page.getByRole("button", { name: "KVKK aydınlatma" }).click();
+  const kvkkBtn = page.getByRole("button", { name: "KVKK aydınlatma" });
+  await expect(kvkkBtn).toBeVisible();
+  await kvkkBtn.scrollIntoViewIfNeeded();
+  await kvkkBtn.click();
+
   const dialog = page.getByRole("dialog", { name: "KVKK Aydınlatma Metni" });
   await expect(dialog).toBeVisible();
   await expect(dialog).toContainText("Taslak · Künye ve avukat onayı bekleniyor");
@@ -81,7 +88,10 @@ test("3. Misafir keşif kabuğu: karşılama, harita arayüzü ve Katmanlar sayf
   page,
 }) => {
   await page.goto("/");
+  const consentHeading = page.getByRole("heading", { name: "Çerez ve cihaz depolaması" });
+  await expect(consentHeading).toBeVisible();
   await page.getByRole("button", { name: "Yalnız zorunlularla devam et" }).click();
+  await expect(consentHeading).toBeHidden();
   await page.getByRole("button", { name: /Dünyayı keşfet/ }).click();
 
   const onboarding = page.getByRole("dialog", { name: "Nereden başlayalım?" });
@@ -103,10 +113,15 @@ test("4. Misafir kapısı (T8): İz bırakma isteği kayıt ekranını açar ve 
   page,
 }) => {
   await page.goto("/");
+  const consentHeading = page.getByRole("heading", { name: "Çerez ve cihaz depolaması" });
+  await expect(consentHeading).toBeVisible();
   await page.getByRole("button", { name: "Yalnız zorunlularla devam et" }).click();
+  await expect(consentHeading).toBeHidden();
   await page.getByRole("button", { name: /Dünyayı keşfet/ }).click();
 
-  await page.getByRole("button", { name: /Bir iz bırak/ }).click();
+  const onboarding = page.getByRole("dialog", { name: "Nereden başlayalım?" });
+  await expect(onboarding).toBeVisible();
+  await onboarding.getByRole("button", { name: /Bir iz bırak/ }).click();
 
   await expect(page.getByRole("heading", { name: /Atlasia’ya (üye ol|giriş yap)/ })).toBeVisible();
   const guestBack = page.getByRole("button", { name: /Misafir olarak devam et/ });
@@ -126,9 +141,15 @@ test("5. Cihaz modu üyelik + kurtarma anahtarı + açık tema (/theme-boot.js) 
   await page.goto("/");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
 
+  const consentHeading = page.getByRole("heading", { name: "Çerez ve cihaz depolaması" });
+  await expect(consentHeading).toBeVisible();
   await page.getByRole("button", { name: "Yalnız zorunlularla devam et" }).click();
+  await expect(consentHeading).toBeHidden();
   await page.getByRole("button", { name: /Dünyayı keşfet/ }).click();
-  await page.getByRole("button", { name: /Bir iz bırak/ }).click();
+
+  const onboarding = page.getByRole("dialog", { name: "Nereden başlayalım?" });
+  await expect(onboarding).toBeVisible();
+  await onboarding.getByRole("button", { name: /Bir iz bırak/ }).click();
 
   await expect(page.locator("#account-email")).toBeVisible();
   const switchToSignup = page.getByRole("button", { name: "Üye ol" });
