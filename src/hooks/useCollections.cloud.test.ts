@@ -31,6 +31,8 @@ vi.mock("../lib/firebase", () => ({
   db: {},
   firebaseApp: {},
 }));
+// Koleksiyonlar artık SDK'sız yapılandırma kapısını okur (T11).
+vi.mock("../lib/firebaseConfig", () => ({ firebaseConfigured: true, isCloudReady: true }));
 vi.mock("../lib/routeData", () => ({
   toggleSavedPlace: h.toggleSavedPlace,
   saveRouteReference: h.saveRouteReference,

@@ -103,6 +103,24 @@ describe("CookieConsent", () => {
     expect(screen.queryByRole("dialog", { name: "Gizlilik Açıklaması" })).toBeNull();
   });
 
+  it("yerleşim: masaüstünde sağ alt kart, mobilde güvenli alanlı alt sayfa (T7)", () => {
+    const source = readFileSync("src/components/CookieConsent.tsx", "utf8");
+    // Hero CTA'sı ekranın solunda; kart masaüstünde sağ alt köşeye yaslanır ki
+    // "Dünyayı keşfet" hiçbir masaüstü genişliğinde örtülmesin.
+    expect(source).toContain("md:right-6");
+    expect(source).toContain("md:inset-x-auto");
+    expect(source).not.toContain("md:left-6");
+    // Mobilde tam genişlikte alt sayfa + çentik/gesture çubuğu güvenli alanı.
+    expect(source).toContain("inset-x-0");
+    expect(source).toContain("pb-[calc(1rem+env(safe-area-inset-bottom))]");
+
+    render(createElement(CookieConsent));
+    const card = screen.getByRole("heading", { name: "Çerez ve cihaz depolaması" }).closest("section");
+    expect(card).not.toBeNull();
+    expect(card?.className).toContain("fixed");
+    expect(card?.className).toContain("z-[90]");
+  });
+
   it("main.tsx içinde NetworkStatus ve UpdateNotice yanında bağlıdır", () => {
     const main = readFileSync("src/main.tsx", "utf8");
     expect(main).toContain('import CookieConsent from "./components/CookieConsent"');

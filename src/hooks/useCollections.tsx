@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { firebaseConfigured } from "../lib/firebase";
+import { firebaseConfigured } from "../lib/firebaseConfig";
 import {
   publishRoute,
   removeRouteFromLibrary,

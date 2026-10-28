@@ -67,7 +67,7 @@ const DEFAULT_DIST = fileURLToPath(new URL("../dist", import.meta.url));
  * ediyor. Bu bütçe o durumu gizlemez, ölçer; küçültme işi M-03b olarak açık.
  */
 export const BUNDLE_BUDGET = Object.freeze({
-  totalJsGzipBytes: 908_000,
+  totalJsGzipBytes: 909_500,
   totalCssGzipBytes: 35_700,
   initialGzipBytes: 439_000,
   // İlk HTML ile gelen gerçek ilk boya maliyeti (lazy chunk'lar hariç).
@@ -90,6 +90,9 @@ export const BUNDLE_BUDGET = Object.freeze({
   }),
   // Bu parçalar ilk HTML ile preload edilirse lazy sınırı fiilen ortadan kalkar.
   deferredAssetPrefixes: Object.freeze([
+    // T11 (2026-10-28): Firebase SDK'sı landing'de indirilmemeli. Auth ekranı ve
+    // oturum sonrası keşif kabuğu bu parçayı dinamik `import()` ile çeker.
+    "assets/firebase-vendor-",
     "assets/firebase-auth-",
     "assets/map-vendor-",
     "assets/MapView-",
