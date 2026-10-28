@@ -16,23 +16,27 @@
 | `npm run build` | **PASS** — ama paylar kritik (§2) |
 | `verify:sw-shell` | **PASS** — 44/44 |
 
-**2026-10-28 güncel ölçüm** (`main` = `f58d0ef` + bu turdaki eşik sıkılaştırması):
+**2026-10-28 güncel ölçüm** (`main` = `c0b895b` — maplibre 6.15, react 19.3.1 yükseltmeleri dahil):
 
 | Ölçüm | Değer | Bütçe | **Kalan pay** |
 |---|---|---|---|
-| **Tanıtım yolculuğu (gzip)** | **116.702 B** | **120.300 B** | **3.598 B (%3,0)** |
-| Uygulama kabuğu (giriş sonrası) | 516.564 B | 532.000 B | 15.436 B (%2,9) |
-| **İlk boya JS (gzip)** | **90.444 B** | **93.200 B** | 2.756 B (%3,0) |
-| İlk boya CSS (gzip) | 24.504 B | 25.200 B | 696 B (%2,8) |
-| entry (uygulama kodu) | 19.722 B | 20.400 B | 678 B (%3,3) |
-| **Toplam JS (gzip)** | **915.389 B** | 916.500 B | **1.111 B (%0,12)** ⚠️ |
-| Toplam CSS (gzip) | 35.021 B | 35.700 B | 679 B (%1,9) |
+| **Tanıtım yolculuğu (gzip)** | **125.517 B** | **129.400 B** | **3.883 B (%3,0)** |
+| Uygulama kabuğu (giriş sonrası) | 585.711 B | 603.400 B | 17.689 B (%2,9) |
+| **İlk boya JS (gzip)** | **99.121 B** | **102.200 B** | 3.079 B (%3,0) |
+| İlk boya CSS (gzip) | 24.641 B | 25.200 B | 559 B (%2,2) |
+| entry (uygulama kodu) | 19.721 B | 20.400 B | 679 B (%3,3) |
+| **Toplam JS (gzip)** | **984.682 B** | 986.500 B | **1.818 B (%0,18)** ⚠️ |
+| Toplam CSS (gzip) | 34.820 B | 35.700 B | 880 B (%2,5) |
 | `verify:sw-shell` | 44/44 | — | — |
 
-> 27 Ekim (kabuk bölünmesinden önce): ilk HTML seti 412.238 / 439.000, ilk boya JS 387.761 / 398.000, tanıtım 413.463. Bölünmeyle tanıtım **413.463 → 116.702 B gzip (−%72)**.
+> Bağımlılık yükseltmeleri (`main`): maplibre 6.4.1 → 6.15.0, react 19.3.1. Büyümenin **tamamı vendor** — `entry` 19.722 → 19.721 (bizim kod değişmedi). `mapVendor +52.212`, `mapWorker +18.638`, `reactVendor +8.679`. Tanıtım yalnız react-vendor yüzünden +8.815.
+
+> 27 Ekim (kabuk bölünmesinden önce): tanıtım 413.463 B gzip. Bölünmeyle **413.463 → 116.702** (−%72), bağımlılık artışıyla 125.517.
 
 Kaynak: 143 dosya · en büyük dosyalar `components/Explorer.tsx` 1.680, `moderation.ts` 1.199, `SocialPanel.tsx` 853, `firestoreData.ts` 809, `MapView.tsx` 785. `App.tsx` artık **58 satır** (giriş kapısı).
 Testi olmayan kaynak dosya: **≈36** (kabuk bölünmesinden sonra; `Explorer` dolaylı kapsanıyor).
+
+**Bilinen sıkışıklık:** `Toplam JS 984.682 / 986.500` (%0,18). Sıradaki özellikte ya lazy parça küçültülecek ya da vendor eşiği ölçümle birlikte gerekçeli yükseltilecek.
 
 ---
 

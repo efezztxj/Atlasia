@@ -78,18 +78,32 @@ const DEFAULT_DIST = fileURLToPath(new URL("../dist", import.meta.url));
  * bir kazançtan sonra eşiği sıkılaştırmak zorunlu hale gelir; sessizce
  * gevşeyemez. Satıcı (vendor) kategorileri kapsam dışıdır: sürüm
  * yükseltmelerinde doğal dalgalanırlar.
+ *
+ * 2026-10-28 (bağımlılık yükseltmeleri) — `main` ile birleşince maplibre
+ * 6.4.1 -> 6.15.0 ve react 19.3.1 geldi. Ölçüm ve bayat-kalan eşikler:
+ *   mapVendor  248.691 -> 300.903  (+52.212)   maplibre
+ *   mapWorker  131.810 -> 150.448  (+18.638)   maplibre
+ *   reactVendor 60.325 ->  69.004  ( +8.679)   react 19.3.1
+ *   entry       19.722 ->  19.721  (     -1)   bizim kod: DEĞİŞMEDİ
+ *   tanıtım    116.702 -> 125.517  (+8.815)    yalnız react-vendor büyümesi
+ *   appShell   516.564 -> 585.711  (+69.147)   tamamı harita (lazy, giriş sonrası)
+ * Yani tanıtım sayfası kendi kodumuz yüzünden büyümedi; giriş sonrası harita
+ * maliyeti arttı ve o zaten lazy. Eşikler yeni ölçüme ~%3 payla bağlandı:
+ *   initial 129.400 · initialJs 102.200 · landing 129.400 · appShell 603.400
+ * Vendor eşikleri (react/mapVendor/mapWorker) `main` tarafından yükseltilmişti,
+ * aynen korundu — sürüm yükseltmesinde doğal.
  */
 export const BUNDLE_BUDGET = Object.freeze({
   totalJsGzipBytes: 986_500,
   totalCssGzipBytes: 35_700,
-  initialGzipBytes: 120_300,
+  initialGzipBytes: 129_400,
   // İlk HTML ile gelen gerçek ilk boya maliyeti (lazy chunk'lar hariç).
   initialCssGzipBytes: 25_200,
-  initialJsGzipBytes: 93_200,
+  initialJsGzipBytes: 102_200,
   // Yolculuk bazlı üst sınırlar (bkz. başlıktaki M-03 notu).
   journeyGzipBytes: Object.freeze({
-    landing: 120_300,
-    appShell: 532_000,
+    landing: 129_400,
+    appShell: 603_400,
   }),
   categoryGzipBytes: Object.freeze({
     entry: 20_400,
