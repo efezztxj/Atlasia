@@ -1,5 +1,13 @@
 # Atlasia Update
 
+## 2026-10-28 — Denetim düzeltmeleri + giriş ekranı sürtünmesi (T9)
+
+Ayrıntı: `docs/teslimatlar/teslimat-denetim-t9-2026-10-28.md`.
+
+- **T9 — Giriş/kayıt ekranı:** Google (ve etkinse Apple) artık her iki modda da e-posta formunun **üstünde** birincil boyutta; e-posta "veya e-posta ile" altında. Devre dışı "Apple ile giriş yakında" düğmesi kaldırıldı; yerine e-posta formunda mikro metin. Firebase yapılandırılmamışsa hiç sosyal düğme gösterilmiyor. Şifre göster/gizle, `autocomplete` değerleri ve satır içi hatalar korundu (7 yeni test).
+- **Denetim:** `cta_click` kablolaması için 3 davranışsal test eklendi (hero/header/footer ayrımı, landing'de huni sırası); ölü `auth-secondary-providers` CSS'i silindi (CSS 35.117 → 34.964 B gzip, eşik yeniden 35.100'e çekildi); `consent_choice{analytics:false}` sınırı kodda ve belgede açıklandı.
+- Erişilebilirlik testi `Explorer.tsx`i de tarıyor (dizin taraması) — kapsam kaybı yok. Typecheck, lint, 1139 test, build ve SW kabuğu yeşil.
+
 ## 2026-10-28 — Ölçüm tabanı: huni olayları ve baseline (T1–T3)
 
 Ayrıntı: `docs/teslimatlar/teslimat-t1-t2-t3-olcum-2026-10-28.md`.

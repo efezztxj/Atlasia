@@ -12,15 +12,15 @@ Komut: `npm run build` (üretim derlemesi; `scripts/bundle-budget.mjs` gzip öl�
 
 | Ölçüm | Taban `2412ace` | `2a7f1a4` (T11 sonrası) | Fark |
 |---|---|---|---|
-| İlk HTML seti (gzip) | 411.987 B | **115.087 B** | −296.900 B (−%72) |
-| İlk HTML seti (ham) | 1.371.468 B | 423.111 B | −948.357 B |
+| İlk HTML seti (gzip) | 411.987 B | **115.033 B** | −296.954 B (−%72) |
+| İlk HTML seti (ham) | 1.371.468 B | 422.893 B | −948.575 B |
 | İlk setteki JS (gzip) | 386.401 B | **89.439 B** | −296.962 B |
 | `entry` chunk (gzip) | 166.244 B | **18.620 B** | −147.624 B |
 | `firebase-vendor` (gzip) | 149.338 B — ilk sette | 149.339 B — **ertelenmiş** | ilk setten çıktı |
 | `map-vendor` (gzip) | 248.691 B — ilk sette değil | 248.691 B — ilk sette değil | — |
-| Toplam JS (gzip) | 905.483 B | 908.149 B | +2.666 B (ambalaj + T2 olay sözleşmesi) |
-| Toplam CSS (gzip) | 35.061 B | 35.117 B | +56 B (T7 sınıfları) |
-| Bütçe durumu | içinde | içinde (JS 908.149/909.000, CSS 35.117/35.300) | JS eşiği +1.000 B (gerekçe: `scripts/bundle-budget.mjs`) |
+| Toplam JS (gzip) | 905.483 B | 907.955 B | +2.472 B (ambalaj + T2 olay sözleşmesi) |
+| Toplam CSS (gzip) | 35.061 B | 34.964 B | −97 B (T7 sınıfları + T9 ölü CSS temizliği) |
+| Bütçe durumu | içinde | içinde (JS 907.955/909.000, CSS 34.964/35.100) | yalnız JS eşiği +1.000 B (gerekçe: `scripts/bundle-budget.mjs`) |
 
 > Plan hedefi "ilk yüklemede JS < 250 KB brotli". **Brotli ölçümü yapılmadı**;
 > yukarıdaki değerler gzip. Brotli tipik olarak gzip'ten ~%10–15 küçüktür, yani
@@ -82,7 +82,7 @@ Olay sözleşmesi T2 ile kodda (bkz. `docs/olcum-ve-hata-izleme.md` §2b), ancak
 |---|---|
 | `npm run typecheck` | temiz |
 | `npm run lint` | temiz |
-| `npm run test:run` | 1129/1129 (143 dosya) |
+| `npm run test:run` | 1139/1139 (144 dosya) |
 | `npm run build` | başarılı, bütçe içinde |
 | `npm run verify:sw-shell` | 35/35 varlık |
 | `npm run test:rules:emulator` | çalıştırılmadı (emülatör/Java yok) |

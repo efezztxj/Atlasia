@@ -38,9 +38,11 @@ describe("T1-AUTH telefon bayrağı", () => {
     expect(authTs).toContain("Google ve Apple girişi için sağlayıcı bağlantısı henüz kurulmamış");
   });
 
-  it("kalan öğelerin yerleşimi değişmez: providers + ayırıcı + form sırası korunur", () => {
-    // credentials ekranında providers ve e-posta formu aynı sırada
-    const idxProviders = accountAccess.indexOf('const providers = <div className="auth-provider-actions');
+  it("sağlayıcı bloğu tanımlı ve e-posta formundan önce; sıra T9 testinde davranışsal doğrulanır", () => {
+    // T9 (2026-10-28): sağlayıcılar artık her iki modda da formun üstünde ve
+    // yalnız etkin olanlar render ediliyor. Ayrıntılı sıra/erişilebilirlik
+    // kontrolü AccountAccess.t9.test.ts içinde gerçek render ile yapılır.
+    const idxProviders = accountAccess.indexOf("const providers = socialButtons.length");
     const idxHeading = accountAccess.indexOf('const heading = screen === "reset"');
     expect(idxProviders).toBeGreaterThan(0);
     expect(idxHeading).toBeGreaterThan(idxProviders);
