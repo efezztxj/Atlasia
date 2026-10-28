@@ -1,5 +1,13 @@
 # Atlasia Update
 
+## 2026-10-28 — Firebase 13.1.0 + rules-unit-testing 6 (#82, çözülmüş hali)
+
+- `firebase` ^12.19.0 → **^13.1.0**; `@firebase/rules-unit-testing` 5 → **6** (firebase 13 istiyordu; birlikte alındılar).
+- **Uyumluluk:** 13.0 kırıcı değişiklikleri yalnız `@firebase/ai`'da (Atlasia kullanmıyor); auth/firestore kırıcı değil. `dependencySecurity` kapısındaki sürüm sabiti güncellendi; `@grpc/grpc-js` 1.13.6 override'ı 13'te de aynen geçerli (iç içe kopya yok).
+- **Bütçe kararı (maintainer):** toplam JS 984.686 → 994.802 bayt gzip (firestore/auth parçaları büyüdü; firebaseVendor aksine 159.467'ye küçüldü). Toplam JS bütçesi 986.500 → **996.500**; ilk-boya/yolculuk bütçeleri değişmedi.
+- Typecheck, lint, test ve build yeşil. Kurallar emülatör süiti CI'da koşar.
+
+
 ## 2026-10-28 — Dev-tooling kısmi güncelleme (#79, çözülebildiği kadarıyla)
 
 #79'un güncel main'de uygulanabilir kısmı alındı; üç paket gerekçeli olarak bekletildi:

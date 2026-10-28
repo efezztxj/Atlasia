@@ -65,7 +65,9 @@ describe("üretim bağımlılığı güvenlik sabitlemeleri", () => {
   });
 
   it("Firebase'in dar gRPC aralığını ilk güvenli 1.x sürümüne override eder", () => {
-    expect(manifest.dependencies?.firebase).toBe("^12.19.0");
+    // Firebase 13.1: kırıcı değişiklikler yalnız @firebase/ai'da (kullanılmıyor);
+    // auth/firestore uyumlu. gRPC override'ı 13'te de aynen geçerli.
+    expect(manifest.dependencies?.firebase).toBe("^13.1.0");
     expect(manifest.overrides?.["@grpc/grpc-js"]).toBe("1.13.6");
     expect(lock.packages?.["node_modules/@grpc/grpc-js"]?.version).toBe("1.13.6");
     expect(lock.packages?.["node_modules/@firebase/firestore/node_modules/@grpc/grpc-js"]).toBeUndefined();

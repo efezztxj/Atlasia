@@ -40,7 +40,7 @@
     "@types/tz-lookup": "^6.1.2",
     "clsx": "2.1.1",
     "fflate": "^0.8.3",
-    "firebase": "^12.19.0",
+    "firebase": "^13.1.0",
     "lucide-react": "^1.59.0",
     "maplibre-gl": "6.15.0",
     "react": "^19.3.1",
@@ -54,7 +54,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@firebase/rules-unit-testing": "^5.0.2",
+    "@firebase/rules-unit-testing": "^6.0.0",
     "@tailwindcss/vite": "^4.3.3",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
