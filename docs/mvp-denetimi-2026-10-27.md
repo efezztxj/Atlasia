@@ -16,17 +16,17 @@
 | `npm run build` | **PASS** — ama paylar kritik (§2) |
 | `verify:sw-shell` | **PASS** — 44/44 |
 
-**2026-10-28 son ölçüm** (`main` = `68926fc`, T13-T16 landing + firebase 13.1.0 + maplibre 6.15 + react 19.3.1 dahil):
+**2026-10-28 son ölçüm** (`main` = `a0c4025`, T13-T16 landing + açık tema kontrastı `#133` + firebase 13.1.0 + maplibre 6.15 + react 19.3.1 dahil):
 
 | Ölçüm | Değer | Bütçe | **Kalan pay** |
 |---|---|---|---|
-| **Tanıtım yolculuğu (gzip)** | **126.422 B** | **129.400 B** | **2.978 B (%2,3)** |
-| Uygulama kabuğu (giriş sonrası) | 586.617 B | 603.400 B | 16.783 B (%2,8) |
-| **İlk boya JS (gzip)** | **99.946 B** | **102.200 B** | 2.254 B (%2,2) |
-| İlk boya CSS (gzip) | 24.723 B | 25.200 B | 477 B (%1,9) |
-| entry (uygulama kodu) | 20.547 B | 21.200 B | 653 B (%3,1) |
-| **Toplam JS (gzip)** | **996.818 B** | 997.500 B | **682 B (%0,07)** ⚠️ |
-| Toplam CSS (gzip) | 34.902 B | 35.700 B | 798 B (%2,2) |
+| **Tanıtım yolculuğu (gzip)** | **126.558 B** | **129.400 B** | **2.842 B (%2,2)** |
+| Uygulama kabuğu (giriş sonrası) | 586.753 B | 603.400 B | 16.647 B (%2,8) |
+| **İlk boya JS (gzip)** | **99.926 B** | **102.200 B** | 2.274 B (%2,2) |
+| İlk boya CSS (gzip) | 24.883 B | 25.200 B | 317 B (%1,3) |
+| entry (uygulama kodu) | 20.527 B | 21.200 B | 673 B (%3,2) |
+| **Toplam JS (gzip)** | **996.801 B** | 997.500 B | **699 B (%0,07)** ⚠️ |
+| Toplam CSS (gzip) | 35.062 B | 35.700 B | 638 B (%1,8) |
 | `verify:sw-shell` | 44/44 | — | — |
 
 > Büyümenin tamamı dış kaynaklı: `main`'in bağımlılık yükseltmeleri (maplibre +52 KB, react +8,7 KB) ve T13-T16 landing işi (entry +826 B). **Kabuk bölünmesi korunuyor:** `dist/index.html` hâlâ yalnız `index-*.css`, `index-*.js`, `react-vendor`, `icons-vendor` çekiyor — firebase ve maplibre yok.
@@ -36,7 +36,7 @@
 Kaynak: 143 dosya · en büyük dosyalar `components/Explorer.tsx` 1.680, `moderation.ts` 1.199, `SocialPanel.tsx` 853, `firestoreData.ts` 809, `MapView.tsx` 785. `App.tsx` artık **58 satır** (giriş kapısı).
 Testi olmayan kaynak dosya: **≈36** (kabuk bölünmesinden sonra; `Explorer` dolaylı kapsanıyor).
 
-**Bilinen sıkışıklık:** `Toplam JS 996.818 / 997.500` (%0,07). Sıradaki özellikte ya lazy parça küçültülecek ya da vendor eşiği ölçümle birlikte gerekçeli yükseltilecek.
+**Bilinen sıkışıklık:** `Toplam JS 996.801 / 997.500` (%0,07). Sıradaki özellikte ya lazy parça küçültülecek ya da vendor eşiği ölçümle birlikte gerekçeli yükseltilecek.
 
 ---
 

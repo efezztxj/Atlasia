@@ -225,7 +225,7 @@ export default function ProfilePanel({ onClose, onRecords, settings, myPlacesCou
           </div>
         </section>
 
-        <nav aria-label="Profil bölümleri" className="sticky top-0 z-10 -mx-6 mt-4 grid grid-cols-4 gap-1.5 border-y border-white/[0.06] bg-ink-2/95 px-3 py-2 md:gap-2 md:px-6">
+        <nav aria-label="Profil bölümleri" className="sticky top-0 z-10 -mx-6 mt-4 grid grid-cols-3 gap-1.5 border-y border-white/[0.06] bg-ink-2/95 px-3 py-2 md:gap-2 md:px-6">
           {[
             { id: "profile-account", label: "Hesabım", icon: UserRound },
             { id: "profile-library", label: "Keşiflerim", icon: Bookmark },

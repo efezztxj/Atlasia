@@ -53,44 +53,9 @@ jobs:
         run: npm run lint
 
       - name: Unit tests
-        id: unit-tests
-        run: |
-          set -o pipefail
-          npm test 2>&1 | tee unit-tests.log
-
-      # Unit test logu Actions arayüzü dışında okunamıyor (log indirme ağdan
-      # düşebiliyor). Başarısızlıkta hangi testin düştüğü annotation'dan okunur.
-      - name: Unit testi hatasını annotation ve iş özetine taşı
-        if: always() && steps.unit-tests.outcome == 'failure'
-        run: |
-          python3 - <<'PY'
-          import os
-          import re
-          from pathlib import Path
-
-          path = Path("unit-tests.log")
-          raw = path.read_text(encoding="utf-8", errors="replace") if path.exists() else ""
-          text = re.sub(r"(\x1b\[[0-9;]*[A-Za-z]|\^\[[0-9;]*m)", "", raw)
-          lines = text.splitlines()
-
-          start = next((i for i, l in enumerate(lines)
-                        if "Failed Tests" in l or l.strip().startswith("FAIL ")), max(0, len(lines) - 160))
-          block = lines[start:start + 200]
-          pointers = [l for l in lines if "❯" in l or re.search(r"src/.*\.test\.ts:\d+", l)]
-          head = ["--- SATIR ISARETCILERI ---"] + pointers[:30] if pointers else []
-          body = ("\n".join(head + ["--- HATA BLOGU ---"] + block))[:20000] or text[-4000:]
-
-          summary = os.environ.get("GITHUB_STEP_SUMMARY")
-          if summary:
-              with open(summary, "a", encoding="utf-8") as handle:
-                  handle.write("## Unit testleri — başarısız\n\n```\n" + body + "\n```\n")
-
-          chunk = 4000
-          parts = [body[i:i + chunk] for i in range(0, len(body), chunk)][:8]
-          for index, part in enumerate(parts, start=1):
-              escaped = part.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
-              print(f"::error title=Unit testi hatasi {index}/{len(parts)}::{escaped}")
-          PY
+        # github-actions raporlayıcısı: düşen test, log indirmeden check-run
+        # annotation'ı olarak API'den de okunabilsin (kurallar adımıyla aynı fikir).
+        run: npm test -- --reporter=default --reporter=github-actions
 
       - name: Script tests (no credentials)
         run: npm run test:scripts
