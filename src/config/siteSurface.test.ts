@@ -116,6 +116,7 @@ describe("ölçüm · tanımlı her olay gerçekten çağrılıyor", () => {
     "consentChoice",
     "audioGuideStart",
     "signIn",
+    "firstRouteCreated",
     "placeCreated",
     "routePublished",
     "postCreated",
