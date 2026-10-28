@@ -34,6 +34,9 @@ async function stubExternalServices(page: Page): Promise<void> {
   await page.route(/fonts\.(googleapis|gstatic)\.com/, (route) =>
     route.fulfill({ status: 200, contentType: "text/css", body: "" }),
   );
+  await page.route(/images\.pexels\.com/, (route) =>
+    route.fulfill({ status: 200, contentType: "image/jpeg", body: TRANSPARENT_PNG }),
+  );
 }
 
 test.beforeEach(async ({ page }) => {
@@ -121,9 +124,10 @@ test("4. Misafir kapısı (T8): İz bırakma isteği kayıt ekranını açar ve 
 
   const onboarding = page.getByRole("dialog", { name: "Nereden başlayalım?" });
   await expect(onboarding).toBeVisible();
+  await expect(onboarding.getByRole("button", { name: /Yakınımdaki izleri göster/ })).toBeFocused();
   await onboarding.getByRole("button", { name: /Bir iz bırak/ }).click();
 
-  await expect(page.getByRole("heading", { name: /Atlasia’ya (üye ol|giriş yap)/ })).toBeVisible();
+  await expect(page.locator("#account-email")).toBeVisible();
   const guestBack = page.getByRole("button", { name: /Misafir olarak devam et/ });
   await expect(guestBack).toBeVisible();
 
@@ -149,6 +153,7 @@ test("5. Cihaz modu üyelik + kurtarma anahtarı + açık tema (/theme-boot.js) 
 
   const onboarding = page.getByRole("dialog", { name: "Nereden başlayalım?" });
   await expect(onboarding).toBeVisible();
+  await expect(onboarding.getByRole("button", { name: /Yakınımdaki izleri göster/ })).toBeFocused();
   await onboarding.getByRole("button", { name: /Bir iz bırak/ }).click();
 
   await expect(page.locator("#account-email")).toBeVisible();
