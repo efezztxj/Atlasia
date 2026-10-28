@@ -9,6 +9,8 @@ export default tseslint.config(
     ignores: [
       "dist/**",
       "node_modules/**",
+      "playwright-report/**",
+      "test-results/**",
       "satellite-map-web-application (1)/**",
       "capture.mjs",
       "public/**",
@@ -18,9 +20,11 @@ export default tseslint.config(
     files: [
       "src/**/*.{ts,tsx}",
       "tests/**/*.ts",
+      "e2e/**/*.ts",
       "vite.config.ts",
       "vitest.config.ts",
       "vitest.rules.config.ts",
+      "playwright.config.ts",
     ],
     extends: [
       js.configs.recommended,

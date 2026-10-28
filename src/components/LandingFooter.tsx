@@ -8,6 +8,7 @@
  * (`footerT18.test.ts` + `siteSurface.test.ts` bunu kilitler).
  */
 import type { LegalDocumentType } from "../content/legal";
+import { LANDING_STATIC, VERIFIED_CATALOG_COUNTS } from "../content/landingStatic";
 import type { CtaPlacement } from "../lib/analytics";
 import { openCookiePreferences } from "../lib/cookieConsent";
 
@@ -48,7 +49,23 @@ export default function LandingFooter({ onLegal, onStart }: Props) {
     <>
         <section id="sss" aria-labelledby="sss-title" className="border-t border-white/10 bg-[#f1f0e9] px-5 py-16 text-[#102b2a] md:px-10 md:py-24 lg:px-16">
           <div className="mx-auto max-w-[900px]">
-            <p className="text-[11px] font-semibold tracking-[0.18em] text-[#9a7a3a] uppercase">Sık sorulanlar</p>
+            {/* T20: sahte sayaç veya Firebase çağrısı olmadan doğrulanmış katalog kapsamı */}
+            <div aria-label="Doğrulanmış içerik kapsamı" className="mb-12 grid gap-4 rounded-[22px] border border-[#102b2a]/12 bg-white/60 p-5 sm:grid-cols-3">
+              <div>
+                <p className="font-display text-[28px] leading-none font-bold text-[#102b2a]">{VERIFIED_CATALOG_COUNTS.guidePlaces}</p>
+                <p className="mt-1.5 text-[12.5px] font-medium text-[#102b2a]/80">Seçilmiş rehber nokta</p>
+              </div>
+              <div>
+                <p className="font-display text-[28px] leading-none font-bold text-[#102b2a]">{VERIFIED_CATALOG_COUNTS.siteTours}</p>
+                <p className="mt-1.5 text-[12.5px] font-medium text-[#102b2a]/80">Antik kent sesli turu (Efes, Priene, Pompeii, Ostia)</p>
+              </div>
+              <div>
+                <p className="font-display text-[28px] leading-none font-bold text-[#8f6224]">0</p>
+                <p className="mt-1.5 text-[12.5px] font-medium text-[#102b2a]/80">Reklam ve takip pikseli · {LANDING_STATIC.catalogSummary}</p>
+              </div>
+            </div>
+
+            <p className="text-[11px] font-semibold tracking-[0.18em] text-[#8f6224] uppercase">Sık sorulanlar</p>
             <h2 id="sss-title" className="font-display mt-3 text-[clamp(30px,4vw,48px)] leading-[1.02] font-semibold tracking-[-0.04em]">
               Aklında kalan sorular.
             </h2>

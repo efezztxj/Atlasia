@@ -38,6 +38,32 @@ node scripts/firestore-backup.mjs --verify backups/<proje>-<zaman>/manifest.json
 - En son **3 tam yedeği** şifreli yerel diskte (veya kişisel şifreli bulut sürücünde) tut; daha eski kopyaları sil.
 - Her `firestore.rules` değişikliği veya veri temizliği öncesinde mutlaka taze bir yedek al.
 
+### Adım 4 — Geri Yükleme (Restore) ve `$0` Tatbikat Rutini (`P1-7 / M-58`)
+Yedek geri yüklenemiyorsa yedek değildir. `scripts/firestore-restore.mjs` yazmadan önce her `.ndjson` dosyasının SHA-256 özetini doğrular ve varsayılan olarak yalnız `--dry-run` planı üretir:
+
+```bash
+# 1) Ağa yazmadan geri yükleme planını ve Spark yazma kotası payını gör (--dry-run varsayılan)
+npm run restore:firestore -- --manifest backups/<proje>-<zaman>/manifest.json --target-project atlasia-restore-drill
+
+# 2) Yerel Firestore Emülatörüne $0 maliyetle geri yükleme tatbikatı
+npm run restore:firestore -- \
+  --manifest backups/<proje>-<zaman>/manifest.json \
+  --target-project atlasia-restore-drill \
+  --confirm-project atlasia-restore-drill \
+  --emulator 127.0.0.1:8080 \
+  --apply
+
+# 3) Canlı kurtarma (önce ayrı kurtarma projesine; aynı kaynak projeye yazmak için --allow-overwrite-source da zorunludur)
+FIREBASE_ACCESS_TOKEN="$(gcloud auth print-access-token)" \
+  npm run restore:firestore -- \
+  --manifest backups/<proje>-<zaman>/manifest.json \
+  --target-project <kurtarma-proje-id> \
+  --confirm-project <kurtarma-proje-id> \
+  --apply
+```
+- Varsayılan yazma tavanı `--max-writes 2000`’dir (Spark günlük `20.000` yazma sınırının `%10`’u); aşılırsa tek bir belge bile yazılmadan durur.
+- Yalnız belirli koleksiyonları kurtarmak için `--collections places,routes` filtresi verilebilir.
+
 ---
 
 ## 2. Haftalık 5 Dakikalık Kota ve Güvenlik Rutini

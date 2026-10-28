@@ -28,6 +28,7 @@ import ReportDialog from "./ReportDialog";
 import FriendsTab from "./FriendsTab";
 import { blockUser } from "../lib/moderation";
 import { usePanelAccess } from "../hooks/usePanelAccess";
+import { requestConfirm } from "./ConfirmDialog";
 import { friendlyDataError } from "../lib/firestoreValue";
 import { relativeTime } from "../utils/time";
 import { buildGroupInviteLink, parseInvite, shareOrCopy, type ParsedInvite, type SocialTarget } from "../utils/inviteLink";
@@ -294,7 +295,13 @@ export default function GroupsPanel({ currentUid, currentName, blockedSet, isBlo
 
   const rotateCode = async () => {
     if (!openGroup) return;
-    if (!confirm("Kod yenilenirse daha önce gönderdiğin davet bağlantıları çalışmaz. Devam edilsin mi?")) return;
+    const accepted = await requestConfirm({
+      title: "Davet kodunu yenile",
+      message: "Kod yenilenirse daha önce gönderdiğin davet bağlantıları çalışmaz. Devam edilsin mi?",
+      confirmLabel: "Yenile",
+      danger: false,
+    });
+    if (!accepted) return;
     try {
       const newCode = await rotateGroupCode(openGroup.id, currentUid);
       setOpenGroup({ ...openGroup, joinCode: newCode });
@@ -331,7 +338,13 @@ export default function GroupsPanel({ currentUid, currentName, blockedSet, isBlo
 
   const blockSender = async (uid: string, name: string) => {
     if (!uid || uid === currentUid) return;
-    if (!confirm(`${name} kullanıcısını engellemek istiyor musun? Mesajları gizlenir.`)) return;
+    const accepted = await requestConfirm({
+      title: "Kullanıcıyı engelle",
+      message: `${name} kullanıcısını engellemek istiyor musun? Mesajları gizlenir.`,
+      confirmLabel: "Engelle",
+      danger: true,
+    });
+    if (!accepted) return;
     try {
       await blockUser(uid, currentUid);
       setStatus(`${name} engellendi.`);
@@ -342,7 +355,16 @@ export default function GroupsPanel({ currentUid, currentName, blockedSet, isBlo
 
   const removeGroup = async () => {
     if (!openGroup) return;
-    if (!confirm(openGroup.ownerUid === currentUid ? `“${openGroup.name}” grubunu silmek istiyor musun?` : `“${openGroup.name}” grubundan ayrılmak istiyor musun?`)) return;
+    const isOwner = openGroup.ownerUid === currentUid;
+    const accepted = await requestConfirm({
+      title: isOwner ? "Grubu sil" : "Gruptan ayrıl",
+      message: isOwner
+        ? `“${openGroup.name}” grubunu silmek istiyor musun?`
+        : `“${openGroup.name}” grubundan ayrılmak istiyor musun?`,
+      confirmLabel: isOwner ? "Grubu sil" : "Ayrıl",
+      danger: true,
+    });
+    if (!accepted) return;
     try {
       if (openGroup.ownerUid === currentUid) await deleteGroup(openGroup.id, currentUid);
       else await leaveGroup(openGroup.id, currentUid);

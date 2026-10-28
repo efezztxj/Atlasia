@@ -4,7 +4,7 @@ import test from "node:test";
 import vm from "node:vm";
 
 const ORIGIN = "https://atlasia.test";
-const SHELL_CACHE = "atlasia-shell-v8";
+const SHELL_CACHE = "atlasia-shell-v9";
 const TILE_CACHE = "atlasia-tiles-v1";
 const TILE_META_CACHE = "atlasia-tile-meta-v1";
 const PACK_CACHE = "atlasia-packs-v1";
@@ -253,6 +253,8 @@ test("install: hash'li ve lazy uygulama parçalarıyla kabuğu saklar, skipWaiti
     "/",
     "/theme-boot.js",
     "/manifest.webmanifest",
+    "/icons/icon-32.png",
+    "/icons/icon-180.png",
     "/assets/app.js",
     "/assets/app.css",
     "/assets/lazy.js",

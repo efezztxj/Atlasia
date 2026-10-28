@@ -47,3 +47,8 @@ __pycache__/
 
 # A6: kaynak haritaları CI artifact olarak saklanır, depoya girmez.
 /sourcemaps/
+
+# Playwright E2E çıktıları
+/playwright-report/
+/test-results/
+

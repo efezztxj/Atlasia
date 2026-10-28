@@ -1,6 +1,14 @@
 export const MAX_CLOUD_PHOTO_CHARS = 180_000;
 
 /**
+ * M-23 / P0-4 (Spark $0 ücretsiz plan kararı): Firestore kural tavanı 180.000
+ * karakter olarak korunurken yeni bulut yüklemeleri varsayılan olarak 100.000
+ * karakter (~73 KB ikili JPEG) hedefine sıkıştırılır. Böylece 10 fotoğraflı bir
+ * akış sayfası < 800 KB kalır ve Spark aylık 10 GiB bant genişliği korunur.
+ */
+export const DEFAULT_CLOUD_PHOTO_BUDGET_CHARS = 100_000;
+
+/**
  * T10 — girdi kapıları. 48 MP telefon fotoğrafı ~15 MB; 25 MB üstü dosyalar
  * mobilde decode sırasında sekmeyi düşürebiliyor (OOM). Sınır **decode
  * edilmeden** uygulanır, böylece bellek hiç ayrılmaz.
@@ -32,12 +40,12 @@ export function photoUploadErrorMessage(failure: unknown, fallback: string): str
  * tek yönlü (hep küçülen) kaldığını test kilitliyor.
  */
 export const CLOUD_PHOTO_ATTEMPTS = Object.freeze([
-  { maxSide: 860, quality: 0.7 },
-  { maxSide: 760, quality: 0.64 },
-  { maxSide: 660, quality: 0.58 },
-  { maxSide: 560, quality: 0.52 },
-  { maxSide: 480, quality: 0.46 },
-  { maxSide: 400, quality: 0.4 },
+  { maxSide: 820, quality: 0.68 },
+  { maxSide: 720, quality: 0.62 },
+  { maxSide: 620, quality: 0.56 },
+  { maxSide: 520, quality: 0.5 },
+  { maxSide: 440, quality: 0.44 },
+  { maxSide: 360, quality: 0.38 },
 ]);
 
 /** Ortak girdi doğrulaması: tür, boyut ve HEIC yönlendirmesi. */
@@ -112,7 +120,7 @@ export async function compressImage(
  */
 export async function compressImageWithinLimit(
   file: File,
-  maxDataUrlChars = MAX_CLOUD_PHOTO_CHARS,
+  maxDataUrlChars = DEFAULT_CLOUD_PHOTO_BUDGET_CHARS,
 ): Promise<CompressedImage> {
   assertUsableImage(file);
 

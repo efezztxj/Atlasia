@@ -22,9 +22,13 @@ const PROBE_TIMEOUT_MS = 6000;
 export default function NetworkStatus() {
   const [online, setOnline] = useState(() => navigator.onLine);
   const [reachable, setReachable] = useState(true);
+  const [probeTick, setProbeTick] = useState(0);
 
   useEffect(() => {
-    const connected = () => setOnline(true);
+    const connected = () => {
+      setOnline(true);
+      setProbeTick((n) => n + 1);
+    };
     const disconnected = () => {
       setOnline(false);
       setReachable(false);
@@ -55,7 +59,7 @@ export default function NetworkStatus() {
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [online]);
+  }, [online, probeTick]);
 
   if (online && reachable) return null;
 
