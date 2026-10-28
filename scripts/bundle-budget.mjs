@@ -80,7 +80,7 @@ const DEFAULT_DIST = fileURLToPath(new URL("../dist", import.meta.url));
  * yükseltmelerinde doğal dalgalanırlar.
  */
 export const BUNDLE_BUDGET = Object.freeze({
-  totalJsGzipBytes: 916_500,
+  totalJsGzipBytes: 986_500,
   totalCssGzipBytes: 35_700,
   initialGzipBytes: 120_300,
   // İlk HTML ile gelen gerçek ilk boya maliyeti (lazy chunk'lar hariç).
@@ -93,12 +93,12 @@ export const BUNDLE_BUDGET = Object.freeze({
   }),
   categoryGzipBytes: Object.freeze({
     entry: 20_400,
-    reactVendor: 66_500,
+    reactVendor: 69_500,
     iconsVendor: 10_500,
     firebaseVendor: 164_500,
     firebaseAuth: 40_500,
-    mapVendor: 286_000,
-    mapWorker: 145_500,
+    mapVendor: 302_500,
+    mapWorker: 152_000,
     mapView: 9_100,
   }),
   // Bu parçalar ilk HTML ile preload edilirse lazy sınırı fiilen ortadan kalkar.

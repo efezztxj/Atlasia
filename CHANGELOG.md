@@ -1,5 +1,34 @@
 # Atlasia Update
 
+## 2026-10-28 — Dev-tooling kısmi güncelleme (#79, çözülebildiği kadarıyla)
+
+#79'un güncel main'de uygulanabilir kısmı alındı; üç paket gerekçeli olarak bekletildi:
+
+- **Alınan:** `tailwindcss` + `@tailwindcss/vite` 4.1.17 → 4.3.3, `eslint` 10.13.0, `globals` 17.13.0.
+- **Bekletilen — `@types/node` 26:** mevcut tsconfig (`lib: ES2020`) altında kurallar testi tiplerini kırıyor; 22'de kaldı.
+- **Bekletilen — `@vitejs/plugin-react` 6:** Vite 8 istiyor (bizde 7); Vite 8 yükseltmesiyle birlikte alınacak.
+- **Bekletilen — `typescript` 7:** `typescript-eslint` henüz TS 7 desteklemiyor (lint tamamen kırılıyor); destek gelince `baseUrl` → göreli `paths` geçişiyle birlikte alınacak (denendi, çalışıyor).
+- `@firebase/rules-unit-testing` 6, firebase 13 istediği için Firebase grubuyla birlikte ele alınır.
+
+Typecheck, lint, 1202 test ve build yeşil.
+
+
+## 2026-10-28 — MapLibre GL 6.15.0 (#81, çözülmüş hali)
+
+- `maplibre-gl` 6.4.1 → **6.15.0** (tam sürüm sabitli; güvenlik tabanı 6.4.1'in üstünde, `dependencySecurity` kapısı yeşil).
+- **Bütçe kararı (maintainer, şeffaflık notu):** 11 minor sürümde kütüphane büyüdü — mapVendor 248.691 → 290.724, mapWorker 131.810 → 150.448 bayt gzip (toplam +60,7 KB). Bu parçalar ilk boyada DEĞİL, harita açılışında tembel yüklenir ve önbelleklenir; ilk-boya/yolculuk bütçeleri etkilenmedi. Bütçeler: mapVendor 286.000 → 302.500, mapWorker 145.500 → 152.000, toplam JS 925.000 → 986.500.
+- Typecheck, lint, test ve build yeşil.
+
+
+## 2026-10-28 — React 19.3.1 (#80 + #83, çözülmüş hali)
+
+Dependabot dalları eski main'e dayandığı için CI'ları kırık geliyordu; yükseltme güncel main üzerinde taze uygulandı:
+
+- `react` / `react-dom` 19.2.6 → **19.3.1**, `@types/react` / `@types/react-dom` → **19.3.0**.
+- **Bütçe kararı (maintainer):** React 19.3'ün vendor paketi 66.500 → 69.004 bayt gzip büyüdü (kütüphanenin kendi büyümesi); `reactVendor` bütçesi 69.500, toplam JS bütçesi 916.500 → **925.000** yapıldı. İlk-boya ve yolculuk bütçeleri değişmedi.
+- Typecheck, lint, 1202 test ve build yeşil.
+
+
 ## 2026-10-28 — İsteğe bağlı 6 panel tembel yükleme (#123'ün kazancı, çözülmüş hali)
 
 #123 paralel bir App bölünmesi içerdiği için olduğu gibi birleşemedi; kazancı mevcut `Explorer` yapısına uygulandı, #123'ün yerini bu kayıt alır:
