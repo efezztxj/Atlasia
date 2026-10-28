@@ -73,7 +73,9 @@ describe("T17 · noscript içerik", () => {
   it("derleme hattı enjeksiyonu bağlı ve tek kaynak", () => {
     expect(viteConfig).toContain('from "./src/content/landingStatic"');
     expect(viteConfig).toContain("transformIndexHtml");
-    expect(viteConfig).toContain('html.replace(\'<div id="root"></div>\'');
+    // İşaret bulunamazsa derleme kırılmalı: sessizce metinsiz HTML yayına çıkmasın.
+    expect(viteConfig).toContain('html.includes(marker)');
+    expect(viteConfig).toContain("throw new Error");
     // Kaynak `index.html` içinde metin kopyası tutulmaz: tek kaynak, sürüklenme yok.
     expect(indexHtml).not.toContain(LANDING_STATIC.steps[0].title);
     expect(indexHtml).toContain('<div id="root"></div>');

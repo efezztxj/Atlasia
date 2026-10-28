@@ -24,8 +24,15 @@ export default defineConfig(({ mode }) => {
         name: "atlasia-noscript-landing",
         // `<noscript>` JS açıkken render edilmez: düzen, CLS ve LCP etkilenmez;
         // hidrasyon da gerekmez (createRoot kökü kendi kurar).
-        transformIndexHtml: (html) =>
-          html.replace('<div id="root"></div>', `<div id="root"></div>\n${renderLandingStaticHtml()}`),
+        transformIndexHtml: (html) => {
+          const marker = '<div id="root"></div>';
+          // Sessiz gerileme olmasın: kök işareti değişirse derleme kırılır,
+          // sayfa "metinsiz HTML" olarak yayına çıkmaz.
+          if (!html.includes(marker)) {
+            throw new Error("atlasia-noscript-landing: index.html içinde #root bulunamadı");
+          }
+          return html.replace(marker, `${marker}\n${renderLandingStaticHtml()}`);
+        },
       },
     ],
     resolve: {

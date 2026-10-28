@@ -65,6 +65,14 @@ describe("T8 · Explorer bağlantısı", () => {
     expect(block).toContain('askAccount("Rota oluşturmak için bir hesap aç ya da giriş yap.", "route")');
   });
 
+  it("rota niyeti hesap açılınca asistanı açar (T5 sözü tutulur)", () => {
+    const block = explorer.slice(
+      explorer.indexOf('pending === "route"'),
+      explorer.indexOf('pending === "route"') + 400,
+    );
+    expect(block).toContain("setAtlasOpen(true)");
+  });
+
   it("panel aktivasyona bağlı: rota varsa açılmaz", () => {
     expect(explorer).toContain('!storageGet("atlasia.onboardingSeen") && !storageGet(FIRST_ROUTE_KEY)');
   });

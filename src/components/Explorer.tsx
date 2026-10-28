@@ -187,7 +187,10 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
       setToast("Hesabın hazır. Topluluk akışında ilk paylaşımını yapabilirsin.");
       setFeedOpen(true);
     } else if (pending === "route") {
+      // T8: rota niyeti yalnız sözle karşılanmaz — asistan açılır, kullanıcı
+      // ilk rotasını yazmaya hazır bulur (T5'in "aynı yere dön" sözü).
       setToast("Hesabın hazır. Atlas AI'a nereye gitmek istediğini yaz, rotanı çizsin.");
+      setAtlasOpen(true);
     }
     // Yalnız oturum açılışında bir kez: `guest` false olduktan sonra tekrar çalışmaz.
   }, [guest]);

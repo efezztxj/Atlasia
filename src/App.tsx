@@ -53,6 +53,7 @@ function AuthGate({ installApp }: { installApp: InstallAppController }) {
 
   // T2 huni adımı: landing'deki birincil eylem. T4 ile birlikte bu adım artık
   // kayıt duvarı değil: harita misafir olarak açılır, yazma anında hesap istenir.
+  // `signedIn` burada sabit false: tanıtım ekranı yalnız oturumsuzken görünür.
   const handleStart = (placement: CtaPlacement) => {
     analytics.ctaClick({ placement, signedIn: false });
     startGuest();
