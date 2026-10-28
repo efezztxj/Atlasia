@@ -55,6 +55,9 @@ interface Props {
   /* Paylaşımlı veri */
   posts: FeedPost[];
   stories: Story[];
+  loading?: boolean;
+  loadError?: string | null;
+  onRetryLoad?: () => void;
   hasMorePosts: boolean;
   hasMoreStories: boolean;
   loadingMorePosts: boolean;
@@ -89,6 +92,9 @@ export default function SocialPanel({
   onRequestPrecise,
   posts,
   stories: allStories,
+  loading = false,
+  loadError = null,
+  onRetryLoad,
   hasMorePosts,
   hasMoreStories,
   loadingMorePosts,
@@ -442,6 +448,13 @@ export default function SocialPanel({
             <span className="w-full truncate text-center text-[12px] text-mint/65">İz bırak</span>
           </button>
 
+          {loading && stories.length === 0 && (
+            <>
+              <span aria-hidden className="skeleton size-[52px] shrink-0 rounded-full" />
+              <span aria-hidden className="skeleton size-[52px] shrink-0 rounded-full" />
+            </>
+          )}
+
           {stories.map((s, i) => {
             const isSeen = seen.includes(s.id);
             const thumb = mediaUrl(s.photo);
@@ -528,7 +541,31 @@ export default function SocialPanel({
 
         {/* Gönderiler */}
         <div className="px-3 py-2">
-          {visiblePosts.length === 0 && (
+          {loadError && visiblePosts.length === 0 && (
+            <div role="alert" className="my-2 rounded-2xl border border-sun/30 bg-white/[0.03] p-3 text-center">
+              <p className="text-[12.5px] text-mint/85">Canlı akış yüklenemedi. Bağlantını kontrol edip tekrar dene.</p>
+              {onRetryLoad && (
+                <button
+                  type="button"
+                  onClick={onRetryLoad}
+                  className="mt-2 rounded-full bg-sun px-3.5 py-1.5 text-[12px] font-semibold text-ink"
+                >
+                  Yeniden dene
+                </button>
+              )}
+            </div>
+          )}
+
+          {loading && !loadError && visiblePosts.length === 0 && (
+            <div role="status" className="space-y-2 py-2">
+              <p className="text-center text-[12px] text-mint/70">Topluluk akışı yükleniyor…</p>
+              <div aria-hidden className="skeleton h-20 w-full" />
+              <div aria-hidden className="skeleton h-20 w-full" />
+              <div aria-hidden className="skeleton h-20 w-full" />
+            </div>
+          )}
+
+          {!loading && !loadError && visiblePosts.length === 0 && (
             <div className="px-3 py-10 text-center">
               <Sparkles className="mx-auto mb-2 size-5 text-leaf/70" />
               <p className="text-[12.5px] text-mint/60">

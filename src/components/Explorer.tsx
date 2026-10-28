@@ -225,6 +225,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
         ...local,
         ready: true,
         error: null,
+        retry: () => {},
         hasMorePosts: false,
         hasMoreStories: false,
         loadingMorePosts: false,
@@ -233,10 +234,15 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
         loadMoreStories: async () => {},
       };
 
+  const [dismissedDataError, setDismissedDataError] = useState<Error | null>(null);
+  const showDataErrorBanner = (cloudAccount || guest)
+    && isCloudReady
+    && remote.error !== null
+    && remote.error !== dismissedDataError;
+
   // Kullanıcıya bulut bağlantısı durumunu bildir
   useEffect(() => {
     if (cloudAccount && !remote.ready && remote.error) {
-      setToast("Canlı veriler yüklenemedi. Yeni işlemler için bağlantını kontrol et.");
       console.warn("[Atlasia] Config özeti:", firebaseConfigSummary);
     } else if (!isCloudReady) {
       setToast("Firebase yapılandırması eksik, yerel veri kullanılıyor.");
@@ -1323,6 +1329,31 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
         Harita © Esri, OpenFreeMap, OpenMapTiles ve OpenStreetMap katkıcıları · Yükseklik verisi: AWS Terrain Tiles
       </p>
 
+      {/* M-18: Kalıcı canlı veri hata şeridi + Yeniden dene */}
+      {showDataErrorBanner && (
+        <div role="alert" className="animate-rise absolute top-[88px] left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full border border-sun/30 bg-ink/90 py-2 pr-2 pl-4 text-[12px] text-mint shadow-xl shadow-black/50">
+          <span>Canlı veriler yüklenemedi · yerel kayıtlar gösteriliyor</span>
+          <button
+            type="button"
+            onClick={() => {
+              setDismissedDataError(null);
+              cloud.retry();
+            }}
+            className="flex items-center gap-1 rounded-full bg-sun px-3 py-1.5 text-[12px] font-semibold text-ink transition"
+          >
+            Yeniden dene
+          </button>
+          <button
+            type="button"
+            aria-label="Canlı veri uyarısını kapat"
+            onClick={() => setDismissedDataError(remote.error)}
+            className="grid size-7 place-items-center rounded-full text-mint/70 transition hover:bg-white/10"
+          >
+            <X className="size-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* Ekleme modu bandı */}
       {addMode && (
         <div className="animate-rise absolute top-[88px] left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 rounded-full border border-leaf/40 bg-ink/90 py-2 pr-2 pl-4 text-[12.5px] text-mint shadow-xl shadow-black/50">
@@ -1427,6 +1458,9 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
         onRequestPrecise={handleLocate}
         posts={filteredPosts}
         stories={filteredStories}
+        loading={(cloudAccount || guest) && isCloudReady && !remote.ready && !remote.error}
+        loadError={(cloudAccount || guest) && isCloudReady && remote.error ? "Canlı akış yüklenemedi." : null}
+        onRetryLoad={cloud.retry}
         hasMorePosts={cloud.hasMorePosts}
         hasMoreStories={cloud.hasMoreStories}
         loadingMorePosts={cloud.loadingMorePosts}

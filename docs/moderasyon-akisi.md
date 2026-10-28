@@ -138,8 +138,12 @@ Maintainer isteğiyle moderasyon, klasik admin paneli düzenine taşındı:
 
 - **Giriş:** Ayarlar → Moderasyon → **Yönetim Paneli** (yalnız moderatörde; durum
   panel açılmadan da `fetchModeratorAccess` ile öğrenilir, fail-closed sürer).
-- **Düzen:** sol menü (Kontrol Paneli · Kuyruk · İtirazlar · Kullanıcılar ·
+- **Düzen:** sol menü (Kontrol Paneli · Kuyruk · İncelenenler · İtirazlar · Kullanıcılar ·
   Kayıtlar · Duyurular · Raporlarım); dar ekranda ikonlara daralır.
+- **Kuyruk ve İncelenenler ayrımı (2026-10-28, PR #140):**
+  - **Kuyruk** yalnız açık (`open` / bekleyen) raporları listeler; moderatör üzerinde karar verilen kayıt kuyruktan düşer.
+  - **İncelenenler** karara bağlanmış (`reviewed` / `actioned`) raporları salt okuma arşivi olarak 4 işlem grubunda ve hedef türüne göre (`Tümü · Gönderi · İz · Hikâye · Yanıt · Hesap`) listeler: **Kalıcı Silinenler**, **Askıya Alınanlar**, **Uyarı Verilenler**, **İncelenip Kapatılanlar**. Çift yaptırımı önlemek için İncelenenler görünümünde yaptırım düğmesi bulunmaz.
+  - Açık rapordan tek adımda kanıtlı yaptırım (`Kalıcı sil`, `Kalıcı sil + Askıya al`, `Uyarı ver`, `Hesabı askıya al`) çalıştırıldığında istemci önce raporu `actioned` olarak mühürleyip ardından sunucu kuralının (`validModAction` / `validBan` / `validWarning`) beklediği işlem kaydını yazar.
 - **Kontrol Paneli:** bekleyen rapor / kuyruk / aktif ban / bekleyen itiraz /
   duyuru / işlem kaydı kartları (tıklanınca ilgili görünüme gider) + son işlemler.
 - **Kullanıcılar:** kuyruktaki rapor sahipleri + ban kayıtlarının birleşimi;
