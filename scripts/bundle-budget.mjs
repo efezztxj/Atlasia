@@ -148,6 +148,14 @@ export const BUNDLE_BUDGET = Object.freeze({
   // dağılımı kaydı (parça sınırları değişti), ~%3 payla yeniden bağlandı:
   //   entry 16.180 (eşik 21.200 bayattı) -> 16.700 · iconsVendor 13.261 -> 13.700
   //   firebaseAuth 44.778 -> 46.200 · ilk boya CSS 25.372 -> 26.100
+  //
+  // 2026-10-28 (denetim düzeltmeleri) — tembel `CookieConsent` parçası
+  // indirilemezse rıza paneline erişim kayboluyordu (`CookieConsentBoundary`
+  // bunu çözdü) ve parça inerken yapılan "Çerez tercihleri" isteği olay
+  // dinleyicisi olmadığı için yok oluyordu. İkincisi için istek bayrağa da
+  // yazılıyor (`consumePendingCookiePreferences`). Ölçüm değişmedi:
+  //   entry 16.180 · toplam JS 988.185 · ilk boya 98.281 · appShell 586.190
+  // Eşikler **değişmedi** (Vite 8/Rolldown ölçümüne bağlı kalıyor).
   totalJsGzipBytes: 1_003_000,
   totalCssGzipBytes: 35_700,
   initialGzipBytes: 129_400,

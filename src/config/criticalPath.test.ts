@@ -26,8 +26,10 @@ describe("T7 · kritik yol", () => {
   it("tanıtım alt bloğu (SSS + footer) tembel parçada", () => {
     expect(landing).toContain('const LandingFooter = lazy(() => import("./LandingFooter"))');
     expect(landing).toContain("<LandingFooter");
-    // SSS ve footer JSX'i artık giriş paketinde değil.
-    expect(landing).not.toContain('id="sss"');
+    // SSS ve footer JSX'i artık giriş paketinde değil. Sayfada kalan tek
+    // `#sss` yer tutucu çapadır: parça inerken menü bağlantısı ölmesin.
+    expect(landing.match(/id="sss"/g) ?? []).toHaveLength(1);
+    expect(landing).toContain('<div id="sss" aria-hidden');
     expect(landing).not.toContain("<footer");
     expect(footer).toContain('id="sss"');
     expect(footer).toContain("<footer");
