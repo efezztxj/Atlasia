@@ -51,7 +51,17 @@ export function useServiceWorkerUpdate(register = true): UpdateState & { apply: 
       });
     };
 
+    // İlk ziyarette başlangıçta `controller` null'dır; SW kurulumu bitip `clients.claim()`
+    // çalıştırdığında tarayıcı ilk `controllerchange` olayını ateşler. Bu bir sürüm
+    // güncellemesi DEĞİLDİR — sayfayı yenilerse ilk kez gelen kullanıcının açık
+    // modalını ve misafir oturumunu habersiz sıfırlar.
+    let hadController = Boolean(navigator.serviceWorker.controller);
+
     const onControllerChange = () => {
+      if (!hadController) {
+        hadController = true;
+        return;
+      }
       if (reloadedRef.current) return;
       reloadedRef.current = true;
       window.location.reload();
