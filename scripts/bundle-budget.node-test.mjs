@@ -22,19 +22,22 @@ function writeFixture(distDir, relativePath, content) {
   writeFileSync(fullPath, content);
 }
 
-function makeDist(t, { entry = "console.log('entry')", initialAuth = false } = {}) {
+function makeDist(t, { entry = "console.log('entry')", initialAuth = false, initialFirebaseVendor = false } = {}) {
   const distDir = mkdtempSync(path.join(os.tmpdir(), "atlasia-bundle-budget-"));
   t.after(() => rmSync(distDir, { recursive: true, force: true }));
 
   const authLink = initialAuth
     ? '<link rel="modulepreload" crossorigin href="/assets/firebase-auth-auth.js">'
     : "";
+  const firebaseVendorLink = initialFirebaseVendor
+    ? '<link rel="modulepreload" crossorigin href="/assets/firebase-vendor-firebase.js">'
+    : "";
   writeFixture(
     distDir,
     "index.html",
     `<!doctype html>\n<script type="module" crossorigin src="/assets/index-entry.js"></script>\n` +
       `<link rel="modulepreload" crossorigin href="/assets/react-vendor-react.js">\n` +
-      `<link rel="modulepreload" crossorigin href="/assets/firebase-vendor-firebase.js">\n` +
+      `${firebaseVendorLink}\n` +
       `${authLink}\n<link rel="stylesheet" crossorigin href="/assets/index-entry.css">`,
   );
   writeFixture(distDir, "assets/index-entry.js", entry);
@@ -73,7 +76,6 @@ test("geçerli fixture toplamları ve ilk asset setini ölçer", (t) => {
 
   assert.equal(evaluateBundleBudget(summary).ok, true);
   assert.deepEqual(summary.initialAssetPaths, [
-    "assets/firebase-vendor-firebase.js",
     "assets/index-entry.css",
     "assets/index-entry.js",
     "assets/react-vendor-react.js",
@@ -81,6 +83,14 @@ test("geçerli fixture toplamları ve ilk asset setini ölçer", (t) => {
   assert.equal(summary.categories.entry.gzipBytes, gzipSync("console.log('entry')").length);
   assert.equal(summary.totalCssGzipBytes, gzipSync("body{}").length);
   assert.match(formatBundleReport(summary), /İlk HTML seti:/);
+});
+
+test("ertelenmesi gereken Firebase vendor ilk setteyse bütçeyi kırar (T11)", (t) => {
+  const summary = summarizeBundle(collectBundleAssets(makeDist(t, { initialFirebaseVendor: true })));
+  const result = evaluateBundleBudget(summary);
+
+  assert.equal(result.ok, false);
+  assert.ok(result.violations.some((message) => message.includes("firebase-vendor-firebase.js")));
 });
 
 test("ertelenmesi gereken Auth chunk'ı ilk setteyse bütçeyi kırar", (t) => {

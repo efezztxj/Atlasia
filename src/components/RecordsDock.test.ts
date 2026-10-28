@@ -31,6 +31,8 @@ vi.mock("../hooks/useCollections", async (importOriginal) => {
   };
 });
 vi.mock("../lib/firebase", () => ({ firebaseConfigured: true, isCloudReady: true, db: {}, firebaseApp: {} }));
+// Koleksiyonlar artık SDK'sız yapılandırma kapısını okur (T11).
+vi.mock("../lib/firebaseConfig", () => ({ firebaseConfigured: true, isCloudReady: true }));
 vi.mock("../lib/routeData", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../lib/routeData")>();
   return {

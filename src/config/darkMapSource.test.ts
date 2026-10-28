@@ -12,7 +12,7 @@ interface OpenFreeMapStyle {
 }
 
 const sourcePath = fileURLToPath(new URL("../components/MapView.tsx", import.meta.url));
-const appPath = fileURLToPath(new URL("../App.tsx", import.meta.url));
+const appPath = fileURLToPath(new URL("../components/Explorer.tsx", import.meta.url));
 const stylePath = fileURLToPath(new URL("../data/openFreeMapDarkStyle.json", import.meta.url));
 const headersPath = fileURLToPath(new URL("../../public/_headers", import.meta.url));
 

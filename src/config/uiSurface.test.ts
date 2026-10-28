@@ -14,7 +14,8 @@ const read = (relative: string) => readFileSync(fileURLToPath(new URL(`../../${r
 const exists = (relative: string) => existsSync(fileURLToPath(new URL(`../../${relative}`, import.meta.url)));
 
 const css = read("src/index.css");
-const app = read("src/App.tsx");
+// App.tsx ince kapıdır (landing + giriş); keşif yerleşimi Explorer.tsx içinde.
+const app = read("src/components/Explorer.tsx");
 const mapControls = read("src/components/MapControls.tsx");
 const bottomPanel = read("src/components/BottomPanel.tsx");
 const hero = read("src/components/Hero.tsx");
