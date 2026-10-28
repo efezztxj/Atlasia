@@ -11,6 +11,11 @@ import { AccountError, isValidEmail, normalizeEmail, passwordRules, validPasswor
 import { checkPwnedPassword, estimatePasswordStrength, type PasswordExposure } from "../lib/passwordSecurity";
 import { resetDevicePassword } from "../lib/deviceAccounts";
 import { analytics } from "../lib/analytics";
+import { startAppCheck } from "../lib/firebase";
+
+// Giriş/kayıt akışı Firestore'a yazabildiği için App Check burada başlar;
+// landing'de reCAPTCHA yüklenmez (bkz. src/config/appCheckLazy.test.ts).
+startAppCheck();
 // Kullanım koşulları/gizlilik metni yalnız ilgili bağlantıya basılınca açılır;
 // ~19 KB'lik metin giriş ekranının başlangıç paketinde durmaz.
 const LegalNotice = lazy(() => import("./LegalNotice"));
