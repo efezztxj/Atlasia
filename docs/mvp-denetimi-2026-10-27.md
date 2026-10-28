@@ -11,7 +11,7 @@
 |---|---|
 | `npx tsc --noEmit` | **PASS** (0 hata) |
 | `npx eslint . --max-warnings=0` | **PASS** (0 uyarı) |
-| `npm run test:run` | **PASS** — 145 dosya / **1.136 test** *(2026-10-27 son ölçüm)* |
+| `npm run test:run` | **PASS** — 147 dosya / **1.162 test** *(2026-10-27 son ölçüm)* |
 | `npm run test:scripts` | **PASS** — 8/8 paket |
 | `npm run build` | **PASS** — ama paylar kritik (§2) |
 | `verify:sw-shell` | **PASS** — 31/31 |
@@ -269,8 +269,8 @@ Kod sağlam (1.087 test, 0 tip/lint hatası); **ama CSS bütçesinde 26 bayt kal
 |---|---|---|---|---|
 | ~~B1~~ | ~~**M-01a** `map-vendor` CSS'i `MapView`'a taşı~~ → **yapıldı (2026-10-27)**: harita CSS'i zaten lazy'ydi; bütçe kapsamı düzeltildi, `initialCss`/`initialJs` kapıları eklendi | CSS payı 143 B → 743 B + iki sıkı kapı | — | ✅ kapandı |
 | ~~B2~~ | ~~**M-14** Apple butonu: bayrak kapalıyken gizle~~ → **yapıldı (2026-10-27)**: bayrak kapalıyken düğme hiç render edilmiyor, nottaki Apple ifadesi de koşullu | Ölü düğme yok | — | ✅ kapandı |
-| B3 | **M-48/A** saf fonksiyon testleri — **2/7 bitti**: `shareLinkUrl` (8 test), `contrast` (12 test). Kalan: `routeData`, `notifications`, `verifications`, `useServiceWorkerUpdate`, `useCollections` | 46 testsiz dosyanın en yüksek riskli 7'si; ucuz ve regresyon kalkanı | 2 sa kaldı | — |
-| B4 | **M-46** `axe-core` (jsdom) + RTL smoke: `LandingPage`, `AccountAccess`, `BottomPanel` | Tarayıcı gerektirmez, CI'da erişilebilirlik kapısı olur | 4 sa | — |
+| ~~B3~~ | ~~**M-48/A** saf fonksiyon testleri~~ → **yapıldı (2026-10-27)**: `shareLinkUrl` (8), `contrast` (12), `notifications` (11), `verifications` (15), `useServiceWorkerUpdate` (9). `routeData` ve `useCollections` zaten testliydi (yanlış sayım düzeltildi) | 55 yeni test; IO yolları ve kural sınırları kilitli | — | ✅ kapandı |
+| ~~B4~~ | ~~**M-46** `axe-core` kapısı~~ → **yapıldı (2026-10-27)**: `src/components/a11y.test.ts` (7 test) — `LandingPage` ve `AccountAccess` axe taraması **0 ihlal**, tek `h1`/başlık sırası, düğme adları, form etiketleri, `index.html` dil + zoom. `BottomPanel` kapsam dışı: 20+ prop + `useCollections` bağı; RTL testi ayrı iş olarak D3'te | Tarayıcısız a11y kapısı; kasıtlı ihlal testi kapının boş yere yeşil olmadığını kanıtlıyor | — | ✅ kapandı (`axe-core` devDependency) |
 | ~~B5~~ | ~~**M-07** olay şeması testi + olay kataloğu~~ → **yapıldı (2026-10-27)**: `docs/olcum-ve-hata-izleme.md` §4b olay kataloğu (10 olay × alan × tetikleyici dosya) + `src/config/telemetryCatalog.test.ts` (5 test) kod–belge–tetikleyici üçlüsünü kilitliyor | "Tanımlı ama ölü olay" geri gelemez | — | ✅ kapandı |
 
 ### Parti C — Uyum ve ürün kararı (ben 0,5 gün + senin girdin)
