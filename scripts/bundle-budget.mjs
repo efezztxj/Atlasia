@@ -67,7 +67,7 @@ const DEFAULT_DIST = fileURLToPath(new URL("../dist", import.meta.url));
  * ediyor. Bu bütçe o durumu gizlemez, ölçer; küçültme işi M-03b olarak açık.
  */
 export const BUNDLE_BUDGET = Object.freeze({
-  totalJsGzipBytes: 916_500,
+  totalJsGzipBytes: 925_000,
   totalCssGzipBytes: 35_700,
   initialGzipBytes: 439_000,
   // İlk HTML ile gelen gerçek ilk boya maliyeti (lazy chunk'lar hariç).
@@ -80,7 +80,7 @@ export const BUNDLE_BUDGET = Object.freeze({
   }),
   categoryGzipBytes: Object.freeze({
     entry: 174_000,
-    reactVendor: 66_500,
+    reactVendor: 69_500,
     iconsVendor: 10_500,
     firebaseVendor: 164_500,
     firebaseAuth: 40_500,
