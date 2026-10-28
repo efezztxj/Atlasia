@@ -139,10 +139,11 @@ export const BUNDLE_BUDGET = Object.freeze({
   // 2026-10-28 (main birleşmesi) — main, moderasyon "İncelenenler" sekmesiyle
   // toplam JS'i 998.658 B'ye çıkarmıştı (eşik 999.400, yalnız lazy ReportsPanel).
   // Birleşme sonrası ölçüm (`npm run build`):
-  //   entry          **18.903**  · ilk boya JS **98.248** · ilk HTML **125.965**
-  //   appShell       **586.160** · toplam JS     **1.001.019**
-  // Toplam JS eşiği 1.003.000 (pay 1.981 B, %0,20). Diğer eşikler değişmedi;
-  // moderasyon payı yalnız toplam JS'e yansıdı (lazy parça).
+  //   entry          **18.936**  · ilk boya JS **98.281** · ilk HTML **125.996**
+  //   appShell       **586.190** · toplam JS     **1.001.069**
+  // Toplam JS eşiği 1.003.000 (pay 1.931 B, %0,19). Diğer eşikler değişmedi;
+  // moderasyon payı yalnız toplam JS'e yansıdı (lazy parça). Sayılar denetim
+  // düzeltmelerinden (rıza isteği bayrağı, `#sss` yer tutucu çapası) sonradır.
   totalJsGzipBytes: 1_003_000,
   totalCssGzipBytes: 35_700,
   initialGzipBytes: 129_400,

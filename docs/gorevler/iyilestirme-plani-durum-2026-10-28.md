@@ -39,12 +39,12 @@ Plan sırası: `T1 → T2 → T3 → T12 → T11 → T7 → T4 → T5 → T8 →
 
 | Ölçüm | Değer | Eşik | Marj |
 |---|---|---|---|
-| İlk HTML seti (gzip) | 125.965 B | 129.400 B | 3.409 B |
-| Toplam JS (gzip) | 1.001.019 B | 1.003.000 B | **1.636 B** |
+| İlk HTML seti (gzip) | 125.996 B | 129.400 B | 3.409 B |
+| Toplam JS (gzip) | 1.001.069 B | 1.003.000 B | **1.636 B** |
 | Toplam CSS (gzip) | 34.988 B | 35.700 B | 712 B |
-| Tanıtım yolculuğu (gzip) | 125.965 B | 129.400 B | 3.409 B |
-| Uygulama kabuğu (gzip) | 586.160 B | 603.400 B | 17.214 B |
-| `entry` (bizim kod) | 18.903 B | 20.900 B | **2.012 B** |
+| Tanıtım yolculuğu (gzip) | 125.996 B | 129.400 B | 3.409 B |
+| Uygulama kabuğu (gzip) | 586.190 B | 603.400 B | 17.214 B |
+| `entry` (bizim kod) | 18.936 B | 20.900 B | **2.012 B** |
 
 Eşik kuralı: `scripts/bundle-budget.mjs` içindeki sayı **yalnız** yeni bir ölçüm
 ve yazılı gerekçeyle değişir; testi yeşile çevirmek için asla değişmez. #127'den
