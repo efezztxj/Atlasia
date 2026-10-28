@@ -13,9 +13,9 @@ Plan sırası: `T1 → T2 → T3 → T12 → T11 → T7 → T4 → T5 → T8 →
 
 | # | Madde | Durum | Kanıt |
 |---|---|---|---|
-| T1 | Ölçüm altyapısı (toplayıcı + panel) | 🟡 **kısmi** — kod hazır, panel yok | `src/lib/telemetry.ts`, `telemetryBootstrap.ts`; panel için dış servis kimliği gerekli (§5b) |
+| T1 | Ölçüm altyapısı (toplayıcı + panel) | 🟡 **kısmi — kod + kurulum rehberi hazır** | `src/lib/telemetry.ts`, `telemetryBootstrap.ts`; Worker kodu + Pages env adımları `docs/gorevler/t1-toplayici-kurulum.md`. Kalan: operatör deploy + `VITE_TELEMETRY_ENDPOINT` |
 | T2 | Huni olayları (landing→harita→kayıt) | ✅ | 16 olay: `analytics.ts`; katalog testi `src/config/telemetryCatalog.test.ts`; bağlama testi `src/config/siteSurface.test.ts` |
-| T3 | Baseline tablosu | 🟡 **kısmi** — paket ölçüldü, CWV/Search Console ölçülmedi | `docs/baseline.md` |
+| T3 | Baseline tablosu + cihaz ölçümü | 🟡 **kısmi** — paket ölçüldü, CWV/Search Console ölçülmedi | `docs/baseline.md`; ölçüm protokolü `docs/gorevler/t3-olcum-protokolu.md` (komutlar, tuzaklar, sonuç tablosu) |
 | T4 | Misafir modu (kayıt duvarını kaldırma) | ✅ | CTA → misafir haritası; **kural değişmedi** (`request.auth` boş → yazma sunucuda reddedilir); `src/config/guestMode.test.ts` (10 test) |
 | T5 | Kayıt duvarı sonrası ilk değer | 🟡 **kısmi** | Engellenen eylem hatırlanır (`atlasia.pendingIntent.v1`, 30 dk) ve hesap açılınca aynı yüzey açılır; misafir cihaz kayıtlarının hesaba taşınması ayrı iş (T5b) |
 | T6 | Tanıtım videosu | ✅ | `#film` bölümü: repodaki Göreme klibi, `preload="none"` + poster, otomatik oynatma yok, `width`/`height` ile CLS yok — `landingVideoT6.test.ts` (7) |
@@ -67,9 +67,9 @@ kod eklemeden önce yine `npm run build` ile ölçüm alın.
 
 1. **Misafir cihaz kayıtları:** misafirken cihazda kaydedilen iz/rotalar hesap
    açılınca **taşınmıyor** (bilinçli). Taşıma istenirse T5b olarak ayrı iş.
-2. **T1 paneli:** kendi Cloudflare Worker toplayıcısı mı, Plausible/Umami köprüsü
-   mü? İkisi de kod değişikliği istemiyor; tek zorunlu adım
-   `VITE_TELEMETRY_ENDPOINT`.
+2. **T1 paneli:** kurulum artık yazılı — `docs/gorevler/t1-toplayici-kurulum.md`
+   (40 satırlık Worker + Pages env + doğrulama + huni SQL'i). Kalan tek şey
+   operatörün `wrangler deploy` çalıştırıp `VITE_TELEMETRY_ENDPOINT` yazması.
 3. ~~T6 video barındırma~~ **kapandı:** repodaki klip kullanıldı (`#film`), harici servis yok. Açık kalan: poster gerçek video karesi değil (ffmpeg tek komut) ve 720p türevi isteğe bağlı.
 4. ~~`entry` payı~~ **kapandı (2026-10-28):** iki yol da uygulandı — SSS/footer
    ve `CookieConsent` tembel parçada; pay 2.556 B. Açık kalan tek nokta: tembel
