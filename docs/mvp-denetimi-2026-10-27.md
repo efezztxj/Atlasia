@@ -123,10 +123,16 @@ da yalnız "exit code 1" diyordu. Temiz klonda (`--depth 1`) tekrar üretilemedi
 taslak → önizleme, vazgeç → temizleme. Sonrasında suite **4/4 tam yeşil**
 (önce 1/7 kırmızı).
 
-**Kalıcı düzeltme (CI görünürlüğü):** `ci.yml`'de unit test adımı artık
-`tee unit-tests.log` ile yazıyor ve `failure()` olduğunda kural testlerindeki
-desenle aynı şekilde annotasyon + iş özeti basıyor. Bir sonraki kırmızıda hangi
-testin düştüğü log indirmeden okunur.
+**Kalıcı düzeltme (CI görünürlüğü):** Paralel bir çalışma (#138) aynı ihtiyacı
+`vitest --reporter=github-actions` ile karşılamış. Birleşmede **onun çözümü
+benimsendi** (daha az kod, aynı sonuç); benim python annotation adımım
+kaldırıldı — ikisi birlikte çift annotation üretirdi. Artık düşen test,
+log indirmeden check-run annotation'ı olarak API'den okunuyor.
+
+**Kapanış (2026-10-28):** PR #139 açıldı → `main` ile birleşti (`32d347b`).
+`main` HEAD `f52ee13`: CI **success**, Cloudflare Pages **success** (üretim
+dağıtımı). Site yayında; ilk HTML künyesi `index-*.css`, `index-*.js`,
+`react-vendor`, `icons-vendor` — firebase/maplibre ilk sette yok.
 
 ## 3. Ölçüm katmanı — ~~3 olay tanımlı ama hiç çağrılmıyor~~ **kapandı (2026-10-27)**
 
