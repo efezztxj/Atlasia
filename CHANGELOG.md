@@ -1,5 +1,15 @@
 # Atlasia Update
 
+## 2026-10-28 — Landing erişilebilirlik turu: mobil menü, tek H1, hareket azaltma (T13–T16)
+
+Ayrıntı: `docs/teslimatlar/teslimat-t13-t16-2026-10-28.md`.
+
+- **T13 — Mobil menü:** 768 px altında hamburger → tam ekran panel (Keşfet · Nasıl çalışır? · Gizlilik · Keşfe başla). `aria-expanded`/`aria-controls`, Escape ile kapanma, Tab tuzağı, kapanınca odağın düğmeye dönmesi.
+- **T14 — Klavye:** "İçeriğe geç" skip-link'i (ilk odak) + `#kesfet` hedefi `tabIndex={-1}`. Global `:focus-visible` halkası zaten vardı; kopya eklenmedi (denetim bulgusu).
+- **T15 — Hareket azaltma:** mevcut `prefers-reduced-motion` bloğuna eksik olan `scroll-behavior: auto !important` eklendi (landing'deki `scroll-smooth` artık yok sayılmıyor).
+- **T16 — Semantik:** sayfanın tek H1'i "Dünyayı merakınla keşfet."; marka yazısı `aria-hidden` dekoratif öğe. Bölüm başlıkları H2, kartlar H3 — hiyerarşi atlaması yok.
+- Ölçüm: ilk set 115.753 B gzip; JS 908.600/909.000; CSS 35.083/35.300 (T13/T14 sınıfları, gerekçe `scripts/bundle-budget.mjs`). Typecheck, lint, 1148 test, build ve SW kabuğu yeşil.
+
 ## 2026-10-28 — Denetim düzeltmeleri + giriş ekranı sürtünmesi (T9)
 
 Ayrıntı: `docs/teslimatlar/teslimat-denetim-t9-2026-10-28.md`.

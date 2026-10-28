@@ -45,7 +45,7 @@ const DEFAULT_DIST = fileURLToPath(new URL("../dist", import.meta.url));
  */
 export const BUNDLE_BUDGET = Object.freeze({
   totalJsGzipBytes: 909_000,
-  totalCssGzipBytes: 35_100,
+  totalCssGzipBytes: 35_300,
   initialGzipBytes: 439_000,
   categoryGzipBytes: Object.freeze({
     entry: 174_000,

@@ -61,7 +61,8 @@ describe("App kapısı", () => {
     render(createElement(App));
 
     await waitFor(() => expect(screen.getByRole("button", { name: /Dünyayı keşfet/i })).toBeTruthy());
-    expect(screen.getByRole("heading", { level: 1, name: /atlasia/i })).toBeTruthy();
+    // T16: tek H1 vaadi taşır; marka yazısı dekoratif (aria-hidden).
+    expect(screen.getByRole("heading", { level: 1, name: /Dünyayı merakınla keşfet/i })).toBeTruthy();
     expect(screen.queryByRole("status", { name: "Harita hazırlanıyor" })).toBeNull();
   });
 
