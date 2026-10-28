@@ -97,7 +97,7 @@ export function createAnalytics(telemetry?: Telemetry): Analytics {
   return {
     appOpen: (props) => track("app_open", { ...props, screen: props?.standalone ? "standalone" : "browser" }),
     sessionStart: (props) => track("session_start", { account: props?.account ?? "anonymous" }),
-    ctaClick: (props) => track("cta_click", { placement: props.placement, signed_in: props.signedIn }),
+    ctaClick: (props) => track("cta_click", { placement: props.placement, signedIn: props.signedIn }),
     mapOpen: (props) => track("map_open", { guest: props.guest }),
     signupStart: () => track("signup_start"),
     signupComplete: (props) => track("signup_complete", { method: props.method, account: props.account }),

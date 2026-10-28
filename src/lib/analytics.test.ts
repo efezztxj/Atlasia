@@ -83,7 +83,7 @@ describe("analytics · olay sözleşmesi", () => {
       "audio_guide_start",
       "consent_choice",
     ]);
-    expect(records[0].props).toEqual({ placement: "hero", signed_in: false });
+    expect(records[0].props).toEqual({ placement: "hero", signedIn: false });
     expect(records[3].props).toEqual({ method: "email", account: "cloud" });
     expect(records[6].props).toEqual({ analytics: true });
   });

@@ -17,7 +17,7 @@
 
 | Yeni olay | Özellikler | Çağrı yeri |
 |---|---|---|
-| `cta_click` | `placement`, `signed_in` | `LandingPage` → `App.handleStart` (hero/header/how_it_works/footer ayrı ayrı) |
+| `cta_click` | `placement`, `signedIn` | `LandingPage` → `App.handleStart` (hero/header/how_it_works/footer ayrı ayrı) |
 | `map_open` | `guest` | `Explorer` açılışı — bugün `guest:false` |
 | `signup_start` | — | `AccountAccess` kayıt moduna geçince |
 | `signup_complete` | `method`, `account` | `AuthContext.signup` (`sign_up` adının yerini aldı) |
