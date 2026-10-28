@@ -165,6 +165,19 @@ describe("useServiceWorkerUpdate", () => {
     expect(window.location.reload).toHaveBeenCalledTimes(1);
   });
 
+  it("ilk kurulumda controllerchange yenileme YAPMAZ (clients.claim gürültüsü)", async () => {
+    const { container } = installServiceWorker({ waiting: null, controller: false });
+    // İlk ziyaret: henüz bir denetleyici yok.
+    expect(navigator.serviceWorker.controller).toBeFalsy();
+
+    renderHook(() => useServiceWorkerUpdate());
+    await act(async () => { await Promise.resolve(); });
+
+    act(() => { container.emit("controllerchange"); });
+
+    expect(window.location.reload).not.toHaveBeenCalled();
+  });
+
   it("controllerchange tek sefer yeniler (çift yenileme yok)", async () => {
     const { container } = installServiceWorker({ waiting: null });
 

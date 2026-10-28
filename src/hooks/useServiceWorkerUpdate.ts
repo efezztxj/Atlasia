@@ -51,8 +51,15 @@ export function useServiceWorkerUpdate(register = true): UpdateState & { apply: 
       });
     };
 
+    // İLK KURULUM ≠ GÜNCELLEME. `sw.js` `clients.claim()` çağırıyor; bu, ilk
+    // ziyarette de `controllerchange` üretir. Eskiden bu olay koşulsuz yenileme
+    // yapıyordu: her yeni ziyaretçi sayfayı ikinci kez baştan yüklüyordu (LCP'yi
+    // boşa harcıyor; Lighthouse koşusunda "Execution context was destroyed"
+    // hatasına da bu yol açıyordu — CI kanıtı: e395b33/a1cdaa2).
+    // Kural: denetleyici ZATEN varken değiştiyse gerçek bir güncellemedir.
+    const hadController = Boolean(navigator.serviceWorker.controller);
     const onControllerChange = () => {
-      if (reloadedRef.current) return;
+      if (!hadController || reloadedRef.current) return;
       reloadedRef.current = true;
       window.location.reload();
     };
