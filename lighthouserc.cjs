@@ -33,8 +33,14 @@ module.exports = {
         throttlingMethod: "simulate",
         // B5: ağırlık/istek bütçesi (lighthouse-budgets.json) her koşuda denetlenir.
         budgetPath: "./lighthouse-budgets.json",
-        // CI konteynerinde sandbox/ortak bellek kısıtı: krom çökmesin.
-        chromeFlags: "--no-sandbox --disable-dev-shm-usage --headless=new",
+        // CI konteynerinde sandbox/ortak bellek kısıtı. `--headless=new`
+        // BİLİNÇLİ OLARAK YOK: ikinci koşuda "Execution context was destroyed"
+        // protokol hatasına yol açtı (e395b33 kanıtı); chrome-launcher zaten
+        // uygun headless modunu kendisi seçiyor.
+        chromeFlags: "--no-sandbox --disable-dev-shm-usage",
+        // Uygulama SPA: gezinme/oturum geçişi ölçüm ortasında "context
+        // destroyed" üretmesin diye tek sayfa modu.
+        isSinglePageApplication: true,
         skipAudits: ["canonical", "is-crawlable"],
       },
     },
