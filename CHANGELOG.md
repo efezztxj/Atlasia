@@ -1,5 +1,12 @@
 # Atlasia Update
 
+## 2026-10-28 — Yapılandırma eksikliği de kalıcı şeride taşındı (M-18 tamamlandı)
+
+- **Eksik kalan kalem:** bulut yapılandırması olmayan derlemede durum yalnız 3,2 sn'lik toast ile duyuruluyordu; kaybolunca kullanıcı neden yerel veri gördüğünü bilmiyordu. Artık `DataStatusBanner` `config` türüyle kalıcı gösteriliyor — **"Yeniden dene" sunulmaz** (eksik değer derleme zamanında sabit).
+- **Rol düzeltmesi:** şerit `role="alert"` yerine `role="status"` + `aria-live="polite"`; kalıcı durum akan okumayı kesmemeli.
+- **Tek yüzey:** `DataStatusBanner.tsx` (remote/config) — Explorer'daki satır içi blok kaldırıldı. Kapatma davranışı türe göre: `remote` aynı hatada susar, yeni hatada geri gelir; `config` kapatılınca tekrar açılmaz.
+- Testler **1323/1323** (168 dosya); yeni `DataStatusBanner.test.ts` (4) + `dataStatusWiring.test.ts` (3).
+
 ## 2026-10-28 — Vite 8 + plugin-react 6 (bekletilen majör alındı)
 ## 2026-10-28 — Denetim A grubu: CSP uyumlu tema, Google popup izni, gizli source map, CRLF (A1–A7)
 

@@ -24,6 +24,7 @@ const AtlasAssistant = lazy(() => import("./AtlasAssistant"));
 const StreetPeek = lazy(() => import("./StreetPeek"));
 const AddDiscoveryModal = lazy(() => import("./AddDiscoveryModal"));
 import RecordsDock from "./RecordsDock";
+import DataStatusBanner, { type DataIssueKind } from "./DataStatusBanner";
 import RouteEditor from "./RouteEditor";
 import { useAuth } from "../contexts/AuthContext";
 import { analytics } from "../lib/analytics";
@@ -237,21 +238,26 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
         loadMoreStories: async () => {},
       };
 
-  const [dismissedDataError, setDismissedDataError] = useState<Error | null>(null);
-  const showDataErrorBanner = (cloudAccount || guest)
-    && isCloudReady
-    && remote.error !== null
-    && remote.error !== dismissedDataError;
+  // M-18: İKİ kalıcı durum, tek yüzey.
+  //   config → bu derlemede bulut yok (yeniden denenecek şey yok, düğme çıkmaz)
+  //   remote → canlı veri yüklenemedi (Yeniden dene var)
+  // Önceden `config` yalnız 3,2 sn'lik toast ile duyuruluyordu: kayboluyordu.
+  const [dismissedDataIssue, setDismissedDataIssue] = useState<{ kind: DataIssueKind; error: Error | null } | null>(null);
+  const dataIssue: DataIssueKind | null = !isCloudReady
+    ? "config"
+    : (cloudAccount || guest) && remote.error
+      ? "remote"
+      : null;
+  // `remote` reddedilirse AYNI hatada susar; yeni bir hata gelince yeniden görünür.
+  // `config` bir derleme gerçeğidir: kapatılınca tekrar açılmaz.
+  const dataIssueDismissed = dismissedDataIssue !== null
+    && dismissedDataIssue.kind === dataIssue
+    && (dataIssue === "config" || dismissedDataIssue.error === remote.error);
+  const showDataIssue = dataIssue !== null && !dataIssueDismissed;
 
-  // Kullanıcıya bulut bağlantısı durumunu bildir
   useEffect(() => {
-    if (cloudAccount && !remote.ready && remote.error) {
-      console.warn("[Atlasia] Config özeti:", firebaseConfigSummary);
-    } else if (!isCloudReady) {
-      setToast("Firebase yapılandırması eksik, yerel veri kullanılıyor.");
-      console.warn("[Atlasia] Config özeti:", firebaseConfigSummary);
-    }
-  }, [cloudAccount, remote.ready, remote.error]);
+    if (dataIssue) console.warn("[Atlasia] Config özeti:", firebaseConfigSummary);
+  }, [dataIssue]);
   const { blockedSet, isBlocked } = useBlocks(user?.uid);
   // Tazelik okuması giriş şartlı (kural: signedIn); cihaz hesabında abone olunmaz.
   const freshness = useFreshness(freshnessReaderUid(user));
@@ -1332,29 +1338,13 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
         Harita © Esri, OpenFreeMap, OpenMapTiles ve OpenStreetMap katkıcıları · Yükseklik verisi: AWS Terrain Tiles
       </p>
 
-      {/* M-18: Kalıcı canlı veri hata şeridi + Yeniden dene */}
-      {showDataErrorBanner && (
-        <div role="alert" className="animate-rise absolute top-[88px] left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full border border-sun/30 bg-ink/90 py-2 pr-2 pl-4 text-[12px] text-mint shadow-xl shadow-black/50">
-          <span>Canlı veriler yüklenemedi · yerel kayıtlar gösteriliyor</span>
-          <button
-            type="button"
-            onClick={() => {
-              setDismissedDataError(null);
-              cloud.retry();
-            }}
-            className="flex items-center gap-1 rounded-full bg-sun px-3 py-1.5 text-[12px] font-semibold text-ink transition"
-          >
-            Yeniden dene
-          </button>
-          <button
-            type="button"
-            aria-label="Canlı veri uyarısını kapat"
-            onClick={() => setDismissedDataError(remote.error)}
-            className="grid size-7 place-items-center rounded-full text-mint/70 transition hover:bg-white/10"
-          >
-            <X className="size-3.5" />
-          </button>
-        </div>
+      {/* M-18: Kalıcı veri durumu şeridi (config / remote) */}
+      {showDataIssue && dataIssue && (
+        <DataStatusBanner
+          kind={dataIssue}
+          onRetry={dataIssue === "remote" ? () => { setDismissedDataIssue(null); cloud.retry(); } : undefined}
+          onDismiss={() => setDismissedDataIssue({ kind: dataIssue, error: remote.error })}
+        />
       )}
 
       {/* Ekleme modu bandı */}
