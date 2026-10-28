@@ -15,6 +15,10 @@ const h = vi.hoisted(() => ({
 vi.mock("../contexts/AuthContext", () => ({
   useAuth: () => ({ user: h.user }),
 }));
+// useCollections yapılandırma kapısını `lib/firebaseConfig`ten okur (SDK'sız,
+// hafif modül). Daha önce burada `lib/firebase` taklit ediliyordu; yani test
+// yanlış modülü mock'luyordu ve yerel `.env.local` dolu olduğunda kırılıyordu.
+vi.mock("../lib/firebaseConfig", () => ({ firebaseConfigured: false, isCloudReady: false }));
 vi.mock("../lib/firebase", () => ({
   firebaseConfigured: false,
   isCloudReady: false,
