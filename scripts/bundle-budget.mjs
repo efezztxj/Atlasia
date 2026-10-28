@@ -462,6 +462,13 @@ export function run({ distDir = DEFAULT_DIST, budget = BUNDLE_BUDGET, log = cons
   if (!result.ok) {
     errorLog("\nBundle bütçesi aşıldı:");
     for (const violation of result.violations) errorLog(`- ${violation}`);
+    // CI'da ihlaller check-run annotation'ı olarak da görünsün (log indirmeden
+    // hangi eşiğin aşıldığı API'den okunabilsin; kurallar adımıyla aynı fikir).
+    if (process.env.GITHUB_ACTIONS) {
+      for (const violation of result.violations) {
+        errorLog(`::error title=Bundle bütçesi::${violation.replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A")}`);
+      }
+    }
   } else {
     log("\nBundle bütçesi içinde.");
   }
