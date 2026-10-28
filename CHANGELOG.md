@@ -1,5 +1,12 @@
 # Atlasia Update
 
+## 2026-10-28 — TypeScript 6.0.3 + @types/node 26 (bekletilenler kapandı)
+
+- `typescript` 5.9.3 → **6.0.3**: TS 7'yi `typescript-eslint` hâlâ desteklemiyor (peer `<6.1.0`); 6.x destek aralığında ve ileriye uyumlu. tsconfig'den `baseUrl` kaldırıldı, `paths` göreli yazıldı (TS 7'ye de hazır).
+- `@types/node` 22 → **26.6.6**: kırılma, kurallar testindeki `.at()` için `lib`'in ES2020 kalmasıydı; `lib` artık `ES2022` (yalnız tip yüzeyi; `target` ES2020 aynı, çıkan kodu değişmez).
+- Typecheck, lint, **1316 test**, build (SW 62/62), script testleri ve audit yeşil. Bekletilen paket kalmadı; TS 7, typescript-eslint desteği gelince tek satırlık iş.
+
+
 ## 2026-10-28 — Vite 8 + plugin-react 6 (bekletilen majör alındı)
 ## 2026-10-28 — Denetim A grubu: CSP uyumlu tema, Google popup izni, gizli source map, CRLF (A1–A7)
 
