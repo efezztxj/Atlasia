@@ -49,6 +49,9 @@ describe("G3 · mobil Lighthouse kapısı", () => {
     expect(workflow).toContain("npm run build");
     // Sürüm sabit: `latest` bir gün sessizce ölçüm profilini değiştirmesin.
     expect(workflow).not.toMatch(/@lhci\/cli@latest/);
+    // Chrome yolu açıkça çözülür (runner imajında chrome-launcher bulamıyor).
+    expect(workflow).toContain("CHROME_PATH");
+    expect(workflow).toContain("Chrome yolunu belirle");
   });
 });
 

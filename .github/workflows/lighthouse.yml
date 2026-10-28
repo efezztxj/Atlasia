@@ -40,6 +40,22 @@ jobs:
       - name: Build (bundle budget included)
         run: npm run build
 
+      # Chrome yolu: chrome-launcher, runner imajında Chromium'u her zaman
+      # bulamıyor (a2d02fe koşusunda adım tam bu yüzden düştü). Yolu burada
+      # çözüp CHROME_PATH olarak veriyoruz; bulunamazsa iş erken ve anlaşılır
+      # biçimde kırılır (Lighthouse'u sessizce atlamak yok).
+      - name: Chrome yolunu belirle
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          if [ -z "$CHROME" ] && [ -x /opt/google/chrome/chrome ]; then CHROME=/opt/google/chrome/chrome; fi
+          if [ -z "$CHROME" ]; then
+            echo "::error title=Chrome bulunamadi::Runner imajinda Chrome/Chromium yok; Lighthouse kosulamaz."
+            exit 1
+          fi
+          echo "CHROME_PATH=$CHROME" >> "$GITHUB_ENV"
+          "$CHROME" --version
+
       # @lhci/cli DEPENDENCY DEĞİL (bilinçli): geliştirme bağımlılığı olarak
       # eklemek `npm audit` matrisine 13 yüksek/dev açık sokuyordu (chromium-bidi
       # → zod). CI'da sürüm sabit `npx` ile çalışır, üretim ve yerel ağaç temiz

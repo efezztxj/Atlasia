@@ -33,6 +33,8 @@ module.exports = {
         throttlingMethod: "simulate",
         // B5: ağırlık/istek bütçesi (lighthouse-budgets.json) her koşuda denetlenir.
         budgetPath: "./lighthouse-budgets.json",
+        // CI konteynerinde sandbox/ortak bellek kısıtı: krom çökmesin.
+        chromeFlags: "--no-sandbox --disable-dev-shm-usage --headless=new",
         skipAudits: ["canonical", "is-crawlable"],
       },
     },
