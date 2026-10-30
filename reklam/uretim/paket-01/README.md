@@ -3,6 +3,15 @@
 Fikir kaynağı: [`../../insta-tiktok-fikirler.md`](../../insta-tiktok-fikirler.md) ·
 Genel bakış ve kopyala butonları: [`pano.html`](pano.html)
 
+## Drive kopyası
+
+Atlasia reklam ana klasörünün içinde (bağlantısı olan herkes görüntüleyebilir):
+
+- 📁 Paket klasörü: <https://drive.google.com/drive/folders/1XZCelMRZge9fLzhn9JwJ13qTd562ZAef>
+- 📦 Tek dosya (ZIP, 5,8 MB): <https://drive.google.com/file/d/1fWQewQe3QkC6T4nhQU5f-labRMX8muW8/view>
+- 🎨 Görseller klasörü: <https://drive.google.com/drive/folders/1ylE6nOxwBik4JE7AAlEFEmtHPVNtNsNw>
+- ✍️ Açıklamalar: <https://drive.google.com/file/d/1MNk1JLfTh6WVfKSkIyzW-iy9kTaTBn3p/view> · Senaryolar: <https://drive.google.com/file/d/1IgjE9hWXUbiIDroBCGglyXk3IYY6BbeA/view>
+
 ## İçindekiler
 
 | Dosya | Ne |
