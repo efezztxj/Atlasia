@@ -55,3 +55,7 @@ __pycache__/
 # Paket-01: MP4'ler Drive'da yasar (reklam/video/*.mp4 geleneği), ara kareler build çıktısıdır
 reklam/uretim/paket-01/videolar/*.mp4
 reklam/uretim/paket-01/kaynak/beat-stills/
+reklam/uretim/paket-02/videolar/*.mp4
+reklam/uretim/paket-02/kaynak/work/
+reklam/uretim/paket-02/kaynak/qa/
+reklam/uretim/paket-02/kaynak/qa-*.jpg
