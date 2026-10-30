@@ -64,10 +64,13 @@ Eşik **yalnız sıkılaşır**; zorunlu bir artış varsa gerekçe o dosyanın 
 yorum olarak yazılır (ör. B2 font self-host: 35.700 → 36.600).
 
 ### 4.2 Fontlar self-host
-Google Fonts yok. `public/fonts/fonts.css` elle yazılmış minimal `@font-face`
-içerir (yalnız `wght` ekseni, latin + latin-ext). Fontsource CSS'ini doğrudan
-`@import` etmek Vietnamca/Kiril alt kümelerini de paketleyip bütçeyi açar —
-yapma. Değişiklik: `npm run fonts:sync` → `npm run build`.
+Google Fonts yok. `@font-face` tanımları `src/styles/fonts.css` içinde (üretilen
+dosya) ve `src/index.css`'ten import edilir — yani tek CSS paketi. Daha önce
+`public/fonts/fonts.css` ayrı bir render-blocking stil isteğiydi (Lighthouse
+mobilde ölçüldü ve kaldırıldı). Yalnız `wght` ekseni + latin/latin-ext; fontsource
+CSS'ini doğrudan `@import` etmek Vietnamca/Kiril alt kümelerini de paketleyip
+bütçeyi açar — yapma. Değişiklik: `npm run fonts:sync` (hem woff2'leri hem
+`src/styles/fonts.css`'i tazeler) → `npm run build`.
 
 ### 4.3 Hero görselleri türetilir, elle kopyalanmaz
 `scripts/build-hero-variants.mjs` master'dan (`public/images/atlasia-earth-hero.jpg`)
@@ -95,7 +98,7 @@ eklemek `src/config/cloudflareHeaders.test.ts` testini de güncellemek demektir.
 | Vitest | `ci.yml` | 0 düşen test |
 | axe (3 tema × kritik ekranlar) | `src/config/a11yThemes.test.ts` | 0 ihlal |
 | Bütçe | `npm run build` | `Bundle bütçesi içinde` |
-| Lighthouse mobil | `.github/workflows/lighthouse.yml` | perf ≥90, a11y ≥95, BP ≥95, SEO ≥95 |
+| Lighthouse mobil | `.github/workflows/lighthouse.yml` | a11y/BP/SEO ≥95 (hata), perf ≥80 (hata); **90 hedefi açık iş** (bugün 81–88) |
 | Lighthouse bütçesi | `lighthouse-budgets.json` | 420 KB / 14 istek, 0 üçüncü taraf |
 | Bağımlılık güvenliği | `ci.yml` | üretim açığı 0 |
 

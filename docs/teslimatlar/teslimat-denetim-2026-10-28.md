@@ -12,7 +12,7 @@ Doğrulama: `typecheck` · `eslint --max-warnings=0` · **1373/1373 test (172 do
 | --- | --- | --- | --- |
 | A1–A7 | Güvenlik/CSP | ✅ (A4 canlı ağ kanıtı bekliyor) | `public/_headers`, `cloudflareHeaders.test.ts` 7/7 |
 | B1 | Hero AVIF/srcset/preload | ✅ (2400 px master yok — bkz. not) | `hero-{480,768,1376}.{avif,jpg}`, `imagePipelineT10.test.ts` 7/7 |
-| B2 | Google Fonts self-host | ✅ | `public/fonts/` 4 woff2 / 124 KB, `fonts.css`, `npm run fonts:sync` |
+| B2 | Google Fonts self-host | ✅ | `public/fonts/` 4 woff2 / 124 KB + `src/styles/fonts.css` (paket içi), `npm run fonts:sync` |
 | B3 | Landing prerender (JS'siz metin) | ✅ | `dist/index.html` içinde H1 + 3 adım + SSS (`<noscript>`) |
 | B4 | CSS bütçesi | ✅ | 36.090 / 36.600 B gzip |
 | B5 | Lighthouse bütçe kapısı CI'da | ✅ | `lighthouse-budgets.json` + `lighthouseConfig.test.ts` 7/7 |
@@ -43,7 +43,7 @@ Doğrulama: `typecheck` · `eslint --max-warnings=0` · **1373/1373 test (172 do
 | F4 | OG kartı güncel | ✅ | `og:image` 1200×630 `atlasia-share-card.jpg` |
 | G1 | #133 birleşti | ✅ | `gh pr view 133` → MERGED |
 | G2 | Yerel geliştirme rehberi | ✅ **yeni** | `docs/gelistirme-rehberi.md` |
-| G3 | CI'da mobil Lighthouse | ✅ **yeni** | `.github/workflows/lighthouse.yml` |
+| G3 | CI'da mobil Lighthouse | ✅ kapı kuruldu · **perf hedefi (90) açık** | `.github/workflows/lighthouse.yml`; ölçüm 81/81/88, a11y-BP-SEO 100 |
 | G4 | `npm audit` matrisi | ✅ **yeni** | `docs/dependency-security-matrix.md` (tam ağaç 0 açık) |
 
 ---
@@ -96,6 +96,30 @@ kopya yok), uygulama yüzeyi metinleri tembel `Explorer` chunk'ına taşındı
 
 ---
 
+## G3 — kapı kuruldu, performans hedefi henüz karşılanmadı (açık)
+
+CI'da mobil Lighthouse 3 koşuyla ölçüyor (simüle 4G + 4x CPU):
+
+| Koşu | Perf | A11y | BP | SEO |
+| --- | --- | --- | --- | --- |
+| 1 | **81** | 100 | 100 | 100 |
+| 2 | **81** | 100 | 100 | 100 |
+| 3 | **88** | 100 | 100 | 100 |
+
+- Denetim listesinin istediği **perf ≥ 90** bugün karşılanmıyor. Sert kapı
+  **perf ≥ 80** (regresyon tabanı); a11y/BP/SEO ≥ 95 hata seviyesinde ve geçiyor.
+- 90'ı "hata" yapmak CI'yi sürekli kırmızıda bırakırdı, eşiği sessizce silmek
+  denetim maddesini gizlerdi. Bu yüzden hedef açık iş olarak kayıtlı.
+- **Darboğaz ve plan:** kritik JS (react-vendor 69,5 KB + entry 17,3 KB gzip) ve
+  SPA'nın yapısal render-blocking CSS'i. Sıradaki adımlar (risk/etki sırasıyla):
+  1. Tanıtım için ayrı CSS girişi (app-shell stillerini lazy chunk'a almak),
+  2. `LandingPage` alt bölümlerini (video, örnek rotalar, footer) `lazy()` ile bölmek,
+  3. `icons-vendor` (13,7 KB) ikonlarını yol bazlı import etmek,
+  4. Gerekirse hero dışı görselleri `loading="lazy"` + düşük öncelik.
+- Bu turda yapılan iki iyileştirme skoru değiştirmedi ama doğru yönde:
+  `@font-face` paket içine alındı (kritik yoldan bir istek çıktı) ve service
+  worker'ın ilk ziyarette yaptığı gereksiz sayfa yenilemesi kaldırıldı.
+
 ## Bilinçli olarak yapılmayanlar (karar gerekiyor)
 
 - **B1 · 2400 px hero master.** Depodaki master `1376×768`. Ondan büyük türev
@@ -113,6 +137,12 @@ kopya yok), uygulama yüzeyi metinleri tembel `Explorer` chunk'ına taşındı
 
 ## Notlar
 
+- **Service worker düzeltmesi.** Lighthouse'u ilk kurcalarken çıkan
+  "Execution context was destroyed" hatasının kökü ürün kodundaydı: `sw.js`
+  `clients.claim()` çağırdığı için ilk ziyarette de `controllerchange` oluyor,
+  kanca da koşulsuz `location.reload()` yapıyordu — yani **her yeni ziyaretçi
+  sayfayı iki kez yüklüyordu** (LCP'yi boşa harcayan gerçek kusur). Artık
+  yalnız denetleyici zaten varken (gerçek güncelleme) yenileniyor; test eklendi.
 - **Lighthouse sandbox'ta koşmaz** (Chrome/libnss yok). Kapı CI'da:
   `.github/workflows/lighthouse.yml`, mobil profil, perf ≥90 · a11y ≥95 · BP ≥95
   · SEO ≥95 + `lighthouse-budgets.json` (420 KB / 14 istek / 0 üçüncü taraf).

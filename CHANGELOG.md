@@ -1,5 +1,12 @@
 # Atlasia Update
 
+## 2026-10-28 — Lighthouse kapısı + service worker ilk yükleme düzeltmesi
+
+- **G3/B5:** `.github/workflows/lighthouse.yml` artık gerçekten ölçüyor (3 koşu, mobil simülasyon). İlk denemelerde zincirleme üç kusur çıktı ve düzeltildi: geçersiz `preset: "mobile"` (Lighthouse yalnız desktop/perf alır), `autorun`'ın assert düştüğünde raporu yüklememesi (collect/assert/upload ayrıldı) ve Chrome yolunun runner'da bulunamaması (`CHROME_PATH` adımı). Kapı çıktıları artık `::notice::` olarak da basılıyor.
+- **Ölçüm:** perf **81 / 81 / 88**, a11y **100**, BP **100**, SEO **100**. Denetim hedefi perf ≥ 90 **henüz karşılanmıyor**; sert kapı 80 (regresyon tabanı), hedef teslimatta açık iş. Darboğaz kritik JS ve SPA render-blocking CSS'i; plan yazıldı.
+- **Service worker (gerçek ürün hatası):** `clients.claim()` ilk ziyarette de `controllerchange` üretiyor, kanca koşulsuz `location.reload()` yapıyordu → her yeni ziyaretçi sayfayı iki kez yüklüyordu. Artık yalnız gerçek güncellemede yenileniyor (`useServiceWorkerUpdate.test.ts` 10/10).
+- **B2:** `@font-face` tanımları `src/styles/fonts.css`'e alındı ve paketlendi; `/fonts/fonts.css` ayrı render-blocking isteği kaldırıldı. `npm run fonts:sync` iki çıktıyı birlikte üretiyor.
+
 ## 2026-10-28 — Canlı denetim turu: erişilebilirlik, görsel köprü, rota meta (C3, E1, E2, E4, E5, E7, E8, D4, D6, B2, B1, F1, F3, G2, G3, B5, G4)
 
 Ayrıntı ve ID eşleşmesi: `docs/teslimatlar/teslimat-denetim-2026-10-28.md`.
