@@ -8,6 +8,7 @@
 ## T1 · Uydudan Düş 01 — kyoto — Gün 1 · 1 Kas Pazar
 **Tür:** Video (Reels + TikTok)  
 **Görsel:** gorseller/kapak-t1-uydudan-dus.jpg
+**Video:** videolar/video-t1-uydudan-dus.mp4 (seslendirmeli, yayına hazır) · Altyazı: videolar/video-t1-uydudan-dus.srt
 **Link (IG story/bio):** https://atlasia.pages.dev/?tab=kesfet&utm_source=instagram&utm_medium=reels&utm_campaign=uydudan-dus&utm_content=kyoto-01  
 **Link (TikTok bio):** https://atlasia.pages.dev/?tab=kesfet&utm_source=tiktok&utm_medium=video&utm_campaign=uydudan-dus&utm_content=kyoto-01
 
@@ -104,6 +105,7 @@ Sizden gelen en iyi Pamukkale ipucunu yarın story'de paylaşıyoruz. Yazın �
 ## D1 · İndirmeden Aç — Gün 3 · 3 Kas Salı
 **Tür:** Video (Reels + TikTok) · 10 sn ekran kaydı  
 **Görsel:** gorseller/kapak-d1-indirmeden-ac.jpg
+**Video:** videolar/video-d1-indirmeden-ac.mp4 (seslendirmeli, yayına hazır) · Altyazı: videolar/video-d1-indirmeden-ac.srt
 **Link (IG story/bio):** https://atlasia.pages.dev/?tab=kesfet&utm_source=instagram&utm_medium=reels&utm_campaign=indirmeden-ac&utm_content=globe  
 **Link (TikTok bio):** https://atlasia.pages.dev/?tab=kesfet&utm_source=tiktok&utm_medium=video&utm_campaign=indirmeden-ac&utm_content=globe
 
@@ -149,6 +151,7 @@ En hızlı açılışı yapanı sabitliyoruz 📌 (cihazını da yaz, dürüst o
 ## D2 · Sor, Rota Gelsin — Göreme'de 1 gün — Gün 4 · 4 Kas Çarşamba
 **Tür:** Video (Reels + TikTok)  
 **Görsel:** gorseller/kapak-d2-goreme-1gun.jpg
+**Video:** videolar/video-d2-goreme-1gun.mp4 (seslendirmeli, yayına hazır) · Altyazı: videolar/video-d2-goreme-1gun.srt
 **Link (IG story/bio):** https://atlasia.pages.dev/?tab=kesfet&utm_source=instagram&utm_medium=reels&utm_campaign=sor-rota-gelsin&utm_content=goreme-1gun  
 **Link (TikTok bio):** https://atlasia.pages.dev/?tab=kesfet&utm_source=tiktok&utm_medium=video&utm_campaign=sor-rota-gelsin&utm_content=goreme-1gun
 
@@ -239,6 +242,7 @@ Celsus mu Büyük Tiyatro mu? Efes'in imza karesi sizce hangisi? 📸
 ## T2 · Nereye Gidelim Kavgası — Gün 6 · 6 Kas Cuma
 **Tür:** Video (Reels + TikTok)  
 **Görsel:** gorseller/kapak-t2-nereye-gidelim.jpg
+**Video:** videolar/video-t2-nereye-gidelim.mp4 (seslendirmeli, yayına hazır) · Altyazı: videolar/video-t2-nereye-gidelim.srt
 **Link (IG story/bio):** https://atlasia.pages.dev/?tab=kesfet&utm_source=instagram&utm_medium=reels&utm_campaign=nereye-gidelim&utm_content=grup  
 **Link (TikTok bio):** https://atlasia.pages.dev/?tab=kesfet&utm_source=tiktok&utm_medium=video&utm_campaign=nereye-gidelim&utm_content=grup
 
@@ -285,6 +289,7 @@ Etiketlenen kişi bu hafta rotayı çizmek zorunda, kurallar böyle 😎
 ## U1 · 1 İz Bırak — meydan okuma — Gün 7 · 7 Kas Cumartesi
 **Tür:** Video (Reels + TikTok) + UGC çağrısı  
 **Görsel:** gorseller/kapak-u1-iz-birak.jpg
+**Video:** videolar/video-u1-iz-birak.mp4 (seslendirmeli, yayına hazır) · Altyazı: videolar/video-u1-iz-birak.srt
 **Link (IG story/bio):** https://atlasia.pages.dev/?tab=iz-birak&utm_source=instagram&utm_medium=reels&utm_campaign=1-iz-birak&utm_content=lansman  
 **Link (TikTok bio):** https://atlasia.pages.dev/?tab=iz-birak&utm_source=tiktok&utm_medium=video&utm_campaign=1-iz-birak&utm_content=lansman
 
@@ -330,6 +335,7 @@ Her hafta en iyi 3 izi tek videoda okuyup bırakanları etiketliyoruz 🏅
 ## T3 · Evinden 15 Dakika — Galata & Haliç — Gün 8 · 8 Kas Pazar
 **Tür:** Video (Reels + TikTok)  
 **Görsel:** gorseller/kapak-t3-evinden-15dk.jpg
+**Video:** videolar/video-t3-evinden-15dk.mp4 (seslendirmeli, yayına hazır) · Altyazı: videolar/video-t3-evinden-15dk.srt
 **Link (IG story/bio):** https://atlasia.pages.dev/?tab=kesfet&utm_source=instagram&utm_medium=reels&utm_campaign=evinden-15dk&utm_content=galata  
 **Link (TikTok bio):** https://atlasia.pages.dev/?tab=kesfet&utm_source=tiktok&utm_medium=video&utm_campaign=evinden-15dk&utm_content=galata
 
@@ -374,6 +380,7 @@ Mahalleni yaz, en çok istenen yer sıradaki 15 dakika bölümü olsun 👇
 ## I3 · Altın Saate Yetiş — Pamukkale — Gün 9 · 9 Kas Pazartesi
 **Tür:** Video (Reels + TikTok)  
 **Görsel:** gorseller/kapak-i3-altin-saat.jpg
+**Video:** videolar/video-i3-altin-saat.mp4 (seslendirmeli, yayına hazır) · Altyazı: videolar/video-i3-altin-saat.srt
 **Link (IG story/bio):** https://atlasia.pages.dev/?tab=kesfet&utm_source=instagram&utm_medium=reels&utm_campaign=altin-saat&utm_content=pamukkale  
 **Link (TikTok bio):** https://atlasia.pages.dev/?tab=kesfet&utm_source=tiktok&utm_medium=video&utm_campaign=altin-saat&utm_content=pamukkale
 
@@ -420,6 +427,7 @@ Altın saatte en güzel yer sizce neresi? 📸 En iyisini sıradaki bölümde gi
 ## U2 · 24 Saat İzi — Venedik Cannaregio — Gün 10 · 10 Kas Salı
 **Tür:** Video (Reels + TikTok) + Story devamı  
 **Görsel:** gorseller/kapak-u2-24-saat.jpg
+**Video:** videolar/video-u2-24-saat.mp4 (seslendirmeli, yayına hazır) · Altyazı: videolar/video-u2-24-saat.srt
 **Link (IG story/bio):** https://atlasia.pages.dev/?tab=kesfet&utm_source=instagram&utm_medium=reels&utm_campaign=24-saat-izi&utm_content=venedik  
 **Link (TikTok bio):** https://atlasia.pages.dev/?tab=kesfet&utm_source=tiktok&utm_medium=video&utm_campaign=24-saat-izi&utm_content=venedik
 

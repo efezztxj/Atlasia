@@ -7,6 +7,17 @@ import os, html
 BASE = os.path.dirname(os.path.abspath(__file__))
 SITE = "https://atlasia.pages.dev/"
 
+VIDEOLAR = {
+ "T1": "videolar/video-t1-uydudan-dus.mp4",
+ "D1": "videolar/video-d1-indirmeden-ac.mp4",
+ "D2": "videolar/video-d2-goreme-1gun.mp4",
+ "T2": "videolar/video-t2-nereye-gidelim.mp4",
+ "U1": "videolar/video-u1-iz-birak.mp4",
+ "T3": "videolar/video-t3-evinden-15dk.mp4",
+ "I3": "videolar/video-i3-altin-saat.mp4",
+ "U2": "videolar/video-u2-24-saat.mp4",
+}
+
 def link(source, medium, campaign, content, tab="kesfet"):
     return (f"{SITE}?tab={tab}&utm_source={source}&utm_medium={medium}"
             f"&utm_campaign={campaign}&utm_content={content}")
@@ -256,6 +267,8 @@ def build_md():
     for c in ICERIK:
         L.append(f"---\n\n## {c['id']} · {c['baslik']} — {c['gun']}")
         L.append(f"**Tür:** {c['tip']}  \n**Görsel:** {' · '.join(c['gorsel'])}")
+        if c["id"] in VIDEOLAR:
+            L.append(f"**Video:** {VIDEOLAR[c['id']]} (seslendirmeli, yayına hazır) · Altyazı: {VIDEOLAR[c['id']].replace('.mp4', '.srt')}")
         L.append(f"**Link (IG story/bio):** {c['link_ig']}  \n**Link (TikTok bio):** {c['link_tt']}")
         L.append("\n### TikTok açıklaması\n\n```text\n" + c["tt"] + "\n```")
         L.append("\n### Instagram açıklaması\n\n```text\n" + c["ig"] + "\n```")
@@ -297,6 +310,7 @@ main{padding:24px 6vw 80px;display:grid;gap:56px}
 @media(max-width:900px){.grid{grid-template-columns:1fr}}
 .imgs{display:flex;flex-wrap:wrap;gap:10px}.imgs img{width:100%;max-width:340px;border-radius:14px;border:1px solid #1b3d5a}
 .imgs.multi img{width:calc(50% - 5px)}
+.imgs video{width:100%;max-width:340px;border-radius:14px;border:1px solid #1b3d5a;background:#000}
 pre{white-space:pre-wrap;background:#03101d;border:1px solid #12314a;border-radius:12px;padding:16px;font-size:14.5px;line-height:1.55;color:#E8EAE6}
 h3{margin:20px 0 8px;font-size:15px;color:#7EE0B8;text-transform:uppercase;letter-spacing:.06em}
 button{background:#F3C870;color:#020D17;border:0;border-radius:999px;padding:9px 18px;font-weight:800;cursor:pointer;margin:2px 6px 2px 0}
@@ -314,14 +328,15 @@ def build_html():
              '<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=DM+Sans:wght@400;600;800&display=swap" rel="stylesheet">'
              f'<style>{CSS}</style></head><body>')
     P.append('<header><h1>Atlasia <b>Paket-01</b> · Instagram + TikTok</h1>'
-             '<p class="sub">10 içerik, 20 görsel, kopyala-yapıştır açıklamalar. '
+             '<p class="sub">10 içerik, 20 görsel, <b>8 seslendirmeli video</b>, kopyala-yapıştır açıklamalar. '
              'Yayın: <b>1–10 Kasım</b>, IG 19.00 · TikTok 20.00. Her kartta "Kopyala" çalışmazsa metni seçip elle kopyala — bloklar seçim için hazır.</p></header>')
     P.append('<main><section class="card"><h2>Yayın takvimi</h2><table><tr><th>Gün</th><th>İçerik</th><th>Tür</th></tr>')
     for c in ICERIK:
         P.append(f"<tr><td>{html.escape(c['gun'])}</td><td>{c['id']} · {html.escape(c['baslik'])}</td><td>{html.escape(c['tip'])}</td></tr>")
     P.append('</table><p class="small">Not: mevcut yürüyüş videoları kuyruğu (kyoto/Göreme/Venedik/Pamukkale) 31 Ekim\'de bitiyor; bu paket çakışmadan devam eder.</p></section>')
     for c in ICERIK:
-        imgs = "".join(f'<img loading="lazy" src="{g}" alt="{html.escape(c["baslik"])}">' for g in c["gorsel"])
+        vtag = (f'<video controls preload="metadata" poster="{c["gorsel"][0]}" src="{VIDEOLAR[c["id"]]}"></video>' if c["id"] in VIDEOLAR else "")
+        imgs = vtag + "".join(f'<img loading="lazy" src="{g}" alt="{html.escape(c["baslik"])}">' for g in c["gorsel"])
         multi = " multi" if len(c["gorsel"]) > 1 else ""
         P.append(f'<section class="card"><div class="meta">{c["id"]} · {html.escape(c["gun"])} · {html.escape(c["tip"])}</div>'
                  f'<h2>{html.escape(c["baslik"])}</h2>'

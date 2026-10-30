@@ -52,3 +52,6 @@ __pycache__/
 /playwright-report/
 /test-results/
 
+# Paket-01: MP4'ler Drive'da yasar (reklam/video/*.mp4 geleneği), ara kareler build çıktısıdır
+reklam/uretim/paket-01/videolar/*.mp4
+reklam/uretim/paket-01/kaynak/beat-stills/

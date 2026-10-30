@@ -1,0 +1,19 @@
+1
+00:00:00,000 --> 00:00:02,479
+Evinden on beş dakika. Hiç gitmedin.
+
+2
+00:00:02,479 --> 00:00:04,408
+Bir: Galata'dan Haliç'e bak.
+
+3
+00:00:04,408 --> 00:00:06,819
+İki: Karaköy'de bir çay molası ver.
+
+4
+00:00:06,819 --> 00:00:08,403
+Üç: Köprüye doğru yürü.
+
+5
+00:00:08,403 --> 00:00:12,604
+Turist olmana gerek yok. On beş dakikan var. Rotası profilde.

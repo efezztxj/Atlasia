@@ -8,9 +8,10 @@ Genel bakış ve kopyala butonları: [`pano.html`](pano.html)
 Atlasia reklam ana klasörünün içinde (bağlantısı olan herkes görüntüleyebilir):
 
 - 📁 Paket klasörü: <https://drive.google.com/drive/folders/1XZCelMRZge9fLzhn9JwJ13qTd562ZAef>
-- 📦 Tek dosya (ZIP, 5,8 MB): <https://drive.google.com/file/d/1fWQewQe3QkC6T4nhQU5f-labRMX8muW8/view>
+- 🎬 Videolar (8 MP4): <https://drive.google.com/drive/folders/1-RkpiPM9c1ebzRJLqHm0MC6nVF7g_hGz>
+- 📦 Tek dosya (ZIP, videolar dahil ~30 MB): <https://drive.google.com/file/d/1GX0Hu-recn8Fnb5_2LCJBOYYsGDdCcxe/view>
 - 🎨 Görseller klasörü: <https://drive.google.com/drive/folders/1ylE6nOxwBik4JE7AAlEFEmtHPVNtNsNw>
-- ✍️ Açıklamalar: <https://drive.google.com/file/d/1MNk1JLfTh6WVfKSkIyzW-iy9kTaTBn3p/view> · Senaryolar: <https://drive.google.com/file/d/1IgjE9hWXUbiIDroBCGglyXk3IYY6BbeA/view>
+- ✍️ Açıklamalar: <https://drive.google.com/file/d/1KTRyNdIbramgI34UdMd5vHCPNTkMuUGt/view> · Senaryolar: <https://drive.google.com/file/d/1IgjE9hWXUbiIDroBCGglyXk3IYY6BbeA/view>
 
 ## İçindekiler
 
@@ -23,6 +24,9 @@ Atlasia reklam ana klasörünün içinde (bağlantısı olan herkes görüntüle
 | `kaynak/` | Arka planlar + videolardan çıkarılan kareler (not: karelerde eski videoların yazısı yanık; arka plan olarak kullanılmadı) |
 | `render.py` | Görselleri basar: `python3 reklam/uretim/paket-01/render.py` (pillow) |
 | `uret.py` | `captions.md` + `pano.html` üretir: `python3 reklam/uretim/paket-01/uret.py` |
+| `videolar/` | 8 seslendirmeli MP4 + `.srt` altyazılar — MP4'ler Drive'da (gitignore), SRT'ler repoda |
+| `ses/` | 8 anlatım MP3'ü (`voice-00`, seçilen anlatıcı) |
+| `video_uret.py` | Beat still + ses → MP4: `python3 reklam/uretim/paket-01/video_uret.py` (pillow, imageio-ffmpeg, mutagen) |
 
 ## Takvim (IG 19.00 · TikTok 20.00)
 

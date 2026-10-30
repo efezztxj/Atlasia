@@ -1,0 +1,15 @@
+1
+00:00:00,000 --> 00:00:01,422
+Uygulama indirmedim.
+
+2
+00:00:01,422 --> 00:00:02,844
+Üyelik de açmadım.
+
+3
+00:00:02,844 --> 00:00:04,593
+Haritadayım. Rotam da hazır.
+
+4
+00:00:04,593 --> 00:00:09,028
+Yirmi sekiz nokta, dört sesli tur. Ücretsiz, reklam yok. Link profilde.

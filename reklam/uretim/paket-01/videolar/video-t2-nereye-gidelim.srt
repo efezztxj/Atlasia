@@ -1,0 +1,15 @@
+1
+00:00:00,000 --> 00:00:01,485
+Üç saat mesajlaştık.
+
+2
+00:00:01,485 --> 00:00:05,429
+Hâlâ evdeydik. Nereye gidelim, sen söyle, bana fark etmez.
+
+3
+00:00:05,429 --> 00:00:08,964
+Sonra biri gruba tek link attı. Üç saat, yedi durak.
+
+4
+00:00:08,964 --> 00:00:12,364
+Karar bir dakika sürdü. Rotayı çiz, gruba at, çık.
