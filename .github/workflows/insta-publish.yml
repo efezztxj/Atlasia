@@ -44,7 +44,9 @@ env:
   # `inputs.dry_run` varsayılanı yalnızca `workflow_dispatch` ile geçerlidir;
   # `schedule` tetiklemesinde boş kalır. Zamanlanmış çalışmaların asla gerçek
   # yayın yapmaması için (kurucu mod) varsayılanı true tutarız.
-  DRY_RUN: ${{ (github.event_name == 'schedule' || inputs.dry_run == 'true') && 'true' || 'false' }}
+  # `inputs.*` yalnızca `workflow_dispatch` ile doludur; `schedule` ile null'dır.
+  # Boolean input'ı doğrudan kullanmak string karşılaştırmasından kaçınır.
+  DRY_RUN: ${{ (github.event_name == 'schedule' || inputs.dry_run) && 'true' || 'false' }}
 
 jobs:
   publish:
