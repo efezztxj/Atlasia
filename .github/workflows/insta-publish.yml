@@ -41,6 +41,10 @@ concurrency:
 
 env:
   ARCHIVE_BRANCH: social-archive
+  # `inputs.dry_run` varsayılanı yalnızca `workflow_dispatch` ile geçerlidir;
+  # `schedule` tetiklemesinde boş kalır. Zamanlanmış çalışmaların asla gerçek
+  # yayın yapmaması için (kurucu mod) varsayılanı true tutarız.
+  DRY_RUN: ${{ (github.event_name == 'schedule' || inputs.dry_run == 'true') && 'true' || 'false' }}
 
 jobs:
   publish:
@@ -97,7 +101,8 @@ jobs:
           node-version: 22
 
       - name: Sırların varlığını denetle
-        if: steps.queue.outputs.count != '0'
+        # Kurucu modda hiçbir ağ çağrısı yapılmaz, bu yüzden jeton zorunlu değil.
+        if: steps.queue.outputs.count != '0' && env.DRY_RUN != 'true'
         env:
           IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
@@ -154,7 +159,7 @@ jobs:
           IG_API_VERSION: ${{ vars.IG_API_VERSION || 'v26.0' }}
           # Girdiler env üzerinden geçirilir; kabuğa doğrudan gömülmez.
           POST_ID: ${{ inputs.post_id }}
-          DRY_RUN: ${{ inputs.dry_run }}
+          DRY_RUN: ${{ env.DRY_RUN }}
         run: |
           set -o pipefail
           args=("--due")
