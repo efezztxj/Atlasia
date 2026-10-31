@@ -4,6 +4,7 @@ import {
   LANDING_STATIC,
   escapeHtml,
   renderLandingStaticHtml,
+  renderLandingFaqJsonLd,
 } from "../content/landingStatic";
 
 /**
@@ -24,9 +25,10 @@ const viteConfig = readFileSync("vite.config.ts", "utf8");
 const indexHtml = readFileSync("index.html", "utf8");
 const html = renderLandingStaticHtml();
 
-describe("T17 · noscript içerik", () => {
+describe("T17 · statik içerik", () => {
   it("başlık, adımlar ve SSS metni gömülür", () => {
-    expect(html.startsWith("    <noscript>")).toBe(true);
+    expect(html).toContain("<section");
+    expect(html).not.toContain("<noscript>");
     expect(html).toContain(LANDING_STATIC.heading);
     expect(html).toContain(LANDING_STATIC.intro);
     expect(html).toContain(LANDING_STATIC.stepsHeading);
@@ -38,6 +40,16 @@ describe("T17 · noscript içerik", () => {
       expect(html).toContain(faq.question);
       expect(html).toContain(faq.answer);
     }
+  });
+
+  it("FAQ şeması görünür sorular ve cevaplarla eşleşir", () => {
+    const schema = JSON.parse(renderLandingFaqJsonLd());
+    expect(schema["@type"]).toBe("FAQPage");
+    expect(schema.mainEntity).toEqual(LANDING_STATIC.faqs.map(({ question, answer }) => ({
+      "@type": "Question", name: question,
+      acceptedAnswer: { "@type": "Answer", text: answer },
+    })));
+    expect(viteConfig).toContain("renderLandingFaqJsonLd()");
   });
 
   it("JS gerektiğini dürüstçe söyler (harita vaadi vermez)", () => {
