@@ -12,7 +12,7 @@ import {
  *
  * NEDEN VAR: 2026-10-28 denetiminde `index.html` gövdesi yalnız
  * `<div id="root"></div>` idi. JS engelli bir tarayıcıda sayfa boştu. Artık
- * gerçek metin derlemede `<noscript>` olarak gömülüyor; bu test (1) metnin
+ * gerçek metin derlemede kök HTML içine gömülüyor; bu test (1) metnin
  * uydurma olmadığını, (2) gömülü bloğun güvenli olduğunu, (3) enjeksiyonun
  * gerçekten bağlı olduğunu doğrular.
  */
@@ -75,6 +75,10 @@ describe("T17 · statik içerik", () => {
     // Başlık JSX'te <span> ile bölünmüş: parçaları ayrı ayrı ara.
     for (const fragment of ["Dünyayı", "merakınla", "keşfet."]) {
       expect(landingSurface, `"${fragment}" tanıtım yüzeyinde yok`).toContain(fragment);
+    }
+    for (const detail of LANDING_STATIC.details) {
+      expect(landingSurface, `"${detail}" tanıtım yüzeyinde yok`).toContain(detail);
+      expect(html).toContain(escapeHtml(detail));
     }
     for (const step of LANDING_STATIC.steps) {
       expect(landingSurface, `"${step.title}" tanıtım yüzeyinde yok`).toContain(step.title);

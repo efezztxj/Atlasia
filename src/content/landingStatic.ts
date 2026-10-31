@@ -47,6 +47,7 @@ export interface LandingStaticContent {
   heading: string;
   intro: string;
   catalogSummary: string;
+  details: string[];
   stepsHeading: string;
   steps: LandingStaticStep[];
   faqHeading: string;
@@ -59,7 +60,15 @@ export const LANDING_STATIC: LandingStaticContent = {
   intro:
     "Atlasia — gerçek uydu görüntüleriyle dünyayı keşfet, gezginlerin bıraktığı küçük ipuçlarını bul ve kendi keşfini haritaya bırak.",
   catalogSummary:
-    "28 seçilmiş rehber nokta · 4 antik kent sesli turu · 0 reklam ve takip pikseli",
+    `Atlasia kapsamında ${VERIFIED_CATALOG_COUNTS.guidePlaces} seçilmiş rehber nokta ve ${VERIFIED_CATALOG_COUNTS.siteTours} antik kent sesli turu bulunur: Efes, Priene, Pompeii ve Ostia. 0 reklam ve takip pikseli.`,
+  details: [
+    "Uzaklara gitmek için önce merak etmek yeter. İlham veren rotalara göz at, sana yakın gelenleri kaydet ve kendi izini haritaya bırak.",
+    "Atlasia yalnızca nereye gideceğini değil, zamanına göre hangi sırayla gezebileceğini de düşünür. Bir kültür noktasına yaklaştığında sesli anlatım sen onay verirsen başlar.",
+    "Rahat, dengeli veya yoğun tempo. Yakın duraklar ve tahmini süre tek planda.",
+    "Konum izni senin kontrolünde. Ses yalnızca dinlemeyi seçtiğinde başlar.",
+    "Kendi keşfini bırak, daha sonra İzlerim bölümünden yönet.",
+    "Konum, mikrofon veya ses kendiliğinden açılmaz. Her kritik işlem açık onay ister.",
+  ],
   stepsHeading: "Nasıl çalışır?",
   steps: [
     {
@@ -86,6 +95,16 @@ export const LANDING_STATIC: LandingStaticContent = {
       question: "Konumum sürekli takip ediliyor mu?",
       answer:
         "Hayır. Konum yalnız sen açıkça izin verdiğinde ve ilgili ekranı kullanırken okunur. Sesli rehber, yakınlık uyarıları ve iz kaydı ayrı ayrı senin onayına bağlıdır; kapattığında çalışmaz.",
+    },
+    {
+      question: "İnternet yokken çalışır mı?",
+      answer:
+        "Yüklediğin harita paketi ve son uygulama kabuğu çevrimdışı açılır. Yeni iz bırakma, rota yayınlama ve sosyal işlemler bağlantı gerektirir; kayıtlar bağlantı gelince gönderilir.",
+    },
+    {
+      question: "Verdiğim izleri kim görür?",
+      answer:
+        "Yalnızca sen görürsün; izlerin varsayılan olarak özeldir. Yayınlamayı seçersen görünür olur ve dilediğinde geri alabilirsin.",
     },
   ],
   /** Dürüst sınır: uygulama tarayıcıda çalışır, harita için JS şart. */
@@ -120,6 +139,7 @@ export function renderLandingStaticHtml(): string {
     `        <h1 id="static-heading">${escapeHtml(LANDING_STATIC.heading)}</h1>`,
     `        <p>${escapeHtml(LANDING_STATIC.intro)}</p>`,
     `        <p>${escapeHtml(LANDING_STATIC.catalogSummary)}</p>`,
+    ...LANDING_STATIC.details.map((detail) => `        <p>${escapeHtml(detail)}</p>`),
     `        <h2>${escapeHtml(LANDING_STATIC.stepsHeading)}</h2>`,
     "        <ol>",
     steps,
