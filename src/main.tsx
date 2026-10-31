@@ -23,6 +23,7 @@ initAccessibilityPrefs();
 
 // Ölçüm katmanı (P0-2 hata izleme, P0-3 analitik). Uç nokta tanımlı değilse ve
 // çerez onayı yoksa ağa hiçbir şey gitmez; bkz. lib/telemetryBootstrap.ts.
+void import("./lib/clarity").then(({ initClarity }) => initClarity());
 startTelemetry({ endpoint: import.meta.env.VITE_TELEMETRY_ENDPOINT ?? null });
 
 createRoot(document.getElementById("root")!).render(

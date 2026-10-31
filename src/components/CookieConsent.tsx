@@ -9,13 +9,14 @@ import {
   saveEssentialCookieConsent,
   type CookieConsentRecord,
 } from "../lib/cookieConsent";
+import { clarityConsent, setClarityConsent } from "../lib/clarity";
 import { analytics } from "../lib/analytics";
 
 const LegalNotice = lazy(() => import("./LegalNotice"));
 
 const CATEGORIES = [
   ["Zorunlu", "Her zaman açık"],
-  ["Analitik", "Kullanılmıyor"],
+  ["Analitik", "İsteğe bağlı"],
   ["Pazarlama", "Kullanılmıyor"],
 ] as const;
 
@@ -23,6 +24,7 @@ export default function CookieConsent() {
   const [saved, setSaved] = useState<CookieConsentRecord | null>(() => readCookieConsent());
   const [open, setOpen] = useState<boolean>(() => readCookieConsent() === null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [clarityEnabled, setClarityEnabled] = useState(() => clarityConsent());
   const [privacyOpen, setPrivacyOpen] = useState(false);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -45,6 +47,7 @@ export default function CookieConsent() {
       consumePendingCookiePreferences();
       previousFocusRef.current = document.activeElement as HTMLElement | null;
       const current = readCookieConsent();
+      setClarityEnabled(clarityConsent());
       setSaved(current);
       setOpen(true);
       setTimeout(() => (current ? closeRef.current ?? primaryRef.current : primaryRef.current)?.focus(), 0);
@@ -76,6 +79,7 @@ export default function CookieConsent() {
 
   const handleSaveWithAnalytics = () => {
     const { record } = saveCookieConsent({ analytics: true });
+    setClarityConsent(clarityEnabled);
     // T2: tercih olayı. "Yalnız zorunlu" seçen kullanıcıda rıza kapısı kapalı
     // olduğu için bu olay gönderilmez (bilinçli: rıza öncesi ağ trafiği yok).
     analytics.consentChoice({ analytics: true });
@@ -87,6 +91,8 @@ export default function CookieConsent() {
 
   const handleSave = () => {
     const { record } = saveEssentialCookieConsent();
+    setClarityConsent(false);
+    setClarityEnabled(false);
     // Çağrı bilinçli olarak burada: rıza kapalıyken telemetry kapısı kaydı
     // düşürür, yani bu olay ağa ÇIKMAZ. Ret oranı bu olaydan okunamaz; ileride
     // istenirse rıza öncesi çalışan ayrı bir sunucu sayacı gerekir
@@ -95,6 +101,14 @@ export default function CookieConsent() {
     setSaved(record);
     setOpen(false);
     setDetailsOpen(false);
+    restoreFocus();
+  };
+
+  const handleSaveClarityOnly = () => {
+    const { record } = saveCookieConsent({ analytics: saved?.analytics === true });
+    setClarityConsent(clarityEnabled);
+    setSaved(record);
+    setOpen(false);
     restoreFocus();
   };
 
@@ -120,7 +134,7 @@ export default function CookieConsent() {
                 Çerez ve cihaz depolaması
               </h2>
               <p className="mt-1 text-[13px] leading-relaxed text-mint/75">
-                Reklam çerezi kullanmıyoruz. Anonim kullanım ölçümü <span className="font-semibold text-mint">isteğe bağlıdır ve kapalı başlar</span>; açarsan hata ve temel olay sayaçları toplanır — kimlik, konum ve içerik gönderilmez. Zorunlu{" "}
+                Reklam çerezi kullanmıyoruz. Clarity aşağıda ayrı izne bağlıdır. Anonim kullanım ölçümü <span className="font-semibold text-mint">isteğe bağlıdır ve kapalı başlar</span>; açarsan hata ve temel olay sayaçları toplanır — bu ölçümde kimlik, konum ve içerik gönderilmez. Zorunlu{" "}
                 <span className="font-semibold text-mint">atlasia_consent</span> çerezi bu tercihi 12 ay hatırlar.
               </p>
             </div>
@@ -170,6 +184,10 @@ export default function CookieConsent() {
             </div>
           )}
 
+          <label className="mt-3 flex items-start gap-2 text-[12px] leading-relaxed text-mint">
+            <input type="checkbox" checked={clarityEnabled} onChange={(event) => setClarityEnabled(event.target.checked)} className="mt-1" />
+            <span>Microsoft Clarity kullanım analizi ve oturum kaydına ayrıca izin veriyorum. Sayfa adresi, tıklama ve gezinme bilgileri Microsoft ile paylaşılabilir. Çerezler kullanılabilir; hassas içeriklerin korunması için maskeleme uygulanır. İzni çerez tercihlerinden geri alabilirsin.</span>
+          </label>
           <div className="mt-3 space-y-2">
             <button
               ref={primaryRef}
@@ -185,6 +203,9 @@ export default function CookieConsent() {
               className="min-h-11 w-full rounded-full border border-leaf/30 px-4 text-[13px] font-semibold text-mint transition hover:border-leaf/60"
             >
               Anonim ölçümü açarak devam et
+            </button>
+            <button type="button" onClick={handleSaveClarityOnly} className="min-h-11 w-full rounded-full border border-leaf/30 px-4 text-[13px] font-semibold text-mint">
+              Clarity tercihini kaydet
             </button>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <button

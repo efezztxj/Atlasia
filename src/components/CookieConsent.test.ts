@@ -58,7 +58,8 @@ describe("CookieConsent", () => {
     expect(screen.getByText("Her zaman açık")).toBeTruthy();
     expect(screen.getByText("Analitik")).toBeTruthy();
     expect(screen.getByText("Pazarlama")).toBeTruthy();
-    expect(screen.getAllByText("Kullanılmıyor")).toHaveLength(2);
+    expect(screen.getAllByText("Kullanılmıyor")).toHaveLength(1);
+    expect(screen.getByText("İsteğe bağlı")).toBeTruthy();
     expect(screen.getByText(/atlasia\.theme\.v1/)).toBeTruthy();
     expect(screen.getByText(/IndexedDB/)).toBeTruthy();
     expect(screen.getByText(/Google App Check/)).toBeTruthy();

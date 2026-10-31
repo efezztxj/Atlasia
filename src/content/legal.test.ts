@@ -84,7 +84,7 @@ describe("TASK-021 A yasal metin paketi", () => {
     expect(text).toContain("12 ay");
     expect(text).toContain("atlasia.cookieConsent.v1");
     expect(text).toContain("Ayarlar > Konum ve gizlilik > Çerez ve depolama");
-    expect(text).toContain("Reklam, pazarlama veya analitik çerezi bu sürümde yoktur");
+    expect(text).toContain("Microsoft Clarity yalnız ayrı izninle analitik çerezleri kullanabilir");
   });
 });
 
