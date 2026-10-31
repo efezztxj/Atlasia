@@ -64,7 +64,8 @@ describe("site meta · arama motorları", () => {
       expect(loc[1].startsWith("https://")).toBe(true);
     }
     expect(sitemap).toContain("https://atlasia.pages.dev/");
-    expect(sitemap).toContain("https://atlasia.pages.dev/uygulama/");
+    // Uygulama kabuğu ana sayfayı canonical gösterir; sitemap yalnız kanonik adresleri içerir.
+    expect(sitemap).not.toContain("https://atlasia.pages.dev/uygulama/");
   });
 
   it("robots.txt siteyi taramaya açık bırakır ve sitemap'i bildirir", () => {

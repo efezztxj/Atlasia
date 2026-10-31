@@ -59,12 +59,12 @@ describe("T19 · head meta seti", () => {
 
   it("sitemap üretim adreslerini ve güncel tarihi taşır", () => {
     const locs = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
-    expect(locs).toEqual([`${ORIGIN}/`, `${ORIGIN}/uygulama/`]);
+    expect(locs).toEqual([`${ORIGIN}/`]);
     const lastmods = [...sitemap.matchAll(/<lastmod>([^<]+)<\/lastmod>/g)].map((m) => m[1]);
-    // Bayat sitemap arama motoruna "değişmedi" der; 90 günden eski olamaz.
+    // Tarih yalnız gerçek içerik güncellemesinde değiştirilir.
     for (const lastmod of lastmods) {
-      const ageDays = (Date.now() - Date.parse(`${lastmod}T00:00:00Z`)) / 86_400_000;
-      expect(ageDays, `${lastmod} tarihi bayat`).toBeLessThan(90);
+      expect(lastmod).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(Number.isNaN(Date.parse(`${lastmod}T00:00:00Z`))).toBe(false);
     }
   });
 

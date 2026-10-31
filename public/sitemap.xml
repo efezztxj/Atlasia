@@ -1,17 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Atlasia tek sayfa uygulaması: tanıtım ve uygulama kabuğu aynı belgede açılır.
-     Yeni herkese açık bir rota eklenirse buraya yalnız o rota girer. -->
+     Yalnız kanonik, bağımsız olarak indekslenecek adresler listelenir. -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://atlasia.pages.dev/</loc>
     <lastmod>2026-10-28</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>https://atlasia.pages.dev/uygulama/</loc>
-    <lastmod>2026-10-28</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.8</priority>
   </url>
 </urlset>

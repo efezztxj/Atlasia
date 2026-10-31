@@ -1,19 +1,19 @@
 /**
- * T17 — JavaScript'siz görünen içerik (tek kaynak).
+ * JavaScript çalıştırılmadan da okunabilen tanıtım içeriği (tek kaynak).
  *
  * NEDEN VAR: 2026-10-28 denetiminde `index.html` içinde yalnız `<div id="root">`
  * vardı; JS çalışmayan bir tarayıcıda (ve JS render etmeyen bazı botlarda) sayfa
  * **tamamen boş** görünüyordu. Bu dosya, tanıtım sayfasının gerçek metnini
  * (başlık, üç adım, sık sorulanlar) tek yerde tutar; `vite.config.ts` bunu
- * derleme sırasında HTML'e `<noscript>` olarak gömer.
+ * derleme sırasında React köküne statik başlangıç içeriği olarak gömer.
  *
  * KURALLAR:
  *  - Uydurma metin yok: her dize `LandingPage.tsx` içinde de geçer
  *    (`src/config/prerenderT17.test.ts` bunu kilitler).
  *  - Betik, stil, olay özniteliği yok: CSP `script-src` etkilenmez, no-JS
  *    kullanıcı tarayıcının varsayılan tipografisini görür.
- *  - `<noscript>` kullanılır: JS açık kullanıcı için düzen değişmez, yani
- *    CLS/LCP riski sıfırdır ve hidrasyon gerektirmez.
+ *  - React createRoot ilk render sırasında bu içeriği değiştirir; JS kapalıyken
+ *    metin görünür kalır. Statik başlangıç ile uygulama arasında geçiş olabilir.
  */
 
 export interface LandingStaticStep {
@@ -103,7 +103,7 @@ export function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
-/** Derleme sırasında `index.html`'e gömülen `<noscript>` bloğu. */
+/** Derleme sırasında React köküne gömülen statik başlangıç içeriği. */
 export function renderLandingStaticHtml(): string {
   const steps = LANDING_STATIC.steps
     .map((step) => `        <li><strong>${escapeHtml(step.title)}</strong> — ${escapeHtml(step.text)}</li>`)
@@ -116,7 +116,6 @@ export function renderLandingStaticHtml(): string {
     .join("\n");
 
   return [
-    "    <noscript>",
     '      <section aria-labelledby="static-heading" lang="tr">',
     `        <h1 id="static-heading">${escapeHtml(LANDING_STATIC.heading)}</h1>`,
     `        <p>${escapeHtml(LANDING_STATIC.intro)}</p>`,
@@ -131,6 +130,19 @@ export function renderLandingStaticHtml(): string {
     "        </dl>",
     `        <p><small>${escapeHtml(LANDING_STATIC.requirement)}</small></p>`,
     "      </section>",
-    "    </noscript>",
   ].join("\n");
+}
+
+/** Görünür SSS ile aynı kaynaklardan üretilen güvenli JSON-LD. */
+export function renderLandingFaqJsonLd(): string {
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: LANDING_STATIC.faqs.map(({ question, answer }) => ({
+      "@type": "Question",
+      name: question,
+      acceptedAnswer: { "@type": "Answer", text: answer },
+    })),
+  };
+  return JSON.stringify(schema).replace(/</g, "\\u003c");
 }
