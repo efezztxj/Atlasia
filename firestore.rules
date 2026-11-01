@@ -218,6 +218,11 @@ service cloud.firestore {
              && hasValidOptionalPhoto(data);
     }
 
+    /** F2-1: `likeCount` yoksa 0 say (eski dokümanlar). Hata üretmeyen erişim. */
+    function likeCountOf(data) {
+      return 'likeCount' in data ? data.likeCount : 0;
+    }
+
     /**
      * F2-1 — beğeni sayacı. `posts/{id}/likes/{uid}` belgesi ile gönderideki
      * `likeCount` AYNI batch'te değişmek zorunda; istemci sayacı serbestçe yazamaz.
@@ -225,8 +230,8 @@ service cloud.firestore {
      */
     function likeCounterMatches(postId, delta) {
       let likePath = /databases/$(database)/documents/posts/$(postId)/likes/$(request.auth.uid);
-      let before = resource.data.get('likeCount', 0);
-      let after = request.resource.data.get('likeCount', 0);
+      let before = likeCountOf(resource.data);
+      let after = likeCountOf(request.resource.data);
       return delta > 0
              ? (!exists(likePath) && existsAfter(likePath) && after == before + 1)
              : (exists(likePath) && !existsAfter(likePath) && before > 0 && after == before - 1);
@@ -236,6 +241,8 @@ service cloud.firestore {
     function validLikeCounterUpdate(postId) {
       let changed = request.resource.data.diff(resource.data).affectedKeys();
       return changed.hasOnly(['likeCount'])
+             && request.resource.data.likeCount is int
+             && request.resource.data.likeCount >= 0
              && (likeCounterMatches(postId, 1) || likeCounterMatches(postId, -1));
     }
 
@@ -778,16 +785,14 @@ service cloud.firestore {
       function counterIncreased() {
         let postPath = /databases/$(database)/documents/posts/$(postId);
         return exists(postPath)
-               && getAfter(postPath).data.get('likeCount', 0)
-                  == get(postPath).data.get('likeCount', 0) + 1;
+               && likeCountOf(getAfter(postPath).data) == likeCountOf(get(postPath).data) + 1;
       }
       function counterDecreased() {
         let postPath = /databases/$(database)/documents/posts/$(postId);
         return !existsAfter(postPath)
                || (exists(postPath)
-                   && get(postPath).data.get('likeCount', 1) > 0
-                   && get(postPath).data.get('likeCount', 0)
-                      == getAfter(postPath).data.get('likeCount', 0) + 1);
+                   && likeCountOf(get(postPath).data) > 0
+                   && likeCountOf(get(postPath).data) == likeCountOf(getAfter(postPath).data) + 1);
       }
 
       allow get: if signedIn() && ownLike();
@@ -807,7 +812,9 @@ service cloud.firestore {
      * `likeUid == request.auth.uid` yollarını açar; başkasının beğenisi okunamaz.
      */
     match /{path=**}/likes/{likeUid} {
-      allow get, list: if signedIn() && request.auth.uid == likeUid;
+      // Sorgu `where("uid","==",kendi)` ile gelir; kural da aynı alanı bağlar,
+      // böylece koleksiyon-grubu listesi kendi belgeleriyle sınırlı kalır.
+      allow get, list: if signedIn() && resource.data.uid == request.auth.uid;
     }
 
     match /stories/{storyId} {
