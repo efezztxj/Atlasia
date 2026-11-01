@@ -1,0 +1,18 @@
+# Atlasia
+
+> Atlasia, gerçek uydu görüntüleriyle dünyayı keşfetmeye, gezgin izlerini görmeye ve kendi keşiflerini haritaya eklemeye yarayan ücretsiz bir web uygulamasıdır.
+
+## Uygulama
+
+- [Atlasia ana sayfa](https://atlasia.pages.dev/): Ürün tanıtımı ve sık sorulan sorular.
+- [Atlasia uygulaması](https://atlasia.pages.dev/uygulama/): Keşif haritası ve uygulama kabuğu; haritayı kullanmak için JavaScript gerekir.
+- Atlas AI, seçilen zaman, ilgi alanı ve ulaşım biçimine göre duraklar ve rota oluşturmaya yardımcı olur.
+- Konum tabanlı sesli rehber, kullanıcı izni ve seçimiyle çalışır.
+- İndirilen harita paketi ve son uygulama kabuğu çevrimdışı açılabilir; sosyal işlemler bağlantı gerektirir.
+- Katalogda 28 seçilmiş rehber nokta ve Efes, Priene, Pompeii ve Ostia için 4 antik kent sesli turu bulunur.
+
+## İletişim ve profiller
+
+- Destek: atlasiaworld0@gmail.com
+- [Instagram](https://www.instagram.com/atlasia.world0/)
+- [TikTok](https://www.tiktok.com/@atlasia.w)
