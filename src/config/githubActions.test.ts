@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const EXPECTED_PINS = [
-  "actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0",
+  "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1",
   "actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0",
   "actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0",
   "actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0",

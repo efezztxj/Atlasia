@@ -38,6 +38,54 @@ export function entryAssetPath(html) {
   return assets.length ? assets[0] : null;
 }
 
+/**
+ * Bir parça metnindeki same-origin JS referanslarını toplar.
+ *
+ * Neden gerekli: 2026-10-29'daki T11 çalışmasından sonra Firebase yapılandırması
+ * giriş paketinde **değil**, tembel `firebaseConfig-*.js` parçasında. Yalnız giriş
+ * paketini taramak canlıyı "yapılandırma eksik" diye kırmızıya düşürüyordu
+ * (1 Kasım 2026 CI koşusu: `projectId=(yok)`), yani kapı ölçtüğünü sandığı şeyi
+ * ölçmüyordu. Bu yardımcı, girişten başlayıp parça grafiğini sınırlı biçimde izler.
+ */
+export function referencedAssetPaths(text) {
+  const paths = new Set();
+  const patterns = [
+    // Mutlak: "/assets/firebaseConfig-abc.js"
+    /["'`](\/assets\/[A-Za-z0-9_.-]+\.js)["'`]/g,
+    // Göreli: "./firebaseConfig-abc.js" (Rolldown/Vite tembel parça biçimi)
+    /["'`](\.\/[A-Za-z0-9_.-]+\.js)["'`]/g,
+  ];
+  for (const pattern of patterns) {
+    for (const match of String(text).matchAll(pattern)) {
+      paths.add(match[1].startsWith("./") ? `/assets/${match[1].slice(2)}` : match[1]);
+    }
+  }
+  return [...paths];
+}
+
+/** Parça grafiği taramasının üst sınırları (sonsuz istek/döngü koruması). */
+export const CRAWL_LIMITS = Object.freeze({ maxChunks: 40, maxDepth: 3 });
+
+/**
+ * Tarama sırası: adı yapılandırmaya işaret eden parçalar önce denenir. Giriş paketi
+ * 40+ tembel parçaya referans verebildiği için rastgele sıra yapılandırmayı sınırın
+ * dışında bırakabiliyordu (1 Kasım 2026 canlı koşusu: 24 parça, `projectId=(yok)`).
+ */
+export function assetPriority(path) {
+  if (/firebaseconfig|firebase-config/i.test(path)) return 0;
+  if (/firebase|config/i.test(path)) return 1;
+  return 2;
+}
+
+export function prioritizeAssets(paths) {
+  return [...paths].sort((a, b) => assetPriority(a) - assetPriority(b));
+}
+
+/** Yapılandırma tamam mı? Tamamsa tarama erken biter. */
+function isComplete(config) {
+  return Boolean(config?.projectId && config?.authDomain && config?.apiKeyPresent);
+}
+
 function firstMatch(text, source) {
   const match = String(text).match(source);
   return match ? match[1] : null;
@@ -49,9 +97,12 @@ function firstMatch(text, source) {
  */
 export function extractFirebaseConfig(text) {
   const source = String(text);
-  const projectId = firstMatch(source, /projectId\s*:\s*["']([^"']+)["']/);
-  const authDomain = firstMatch(source, /authDomain\s*:\s*["']([^"']+)["']/);
-  const apiKey = firstMatch(source, /apiKey\s*:\s*["']([^"']+)["']/);
+  // Vite 8 / Rolldown dizgileri **backtick** ile de yazabilir
+  // (`projectId:\`atlasia-dev\``). Yalnız tek/çift tırnak kabul etmek, canlı
+  // yapılandırmayı 1 Kasım 2026'da yanlış "eksik" gösteren asıl kök nedendi.
+  const projectId = firstMatch(source, /projectId\s*:\s*["'`]([^"'`]+)["'`]/);
+  const authDomain = firstMatch(source, /authDomain\s*:\s*["'`]([^"'`]+)["'`]/);
+  const apiKey = firstMatch(source, /apiKey\s*:\s*["'`]([^"'`]+)["'`]/);
   // Ham anahtar hiçbir çıktıya girmesin: yalnız "var mı" ve maskeli biçim döner.
   return {
     projectId,
@@ -114,10 +165,73 @@ export async function inspectLiveSite({
 
   const jsResponse = await fetchImpl(bust(`${base}${entry}`, stamp), { headers: { "cache-control": "no-cache" } });
   if (!jsResponse.ok) throw new Error(`Giriş paketi alınamadı (${entry}): HTTP ${jsResponse.status}`);
-  const js = await jsResponse.text();
+  const entryJs = await jsResponse.text();
 
-  const config = extractFirebaseConfig(js);
-  return { base, entry, bytes: js.length, config };
+  // Parça grafiği: giriş → (varsa) tembel parçalar. Firebase yapılandırması T11'den
+  // sonra `firebaseConfig-*.js` içinde; yalnız girişi taramak yanlış "eksik" veriyordu.
+  const texts = [{ path: entry, text: entryJs }];
+  const queue = prioritizeAssets(referencedAssetPaths(entryJs)).map((path) => ({ path, depth: 1 }));
+  const seen = new Set([entry]);
+  let config = extractFirebaseConfig(entryJs);
+  while (queue.length && texts.length < CRAWL_LIMITS.maxChunks && !isComplete(config)) {
+    const { path, depth } = queue.shift();
+    if (seen.has(path)) continue;
+    seen.add(path);
+    let response;
+    try {
+      response = await fetchImpl(bust(`${base}${path}`, stamp), { headers: { "cache-control": "no-cache" } });
+    } catch {
+      continue; // Tek parçanın düşmesi denetimi durdurmaz; eksik alan varsa rapor kırmızı olur.
+    }
+    if (!response.ok) continue;
+    const text = await response.text();
+    texts.push({ path, text });
+    config = mergeConfigs([config, extractFirebaseConfig(text)]);
+    if (depth < CRAWL_LIMITS.maxDepth) {
+      const next = prioritizeAssets(referencedAssetPaths(text)).filter((path) => !seen.has(path));
+      queue.push(...next.map((path) => ({ path, depth: depth + 1 })));
+      // Öncelik korunur: kuyruk her turda yeniden sıralanır (config parçaları önce).
+      queue.sort((a, b) => assetPriority(a.path) - assetPriority(b.path));
+    }
+  }
+
+  config = mergeConfigs([
+    config,
+    ...texts.slice(1).map((chunk) => extractFirebaseConfig(chunk.text)),
+  ]);
+  return {
+    base,
+    entry,
+    bytes: entryJs.length,
+    chunksScanned: texts.length,
+    scannedPaths: texts.map((chunk) => chunk.path),
+    config,
+  };
+}
+
+/**
+ * Parça bazındaki bulguları birleştirir: alanlar farklı parçalara dağılmış olabilir.
+ * `mentionsDevProject` herhangi bir parçada görülürse doğrudur (sinyal kaybolmasın).
+ */
+export function mergeConfigs(configs) {
+  const merged = {
+    projectId: null,
+    authDomain: null,
+    apiKeyPresent: false,
+    apiKeyMasked: null,
+    mentionsDevProject: false,
+  };
+  for (const config of configs) {
+    if (!config) continue;
+    merged.projectId ??= config.projectId ?? null;
+    merged.authDomain ??= config.authDomain ?? null;
+    if (!merged.apiKeyPresent && config.apiKeyPresent) {
+      merged.apiKeyPresent = true;
+      merged.apiKeyMasked = config.apiKeyMasked;
+    }
+    merged.mentionsDevProject ||= Boolean(config.mentionsDevProject);
+  }
+  return merged;
 }
 
 /**
@@ -129,11 +243,12 @@ function annotation(level, title, message) {
   console.log(`::${level} title=${title}::${clean}`);
 }
 
-function printReport({ base, entry, bytes, config }, { ok, problems, notes = [] }) {
+function printReport({ base, entry, bytes, config, chunksScanned = 1 }, { ok, problems, notes = [] }) {
   const line = (label, value) => console.log(`${label.padEnd(22)} ${value}`);
   console.log(`Canlı yapılandırma doğrulaması — ${base}`);
   line("Giriş paketi:", entry);
   line("Paket boyutu:", `${Math.round(bytes / 1024)} kB (gzip değil)`);
+  line("Taranan parça:", `${chunksScanned} (giriş + tembel parçalar)`);
   line("projectId:", config.projectId ?? "(yok)");
   line("authDomain:", config.authDomain ?? "(yok)");
   line("apiKey:", config.apiKeyPresent ? `var (${config.apiKeyMasked})` : "YOK");
@@ -165,15 +280,20 @@ async function main() {
   }
 
   if (process.env.GITHUB_ACTIONS === "true") {
-    const { config, entry, base } = result;
+    const { config, entry, base, chunksScanned = 1, scannedPaths = [] } = result;
     const facts =
-      `base=${base} | entry=${entry} | projectId=${config.projectId ?? "(yok)"} | ` +
+      `base=${base} | entry=${entry} | parca=${chunksScanned} | projectId=${config.projectId ?? "(yok)"} | ` +
       `authDomain=${config.authDomain ?? "(yok)"} | apiKey=${config.apiKeyPresent ? "var" : "YOK"} | ` +
       `atlasia-dev izi=${config.mentionsDevProject ? "VAR" : "yok"}`;
     if (verdict.ok) {
       annotation("notice", "Canli yapilandirma", `Saglikli: ${facts}`);
     } else {
-      annotation("error", "Canli yapilandirma", `${facts} | Sorunlar: ${verdict.problems.join(" ; ")}`);
+      const paths = scannedPaths.slice(0, 12).join(",");
+      annotation(
+        "error",
+        "Canli yapilandirma",
+        `${facts} | Sorunlar: ${verdict.problems.join(" ; ")} | taranan=${paths}`,
+      );
     }
   }
 

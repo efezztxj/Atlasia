@@ -84,6 +84,21 @@ firebase deploy --only firestore:rules,firestore:indexes --project <onayli-proje
 
 Bu komut Firebase Hosting dağıtmaz. Web/PWA yayın hattı yalnız GitHub → Cloudflare Pages'tir; build komutu `npm run build`, çıktı dizini `dist` olmalıdır.
 
+## Ölçüm, hata izleme ve gizlilik
+
+İki katman var, ikisi de **varsayılan kapalı** ve ayrı rıza ister:
+
+- **Birinci taraf telemetri** (`src/lib/telemetry.ts`, `src/lib/telemetryBootstrap.ts`):
+  anonim sayaç olayları + PII'siz hata kaydı. `VITE_TELEMETRY_ENDPOINT` tanımlanana kadar
+  hiçbir ağ isteği çıkmaz. Toplayıcı kaynağı `workers/telemetry/` içindedir.
+- **Microsoft Clarity** (`src/lib/clarity.ts`): oturum kaydı ve ısı haritası. Çerez bandındaki
+  ayrı onay kutusu olmadan betik yüklenmez; metin `data-clarity-mask="true"` ile maskelenir.
+  CSP'de `www.clarity.ms` (yükleyici) ve `scripts.clarity.ms` (çalışma zamanı) açıkça izinli
+  olmak zorundadır.
+
+Ayrıntılı veri akışı, rıza anahtarları ve açık karar: `docs/olcum-ve-hata-izleme.md` §5c.
+Üçüncü taraf analitik aracı eklemeden önce aynı belgedeki karar kaydı okunmalıdır.
+
 ## Değişiklik kuralları
 
 - Her özellik ayrı görev, branch ve commit olarak ilerler.

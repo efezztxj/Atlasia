@@ -1,6 +1,6 @@
 # Ölçüm ve hata izleme
 
-**Durum:** 2026-10-28 · Kod tamam (P0-2 + P0-3 + T2 huni olayları). **Aktif olması için tek adım:** toplayıcı adresini tanımlamak.
+**Durum:** 2026-11-01 · Birinci taraf huni katmanı kod olarak tamam (P0-2 + P0-3 + T2), **aktif olması için tek adım** toplayıcı adresini tanımlamak. Üçüncü taraf oturum/ısı haritası katmanı (Microsoft Clarity) rıza kapılı olarak devrede — ayrıntı ve açık karar: §5c.
 İlgili kod: `src/lib/telemetry.ts`, `src/lib/telemetryBootstrap.ts`, `src/lib/analytics.ts`.
 
 ## 1. Ne toplanır, ne toplanmaz
@@ -135,6 +135,37 @@ tipli, rıza kapılı ve Worker allowlist'iyle doğrulanır. Panel için iki yol
 Her iki yolda da tek zorunlu adım: `VITE_TELEMETRY_ENDPOINT` değerini Cloudflare
 Pages ortamına yazmak. Ondan önce hiçbir olay ağa çıkmaz (bilinçli).
 
+## 5c. Microsoft Clarity — üçüncü taraf, ayrı rıza (2026-11-01)
+
+Yukarıdaki huni katmanı **birinci taraf** ve anonim. Ona ek olarak, oturum/ısı haritası
+katmanı için **Microsoft Clarity** rıza kapılı biçimde eklidir. İkisi ayrı rıza anahtarı
+kullanır ve **biri diğerini kapsamaz**.
+
+| Konu | Birinci taraf telemetri (§1–§5) | Microsoft Clarity (§5c) |
+|---|---|---|
+| Kod | `src/lib/telemetry.ts`, `telemetryBootstrap.ts`, `analytics.ts` | `src/lib/clarity.ts`, `CookieConsent.tsx` |
+| Rıza anahtarı | `atlasia_consent` çerezi → `analytics: true` | `atlasia.clarity-consent.v1` (localStorage) + çerez bandındaki ayrı onay kutusu |
+| Ne toplar | Sayaç olayları + PII'siz hata mesajı | Oturum kaydı, ısı haritası, tıklama/kaydırma, ölü tıklama |
+| Varsayılan | Kapalı | Kapalı (ayrı onay gerekir) |
+| Ağ isteği | `VITE_TELEMETRY_ENDPOINT` boşken **hiç yok** | Rıza yokken **hiç yok**; rıza verilince `https://www.clarity.ms/tag/<proje>` + `scripts.clarity.ms` |
+| Maskeleme | Yalnız sayısal/sabit alanlar gönderilir | `data-clarity-mask="true"` kök elemana eklenir; metin alanları maskelenir |
+| Geri alma | Tercihler → gönderim anında durur | Tercihler → `consent(false)` + sayfa yeniden yüklenir, betik kaldırılır |
+| KVKK notu | Yurt dışına aktarım yok | Veri Microsoft'a (ABD) gider; aydınlatma metninde §2.5, §3 ve §4.1'de adı geçer |
+
+**CSP bağımlılığı:** Clarity'nin yükleyicisi `https://www.clarity.ms`, çalışma zamanı ise
+`https://scripts.clarity.ms` adresinden gelir. İkisi de `public/_headers` içindeki
+`script-src` listesinde **açıkça** yazılı olmak zorundadır; `*.clarity.ms` joker'i bilinçli
+olarak kullanılmaz. 1 Kasım 2026'da `scripts.clarity.ms` eksikti ve rıza veren kullanıcıda
+bile çalışma zamanı CSP tarafından engelleniyordu (PR #163 ile kapandı,
+`src/config/cloudflareHeaders.test.ts` bunu kilitler).
+
+**Doğrulama (rızalı oturum):** DevTools → Network'te `clarity.ms` istekleri görünür;
+kayıt panelde ~1-2 dk içinde düşer. Rıza kapalıyken bu adreslere **tek istek** çıkmaz.
+
+**Açık karar:** iki katman birlikte mi kalacak, biri mi emekli olacak —
+`docs/gorevler/olcum-yigini-karari-2026-11-01.md`. Karar yazılmadan yeni üçüncü taraf
+araç eklenmez ve `VITE_TELEMETRY_ENDPOINT` operatör tarafından doldurulmaz.
+
 ## 6. Doğrulama
 
 ```bash
@@ -155,4 +186,7 @@ npx vitest run src/lib/telemetry.test.ts src/lib/analytics.test.ts src/lib/telem
   satır/kolon çözümü için ileride harita yükleme (özel, kimlik doğrulamalı) gerekir.
 - **Çevrimdışı kuyruk yok.** Ağ yoksa kayıt kaybolur (kullanıcı akışını bloke etmemek için bilinçli).
 - **Kayıt düzeyi kullanıcıya ait değil:** oturum kimliği sekmeye bağlıdır, hesapla eşlenmez.
+- **İki ölçüm katmanı var** (birinci taraf huni + Clarity). Hangisinin kalıcı olduğu
+  `docs/gorevler/olcum-yigini-karari-2026-11-01.md` kararına bağlı; Clarity panelinde
+  maskelemenin gerçekten çalıştığı (metin ve konum görünmüyor) henüz doğrulanmadı.
 - **Toplayıcı henüz deploy edilmedi.** Kaynak [`workers/telemetry/`](../workers/telemetry/) içinde; uç nokta operatör hesabında deploy edilip Pages `VITE_TELEMETRY_ENDPOINT` tanımlanana kadar ağ kapalıdır.
