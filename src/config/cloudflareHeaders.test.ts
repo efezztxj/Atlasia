@@ -99,6 +99,15 @@ describe("Cloudflare Pages security headers", () => {
     expect(policy).not.toMatch(/(?:default|connect|frame|script)-src[^;]*\s\*/);
   });
 
+  it("allows the consent-gated Clarity loader and its runtime script", () => {
+    const policy = block("/*").get("content-security-policy") ?? "";
+    const scripts = policy.match(/(?:^|;)\s*script-src ([^;]+)/)?.[1].split(/\s+/) ?? [];
+    expect(scripts).toContain("https://www.clarity.ms");
+    expect(scripts).toContain("https://scripts.clarity.ms");
+    expect(scripts).not.toContain("https://*.clarity.ms");
+    expect(policy.match(/(?:^|;)\s*connect-src ([^;]+)/)?.[1]).toContain("https://*.clarity.ms");
+  });
+
   it("allows Pwned Passwords only as an outbound range API connection", () => {
     const policy = block("/*").get("content-security-policy") ?? "";
     const directives = new Map(policy.split(";").map((entry) => {
