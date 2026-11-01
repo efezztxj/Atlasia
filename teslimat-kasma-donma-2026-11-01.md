@@ -103,3 +103,61 @@ kurulu değil ve tarayıcı indirme CDN'i ağ izin listesinde yok.
 paneller için satır içi prop'ları `useCallback`/`useMemo`'ya almak ve görünüm
 verisini context'e taşımak. Bu tur, riski düşük ve kazancı yüksek dört
 kalemle sınırlandırıldı.
+
+---
+
+# Tur 2 — nihai performans için ikinci geçiş (aynı branch)
+
+## Ek kök neden
+
+Tur 1'de bildirim sıklığı 60/sn'den ~8/sn'ye indi. Kalan maliyet iki yerdeydi:
+
+1. **Faydasız state güncellemeleri:** parmak kayarken görünümde gözle
+   görülür bir değişiklik olmasa da her bildirim `Explorer`'ı yeniden
+   çiziyordu (state nesnesi her seferinde yeni kimlik).
+2. **Kapalı panellerin boşuna render edilmesi:** `AtlasAssistant` (112 KB
+   modül) ve `SocialPanel` (36 KB) kapalıyken yalnız bir başlatıcı düğme
+   çiziyor; buna rağmen harita her hareket ettiğinde tüm gövdeleri yeniden
+   çalışıyordu.
+
+## Yapılanlar
+
+| Değişiklik | Dosya | Kazanç |
+|---|---|---|
+| `shouldCommitView()` eşiği (`VIEW_ZOOM_EPSILON=0.15`, `VIEW_CENTER_EPSILON_RATIO=0.015`) | `utils/mapLifecycle.ts` | Eşik geçilmezse `onViewChange`/`onViewportChange` hiç çağrılmaz → React state aynı nesne → **yeniden render yok** |
+| `lastCommitted` + `report(force)` (`moveend` ve ilk yükleme eşiği atlar) | `components/MapView.tsx` | Sürükleme bitince değer kesin; kayıp yok |
+| Boylam sarması (180. meridyen) | `utils/mapLifecycle.ts` | Sahte 359°'lik bildirim yok |
+| `memo` + özel karşılaştırıcı (kapalıyken yalnız başlatıcıyı etkileyen alanlar) | `components/AtlasAssistant.tsx`, `components/SocialPanel.tsx` | Harita hareketinde iki ağır panel render edilmiyor; açılınca güncel veri |
+| Yeni testler | `components/panelMemo.test.ts` (6), `mapLifecycle.test.ts` (9), `mapRenderLoop.test.ts` (6) | Davranış kilitli |
+
+## Doğrulama (tur 2)
+
+| Komut | Sonuç |
+|---|---|
+| `npx tsc --noEmit` | Geçti |
+| `npx eslint . --max-warnings=0` | Geçti |
+| `npx vitest run` | 178 dosya / **1.373 test** geçti |
+| `npx vite build` | Başarılı |
+| `node scripts/bundle-budget.mjs` | Bütçe içinde: toplam JS 998.103 B gzip (bütçe 1.003.000), uygulama kabuğu 583.181 B (bütçe 603.400), CSS 35.638 B (bütçe 35.700) |
+
+## Ölçüm sınırı (dürüst not)
+
+Bu ortamda gerçek tarayıcı çalıştırılamadı: sistemde Chromium yok,
+`@sparticuz/chromium` paketi `libnspr4`/NSS sistem kütüphanelerini
+bulamıyor ve paket depolarına ağ erişimi kapalı. Bu yüzden kare süresi
+(FPS) ölçümü **yapılmadı**; kazanç, çağrı sayısının matematiksel olarak
+azaltılması ve davranışın testle kilitlenmesiyle gösterildi. Cihaz üstü
+doğrulama için DevTools Performance kaydı hâlâ gerekli.
+
+## Sıradaki adaylar (uygulanmadı, karar bekliyor)
+
+1. **Uyarlanabilir harita kalitesi:** kaba işaretçi/düşük çekirdek sayısında
+   terrain + hillshade varsayılan kapalı. GPU'ya bağlı kasmanın en olası
+   kaynağı, ama görünümü değiştirdiği için ürün kararı gerektiriyor.
+2. **İlk boya yolu:** harita ekranı açılmadan ~2,2 MB JS iniyor.
+   `AtlasAssistant`/`SocialPanel` modüllerinin harita hazır olduktan sonra
+   yüklenmesi (~55 KB gzip kazanç); başlatıcı düğmelerin biraz geç
+   görünmesi pahasına.
+3. **`Explorer` parçalama:** satır içi geri çağrıların `useCallback`'e
+   alınması ve `Header`/`BottomPanel` için `memo`. Harita hareketi artık
+   çoğunlukla render üretmediği için kazanç küçüldü.

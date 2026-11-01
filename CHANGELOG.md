@@ -1,5 +1,12 @@
 # Atlasia Update
 
+## 2026-11-01 — Kasma turu 2: mikro hareketlerde state güncellenmiyor, kapalı paneller render dışında
+
+- **Görünüm commit eşiği (`utils/mapLifecycle.ts`):** yeni `shouldCommitView()` + `VIEW_ZOOM_EPSILON = 0.15` / `VIEW_CENTER_EPSILON_RATIO = 0.015`. `MapView` artık son bildirdiği görünümü (`lastCommitted`) tutuyor ve eşiği geçmeyen mikro hareketlerde `onViewChange`/`onViewportChange` **hiç çağırmıyor**: React state aynı nesne kaldığı için `Explorer` yeniden render olmuyor. `moveend` ve ilk yükleme eşiği atlıyor (`report(true)`), yani sürükleme bitince değer kesin. Boylam sarması (180. meridyen) ayrıca ele alındı; sahte 359°'lik sıçrama bildirilmiyor.
+- **Kapalı paneller memo'landı:** `AtlasAssistant` ve `SocialPanel` varsayılan dışa aktarımı `memo(...)` + özel karşılaştırıcı oldu (`areAssistantPropsEqual`, `areSocialPropsEqual`). Panel kapalıyken yalnız başlatıcı düğmeyi etkileyen alanlar karşılaştırılıyor; harita kaydırılırken `view`/`places`/satır içi geri çağrılar değişse de bu iki ağır panel yeniden çizilmiyor. Panel açıldığında karşılaştırıcı `false` dönüyor ve bileşen güncel veriyle çiziliyor (bayat veri riski yok).
+- **Yeni testler:** `src/components/panelMemo.test.ts` (6 test — kapalıyken yok sayılan/yok sayılmayan alanlar, açıkken tam render), `mapLifecycle.test.ts` 5 → 9 test (zoom eşiği, görünür alan oranı, tarih çizgisi sarması, geçersiz değer), `mapRenderLoop.test.ts` 5 → 6 test (`moveend`'de eşik atlama ve `lastCommitted` kapısı kilitli).
+- **Doğrulama:** `tsc --noEmit`, `eslint --max-warnings=0`, `vitest run` (178 dosya / 1.373 test), `vite build`, `bundle-budget` bütçe içinde (toplam JS 998.103 B / 1.003.000 gzip; uygulama kabuğu 583.181 B / 603.400).
+
 ## 2026-11-01 — Harita kasma/donma turu: kare başına state güncellemesi kaldırıldı
 
 - **Kök neden bulundu:** "Arayüz çok kasıyor" şikâyeti repo boyutundan değil çizim sıklığından geliyordu. `.git` 20,6 MB, `public/social` (17 MB) tarayıcıya hiç inmiyor ve service worker ön önbelleği 7 küçük dosyadan oluşuyor; buna karşılık `MapView` içindeki `zoom` dinleyicisi **her karede** iki React state'ini (`view` + `mapViewport`) güncelliyordu. `Explorer` (1.796 satır, 59 `useState`, `React.memo` yok) bu yüzden saniyede ~60 kez, alt ağacıyla birlikte yeniden çiziliyordu. Ölçüm ve gerekçeler: `teslimat-kasma-donma-2026-11-01.md`.

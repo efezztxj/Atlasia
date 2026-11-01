@@ -11,7 +11,7 @@ import {
 import openFreeMapDarkStyle from "../data/openFreeMapDarkStyle.json";
 import type { PlaceViewport } from "../lib/firestoreData";
 import type { Place, RouteLeg, ViewState } from "../types";
-import { shouldAdvanceSpin, shouldReportView } from "../utils/mapLifecycle";
+import { shouldAdvanceSpin, shouldCommitView, shouldReportView } from "../utils/mapLifecycle";
 import type { WeatherLayerHandle, WeatherMode, WeatherStopMark } from "../utils/mapWeather";
 import { attachMapResume } from "../lib/mapResume";
 
@@ -636,11 +636,18 @@ export default function MapView({
     map.once("style.load", () => setReady(true));
     if (map.isStyleLoaded()) setReady(true);
 
-    const report = () => {
+    // Son bildirilen görünüm: mikro hareketlerde React state'i hiç güncellenmez
+    // (state aynı nesne kalırsa React yeniden render etmez).
+    let lastCommitted: ViewState | null = null;
+    const report = (force = false) => {
       const c = map.getCenter();
       const zoom = map.getZoom();
-      live.current.onViewChange({ zoom, lng: c.lng, lat: c.lat });
       const bounds = map.getBounds();
+      const spanDeg = bounds.getNorth() - bounds.getSouth();
+      const next = { zoom, lng: c.lng, lat: c.lat };
+      if (!force && lastCommitted && !shouldCommitView(lastCommitted, next, spanDeg)) return;
+      lastCommitted = next;
+      live.current.onViewChange(next);
       live.current.onViewportChange?.({
         zoom,
         bounds: {
@@ -666,7 +673,8 @@ export default function MapView({
     map.on("moveend", () => {
       if (internalMove.current) return;
       lastReportAt = performance.now();
-      report();
+      // Hareket bitti: eşik atlanır, kesin görünüm yazılır.
+      report(true);
     });
     map.on("zoom", () => {
       if (internalMove.current) return;
@@ -727,7 +735,7 @@ export default function MapView({
     };
     document.addEventListener("visibilitychange", onVisibilityForSpin);
 
-    report();
+    report(true);
 
     return () => {
       spinDisposed = true;

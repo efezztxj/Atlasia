@@ -20,9 +20,20 @@ describe("harita çizim döngüsü ve görünüm bildirimi", () => {
     expect(mapView).not.toMatch(/map\.on\("zoom",\s*\(\)\s*=>\s*\{[^}]*report\(\);/);
   });
 
-  it("hareket bittiğinde tam bildirim korunur", () => {
-    // moveend her zaman güncel görünümü yazar: throttle son kareyi kaçırmaz.
-    expect(mapView).toMatch(/map\.on\("moveend",\s*\(\)\s*=>\s*\{[^}]*report\(\);/);
+  it("hareket bittiğinde eşik atlanır, kesin görünüm yazılır", () => {
+    // moveend her zaman güncel görünümü yazar: throttle ve commit eşiği
+    // son kareyi kaçırmaz.
+    expect(mapView).toMatch(/map\.on\("moveend",\s*\(\)\s*=>\s*\{[^}]*report\(true\);/);
+  });
+
+  it("mikro hareketlerde görünüm state'i hiç güncellenmez", () => {
+    // Eşik geçilmedikçe onViewChange çağrılmaz: React state aynı nesne kalır
+    // ve yeniden render olmaz.
+    expect(mapView).toContain("shouldCommitView");
+    expect(mapView).toContain("lastCommitted");
+    expect(mapView).toMatch(/if \(!force && lastCommitted && !shouldCommitView\([^)]*\)\) return;/);
+    // İlk bildirim eşiğe takılmasın.
+    expect(mapView).toMatch(/report\(true\);\s*\n\s*\n\s*return \(\) =>/);
   });
 
   it("autospin döngüsü koşul sağlanmıyorsa kendini yeniden kurmaz", () => {
