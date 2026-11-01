@@ -5,7 +5,6 @@ import {
   Camera,
   ChevronLeft,
   ChevronRight,
-  Clock3,
   ExternalLink,
   Flag,
   Loader2,
@@ -25,7 +24,6 @@ import { useCollections } from "../hooks/useCollections";
 import { usePanelAccess } from "../hooks/usePanelAccess";
 import { useAuth } from "../contexts/AuthContext";
 import { blockUser } from "../lib/moderation";
-import { VERIFICATION_LABELS, VERIFICATION_STATUSES, type VerificationStatus } from "../utils/freshness";
 import ReportDialog from "./ReportDialog";
 import { requestConfirm } from "./ConfirmDialog";
 import { advice } from "../utils/placeAdvice";
@@ -42,12 +40,11 @@ interface Props {
   onPlan: () => void;
   canDelete?: boolean;
   onDelete?: () => Promise<boolean>;
-  onVerify?: (status: VerificationStatus, note?: string) => Promise<void>;
   /** Yakındaki tarihî yer listesinden bir yer açılınca. */
   onOpenPlace?: (place: Place) => void;
 }
 
-export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDelete = false, onDelete, onVerify, onOpenPlace }: Props) {
+export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDelete = false, onDelete, onOpenPlace }: Props) {
   const { photos: allPhotos, loading, error } = usePlaceGallery(place);
   const { savePlace, isSaved } = useCollections();
   const panelRef = usePanelAccess(true, onClose, true);
@@ -58,25 +55,7 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDele
   const [deleting, setDeleting] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [blocking, setBlocking] = useState(false);
-  const [verifyBusy, setVerifyBusy] = useState<VerificationStatus | null>(null);
-  const [verifyNote, setVerifyNote] = useState("");
-  const [verifyStatus, setVerifyStatus] = useState<string | null>(null);
   const { user } = useAuth();
-
-  const submitVerification = async (status: VerificationStatus) => {
-    if (!onVerify || verifyBusy) return;
-    setVerifyBusy(status);
-    setVerifyStatus(null);
-    try {
-      await onVerify(status, verifyNote.trim() || undefined);
-      setVerifyNote("");
-      setVerifyStatus("Doğrulaman kaydedildi. Teşekkürler!");
-    } catch (error) {
-      setVerifyStatus(friendlyDataError(error, "Doğrulama kaydedilemedi."));
-    } finally {
-      setVerifyBusy(null);
-    }
-  };
 
   const photos = allPhotos.filter((photoItem) => !failed.includes(photoItem.url));
   const photo = photos[Math.min(index, Math.max(0, photos.length - 1))];
@@ -221,53 +200,29 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDele
           ) : place.dataSources?.length ? (
             <p className="mt-2 text-[11px] leading-relaxed text-mint/70" data-testid="place-attribution">Kaynak: {place.dataSources.join(" · ")}</p>
           ) : null}
+          {place.historyVerification ? (
+            <section aria-label="Tarihî kaynak çapraz kontrolü" className="mt-3 rounded-xl border border-leaf/20 bg-white/[0.025] p-3">
+              <p className="text-[12px] font-semibold text-mint">
+                {place.historyVerification.status === "corroborated"
+                  ? "3 kayıt eşleşiyor · konumlar 2 km içinde"
+                  : place.historyVerification.status === "conflict"
+                    ? "Kaynak uyuşmazlığı · bu yer teyit edilmiş sayılmaz"
+                    : `${place.historyVerification.sourceCount}/3 kaynak bulundu · teyit yetersiz`}
+              </p>
+              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-mint/70">
+                {place.historyVerification.sources.map((source) => (
+                  <a key={source.kind} href={source.url} target="_blank" rel="noreferrer" className="underline underline-offset-2">{source.label}</a>
+                ))}
+              </div>
+              <p className="mt-1 text-[10.5px] leading-relaxed text-mint/55">Bu çapraz kontrol saha/uzman teyidi değildir. Konum uyuşmazlığı varsa bilgiye güvenme; gitmeden resmî kaynağa bak.</p>
+            </section>
+          ) : place.category === "history" ? (
+            <p className="mt-3 text-[11px] leading-relaxed text-sun/80">Bu tarihî yer için canlı 3 kaynak çapraz kontrolü yapılmadı; doğrulanmış sayılmaz.</p>
+          ) : null}
 
           <Suspense fallback={<div role="status" aria-label="Yakındaki tarihçe yükleniyor" className="skeleton mt-7 h-24 w-full" />}>
             <NearbyHistory key={place.id} place={place} onOpen={onOpenPlace} />
           </Suspense>
-
-          <section aria-labelledby="freshness-title" className="mt-7 rounded-2xl border border-leaf/25 bg-white/[0.03] p-3.5">
-            <h3 id="freshness-title" className="flex items-center gap-2 text-[13px] font-semibold"><Clock3 size={16} className="text-leaf" />Tazelik</h3>
-            {user ? (
-              <p className="mt-1 text-[13px] leading-relaxed text-mint/85">
-                {place.freshness ? place.freshness.label : "Henüz doğrulanmadı · bilgi eski olabilir"}
-              </p>
-            ) : (
-              <p className="mt-1 text-[13px] leading-relaxed text-mint/70" data-testid="freshness-signin-hint">
-                Giriş yapınca tazelik bilgisi görünür.
-              </p>
-            )}
-            {user && place.freshness?.latestAt && (
-              <p className="mt-1 text-[11px] text-mint/55">
-                Son doğrulama: {new Date(place.freshness.latestAt).toLocaleDateString("tr-TR")} · toplam {place.freshness.totalCount} doğrulama
-              </p>
-            )}
-            {user && onVerify && (
-              <>
-                <p className="mt-3 text-[12px] text-mint/70">Burayı yeni ziyaret ettiysen tek dokunuşla doğrula:</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {VERIFICATION_STATUSES.map((status) => (
-                    <button
-                      key={status}
-                      type="button"
-                      disabled={!!verifyBusy}
-                      onClick={() => void submitVerification(status)}
-                      className="flex min-h-9 items-center gap-1.5 rounded-full border border-white/15 px-3 text-[12px] text-mint/85 transition hover:border-leaf/60 hover:text-white disabled:opacity-50"
-                    >
-                      {verifyBusy === status ? <Loader2 size={12} className="animate-spin" /> : null}
-                      {VERIFICATION_LABELS[status]}
-                    </button>
-                  ))}
-                </div>
-                <label className="mt-2 block text-[11px] text-mint/70">
-                  İsteğe bağlı not (max 280)
-                  <input value={verifyNote} onChange={(event) => setVerifyNote(event.target.value)} maxLength={280} placeholder="Örn. giriş ücreti 200 TL oldu" className="mt-1 h-9 w-full rounded-lg border border-white/10 bg-ink px-2 text-[12px] text-mint outline-none focus:border-leaf/50" />
-                </label>
-                {verifyStatus && <p role="status" className="mt-2 text-[12px] text-sun">{verifyStatus}</p>}
-              </>
-            )}
-            <p className="mt-2 text-[11px] leading-relaxed text-mint/50">Tazelik bir güven sinyalidir; doğrulama puan/rozet kazandırmaz. Rota motoru taze doğrulanmış durağı öne alır.</p>
-          </section>
 
           <h3 className="mt-7 text-[12px] font-bold tracking-[0.16em] text-sun uppercase">Gitmeden bil</h3>
           <dl className="mt-3 space-y-4">

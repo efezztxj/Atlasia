@@ -10,7 +10,6 @@ import { normalize } from "../utils/text";
 import { decodePolyline } from "../utils/polyline";
 import { goldenHourWindow } from "../utils/sun";
 import { haversineKm } from "../utils/geo";
-import { dailyRainNote, fetchWeatherSeries, optimizeForRain } from "../utils/weather";
 import { fetchOpenMapPlaces, openMapRadiusKm } from "../utils/openMapPlaces";
 import { compressImage, photoUploadErrorMessage } from "../utils/image";
 import { cn } from "../utils/cn";
@@ -90,32 +89,6 @@ export function AtlasAssistant({ open, onOpen, onClose, places, view, origin, se
     setSaved(savedRoutes.some((savedRoute) => savedRoute.id === route.id));
   }, [route, savedRoutes]);
 
-  // Adım 15: tek nokta yerine durakların varış saatlerine göre saatlik tahmin.
-  const weather = async (center: { lat: number; lng: number }) => {
-    try {
-      const series = await fetchWeatherSeries([{ id: "center", lat: center.lat, lng: center.lng }]);
-      return series.center ?? [];
-    } catch {
-      return [];
-    }
-  };
-
-  const weatherForRoute = async (route: AtlasRoute) => {
-    const points = route.days.flatMap((day) => day.stops)
-      .filter((stop) => stop.pinId && Number.isFinite(stop.lat) && Number.isFinite(stop.lng))
-      .map((stop) => ({ id: stop.pinId as string, lat: stop.lat, lng: stop.lng }));
-    if (!points.length) return { route, planned: false };
-    try {
-      const series = await fetchWeatherSeries(points);
-      return { route: optimizeForRain(route, series).route, planned: true };
-    } catch {
-      return {
-        route: { ...route, weatherNote: "Durakların varış saatine göre canlı hava tahminine ulaşılamadı. Yağmur ihtimalini yerel tahminden kontrol et." },
-        planned: false,
-      };
-    }
-  };
-
   const build = async (settings: RouteBrief, question: string, reference?: Place) => {
     if (lock.current) return;
     lock.current = true;
@@ -126,7 +99,6 @@ export function AtlasAssistant({ open, onOpen, onClose, places, view, origin, se
     setFeedback(null);
     add({ role: "user", text: question });
     const center = reference ?? (settings.start === "map" ? view : settings.start === "me" ? origin : context);
-    const forecast = settings.rain === "auto" ? weather(center) : Promise.resolve(null);
     const knownNearby = nearbyPlaces(places, center, openMapRadiusKm(settings.transport));
     let openMapUnavailable = false;
     const supplemental = knownNearby.length >= 6 || !navigator.onLine
@@ -142,22 +114,14 @@ export function AtlasAssistant({ open, onOpen, onClose, places, view, origin, se
         setLoading(STEPS[step]);
         await new Promise((resolve) => setTimeout(resolve, 800));
       }
-      const [centerHours, openMapPlaces] = await Promise.all([forecast, supplemental]);
-      const weatherNote = settings.rain === "auto"
-        ? dailyRainNote(centerHours ?? [])
-        : "Hava değerlendirmesi esnek bırakıldı; tahmini gitmeden kontrol et.";
+      const openMapPlaces = await supplemental;
       const uniqueOpenMapPlaces = openMapPlaces.filter((candidate) => !places.some((place) => {
         const distance = haversineKm(place.lat, place.lng, candidate.lat, candidate.lng);
         return distance < .12 || (distance < 1 && normalize(place.title) === normalize(candidate.title));
       }));
-      let result = planRoute([...places, ...uniqueOpenMapPlaces], center, settings, weatherNote);
+      const result = planRoute([...places, ...uniqueOpenMapPlaces], center, settings, null);
       if (!result.days.length && openMapUnavailable) {
         result.routeSummary += " Açık harita servisine şu an ulaşılamadı; bağlantı geldiğinde aynı başlangıçla tekrar deneyebilirsin.";
-      }
-      if (result.days.length && settings.rain === "auto") {
-        const planned = await weatherForRoute(result);
-        result = planned.route;
-        result.dataSources = [...(result.dataSources ?? []), "Open-Meteo"].filter((value, index, all) => all.indexOf(value) === index);
       }
       if (!mounted.current) return;
       setRoute(result);
@@ -273,7 +237,7 @@ function RouteWizard({ initial, hasLocation, onCancel, onGenerate }: { initial: 
   return <section aria-label="Rota oluşturma adımları" className="rounded-2xl border border-sun/20 bg-white/[0.025] p-4"><header className="mb-4 flex items-center justify-between"><h3 className="font-display font-semibold">{["Ne kadar zamanın var?", "Nasıl bir keşif?", "Yolun nasıl olsun?"][step]}</h3><span className="text-[12px] text-sun">{step + 1}/3</span></header>
     {step === 0 && <><p className="mb-2 text-[13px] text-mint/75">Süre</p><div className="flex flex-wrap gap-2">{([["half", "Yarım gün"], ["day", "1 gün"], ["multi", "2-3 gün"], ["custom", "Saat seç"]] as const).map(([choice, label]) => <button key={choice} type="button" aria-pressed={value.duration === choice} className={chip(value.duration === choice)} onClick={() => select("duration", choice)}>{label}</button>)}</div>{value.duration === "custom" && <label className="mt-3 block text-[13px]">Kaç saat?<input type="number" min={1} max={24} value={value.customHours ?? 3} onChange={(event) => select("customHours", Number(event.target.value))} className="ml-3 h-10 w-20 rounded-lg border border-leaf/30 bg-ink px-2" /></label>}<p className="mb-2 mt-4 text-[13px] text-mint/75">Tempo</p><div className="flex gap-2">{(["Rahat", "Dengeli", "Yoğun"] as const).map((choice) => <button type="button" key={choice} className={chip(value.tempo === choice)} onClick={() => select("tempo", choice)}>{choice}</button>)}</div></>}
     {step === 1 && <><p className="mb-2 text-[13px] text-mint/75">İlgi alanları</p><div className="flex flex-wrap gap-2">{INTERESTS.map((choice) => <button type="button" key={choice} aria-pressed={value.interests.includes(choice)} className={chip(value.interests.includes(choice))} onClick={() => select("interests", value.interests.includes(choice) ? value.interests.filter((interest) => interest !== choice) : [...value.interests, choice])}>{choice}</button>)}</div><label className="mb-2 mt-4 block text-[13px] text-mint/75" htmlFor="atlas-vibe">Ruh hali</label><select id="atlas-vibe" value={value.vibe} onChange={(event) => select("vibe", event.target.value)} className="h-11 w-full rounded-xl border border-white/20 bg-ink px-3 text-[14px]"><option value="">Sana bırakıyorum</option>{VIBES.map((vibe) => <option key={vibe}>{vibe}</option>)}</select></>}
-    {step === 2 && <div className="space-y-3">{[{ key: "transport", label: "Ulaşım", options: [["walking", "Yürüyüş"], ["cycling", "Bisiklet"], ["driving", "Araba"], ["transit", "Toplu taşıma"]] }, { key: "budget", label: "Bütçe", options: [["Düşük", "Düşük"], ["Orta", "Orta"], ["Yüksek", "Yüksek"]] }, { key: "start", label: "Başlangıç", options: [["pick", "Seçili yer veya mevcut bağlam"], ["map", "Haritanın merkezi"], ...(hasLocation ? [["me", "Doğrulanmış konumum"]] : [])] }, { key: "rain", label: "Hava durumu", options: [["auto", "Mevcut tahmini kontrol et"], ["flex", "Esnek bırak"]] }].map(({ key, label, options }) => <label key={key} className="block text-[13px] text-mint/80">{label}<select value={value[key as keyof RouteBrief] as string} onChange={(event) => select(key as keyof RouteBrief, event.target.value)} className="mt-1.5 h-11 w-full rounded-xl border border-white/20 bg-ink px-3 text-[14px]">{options.map(([choice, text]) => <option key={choice} value={choice}>{text}</option>)}</select></label>)}<p className="text-[12px] leading-relaxed text-mint/70">Bütçe bir tercihtir; güncel ücretler ve toplu taşıma tarifesi doğrulanmaz.</p><p className="text-[11px] leading-relaxed text-mint/55">Yakında yeterli Atlasia izi yoksa yaklaşık başlangıç noktası (yaklaşık 100 m hassasiyetle) OpenStreetMap tabanlı açık veri servisinde aranır; bu sorgu Atlasia hesabına kaydedilmez.</p></div>}
+    {step === 2 && <div className="space-y-3">{[{ key: "transport", label: "Ulaşım", options: [["walking", "Yürüyüş"], ["cycling", "Bisiklet"], ["driving", "Araba"], ["transit", "Toplu taşıma"]] }, { key: "budget", label: "Bütçe", options: [["Düşük", "Düşük"], ["Orta", "Orta"], ["Yüksek", "Yüksek"]] }, { key: "start", label: "Başlangıç", options: [["pick", "Seçili yer veya mevcut bağlam"], ["map", "Haritanın merkezi"], ...(hasLocation ? [["me", "Doğrulanmış konumum"]] : [])] }].map(({ key, label, options }) => <label key={key} className="block text-[13px] text-mint/80">{label}<select value={value[key as keyof RouteBrief] as string} onChange={(event) => select(key as keyof RouteBrief, event.target.value)} className="mt-1.5 h-11 w-full rounded-xl border border-white/20 bg-ink px-3 text-[14px]">{options.map(([choice, text]) => <option key={choice} value={choice}>{text}</option>)}</select></label>)}<p className="text-[12px] leading-relaxed text-mint/70">Bütçe bir tercihtir; güncel ücretler ve toplu taşıma tarifesi doğrulanmaz.</p><p className="text-[11px] leading-relaxed text-mint/55">Yakında yeterli Atlasia izi yoksa yaklaşık başlangıç noktası (yaklaşık 100 m hassasiyetle) OpenStreetMap tabanlı açık veri servisinde aranır; bu sorgu Atlasia hesabına kaydedilmez.</p></div>}
     <footer className="mt-5 flex items-center justify-between"><button type="button" onClick={step ? () => setStep(step - 1) : onCancel} className="min-h-11 px-2 text-[13px] text-mint">{step ? "Geri" : "Vazgeç"}</button><button type="button" onClick={() => step < 2 ? setStep(step + 1) : onGenerate(value)} className="btn-gold min-h-11 rounded-full px-5 text-[13px] font-semibold text-ink">{step < 2 ? "Devam et" : "Rotayı hazırla"}</button></footer>
   </section>;
 }
@@ -328,13 +292,11 @@ function RouteResult({ route, approved, saved, onConfirm, onStop, onReorder, onS
   };
   return <section className="rounded-2xl border border-sun/20 p-4"><p className="text-[12px] font-semibold text-sun">{approved ? "Haritada gösteriliyor" : "Soluk rota önizlemesi"}</p><h3 className="font-display mt-2 text-lg font-semibold">{route.routeTitle}</h3><p className="mt-1 flex items-center gap-1.5 text-[13px] text-mint/75"><Clock3 size={14} />≈{route.totalDurationHours} saat · ≈{route.totalDistanceKm} km</p><p className="mt-2 text-[12px] leading-relaxed text-mint/65">{route.routeSummary}</p>{route.days.length > 1 && <nav className="mt-3 flex gap-2" aria-label="Rota günleri">{route.days.map((item, i) => <button key={item.dayNumber} type="button" onClick={() => setDay(i)} className={cn("min-h-10 rounded-full border px-3 text-[13px]", i === dayIndex ? "btn-gold border-transparent font-semibold" : "border-white/15")}>{item.dayNumber}. gün</button>)}</nav>}
     <ol className="mt-4 space-y-2">{day.stops.map((stop, i) => <li key={`${stop.pinId}-${i}`} draggable onDragStart={() => setDrag(i)} onDragOver={(event) => event.preventDefault()} onDrop={() => { if (drag !== null) onReorder(dayIndex, drag, i); setDrag(null); }} className="rounded-xl border border-white/10 p-3"><button type="button" onClick={() => onStop(stop)} className="w-full text-left"><p className="text-[14px] font-semibold">{i + 1}. {stop.name}</p><p className="mt-1 text-[12px] text-sun">{stop.startTime} - {stop.endTime} · {stop.source === "openstreetmap" ? "Açık harita noktası" : stop.isCommunityPin ? "Topluluk izi" : "Atlasia rehberi"}</p>
-                      {stop.weather && <p className={cn("mt-1 text-[12px]", stop.weather.risk === "rainy" ? "text-red-300" : stop.weather.risk === "possible" ? "text-sun" : "text-leaf")}>Varışta: {Math.round(stop.weather.temperature)}° · {stop.weather.label} · %{Math.round(stop.weather.precipitationProbability)} yağış olasılığı</p>}<p className="mt-2 text-[13px] leading-relaxed text-mint/80">{stop.aiReason}</p><p className="mt-1.5 line-clamp-2 text-[12px] leading-relaxed text-mint/60">{stop.description}</p></button><div className="mt-2 flex justify-end"><button type="button" disabled={i === 0} onClick={() => onReorder(dayIndex, i, i - 1)} aria-label={`${stop.name} durağını yukarı taşı`} className="grid size-9 place-items-center disabled:opacity-30"><ArrowUp size={14} /></button><button type="button" disabled={i === day.stops.length - 1} onClick={() => onReorder(dayIndex, i, i + 1)} aria-label={`${stop.name} durağını aşağı taşı`} className="grid size-9 place-items-center disabled:opacity-30"><ArrowDown size={14} /></button></div></li>)}</ol>
-    {route.weatherNote && <p className="mt-3 border-l-2 border-leaf/35 pl-3 text-[12px] leading-relaxed text-mint/75">{route.weatherNote}</p>}
+                      <p className="mt-2 text-[13px] leading-relaxed text-mint/80">{stop.aiReason}</p><p className="mt-1.5 line-clamp-2 text-[12px] leading-relaxed text-mint/60">{stop.description}</p></button><div className="mt-2 flex justify-end"><button type="button" disabled={i === 0} onClick={() => onReorder(dayIndex, i, i - 1)} aria-label={`${stop.name} durağını yukarı taşı`} className="grid size-9 place-items-center disabled:opacity-30"><ArrowUp size={14} /></button><button type="button" disabled={i === day.stops.length - 1} onClick={() => onReorder(dayIndex, i, i + 1)} aria-label={`${stop.name} durağını aşağı taşı`} className="grid size-9 place-items-center disabled:opacity-30"><ArrowDown size={14} /></button></div></li>)}</ol>
     <div className="mt-4 flex flex-wrap gap-2">{!approved && <button type="button" onClick={onConfirm} className="btn-gold min-h-11 rounded-full px-4 text-[13px] font-semibold text-ink">Haritada göster</button>}<button type="button" onClick={onEdit} className="min-h-11 rounded-full border border-white/20 px-4 text-[13px]">Düzenle</button><button type="button" onClick={onOpenRouteEditor} className="min-h-11 rounded-full border border-leaf/35 px-4 text-[13px] text-leaf">Yayınla / bağlantı</button><button type="button" onClick={onSave} className="flex min-h-11 items-center gap-1.5 rounded-full border border-white/20 px-4 text-[13px] text-sun">{saved ? <Check size={14} /> : <Bookmark size={14} />}{saved ? "Kaydedildi" : "Kaydet"}</button><button type="button" onClick={() => void share()} className="min-h-11 rounded-full border border-white/20 px-4 text-[13px]">{shared ? "Paylaşıldı" : "Paylaş"}</button></div>
     {shareError && <p role="alert" className="mt-2 text-[12px] leading-relaxed text-red-300">{shareError}</p>}
-    <div className="mt-3 flex flex-wrap gap-2">{route.alternatives.map((alternative) => <button key={alternative.label} type="button" onClick={() => onAlternative(alternative.prompt)} className="min-h-10 rounded-full border border-white/15 px-3 text-[12px] text-mint/80">{alternative.label}</button>)}</div>
+    <div className="mt-3 flex flex-wrap gap-2">{route.alternatives.filter((alternative) => alternative.label !== "Yağmur planı").map((alternative) => <button key={alternative.label} type="button" onClick={() => onAlternative(alternative.prompt)} className="min-h-10 rounded-full border border-white/15 px-3 text-[12px] text-mint/80">{alternative.label}</button>)}</div>
     {route.dataSources?.includes("OpenStreetMap contributors") && <p className="mt-3 text-[11px] leading-relaxed text-mint/55">Açık harita durakları © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="underline underline-offset-2">OpenStreetMap katkıcıları</a>. Liste eksik veya güncelliğini yitirmiş olabilir.</p>}
-    {route.dataSources?.includes("Open-Meteo") && <p className="mt-1 text-[11px] leading-relaxed text-mint/55">Saatlik hava tahmini: <a href="https://open-meteo.com/" target="_blank" rel="noreferrer" className="underline underline-offset-2">Open-Meteo</a> (anahtarsız). Tahminler kesin değildir; varış saatleri gecikebilir.</p>}
     <div className="mt-4 flex flex-wrap gap-3 border-t border-white/10 pt-3 text-[12px]">{googleLinks.map((link, index) => <a key={link.url} href={link.url} target="_blank" rel="noreferrer" className="flex min-h-10 items-center gap-1.5 text-sun"><Navigation size={13} />Google Haritalar{googleLinks.length > 1 ? ` ${index + 1}/${googleLinks.length}` : ""} <ExternalLink size={12} /></a>)}{yandex && <a href={yandex} target="_blank" rel="noreferrer" className="flex min-h-10 items-center gap-1.5 text-sun">Yandex Haritalar <ExternalLink size={12} /></a>}{apple && <a href={apple} target="_blank" rel="noreferrer" className="flex min-h-10 items-center gap-1.5 text-mint">Apple'da ilk durak <ExternalLink size={12} /></a>}</div>{unavailableProviders.length > 0 && <ul className="mt-1 space-y-1 text-[11px] leading-relaxed text-mint/70">{unavailableProviders.map((message) => <li key={message}>{message}</li>)}</ul>}{splitNotice && <p className="mt-1 text-[11px] text-mint/70">{splitNotice}</p>}<p className="mt-1 text-[11px] text-mint/70">Yol mesafesi tahminidir.</p>{apple && <p className="mt-1 text-[11px] text-mint/70">Apple bağlantısı seçili günün ilk durağını açar.</p>}
   </section>;
 }

@@ -20,8 +20,16 @@ describe("pickNearby (P14)", () => {
     expect(pickNearby(origin, list).map((n) => n.place.id)).toEqual(["far", "near", "mid"]);
   });
 
+  it("3 kaynak eşleşen kayıtları teyitsiz yakın kayıtlardan önce sıralar", () => {
+    const checked = at("checked", "Teyitli kayıt", 38.419, 27.129, {
+      historyVerification: { status: "corroborated", sourceCount: 3, expectedSources: 3, locationMatch: "match", sources: [] },
+    });
+    const unchecked = at("unchecked", "Teyitsiz yakın kayıt", 38.41895, 27.12875);
+    expect(pickNearby(origin, [unchecked, checked]).map(({ place }) => place.id)).toEqual(["checked", "unchecked"]);
+  });
+
   it("en çok sabit sayıda öğe döner", () => {
-    const list = Array.from({ length: 20 }, (_, i) => at(`p${i}`, `Yer ${i}`, 38.42 + i / 1000, 27.13));
+    const list = Array.from({ length: 80 }, (_, i) => at(`p${i}`, `Yer ${i}`, 38.42 + i / 1000, 27.13));
     expect(pickNearby(origin, list)).toHaveLength(NEARBY_HISTORY_MAX);
   });
 });

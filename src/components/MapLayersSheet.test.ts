@@ -4,12 +4,6 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import MapLayersSheet from "./MapLayersSheet";
 
-/**
- * Denetim K-03 & 2026-10-27 kararı: masaüstü ve mobil Katmanlar sayfası.
- * Harita altlığı (Uydu, Karanlık, Sokak, Topoğrafik) ve üç katman anahtarı
- * (yer adları, 3B arazi, hava katmanı) burada toplanır; hava katmanı durumu
- * dürüst metinle gösterilir.
- */
 const renderSheet = (overrides: Partial<Parameters<typeof MapLayersSheet>[0]> = {}) => {
   const props = {
     open: true,
@@ -20,13 +14,13 @@ const renderSheet = (overrides: Partial<Parameters<typeof MapLayersSheet>[0]> = 
     onToggleLabels: vi.fn(),
     terrain: true,
     onToggleTerrain: vi.fn(),
-    weather: false,
-    onToggleWeather: vi.fn(),
-    weatherStatus: "empty" as const,
-    weatherMode: "wind" as const,
-    onWeatherMode: vi.fn(),
-    weatherHour: 0,
-    onWeatherHour: vi.fn(),
+
+
+
+
+
+
+
     onReset: vi.fn(),
     ...overrides,
   };
@@ -47,28 +41,28 @@ describe("MapLayersSheet", () => {
       onToggleLabels: () => {},
       terrain: true,
       onToggleTerrain: () => {},
-      weather: false,
-      onToggleWeather: () => {},
-      weatherStatus: "empty",
-      weatherMode: "wind",
-      onWeatherMode: () => {},
-      weatherHour: 0,
-      onWeatherHour: () => {},
+
+
+
+
+
+
+
       onReset: () => {},
     }));
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("harita altlığı seçeneklerini, üç katman anahtarını ve sıfırla düğmesini gösterir", () => {
+  it("harita altlığı seçeneklerini, iki katman anahtarını ve sıfırla düğmesini gösterir", () => {
     renderSheet({ baseMap: "satellite" });
     expect(screen.getByText("Harita altlığı")).toBeTruthy();
     expect(screen.getByText("Harita gösterimi")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Uydu/ }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("button", { name: /Sokak/ }).getAttribute("aria-pressed")).toBe("false");
     const switches = screen.getAllByRole("switch");
-    expect(switches).toHaveLength(3);
+    expect(switches).toHaveLength(2);
     expect(switches[0].getAttribute("aria-checked")).toBe("true");
-    expect(switches[2].getAttribute("aria-checked")).toBe("false");
+    expect(screen.queryByText("Hava katmanı")).toBeNull();
     expect(screen.getByRole("button", { name: /Görünümü sıfırla/ })).toBeTruthy();
   });
 
@@ -79,71 +73,12 @@ describe("MapLayersSheet", () => {
     const switches = screen.getAllByRole("switch");
     fireEvent.click(switches[0]);
     fireEvent.click(switches[1]);
-    fireEvent.click(switches[2]);
     fireEvent.click(screen.getByRole("button", { name: /Görünümü sıfırla/ }));
     expect(props.onBaseMap).toHaveBeenCalledWith("street");
     expect(props.onBaseMap).toHaveBeenCalledWith("topographic");
     expect(props.onToggleLabels).toHaveBeenCalledTimes(1);
     expect(props.onToggleTerrain).toHaveBeenCalledTimes(1);
-    expect(props.onToggleWeather).toHaveBeenCalledTimes(1);
     expect(props.onReset).toHaveBeenCalledTimes(1);
   });
 
-  it("hava katmanı açıkken Windy ölçeğini ve veri durumunu gösterir", () => {
-    renderSheet({ weather: true, weatherStatus: "ready" });
-    expect(screen.getByText(/Rüzgâr akışı açık/)).toBeTruthy();
-    expect(screen.getByText(/km\/sa/)).toBeTruthy();
-  });
-
-  it("veri yokken uydurmaz, dürüst mesaj verir", () => {
-    renderSheet({ weather: true, weatherStatus: "error" });
-    expect(screen.getByText(/şu an alınamıyor/)).toBeTruthy();
-  });
-
-  it("üç ölçüm düğmesi sunar, seçili olanı işaretler", () => {
-    renderSheet({ weather: true, weatherStatus: "ready", weatherMode: "rain" });
-    const group = screen.getByRole("group", { name: /Hava katmanı ölçümü/ });
-    expect(group).toBeTruthy();
-    const rain = screen.getByRole("button", { name: /Yağış/ });
-    expect(rain.getAttribute("aria-pressed")).toBe("true");
-    expect(screen.getByRole("button", { name: /Rüzgâr/ }).getAttribute("aria-pressed")).toBe("false");
-  });
-
-  it("ölçüm seçimi geri çağrıyı tetikler", () => {
-    const props = renderSheet({ weather: true, weatherStatus: "ready" });
-    fireEvent.click(screen.getByRole("button", { name: /Sıcaklık/ }));
-    expect(props.onWeatherMode).toHaveBeenCalledWith("temp");
-  });
-
-  it("rüzgâr modunda lejant km/sa, yağış modunda mm/sa gösterir", () => {
-    renderSheet({ weather: true, weatherStatus: "ready" });
-    expect(screen.getByText(/km\/sa/)).toBeTruthy();
-    expect(screen.queryByText(/mm\/sa/)).toBeNull();
-    cleanup();
-    renderSheet({ weather: true, weatherStatus: "ready", weatherMode: "rain" });
-    expect(screen.getByText(/mm\/sa/)).toBeTruthy();
-  });
-
-  it("rüzgârda saat dilimleyici yok; yağışta var ve değeri yazar", () => {
-    renderSheet({ weather: true, weatherStatus: "ready" });
-    expect(screen.queryByLabelText(/Tahmin saati/)).toBeNull();
-    cleanup();
-    renderSheet({ weather: true, weatherStatus: "ready", weatherMode: "rain", weatherHour: 3 });
-    expect(screen.getByLabelText(/Tahmin saati/)).toBeTruthy();
-    expect(screen.getByText("+3 sa")).toBeTruthy();
-  });
-
-  it("saat dilimleyici geri çağrıya sayı geçirir", () => {
-    const props = renderSheet({ weather: true, weatherStatus: "ready", weatherMode: "temp" });
-    fireEvent.change(screen.getByLabelText(/Tahmin saati/), { target: { value: "7" } });
-    expect(props.onWeatherHour).toHaveBeenCalledWith(7);
-  });
-
-  it("yağış modunda rota işaretini açıklar, diğer modlarda açıklamaz", () => {
-    renderSheet({ weather: true, weatherStatus: "ready", weatherMode: "rain" });
-    expect(screen.getByText(/altın halkayla işaretlenir/)).toBeTruthy();
-    cleanup();
-    renderSheet({ weather: true, weatherStatus: "ready", weatherMode: "wind" });
-    expect(screen.queryByText(/altın halkayla işaretlenir/)).toBeNull();
-  });
 });

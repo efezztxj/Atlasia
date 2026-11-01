@@ -17,6 +17,23 @@ export type CategoryId =
   | "descent"
   | "water";
 
+export type HistoricSourceKind = "openstreetmap" | "wikidata" | "wikipedia";
+
+export interface HistoricSourceReference {
+  kind: HistoricSourceKind;
+  label: string;
+  url: string;
+}
+
+export interface HistoricVerification {
+  /** Three linked datasets are checked; this is not a substitute for field verification. */
+  status: "corroborated" | "partial" | "conflict";
+  sourceCount: number;
+  expectedSources: 3;
+  locationMatch: "match" | "mismatch" | "unknown";
+  sources: HistoricSourceReference[];
+}
+
 export interface Place {
   id: string;
   title: string;
@@ -41,6 +58,8 @@ export interface Place {
   dataSources?: string[];
   /** Hikâye metni canlı kaynaktan geldiyse (P14): madde adı, adresi ve lisansı. */
   historySource?: { name: string; title: string; url: string; license: string; lang: string };
+  /** Cross-source check for OSM historic features; absence means not verified. */
+  historyVerification?: HistoricVerification;
   /**
    * Yalnız istemcide hesaplanır (Firestore alanı değil). Adım 14 tazelik döngüsü
    * yerin bilgisinin hâlâ doğru olduğunu gösteren doğrulama özetidir.

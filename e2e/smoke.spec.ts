@@ -107,6 +107,9 @@ test("3. Misafir keşif kabuğu: karşılama, harita arayüzü ve Katmanlar sayf
   await page.getByRole("button", { name: "Katmanlar sayfasını aç" }).click();
   const layersDialog = page.getByRole("dialog", { name: /Katmanlar/i });
   await expect(layersDialog).toBeVisible();
+  await expect(layersDialog.getByRole("switch", { name: /Yer adları/ })).toBeVisible();
+  await expect(layersDialog.getByRole("switch", { name: /3B arazi/ })).toBeVisible();
+  await expect(layersDialog.getByText("Hava katmanı")).toHaveCount(0);
 
   await page.keyboard.press("Escape");
   await expect(layersDialog).toBeHidden();

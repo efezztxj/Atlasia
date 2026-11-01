@@ -8,19 +8,12 @@ const h = vi.hoisted(() => ({
   publishRoute: vi.fn(
     async (_route: AtlasRoute, _visibility: RouteVisibility, _shareConsent: boolean) => undefined,
   ),
-  fetchWeatherSeries: vi.fn(),
   buildElevationProfileFromTiles: vi.fn(),
 }));
 
 vi.mock("../hooks/useCollections", () => ({
   useCollections: () => ({ publishRoute: h.publishRoute }),
 }));
-
-vi.mock("../utils/weather", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../utils/weather")>();
-  // Saf değerlendirme gerçek; yalnız ağ çağrısı sahtedir (test ağı yok).
-  return { ...actual, fetchWeatherSeries: h.fetchWeatherSeries, fetchWeatherSeriesBatched: h.fetchWeatherSeries };
-});
 
 vi.mock("../utils/elevation", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../utils/elevation")>();
@@ -158,76 +151,10 @@ describe("RouteEditor paylaşım onayı (shareConsent)", () => {
   });
 });
 
-describe("RouteEditor hava riski (Adım 15)", () => {
-  const hour = (time: string, extra: Record<string, number> = {}) => ({
-    time,
-    temperature: 21,
-    precipitationMm: 0,
-    precipitationProbability: 0,
-    weatherCode: 0,
-    windSpeedKmh: 6,
-    windGustKmh: 9,
-    ...extra,
-  });
-
-  beforeEach(() => {
-    h.fetchWeatherSeries.mockReset();
-  });
-
-  it("fırtınalı günde uyarı rozeti + neden görünür", async () => {
-    h.fetchWeatherSeries.mockResolvedValue({
-      "durak-0-0": [hour("2030-01-05T10:00", { weatherCode: 95 })],
-    });
+describe("RouteEditor hava durumu", () => {
+  it("hava riski paneli göstermez", () => {
     renderEditor(route());
-    fireEvent.click(screen.getByRole("button", { name: /Hava riskini denetle/ }));
-    expect(await screen.findByText(/Kötü hava uyarısı/)).toBeTruthy();
-    // Gün nedeni + durak satırı: ikisi de fırtınayı söyler.
-    expect(screen.getAllByText(/fırtına/).length).toBeGreaterThanOrEqual(2);
-  });
-
-  it("veri yoksa 'bilinmiyor' rozeti çıkar; 'risk yok' sanılmaz", async () => {
-    h.fetchWeatherSeries.mockResolvedValue({});
-    renderEditor(route());
-    fireEvent.click(screen.getByRole("button", { name: /Hava riskini denetle/ }));
-    expect(await screen.findByText(/Hava durumu bilinmiyor/)).toBeTruthy();
-    expect(screen.queryByText(/Belirgin risk yok/)).toBeNull();
-  });
-
-  it("ağ hatasında tahmin uydurulmaz; hata açıkça söylenir", async () => {
-    h.fetchWeatherSeries.mockRejectedValue(new Error("Hava durumu servisine ulaşılamadı. Bağlantını kontrol edip tekrar dene."));
-    renderEditor(route());
-    fireEvent.click(screen.getByRole("button", { name: /Hava riskini denetle/ }));
-    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("bilinmiyor"));
-    expect(screen.queryByText(/Belirgin risk yok/)).toBeNull();
-  });
-
-  it("sakin tahminde 'belirgin risk yok' rozeti çıkar", async () => {
-    h.fetchWeatherSeries.mockResolvedValue({
-      "durak-0-0": [hour("2030-01-05T10:00")],
-    });
-    renderEditor(route());
-    fireEvent.click(screen.getByRole("button", { name: /Hava riskini denetle/ }));
-    expect(await screen.findByText(/Belirgin risk yok/)).toBeTruthy();
-  });
-
-  it("durak satırında başlama saatindeki hava görünür (Adım 15)", async () => {
-    h.fetchWeatherSeries.mockResolvedValue({
-      "durak-0-0": [hour("2030-01-05T09:00", { temperature: 12 }), hour("2030-01-05T10:00", { temperature: 17 })],
-    });
-    renderEditor(route());
-    fireEvent.click(screen.getByRole("button", { name: /Hava riskini denetle/ }));
-    expect(await screen.findByText(/Varışta: 17°/)).toBeTruthy();
-    expect(screen.getByText(/10:00 · Başlangıç/)).toBeTruthy();
-  });
-
-  it("durağın saati tahmin dışındaysa 'varış havası bilinmiyor' yazar", async () => {
-    h.fetchWeatherSeries.mockResolvedValue({
-      "durak-0-0": [hour("2030-01-05T15:00")],
-    });
-    renderEditor(route());
-    fireEvent.click(screen.getByRole("button", { name: /Hava riskini denetle/ }));
-    expect(await screen.findByText(/Varış havası bilinmiyor/)).toBeTruthy();
-    expect(screen.queryByText(/Varışta:/)).toBeNull();
+    expect(screen.queryByText(/Hava riskini denetle/)).toBeNull();
   });
 });
 

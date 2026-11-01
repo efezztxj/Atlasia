@@ -9,7 +9,6 @@ const SPEED: Record<TransportMode, number> = { walking: 4, cycling: 12, driving:
 export const ROUTE_ALTERNATIVES = [
   { label: "Daha kısa", prompt: "Bu rotayı daha kısa hale getir." },
   { label: "Daha az yürüyüş", prompt: "Daha az yürüyüş olsun." },
-  { label: "Yağmur planı", prompt: "Yağmur ihtimaline göre değiştir." },
   { label: "Daha sakin", prompt: "Daha sakin olsun." },
 ];
 
