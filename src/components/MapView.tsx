@@ -11,7 +11,7 @@ import {
 import openFreeMapDarkStyle from "../data/openFreeMapDarkStyle.json";
 import type { PlaceViewport } from "../lib/firestoreData";
 import type { Place, RouteLeg, ViewState } from "../types";
-import { shouldAdvanceSpin } from "../utils/mapLifecycle";
+import { shouldAdvanceSpin, shouldReportView } from "../utils/mapLifecycle";
 import type { WeatherLayerHandle, WeatherMode, WeatherStopMark } from "../utils/mapWeather";
 import { attachMapResume } from "../lib/mapResume";
 
@@ -651,13 +651,26 @@ export default function MapView({
         },
       });
     };
+
+    // Hareket sırasında bildirim sayısı sınırlanır: `zoom` olayı animasyon
+    // boyunca her karede gelir ve doğrudan iki state güncellemek tüm arayüzü
+    // yeniden çiziyordu. Sonda (moveend) her zaman tam bildirim yapılır, yani
+    // kullanıcı parmağını kaldırdığında görünüm kesinleşir.
+    let lastReportAt = Number.NEGATIVE_INFINITY;
+    const reportThrottled = () => {
+      const now = performance.now();
+      if (!shouldReportView(now, lastReportAt)) return;
+      lastReportAt = now;
+      report();
+    };
     map.on("moveend", () => {
       if (internalMove.current) return;
+      lastReportAt = performance.now();
       report();
     });
     map.on("zoom", () => {
       if (internalMove.current) return;
-      report();
+      reportThrottled();
     });
 
     // Kullanıcı etkileşimi → otomatik dönüşü durdur
@@ -672,31 +685,55 @@ export default function MapView({
       if (live.current.addMode) live.current.onMapClick(e.lngLat.lng, e.lngLat.lat);
     });
 
-    // Otomatik dönüş
+    // Otomatik dönüş. Döngü yalnız gerçekten dönülürken çalışır: eskiden
+    // dönüş kapalıyken de saniyede 60 kez boş callback koşuyordu (mobilde
+    // sürekli CPU/pil tüketimi). Kare yayına alınması gerektiğinde
+    // `ensureSpinLoop` çağrılır ve iş bitince döngü kendini durdurur.
     let raf = 0;
+    let spinDisposed = false;
     let lastFrameAt = 0;
     let lastSpinAt = performance.now();
     const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
     const tick = (t: number) => {
-      if (shouldAdvanceSpin(t, lastFrameAt, live.current.spin, document.hidden, motionPreference.matches, map.getZoom(), SPIN_MAX_ZOOM, map.isMoving())) {
-        const dt = Math.min(t - lastSpinAt, 1000 / 15);
-        lastFrameAt = t;
-        lastSpinAt = t;
-        const c = map.getCenter();
-        let lng = c.lng - (SPIN_DEG_PER_SEC * dt) / 1000;
-        if (lng < -180) lng += 360;
-        internalMove.current = true;
-        map.setCenter([lng, c.lat]);
-        internalMove.current = false;
+      // `raf` bu blok boyunca sıfırlanmaz: `map.setCenter` içinden senkron
+      // olarak yayılan bir olay döngüyü ikinci kez kurmasın.
+      if (spinDisposed) { raf = 0; return; }
+      if (!shouldAdvanceSpin(t, lastFrameAt, live.current.spin, document.hidden, motionPreference.matches, map.getZoom(), SPIN_MAX_ZOOM, map.isMoving())) {
+        raf = 0;
+        return;
       }
+      const dt = Math.min(t - lastSpinAt, 1000 / 15);
+      lastFrameAt = t;
+      lastSpinAt = t;
+      const c = map.getCenter();
+      let lng = c.lng - (SPIN_DEG_PER_SEC * dt) / 1000;
+      if (lng < -180) lng += 360;
+      internalMove.current = true;
+      map.setCenter([lng, c.lat]);
+      internalMove.current = false;
       raf = requestAnimationFrame(tick);
     };
-    raf = requestAnimationFrame(tick);
+    const ensureSpinLoop = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(tick);
+    };
+    ensureSpinLoop();
+    // Panel açıp kapatmak, sekme değiştirmek gibi durumlarda döngü yeniden başlatılır.
+    map.on("zoomstart", ensureSpinLoop);
+    map.on("resize", ensureSpinLoop);
+    // Sekmeye geri dönüşte kare döngüsü yeniden kurulur (arka planda durmuştu).
+    const onVisibilityForSpin = () => {
+      if (!document.hidden) ensureSpinLoop();
+    };
+    document.addEventListener("visibilitychange", onVisibilityForSpin);
 
     report();
 
     return () => {
+      spinDisposed = true;
       cancelAnimationFrame(raf);
+      raf = 0;
+      document.removeEventListener("visibilitychange", onVisibilityForSpin);
       window.removeEventListener("atlasia:weather-toggle", onWeatherToggle);
       window.removeEventListener("atlasia:weather-mode", onWeatherMode);
       window.removeEventListener("atlasia:weather-stops", onWeatherStops);

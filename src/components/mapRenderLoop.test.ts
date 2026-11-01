@@ -1,0 +1,52 @@
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+
+const mapView = readFileSync("src/components/MapView.tsx", "utf8");
+const css = readFileSync("src/index.css", "utf8");
+
+/**
+ * Kasma/donma regresyon kilidi.
+ *
+ * Harita `zoom` olayı animasyon boyunca her karede gelir; doğrudan state
+ * güncellendiğinde tüm keşif ağacı saniyede ~60 kez yeniden çiziliyordu.
+ * Otomatik dönüş döngüsü de dönüş kapalıyken boş boş 60 FPS koşuyordu.
+ * Bu iki davranış sessizce geri gelirse test kırılır.
+ */
+describe("harita çizim döngüsü ve görünüm bildirimi", () => {
+  it("zoom olayında görünüm bildirimi sınırlanır (her karede state güncellenmez)", () => {
+    expect(mapView).toContain("shouldReportView");
+    expect(mapView).toContain("reportThrottled");
+    // `zoom` dinleyicisi doğrudan `report()` çağırmamalı.
+    expect(mapView).not.toMatch(/map\.on\("zoom",\s*\(\)\s*=>\s*\{[^}]*report\(\);/);
+  });
+
+  it("hareket bittiğinde tam bildirim korunur", () => {
+    // moveend her zaman güncel görünümü yazar: throttle son kareyi kaçırmaz.
+    expect(mapView).toMatch(/map\.on\("moveend",\s*\(\)\s*=>\s*\{[^}]*report\(\);/);
+  });
+
+  it("autospin döngüsü koşul sağlanmıyorsa kendini yeniden kurmaz", () => {
+    const tickBody = mapView.slice(mapView.indexOf("const tick = (t: number) =>"), mapView.indexOf("const ensureSpinLoop"));
+    expect(tickBody).toContain("raf = 0;");
+    // Erken çıkış, döngünün boşta dönmesini engeller: koşul sağlanmıyorsa
+    // yeni kare istenmez.
+    expect(tickBody).toMatch(/if \(!shouldAdvanceSpin\([\s\S]*?raf = 0;\s*return;/);
+    expect(tickBody).toContain("spinDisposed");
+    // Yalnız iki yerde kare istenir: koşul geçtiğinde ve döngü kurulurken.
+    expect(mapView.match(/requestAnimationFrame\(tick\)/g)?.length).toBe(2);
+  });
+
+  it("sekme görünürlüğü dinleyicisi temizlenir", () => {
+    expect(mapView).toContain('document.addEventListener("visibilitychange", onVisibilityForSpin)');
+    expect(mapView).toContain('document.removeEventListener("visibilitychange", onVisibilityForSpin)');
+  });
+
+  it("pin etiketi bulanıklığı yalnız görünürken uygulanır", () => {
+    const start = css.indexOf(".atl-pin__label {");
+    const base = css.slice(start, css.indexOf("}", start));
+    expect(base).not.toContain("backdrop-filter");
+    const hoverStart = css.indexOf(".atl-pin:hover .atl-pin__label");
+    const hover = css.slice(hoverStart, css.indexOf("}", hoverStart));
+    expect(hover).toContain("backdrop-filter");
+  });
+});

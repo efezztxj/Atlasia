@@ -170,17 +170,20 @@ input:-webkit-autofill {
   color: #e4f5ea;
   background: rgba(2, 21, 18, 0.88);
   border: 1px solid rgba(91, 224, 166, 0.3);
-  backdrop-filter: blur(6px);
   opacity: 0;
   pointer-events: none;
   transition:
     opacity 0.2s ease,
     transform 0.2s ease;
 }
+/* Bulanıklık yalnız etiket görünürken uygulanır: her pin için ayrı
+   backdrop-filter katmanı oluşturmak, haritada çok pin varken pan/zoom
+   sırasında kare süresini uzatıyordu. Görsel sonuç aynı. */
 .atl-pin:hover .atl-pin__label,
 .atl-pin.is-active .atl-pin__label {
   opacity: 1;
   transform: translate(-50%, 0);
+  backdrop-filter: blur(6px);
 }
 
 /* ---------- Story halkaları (altın degrade — Atlasia imzası) ---------- */

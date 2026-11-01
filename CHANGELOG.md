@@ -1,5 +1,15 @@
 # Atlasia Update
 
+## 2026-11-01 — Harita kasma/donma turu: kare başına state güncellemesi kaldırıldı
+
+- **Kök neden bulundu:** "Arayüz çok kasıyor" şikâyeti repo boyutundan değil çizim sıklığından geliyordu. `.git` 20,6 MB, `public/social` (17 MB) tarayıcıya hiç inmiyor ve service worker ön önbelleği 7 küçük dosyadan oluşuyor; buna karşılık `MapView` içindeki `zoom` dinleyicisi **her karede** iki React state'ini (`view` + `mapViewport`) güncelliyordu. `Explorer` (1.796 satır, 59 `useState`, `React.memo` yok) bu yüzden saniyede ~60 kez, alt ağacıyla birlikte yeniden çiziliyordu. Ölçüm ve gerekçeler: `teslimat-kasma-donma-2026-11-01.md`.
+- **Görünüm bildirimi sınırlandı:** `src/utils/mapLifecycle.ts` içine saf `shouldReportView()` ve `VIEW_REPORT_INTERVAL_MS = 120` eklendi; hareket sırasında en çok ~8 bildirim/sn yapılıyor, `moveend` her zaman tam bildirim gönderiyor (parmak kalkınca görünüm kesinleşiyor). Davranışta kayıp yok, kaydırma/yakınlaştırma sırasında ana iş parçacığı boşalıyor.
+- **Otomatik dönüş döngüsü artık boşta dönmüyor:** `tick` koşul sağlanmıyorsa kendini yeniden kurmuyor; sekme görünürlüğü, `zoomstart` ve `resize` olaylarında `ensureSpinLoop` ile yeniden başlıyor. `spinDisposed` bayrağı, `map.setCenter` içinden senkron yayılan bir olayın iki eşzamanlı döngü kurmasını engelliyor (mobilde sürekli CPU/pil tüketimi sona erdi).
+- **Türetilmiş listeler memo'landı:** `Explorer` içindeki engel filtreleri (`discoveries`, `filteredPosts`, `filteredStories`) ve bildirim türetmeleri `useMemo`'ya, `useBlocks().isBlocked` `useCallback`'e alındı; engel listesi değişmedikçe gereksiz yeniden hesaplama yok.
+- **Pin etiketi bulanıklığı yalnız görünürken:** `index.css` içindeki `backdrop-filter` pin etiketinin taban kuralından `:hover`/`.is-active` kuralına taşındı; haritada çok pin varken pan/zoom sırasında pin başına bulanıklık katmanı oluşmuyor. Görsel sonuç aynı.
+- **Regresyon kilidi:** `src/components/mapRenderLoop.test.ts` (yeni, 5 test) zoom'da doğrudan `report()` çağrılmamasını, `moveend` tam bildirimini, döngünün boşta yeniden kurulmamasını, `visibilitychange` temizliğini ve pin bulanıklığının yalnız görünürken tanımlanmasını kilitliyor. `src/utils/mapLifecycle.test.ts` 2 → 5 test.
+- **Doğrulama:** `tsc --noEmit`, `eslint --max-warnings=0`, `vitest run` (177 dosya / 1.362 test), `vite build`, `bundle-budget` (bütçe içinde: toplam JS 997.755 B gzip / 1.003.000), `audit:check` yeşil. `test:rules:emulator` ortamda Java 21 olmadığı için koşulamadı; `firestore.rules` değişmedi.
+
 ## 2026-11-01 (akşam) — Clarity "veri görünmüyor" sorunu ölçülebilir hâle getirildi
 
 - **Tarayıcıda durum görünürlüğü:** `src/lib/clarity.ts` artık betiğin gerçek durumunu tutuyor — `off` (izin yok), `loading`, `ready` (yüklendi), `blocked` (reklam engelleyici/DNT betiği düşürdü). Çerez panelinde izin verildiğinde "Clarity betiği yüklendi, kayıt 1-2 dakikada panelde görünür" ya da "Tarayıcın Clarity betiğini engelledi, bu oturumda hiçbir veri gönderilmiyor" satırı çıkıyor. Destek için `window.atlasiaClarityStatus()` eklendi (rıza, durum, betik var mı, proje kimliği).
