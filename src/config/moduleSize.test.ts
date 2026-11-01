@@ -30,7 +30,7 @@ const LIMIT = 500;
  * yukarı çekmek faz geri alınmadan yapılamaz.
  */
 const DEBT: Readonly<Record<string, number>> = Object.freeze({
-  "src/components/Explorer.tsx": 1796,
+  "src/components/Explorer.tsx": 1764,
   "src/lib/moderation.ts": 1199,
   "src/components/SocialPanel.tsx": 936,
   "src/lib/firestoreData.ts": 919,

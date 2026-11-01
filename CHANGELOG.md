@@ -1,5 +1,30 @@
 # Atlasia Update
 
+## 2026-11-01 — F1-1: Explorer'dan harita katmanı durumu ayrıldı (10 `useState` → `useMapLayerPrefs`)
+
+Plan `docs/gorevler/10-10-yol-plani-2026-11-01.md` §F1-1. Davranış **değişmedi**; yalnız
+sahiplik değişti ve davranış testle kilitlendi.
+
+- **Yeni kanca:** `src/hooks/useMapLayerPrefs.ts` — `baseMap`, `labels`, `terrain`, `spin`,
+  `heroCompact`, `weather`, `weatherStatus`, `weatherMode`, `weatherHour`, `layersOpen`
+  (10 durum) + üç davranış: stil kalıcılığı (`atlasia.mapStyle.v1`), hava olayları
+  (`atlasia:weather-unavailable` / `-status`), hava anahtarı (`toggleWeather`).
+- **`Explorer.tsx` 1.796 → 1.764 satır.** Adlar aynı bırakıldığı için ~30 çağrı yeri
+  (Katmanlar sayfası, sağ ray, `MapView` propları, mobil sekme) **hiç değişmedi** — bu,
+  davranış değişmezliğinin en güçlü kanıtı.
+- **Lint ile gelen gerçek:** `setLayersOpen` artık kanca dönüşü olduğu için
+  `react-hooks/exhaustive-deps` onu "kararlı" varsayamıyor. `closePanels` bu yüzden
+  `useCallback`'e alındı ve bağımlı listeler açıkça yazıldı. Kancadaki `useState`
+  setter'ları çalışma zamanında kararlıdır → kimlik değişmez, bağımlı geri çağrılar her
+  render'da yeniden kurulmaz. Bu, "sessizce eslint-disable yaz" tuzağına düşmeden çözüldü.
+- **Yeni testler:** `src/hooks/useMapLayerPrefs.test.ts` (7 test) — varsayılanlar, kayıtlı
+  stil, kalıcılık, `toggleWeather` olay sırası ve durumu, ölçüm/saat olayı (bağlanma anında
+  ilk yayın dahil), dış olaylara tepki, kanca kalkınca dinleyici sökümü.
+- **Kapılar:** `typecheck` ✅ · `lint` ✅ (0 uyarı) · `test:cov` ✅ **179 dosya**, kapsam
+  %61,50/%53,78/%57,21/%66,40 (önceki %61,21/%53,68/%56,88/%66,07 — düştü değil, **yükseldi**) ·
+  `build` ✅ toplam JS 996.997 B gzip (önceki 996.790, **+207 B**, kabul sınırı ±2 KB) ·
+  SW 63/63 · modül boyutu defteri Explorer için 1.764'e **kısıldı** (ratchet aşağı).
+
 ## 2026-11-01 — F0 ölçüm temeli: kapsam eşiği, brotli ölçümü, canlı durum dokümanı ve modül boyutu kapısı
 
 `docs/gorevler/10-10-yol-plani-2026-11-01.md` §F0 ve §F1-0 uygulandı. Dördü de **kapı**:

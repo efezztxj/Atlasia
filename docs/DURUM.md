@@ -10,12 +10,12 @@
 
 | Ölçüm | Değer |
 |---|---|
-| Kaynak dosya (test hariç) | **153** |
-| Test dosyası | **178** |
+| Kaynak dosya (test hariç) | **154** |
+| Test dosyası | **179** |
 | Bileşen (`src/components/*.tsx`) | 48 |
-| Hook (`src/hooks/*.ts`) | 15 |
+| Hook (`src/hooks/*.ts`) | 16 |
 | Kütüphane modülü (`src/lib/*.ts`) | 32 |
-| Doküman dosyası (`docs/**/*.md`) | 118 |
+| Doküman dosyası (`docs/**/*.md`) | 119 |
 
 ## 2. Güvenlik yüzeyi
 

@@ -8,7 +8,7 @@
  */
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Activity, Compass, Crosshair, MapPin, MousePointerClick, Plus, UserRound, UsersRound, X } from "lucide-react";
-import type { BaseMapStyle, MapViewHandle } from "./MapView";
+import type { MapViewHandle } from "./MapView";
 import Header from "./Header";
 import Hero from "./Hero";
 import SearchBox from "./SearchBox";
@@ -29,13 +29,13 @@ import ConfirmDialogHost, { requestConfirm } from "./ConfirmDialog";
 import { useAuth } from "../contexts/AuthContext";
 import { analytics } from "../lib/analytics";
 import { CollectionsProvider, isCloudAccount } from "../hooks/useCollections";
-import type { WeatherMode, WeatherStatus } from "../utils/mapWeather";
 import { GUIDE_PLACES } from "../data/places";
 import { parseShortcutTab, stripShortcutParam } from "../utils/appShortcut";
 import { formatAccuracy, useGeolocation } from "../hooks/useGeolocation";
 import { useAtlasData } from "../hooks/useAtlasData";
 import { useFirestoreAtlasData } from "../hooks/useFirestoreAtlasData";
 import { useTheme } from "../hooks/useTheme";
+import { useMapLayerPrefs } from "../hooks/useMapLayerPrefs";
 import type { InstallAppController } from "../hooks/useInstallApp";
 // A3: SDK başlatan `lib/firebase` yerine SDK'sız kapı. Explorer zaten Firestore
 // kullanıyor ama bu import yüzünden SDK, yapılandırma okuması için de değil,
@@ -115,17 +115,11 @@ const ReportsPanel = lazy(() => import("./ReportsPanel"));
 const SuspensionNotice = lazy(() => import("./SuspensionNotice"));
 const WarningNotice = lazy(() => import("./ModerationNotices").then((m) => ({ default: m.WarningNotice })));
 const AnnouncementBanner = lazy(() => import("./ModerationNotices").then((m) => ({ default: m.AnnouncementBanner })));
-const MAP_STYLE_KEY = "atlasia.mapStyle.v1";
 /** T5: misafirken engellenen eylem; hesap açılınca tüketilir. */
 const PENDING_INTENT_KEY = "atlasia.pendingIntent.v1";
 type PendingIntent = "place" | "route" | "feed" | "none";
 /** Cihazda ilk rota oluşturuldu mu (T2 aktivasyon bayrağı). */
 const FIRST_ROUTE_KEY = "atlasia.metrics.firstRoute.v1";
-
-function initialMapStyle(): BaseMapStyle {
-  const saved = storageGet(MAP_STYLE_KEY);
-  return saved === "dark" || saved === "street" || saved === "topographic" ? saved : "satellite";
-}
 
 function MapLoadingSkeleton() {
   return (
@@ -274,19 +268,22 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
   const [featuredIdx, setFeaturedIdx] = useState(0);
   const [addMode, setAddMode] = useState(false);
   const [draft, setDraft] = useState<{ lng: number; lat: number } | null>(null);
-  const [spin, setSpin] = useState(true);
-  const [heroCompact, setHeroCompact] = useState(false);
-  const [labels, setLabels] = useState(true);
-  const [terrain, setTerrain] = useState(true);
-  // Hava katmanı tek kaynaktan yönetilir: Katmanlar sayfası + sağ ray düğmesi.
-  const [weather, setWeather] = useState(false);
-  const [weatherStatus, setWeatherStatus] = useState<WeatherStatus>("empty");
-  // Hava katmanının ölçümü ve tahmin saati: Katmanlar sayfasından seçilir,
-  // MapView'a `atlasia:weather-mode` olayıyla taşınır (katman geç açılsa da uygulanır).
-  const [weatherMode, setWeatherMode] = useState<WeatherMode>("wind");
-  const [weatherHour, setWeatherHour] = useState(0);
-  const [layersOpen, setLayersOpen] = useState(false);
-  const [baseMap, setBaseMap] = useState<BaseMapStyle>(initialMapStyle);
+  // F1-1: harita katmanı tercihleri (spin/heroCompact/labels/terrain/weather*/
+  // layersOpen/baseMap) artık kendi kancasında; adlar aynı kaldığı için
+  // aşağıdaki tüm çağrı yerleri değişmedi.
+  const {
+    spin, setSpin,
+    heroCompact, setHeroCompact,
+    labels, setLabels,
+    terrain, setTerrain,
+    weather,
+    weatherStatus,
+    weatherMode, setWeatherMode,
+    weatherHour, setWeatherHour,
+    layersOpen, setLayersOpen,
+    baseMap, setBaseMap,
+    toggleWeather,
+  } = useMapLayerPrefs();
   const [view, setView] = useState<ViewState>({ zoom: 2, lng: 30, lat: 30 });
   const [panelOpen, setPanelOpen] = useState(() => window.innerWidth >= 768);
   const [discoverySpace, setDiscoverySpace] = useState(0);
@@ -415,8 +412,6 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
       }))
       .catch((failure: unknown) => console.warn("[Atlasia] Profil arama dizinine yazılamadı:", failure));
   }, [profileSyncUid, profileSyncBackend, profileSyncName, profileSyncPhoto]);
-  useEffect(() => { storageSet(MAP_STYLE_KEY, baseMap); }, [baseMap]);
-
   const handledShareLinkRef = useRef<string | null>(null);
   useEffect(() => {
     let active = true;
@@ -466,7 +461,11 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
     };
   }, []);
 
-  const closePanels = () => {
+  // F1-1 notu: `setLayersOpen` artık kancadan geliyor. Lint kuralı kanca
+  // dönüşünü "kararlı" varsayamadığı için bu liste gerekli; kancadaki
+  // `useState` setter'ları çalışma zamanında kararlıdır, yani kimlik değişmez
+  // ve bağımlı geri çağrılar her render'da yeniden kurulmaz.
+  const closePanels = useCallback(() => {
     setDrawerOpen(false);
     setFeedOpen(false);
     setAtlasOpen(false);
@@ -478,7 +477,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
     setStreetPlace(null);
     setNotificationsOpen(false);
     setLayersOpen(false);
-  };
+  }, [setLayersOpen]);
 
   const openRecords = () => { closePanels(); setRecordsOpen(true); };
   const openProfile = () => {
@@ -486,37 +485,6 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
     closePanels();
     setProfileOpen(true);
   };
-  // Hava katmanı: parça yüklenemezse anahtar kapanır; veri durumu Katmanlar
-  // sayfasında dürüstçe gösterilir (Windy benzeri katman, utils/mapWeather.ts).
-  useEffect(() => {
-    const unavailable = () => setWeather(false);
-    const status = (event: Event) => {
-      const detail = (event as CustomEvent<WeatherStatus>).detail;
-      if (detail) setWeatherStatus(detail);
-    };
-    window.addEventListener("atlasia:weather-unavailable", unavailable);
-    window.addEventListener("atlasia:weather-status", status);
-    return () => {
-      window.removeEventListener("atlasia:weather-unavailable", unavailable);
-      window.removeEventListener("atlasia:weather-status", status);
-    };
-  }, []);
-
-  useEffect(() => {
-    window.dispatchEvent(new CustomEvent("atlasia:weather-mode", {
-      detail: { mode: weatherMode, hour: weatherHour },
-    }));
-  }, [weatherMode, weatherHour]);
-
-  const toggleWeather = useCallback(() => {
-    setWeather((current) => {
-      const next = !current;
-      setWeatherStatus(next ? "loading" : "empty");
-      window.dispatchEvent(new CustomEvent("atlasia:weather-toggle", { detail: next }));
-      return next;
-    });
-  }, []);
-
   const openAtlas = () => { closePanels(); setResumeRoute(null); setSpin(false); setAtlasOpen(true); };
 
   const openSettings = useCallback(() => {
@@ -532,7 +500,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
     setLayersOpen(false);
     setReportsOpen(false);
     setSettingsOpen(true);
-  }, []);
+  }, [setLayersOpen]);
   const closeSettings = useCallback(() => setSettingsOpen(false), []);
 
   useEffect(() => {
@@ -746,7 +714,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
     closePanels();
     setFeedOpen(true);
     setSocialTarget(target);
-  }, []);
+  }, [closePanels]);
   const openGroupFromNotification = useCallback((groupId: string) => openSocial({ kind: "group", groupId }), [openSocial]);
   const openFriendsFromNotification = useCallback(() => openSocial({ kind: "friends" }), [openSocial]);
   // Davet bağlantısı (main.tsx açılışta yakalar; giriş sonrası burada tüketilir).
@@ -787,7 +755,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
       setActiveId(null);
       setToast(`Konumun bulundu · ${formatAccuracy(fix.accuracy)}`);
     }
-  }, [geo.fix]);
+  }, [geo.fix, setSpin]);
 
   useEffect(() => {
     const fix = geo.fix;
@@ -803,7 +771,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
       setLocationLabel(name);
     });
     return () => ctrl.abort();
-  }, [geo.fix]);
+  }, [geo.fix, setSpin]);
 
   // Hata durumlarını kullanıcıya anlat
   useEffect(() => {
@@ -876,7 +844,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
     setSpin(false);
     setLocationLabel(p.region);
     mapRef.current?.flyTo(p.lng, p.lat, zoom);
-  }, []);
+  }, [setSpin]);
 
   const handleSelect = useCallback(
     (id: string) => {
@@ -1066,7 +1034,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
     setLocationLabel(label);
     mapRef.current?.flyTo(lng, lat, 9);
     if (window.innerWidth < 1024) setFeedOpen(false);
-  }, []);
+  }, [setSpin]);
 
   const heroHidden = view.zoom > 3.4;
   // Keşif kartı yalnız ekranı bütünüyle kaplayan katmanlarda gizlenir.
@@ -1103,7 +1071,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
     if (action === "explore") setPanelOpen(true);
     else if (action === "add") { setSpin(false); setAddMode(true); }
     else setProfileOpen(true);
-  }, []);
+  }, [setSpin]);
   const mobileTab = myPlacesOpen ? "İzlerim" : recordsOpen ? "Kaydet" : feedOpen ? "Topluluk" : profileOpen ? "Profil" : "Keşfet";
   const settingsContentProps: SettingsContentProps = {
     theme,
