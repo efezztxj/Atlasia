@@ -2,13 +2,17 @@ import { describe, expect, it } from "vitest";
 import {
   detectDeviceTier,
   measuredFps,
+  recommendedHillshade,
   recommendedPixelRatio,
   recommendedTerrain,
+  shouldDisableTerrain,
   shouldLowerMapQuality,
   FRAME_SAMPLE_MIN_MS,
   HIGH_TIER_MAX_PIXEL_RATIO,
   LOW_TIER_MAX_PIXEL_RATIO,
   MIN_SMOOTH_FPS,
+  MIN_TERRAIN_FPS,
+  TOUCH_MAX_PIXEL_RATIO,
 } from "./deviceTier";
 
 const signals = (over: Partial<Parameters<typeof detectDeviceTier>[0]> = {}) => ({
@@ -58,6 +62,14 @@ describe("piksel oranı", () => {
     expect(recommendedPixelRatio(1.5, "high")).toBe(1.5);
   });
 
+  it("dokunmatik cihazda 1,5 tavanı uygulanır (DPR 2/3 olsa bile)", () => {
+    // Telefonda 2 ile 1,5 arasındaki fark gözle zor ayrılır, piksel %44 azalır.
+    expect(recommendedPixelRatio(3, "high", true)).toBe(TOUCH_MAX_PIXEL_RATIO);
+    expect(recommendedPixelRatio(2, "high", true)).toBe(TOUCH_MAX_PIXEL_RATIO);
+    expect(recommendedPixelRatio(1.25, "high", true)).toBe(1.25);
+    expect(recommendedPixelRatio(2, "high", false)).toBe(HIGH_TIER_MAX_PIXEL_RATIO);
+  });
+
   it("geçersiz DPR'da 1 döner", () => {
     expect(recommendedPixelRatio(Number.NaN, "high")).toBe(1);
     expect(recommendedPixelRatio(-2, "low")).toBe(1);
@@ -76,6 +88,25 @@ describe("ağır arazi katmanı varsayılanı", () => {
     expect(recommendedTerrain(signals({ deviceMemory: 3 }))).toBe(false);
     expect(recommendedTerrain(signals({ saveData: true }))).toBe(false);
     expect(recommendedTerrain(signals({ reducedMotion: true }))).toBe(false);
+  });
+});
+
+describe("tepe gölgesi (hillshade) varsayılanı", () => {
+  it("dokunmatik cihazda kapalı, masaüstünde açık", () => {
+    // Hillshade ayrı bir tam ekran geçişi; 3B arazi hissi bundan bağımsız.
+    expect(recommendedHillshade(signals({ coarsePointer: true }))).toBe(false);
+    expect(recommendedHillshade(signals({ coarsePointer: false }))).toBe(true);
+  });
+});
+
+describe("kademeli düşürme: arazi eşiği", () => {
+  it("yalnız gerçekten rahatsız edici kare hızında araziyi kapatır", () => {
+    expect(shouldDisableTerrain(MIN_TERRAIN_FPS - 1)).toBe(true);
+    expect(shouldDisableTerrain(MIN_TERRAIN_FPS)).toBe(false);
+    // Piksel oranı eşiğinden (40) daha alt bir eşik: önce DPR düşer.
+    expect(MIN_TERRAIN_FPS).toBeLessThan(MIN_SMOOTH_FPS);
+    expect(shouldDisableTerrain(Number.NaN)).toBe(false);
+    expect(shouldDisableTerrain(0)).toBe(false);
   });
 });
 

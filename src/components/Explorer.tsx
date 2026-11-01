@@ -332,6 +332,10 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
    */
   const trackPreviewDrawn = useRef(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  // Açık bir sayfa/panel varken haritanın kendi kendine dönmesi, panel
+  // kaydırmasıyla aynı ana iş parçacığını paylaşıp gecikme yaratıyordu.
+  const sheetOpen = feedOpen || atlasOpen || profileOpen || layersOpen || settingsOpen || drawerOpen;
+
   const [myPlacesOpen, setMyPlacesOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [reportsOpen, setReportsOpen] = useState(false);
@@ -1184,7 +1188,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
             onSlowDevice={handleSlowDevice}
             baseMap={baseMap}
             theme={theme}
-            spin={spin && !reducedMotion && !addMode && !draft}
+            spin={spin && !reducedMotion && !addMode && !draft && !sheetOpen}
             onUserInteract={() => { setSpin(false); setHeroCompact(true); }}
             onViewChange={setView}
             onViewportChange={setMapViewport}

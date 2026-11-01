@@ -53,9 +53,40 @@ describe("harita çizim döngüsü ve görünüm bildirimi", () => {
   });
 
   it("harita tuvali cihaz DPR'ı yerine uyarlanabilir oranla çizilir", () => {
-    // Telefonlarda DPR 3 → 9 kat piksel; kademe sınırı bunu keser.
-    expect(mapView).toContain("recommendedPixelRatio(window.devicePixelRatio, deviceTier)");
+    // Telefonlarda DPR 3 → 9 kat piksel; kademe + dokunmatik sınırı bunu keser.
+    expect(mapView).toContain("recommendedPixelRatio(");
+    expect(mapView).toContain("signals.coarsePointer");
     expect(mapView).toMatch(/pixelRatio: appliedPixelRatio,/);
+  });
+
+  it("tepe gölgesi dokunmatik cihazda kapalı başlar, arazi 3B kalır", () => {
+    expect(mapView).toContain("hillshade: recommendedHillshade(signals)");
+    expect(mapView).toMatch(/layout: \{ visibility: hillshade \? "visible" : "none" \}/);
+    // Görünürlük hem arazi hem tepe gölgesi koşuluna bağlı.
+    expect(mapView).toContain('terrainEnabled && hillshade ? "visible" : "none"');
+  });
+
+  it("kademeli düşürme: önce piksel oranı, sonra arazi (her adım bir kez)", () => {
+    expect(mapView).toContain("shouldDisableTerrain");
+    expect(mapView).toMatch(/degradeStep === 0 && shouldLowerMapQuality/);
+    expect(mapView).toMatch(/degradeStep === 1 && shouldDisableTerrain/);
+    // Arazi kararı sahibine bırakılır (kullanıcı seçimini ezmemek için).
+    expect(mapView).toContain("live.current.onSlowDevice?.()");
+  });
+
+  it("cihaz üstü teşhis kancası var ve temizleniyor", () => {
+    expect(mapView).toContain("window.atlasiaMapPerf = perfSnapshot");
+    expect(mapView).toContain("delete window.atlasiaMapPerf");
+    expect(mapView).toContain("fps: Math.round(lastFps)");
+  });
+
+  it("otomatik dönüş panel açıkken durur, kapanınca yeniden başlar", () => {
+    const explorer = readFileSync("src/components/Explorer.tsx", "utf8");
+    expect(explorer).toContain("const sheetOpen = feedOpen || atlasOpen || profileOpen || layersOpen || settingsOpen || drawerOpen;");
+    expect(explorer).toContain("!draft && !sheetOpen}");
+    // Döngü kendini durdurduğu için dışarıdan canlandırma şart.
+    expect(mapView).toContain("spinResumeRef");
+    expect(mapView).toMatch(/if \(spin\) spinResumeRef\.current\?\.\(\);/);
   });
 
   it("ölçülen kare hızı düşükse piksel oranı bir kez düşürülür", () => {
