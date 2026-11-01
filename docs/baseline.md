@@ -102,35 +102,47 @@ Olay sözleşmesi T2 ile kodda (bkz. `docs/olcum-ve-hata-izleme.md` §2b), ancak
 3. Huni: toplayıcıda son 7/28 günü oku.
 4. Her güncellemede bu dosyanın başındaki tarihi ve ölçüm sürümünü değiştir.
 
-## Tanıtım CLS kaynağı ve yedeği (2026-11-01)
+## Tanıtım CLS'i: kaynak bulundu, düzeltme ölçülerek denendi (2026-11-01)
 
-Lighthouse `/` CLS değeri koşudan koşuya **0,002 ↔ 0,049** arasında salınıyordu:
+Lighthouse `/` CLS değeri koşudan koşuya **0,002 ↔ 0,049** arasında salınıyor:
 eşiğin (0,05) tam altında, yani "yeşil ama kırılgan". Teşhis `layout-shifts`
 düğümleriyle kondu — kaynak `<div class="max-w-[700px]">` (0,048) ve
 `<span class="text-sun">` (0,002):
 
-1. Google Fonts `display=swap` ile geliyor; ilk boyama **yerel yedek** fontla
-   yapılıyor.
+1. Google Fonts `display=swap`; ilk boyama **yerel yedek** fontla yapılıyor.
 2. Yedek font (Linux/Chrome'da DejaVu Sans) "DM Sans"tan ~%11, "Bricolage
-   Grotesque"tan ~%6 **geniş**. Hero paragrafı yedekle 3 satıra, gerçek fontla
-   2 satıra düşüyor → blok 28 px kısalıyor → `items-end` hizalı kapsayıcı
-   yerinden oynuyor.
-3. Font takası ilk boyamadan sonra olursa bu fark CLS olarak sayılıyor. Fontlar
-   hızlı gelirse CLS 0,000-0,002, yavaş gelirse 0,049.
+   Grotesque"tan ~%6 **geniş**: hero paragrafı yedekle 3 satıra, gerçek fontla
+   2 satıra düşüyor → blok 28 px kısalıyor → `items-end` hizalı kapsayıcı yerinden
+   oynuyor.
+3. Takas ilk boyamadan sonra olursa bu fark CLS olarak sayılıyor.
 
-Düzeltme `index.html` içinde satır içi `@font-face` yedeği: `size-adjust` (ve
-`ascent-override`/`descent-override`/`line-gap-override`) değerleri, gerçek font
-dosyalarının advance genişlikleri yerel yedeklerle karşılaştırılarak hesaplandı
-(`fontTools`, latin + latin-ext alt kümeleri):
+### Denenen düzeltme (geri alındı)
+
+`index.html` içine satır içi `@font-face` yedeği eklendi: `size-adjust` +
+`ascent/descent/line-gap-override` ile yerel yedeklerin ölçüleri gerçek fontlara
+eşitlendi. Değerler `fontTools` ile font ikililerinin advance genişliklerinden
+hesaplandı (latin + latin-ext alt kümeleri):
 
 | Yedek | Metin (DM Sans) | Başlık (Bricolage Grotesque) |
 | --- | --- | --- |
-| Arial (Windows/macOS; Liberation Sans ile metrik uyumlu) | %102,5 | %106,5 |
+| Arial (Windows/macOS; Liberation Sans metrik uyumlu) | %102,5 | %106,5 |
 | DejaVu Sans (Linux/Chrome varsayılanı) | %90 | %94 |
 
-Hero paragrafı örneği (14 px, 372 px genişlik): DM Sans 699 px (2 satır), DejaVu
-777 px (3 satır) → 90% ile 699 px (**2 satır**, takas anında kayma yok).
-Kurallar `#top` alt ağacına kapsanır; CSS gzip bütçesi dolu olduğu için satır
-içi verildi (HTML bütçesinde ~290 B pay kaldı) ve `src/config/fontFallbackMetrics.test.ts`
-bu bloğun sessizce bozulmasını engeller. Son görünüm değişmez: gerçek fontlar
-yığında yedeklerden önce durur.
+Örnek hesap (hero paragrafı, 14 px, 372 px genişlik): DM Sans 699 px (2 satır),
+DejaVu 777 px (3 satır) → %90 ile 699 px, yani 2 satır.
+
+**Sonuç: CI'da CLS 0,048 → 0,139'a çıktı** (3/3 koşu, deterministik). Yani
+tarayıcı bu yedek yüzleri beklenen şekilde çözmedi (büyük olasılıkla `local()`
+ile çözülen yüz beklenen metrikte değildi) ve takas anındaki fark büyüdü. Deney
+geri alındı; bu bilgi bir daha aynı yolu denememek için buraya yazıldı. Yerel
+Chrome olmadığı için (bkz. `AGENTS.md`) yalnız CI üzerinden ölçüm yapılabiliyor;
+her deneme ~13 dk.
+
+### Kalan seçenekler (karar gerekiyor)
+
+| Seçenek | CLS | Bedeli |
+| --- | --- | --- |
+| Fontları kendi origin'imizden servis + `preload` | ~0, deterministik | ~50-60 kB yeni varlık; `@font-face` kuralları CSS bütçesine sığmıyor (HTML'de ~290 B pay var) |
+| Google Fonts URL'sinde `display=optional` | ~0, deterministik | Yavaş ilk yüklemede marka fontu hiç çizilmez (DejaVu/SF görünür) |
+| Hero yüksekliğini rezerve et (`min-h`) | ~0 | Mobilde kalıcı ~28 px fazla boşluk (görsel değişiklik) |
+| Hiçbiri (mevcut hâl) | 0,002-0,049 | Eşik 0,05: yeşil ama kırılgan |
