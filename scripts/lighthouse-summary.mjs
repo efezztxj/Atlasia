@@ -72,12 +72,17 @@ for (const [key, runs] of groups) {
   const lcpElement = runs[0].audits?.["largest-contentful-paint-element"]?.details?.items?.[0]?.items?.[0]?.node?.snippet;
   if (lcpElement) lines.push(`  LCP öğesi: ${String(lcpElement).slice(0, 160)}`);
 
-  // CLS eşiğe yaklaşırsa kaynağı görünsün: düzeni kaydıran ilk 2 düğüm.
+  // CLS eşiğe yaklaşırsa kaynağı görünsün: düzeni kaydıran ilk 3 düğüm,
+  // puanı ve (varsa) kaydıran alt öğesi ile birlikte.
   const shifts = runs[0].audits?.["layout-shifts"]?.details?.items ?? [];
   if (shifts.length) {
-    const worst = shifts
-      .slice(0, 2)
-      .map((item) => `${item.node?.snippet ? String(item.node.snippet).slice(0, 60) : "?"} (${Number(item.score ?? 0).toFixed(3)})`);
+    const worst = shifts.slice(0, 3).map((item) => {
+      const node = item.node?.snippet ? String(item.node.snippet).slice(0, 70) : "?";
+      const child = item.subItems?.[0]?.relatedNode?.snippet
+        ? ` ← ${String(item.subItems[0].relatedNode.snippet).slice(0, 50)}`
+        : "";
+      return `${node}${child} (${Number(item.score ?? 0).toFixed(3)})`;
+    });
     lines.push(`  CLS kaynakları: ${worst.join(" · ")}`);
   }
 }

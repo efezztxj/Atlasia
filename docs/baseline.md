@@ -101,3 +101,60 @@ Olay sözleşmesi T2 ile kodda (bkz. `docs/olcum-ve-hata-izleme.md` §2b), ancak
 2. Lighthouse: yukarıdaki komutu 3 kez çalıştır, medyanı yaz.
 3. Huni: toplayıcıda son 7/28 günü oku.
 4. Her güncellemede bu dosyanın başındaki tarihi ve ölçüm sürümünü değiştir.
+
+## Tanıtım CLS'i: kaynak bulundu, düzeltme ölçülerek denendi (2026-11-01)
+
+Lighthouse `/` CLS değeri koşudan koşuya **0,002 ↔ 0,049** arasında salınıyor:
+eşiğin (0,05) tam altında, yani "yeşil ama kırılgan". Teşhis `layout-shifts`
+düğümleriyle kondu — kaynak `<div class="max-w-[700px]">` (0,048) ve
+`<span class="text-sun">` (0,002):
+
+1. Google Fonts `display=swap`; ilk boyama **yerel yedek** fontla yapılıyor.
+2. Yedek font (Linux/Chrome'da DejaVu Sans) "DM Sans"tan ~%11, "Bricolage
+   Grotesque"tan ~%6 **geniş**: hero paragrafı yedekle 3 satıra, gerçek fontla
+   2 satıra düşüyor → blok 28 px kısalıyor → `items-end` hizalı kapsayıcı yerinden
+   oynuyor.
+3. Takas ilk boyamadan sonra olursa bu fark CLS olarak sayılıyor.
+
+### Denenen düzeltme (geri alındı)
+
+`index.html` içine satır içi `@font-face` yedeği eklendi: `size-adjust` +
+`ascent/descent/line-gap-override` ile yerel yedeklerin ölçüleri gerçek fontlara
+eşitlendi. Değerler `fontTools` ile font ikililerinin advance genişliklerinden
+hesaplandı (latin + latin-ext alt kümeleri):
+
+| Yedek | Metin (DM Sans) | Başlık (Bricolage Grotesque) |
+| --- | --- | --- |
+| Arial (Windows/macOS; Liberation Sans metrik uyumlu) | %102,5 | %106,5 |
+| DejaVu Sans (Linux/Chrome varsayılanı) | %90 | %94 |
+
+Örnek hesap (hero paragrafı, 14 px, 372 px genişlik): DM Sans 699 px (2 satır),
+DejaVu 777 px (3 satır) → %90 ile 699 px, yani 2 satır.
+
+**Sonuç: CI'da CLS 0,048 → 0,139'a çıktı** (3/3 koşu, deterministik). Yani
+tarayıcı bu yedek yüzleri beklenen şekilde çözmedi (büyük olasılıkla `local()`
+ile çözülen yüz beklenen metrikte değildi) ve takas anındaki fark büyüdü. Deney
+geri alındı; bu bilgi bir daha aynı yolu denememek için buraya yazıldı. Yerel
+Chrome olmadığı için (bkz. `AGENTS.md`) yalnız CI üzerinden ölçüm yapılabiliyor;
+her deneme ~13 dk.
+
+### Seçilen çözüm: fontları kendi origin'imizden servis (2026-11-01)
+
+Karar: **self-host + yerel `@font-face`** (diğer seçenekler yerine). Gerekçe:
+CLS'yi deterministik olarak sıfırlar *ve* görünümü hiç değiştirmez; ayrıca
+render-bloklayan üçüncü taraf CSS'i kaldırdığı için LCP'ye de yarar.
+
+- Dosyalar: `public/fonts/{dm-sans,bricolage}-{latin,latin-ext}.woff2`
+  (`@fontsource-variable` paketlerinden alınan variable woff2'ler yalnız
+  kullanılan aralıklara kırpıldı). Toplam 176 kB; Türkçe metinde iki alt küme
+  de iner, `unicode-range` sayesinde başka dillerde yalnız latin.
+- Lisans: SIL OFL 1.1, tam metin `public/fonts/OFL.txt` içinde yayında.
+- `@font-face` kuralları `index.html` içinde **satır içi**: `<head>` içinde
+  görüldükleri için font indirmesi render-bloklayan CSS paketini beklemez ve
+  CSS gzip bütçesine (34 B pay) yük bindirmez. HTML bütçesinde ~280 B pay kaldı.
+- Üçüncü taraf bağlantılar kaldırıldı; CSP de daraltıldı: `style-src`'ten
+  `fonts.googleapis.com`, `font-src`'ten `fonts.gstatic.com` çıktı.
+- `src/config/selfHostedFonts.test.ts` kuralları, dosyaları, `unicode-range`
+  aralıklarını ve CSP daralmasını kilitler.
+
+Ölçüm: bir sonraki CI turunda `/` CLS'in 3/3 koşuda 0,00x kalması bekleniyor.

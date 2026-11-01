@@ -15,6 +15,17 @@ import { hasCookieConsent, readCookieConsent, COOKIE_CONSENT_EVENT } from "./coo
 import { analytics, isStandaloneDisplay } from "./analytics";
 import { createTelemetry, installGlobalErrorHandlers, setTelemetry, type Telemetry } from "./telemetry";
 
+declare global {
+  interface Window {
+    /**
+     * Destek/hata ayıklama: uç nokta + rıza durumu ve bellek içi son kayıtlar.
+     * Tembel yüklenir (`await window.atlasiaErrorLog()`), entry bütçesini
+     * şişirmemek için teşhis kodu ayrı parçada durur.
+     */
+    atlasiaErrorLog?: () => Promise<import("./telemetryDiagnostics").TelemetryDiagnostics>;
+  }
+}
+
 export interface StartTelemetryOptions {
   /** Cloudflare ortamından gelen toplayıcı adresi. Boşsa ağ kapalı. */
   endpoint?: string | null;
@@ -25,6 +36,9 @@ export interface StartTelemetryOptions {
   /** Oturum açılışını say (test için kapatılabilir). */
   sendOpenEvents?: boolean;
 }
+
+/** Teşhis fonksiyonunu taşıyabilen pencere (test sahteleri dahil). */
+type DiagnosticHost = { atlasiaErrorLog?: () => Promise<import("./telemetryDiagnostics").TelemetryDiagnostics> };
 
 export interface TelemetryHandle {
   telemetry: Telemetry;
@@ -50,6 +64,14 @@ export function startTelemetry(options: StartTelemetryOptions = {}): TelemetryHa
 
   const target = options.target === undefined ? (typeof window === "undefined" ? null : window) : options.target;
   const stopErrors = installGlobalErrorHandlers(telemetry, target);
+
+  // Teşhis penceresi: destek ekibi kullanıcının tarayıcısında tek satırla
+  // "kayıt gidiyor mu, nereye" sorusunu yanıtlayabilir. Uç nokta ve rıza tembel
+  // parçada çözülür (entry bütçesi); burada yalnız kanca kurulur.
+  const host = (options.target === undefined
+    ? (typeof window === "undefined" ? null : window)
+    : options.target) as DiagnosticHost | null;
+  if (host) host.atlasiaErrorLog = () => import("./telemetryDiagnostics").then((m) => m.showErrorLog());
 
   if (options.sendOpenEvents !== false) {
     analytics.appOpen({ standalone: isStandaloneDisplay() });

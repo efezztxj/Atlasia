@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { analyticsConsentGranted, startTelemetry } from "./telemetryBootstrap";
+import { telemetryDiagnostics } from "./telemetryDiagnostics";
 import { createTelemetry, type TelemetryRecord } from "./telemetry";
 import { COOKIE_CONSENT_MAX_AGE_SECONDS, COOKIE_CONSENT_VERSION } from "./cookieConsent";
 
@@ -113,5 +114,49 @@ describe("telemetryBootstrap", () => {
     );
     expect(hasCookieConsent(record, "analytics")).toBe(true);
     expect(COOKIE_CONSENT_MAX_AGE_SECONDS).toBeGreaterThan(0);
+  });
+});
+
+describe("telemetryDiagnostics (uç nokta/rıza teşhisi)", () => {
+  it("uç nokta yoksa `endpoint-missing`: kayıt cihazdan çıkmıyor, bellekte duruyor", () => {
+    const { telemetry } = buildTelemetry(true, null);
+    telemetry.captureError(new Error("çökme"));
+    const snapshot = telemetryDiagnostics(telemetry, null, true);
+
+    expect(snapshot.status).toBe("endpoint-missing");
+    expect(snapshot.endpointConfigured).toBe(false);
+    expect(snapshot.hint).toContain("VITE_TELEMETRY_ENDPOINT");
+    // Kayıt yine de görünür: destek "hiç kayıt yok" demesin.
+    expect(snapshot.records.map((r) => r.name)).toContain("error");
+  });
+
+  it("uç nokta var ama rıza yoksa `consent-off`", () => {
+    const { telemetry } = buildTelemetry(false, "https://ornek.test/t");
+    const snapshot = telemetryDiagnostics(telemetry, "https://ornek.test/t", false);
+    expect(snapshot.status).toBe("consent-off");
+    expect(snapshot.endpointConfigured).toBe(true);
+    expect(snapshot.hint).toContain("izni yok");
+  });
+
+  it("rıza + uç nokta varsa `ready` ve PII temizliği korunur", () => {
+    const { telemetry } = buildTelemetry(true, "https://ornek.test/t");
+    telemetry.captureError(new Error("e-posta: kisi@ornek.com adresinden geldi"));
+    const snapshot = telemetryDiagnostics(telemetry, "https://ornek.test/t", true);
+
+    expect(snapshot.status).toBe("ready");
+    expect(snapshot.sessionId).toBe("s1");
+    expect(JSON.stringify(snapshot.records)).not.toContain("kisi@ornek.com");
+  });
+
+  it("pencereye bağlanır: `await window.atlasiaErrorLog()` teşhisi döndürür", async () => {
+    const fake = fakeWindow() as unknown as Window & {
+      atlasiaErrorLog?: () => Promise<{ status: string; records: unknown[] }>;
+    };
+    const { telemetry } = buildTelemetry(true, null);
+    startTelemetry({ telemetry, target: fake });
+    expect(typeof fake.atlasiaErrorLog).toBe("function");
+    // Tembel yükleme: teşhis kodu ayrı parçada, entry bütçesine girmez.
+    const snapshot = await fake.atlasiaErrorLog?.();
+    expect(snapshot?.status).toBe("endpoint-missing");
   });
 });
