@@ -194,6 +194,7 @@ export default function LandingPage({ onStart }: Props) {
             <p className="mt-6 max-w-[500px] text-[14px] leading-7 text-white/70 md:text-[16px]">Yeni yerler, gerçek gezgin izleri ve bulunduğun noktada canlanan hikâyeler. Bir sonraki keşfin burada başlıyor.</p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <button type="button" data-cta-level="primary" onClick={() => onStart("hero")} className="group flex min-h-[56px] items-center gap-8 bg-[#f3c870] px-6 text-[13px] font-bold text-[#142019] transition hover:bg-white md:px-7">Dünyayı keşfet <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" /></button>
+              <a href="#film" className="flex min-h-[56px] items-center gap-2 px-4 text-[13px] font-medium text-white/85 transition hover:text-white">Tanıtım filmini izle</a>
               <a href="#nasil" className="flex min-h-[56px] items-center gap-2 px-4 text-[13px] font-medium text-white/85 transition hover:text-white"><Sparkles size={16} />Atlas AI nasıl çalışır?</a>
             </div>
             <ul aria-label="Kısa güven notları" className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] text-white/55">
@@ -206,6 +207,25 @@ export default function LandingPage({ onStart }: Props) {
 
         <a href="#kesfet" className="absolute bottom-7 left-5 hidden items-center gap-3 text-[9px] font-semibold tracking-[0.28em] text-white/60 uppercase md:flex md:left-10 lg:left-16">Aşağı kaydır <ArrowDown size={15} /></a>
         <p className="absolute right-5 bottom-7 hidden text-[9px] tracking-[0.27em] text-white/55 uppercase md:block md:right-10 lg:right-16">Her yer bir hikâye.</p>
+      </section>
+
+      <section id="film" aria-labelledby="film-title" className="border-t border-[#173c37]/10 bg-[#f1f0e9] px-5 py-16 text-[#102b2a] md:px-10 md:py-24 lg:px-16">
+        <div className="mx-auto grid max-w-[1280px] gap-10 lg:grid-cols-[.85fr_1.15fr] lg:items-center">
+          <div className="max-w-[560px]">
+            <p className="text-[10px] font-semibold tracking-[0.28em] text-[#8f6224] uppercase">Atlasia ile tanış</p>
+            <h2 id="film-title" className="font-display mt-4 text-[clamp(30px,4vw,52px)] leading-[1.02] font-semibold tracking-[-0.04em]">Dünya bir haritadan<br />daha fazlası.</h2>
+            <p className="mt-5 text-[15px] leading-7 text-[#36504c]">Keşiften rota planlamaya, sesli rehberden kendi izlerini bırakmaya: Atlasia'yı kısa tanıtım filmimizle tanı.</p>
+            <p className="mt-3 text-[13px] leading-6 text-[#49615d]">20 saniyelik sessiz film temsili görseller içerir. Video yalnız oynat dediğinde indirilir.</p>
+            <a href="/social/atlasia-tanitim.mp4" className="mt-6 inline-flex min-h-[44px] items-center gap-2 border border-[#173c37]/25 px-5 text-[13px] font-semibold transition hover:border-[#173c37] hover:bg-[#173c37] hover:text-[#f1f0e9]">Videoyu ayrı aç</a>
+          </div>
+          <figure className="mx-auto w-full max-w-[640px] lg:mx-0">
+            <figcaption className="sr-only">Atlasia uygulaması tanıtım filmi, temsili görseller ve metin içerir</figcaption>
+            <video className="aspect-video w-full rounded-[24px] border border-[#173c37]/15 bg-[#031b18] object-cover shadow-xl" controls playsInline preload="none" poster="/images/atlasia-film-background.jpg" width={1280} height={720}>
+              <source src="/social/atlasia-tanitim.mp4" type="video/mp4" />
+              Tarayıcın videoyu oynatamıyor. Klibi <a href="/social/atlasia-tanitim.mp4">doğrudan açabilirsin</a>.
+            </video>
+          </figure>
+        </div>
       </section>
 
       <section id="kesfet" tabIndex={-1} className="bg-[#f1f0e9] outline-none px-5 py-20 text-[#102b2a] md:px-10 md:py-28 lg:px-16">
@@ -246,52 +266,6 @@ export default function LandingPage({ onStart }: Props) {
         </div>
       </section>
 
-
-      {/* T6 — tanıtım filmi. `preload="none"`: video yalnız kullanıcı oynatınca
-          iner (4 MB mobil veri harcamaz). Poster, hero'da zaten yüklenen marka
-          görselidir (ek ağ maliyeti yok, SW kabuğunda da önbellekte).
-          Otomatik oynatma ve ses yok; genişlik/yükseklik CLS için yazılı. */}
-      <section id="film" aria-labelledby="film-title" className="border-t border-[#173c37]/10 bg-[#f1f0e9] px-5 py-16 text-[#102b2a] md:px-10 md:py-24 lg:px-16">
-        <div className="mx-auto grid max-w-[1280px] gap-10 lg:grid-cols-[1fr_auto] lg:items-center">
-          <div className="max-w-[560px]">
-            <p className="text-[10px] font-semibold tracking-[0.28em] text-[#8f6224] uppercase">Tanıtım filmi</p>
-            <h2 id="film-title" className="font-display mt-4 text-[clamp(30px,4vw,52px)] leading-[1.02] font-semibold tracking-[-0.04em]">
-              Bir sırt, bir sabah,<br />bir iz.
-            </h2>
-            <p className="mt-5 text-[15px] leading-7 text-[#36504c]">
-              Kapadokya'da Aşk Vadisi sırtı: araba yok, sadece yürüyorsun. Klip 45 saniye;
-              video yalnız oynat dediğinde iner.
-            </p>
-            <p className="mt-3 text-[13px] leading-6 text-[#49615d]">
-              Ses kapalı başlar. Otomatik oynatma yok, arka planda indirme yok.
-            </p>
-            <a
-              href="/social/goreme-yuruyus.mp4"
-              className="mt-6 inline-flex min-h-[44px] items-center gap-2 border border-[#173c37]/25 px-5 text-[13px] font-semibold transition hover:border-[#173c37] hover:bg-[#173c37] hover:text-[#f1f0e9]"
-            >
-              Videoyu ayrı aç
-            </a>
-          </div>
-          <figure className="mx-auto w-full max-w-[300px] lg:mx-0">
-            {/* `aria-label` yerine görünmez başlık: video öğesinin etiketi
-                ekran okuyucularda tutarlı duyurulmuyor (P18 dersi). */}
-            <figcaption className="sr-only">Kapadokya Aşk Vadisi yürüyüşü tanıtım filmi</figcaption>
-            <video
-              className="aspect-[9/16] w-full rounded-[24px] border border-[#173c37]/15 bg-[#031b18] object-cover shadow-xl"
-              controls
-              playsInline
-              preload="none"
-              poster="/images/atlasia-earth-hero.jpg"
-              width={1080}
-              height={1920}
-            >
-              <source src="/social/goreme-yuruyus.mp4" type="video/mp4" />
-              Tarayıcın videoyu oynatamıyor. Klibi{" "}
-              <a href="/social/goreme-yuruyus.mp4">doğrudan açabilirsin</a>.
-            </video>
-          </figure>
-        </div>
-      </section>
 
       {/* Alt blok (SSS + footer) `entry` dışında: ekranın altında, ilk boya
           için gerekli değil. Yükseklik fallback'i kaymayı sınırlar. */}

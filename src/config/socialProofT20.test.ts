@@ -20,6 +20,13 @@ describe("T20 ↔ T11 · doğrulanmış katalog kapsamı ve küresel açılış 
     );
   });
 
+  it("llms.txt katalog sayılarını gerçek veriyle tutarlı duyurur", () => {
+    const llms = readFileSync("public/llms.txt", "utf8");
+    expect(llms).toContain(`${GUIDE_PLACES.length} seçilmiş rehber nokta`);
+    expect(llms).toContain(`${SITE_TOURS.length} antik kent sesli turu`);
+    expect(llms).toContain("https://atlasia.pages.dev/");
+  });
+
   it("tanıtım sayfası ve alt blok Firebase veya ağır katalog dizilerini girişe çekmez (T11 korunur)", () => {
     const landing = readFileSync("src/components/LandingPage.tsx", "utf8");
     const footer = readFileSync("src/components/LandingFooter.tsx", "utf8");

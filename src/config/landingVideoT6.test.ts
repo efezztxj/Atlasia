@@ -14,8 +14,8 @@ import { describe, expect, it } from "vitest";
 
 const landing = readFileSync("src/components/LandingPage.tsx", "utf8");
 const sw = readFileSync("public/sw.js", "utf8");
-const CLIP = "public/social/goreme-yuruyus.mp4";
-const POSTER = "public/images/atlasia-earth-hero.jpg";
+const CLIP = "public/social/atlasia-tanitim.mp4";
+const POSTER = "public/images/atlasia-film-background.jpg";
 
 describe("T6 · tanıtım filmi", () => {
   it("video bloğu var ve `preload=\"none\"` ile işaretli", () => {
@@ -37,26 +37,26 @@ describe("T6 · tanıtım filmi", () => {
 
   it("poster zorunlu ve var olan bir dosya", () => {
     const poster = landing.match(/poster="([^"]+)"/)?.[1];
-    expect(poster).toBe("/images/atlasia-earth-hero.jpg");
+    expect(poster).toBe("/images/atlasia-film-background.jpg");
     expect(statSync(POSTER).size).toBeGreaterThan(10_000);
   });
 
   it("genişlik/yükseklik yazılı: yer ayırır, düzen zıplamaz", () => {
-    expect(landing).toMatch(/width=\{1080\}/);
-    expect(landing).toMatch(/height=\{1920\}/);
-    expect(landing).toContain("aspect-[9/16]");
+    expect(landing).toMatch(/width=\{1280\}/);
+    expect(landing).toMatch(/height=\{720\}/);
+    expect(landing).toContain("aspect-video");
   });
 
   it("klip gerçekten var ve kabul edilebilir boyutta", () => {
     const { size } = statSync(CLIP);
-    expect(size).toBeGreaterThan(1_000_000);
+    expect(size).toBeGreaterThan(100_000);
     // 8 MB üstü mobilde kabul edilemez; klip bunun altında kalmalı.
     expect(size).toBeLessThan(8_000_000);
-    expect(landing).toContain('src="/social/goreme-yuruyus.mp4"');
+    expect(landing).toContain('src="/social/atlasia-tanitim.mp4"');
   });
 
   it("SW kabuğu videoyu ön önbelleğe almaz (4 MB indirme tuzağı)", () => {
-    expect(sw).not.toContain("goreme-yuruyus");
+    expect(sw).not.toContain("atlasia-tanitim");
     // SW varlık keşfi yalnız `/assets/` altındaki statikleri toplar.
     expect(sw).not.toMatch(/mp4/);
   });
@@ -72,6 +72,6 @@ describe("T6 · tanıtım filmi", () => {
 
   it("video yoksa okunabilir geri dönüş bağlantısı var", () => {
     const videoTag = landing.slice(landing.indexOf("<video"), landing.indexOf("</video>"));
-    expect(videoTag).toMatch(/<a href="\/social\/goreme-yuruyus\.mp4">/);
+    expect(videoTag).toMatch(/<a href="\/social\/atlasia-tanitim\.mp4">/);
   });
 });
