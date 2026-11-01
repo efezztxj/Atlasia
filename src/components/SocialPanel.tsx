@@ -377,7 +377,7 @@ export default function SocialPanel({
       <button
         onClick={onOpen}
         className="group glass-panel gold-frame pressable fixed bottom-7 left-6 z-30 hidden min-h-12 items-center gap-2.5 rounded-full py-2.5 pr-4 pl-3 text-[13px] text-mint transition hover:text-white lg:flex"
-        aria-label={`İzler ${posts.length} akışını aç`}
+        aria-label={`İzler ${posts.length}`}
       >
         <span className="relative grid size-7 place-items-center rounded-full bg-leaf/15">
           <MessagesSquare className="size-4 text-leaf" />
@@ -385,7 +385,7 @@ export default function SocialPanel({
             <span className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full bg-sun ring-2 ring-ink" />
           )}
         </span>
-        İzler
+        İzler{" "}
         <span
           aria-hidden="true"
           className="rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] leading-none text-mint/70"

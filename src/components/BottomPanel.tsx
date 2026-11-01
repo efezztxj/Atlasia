@@ -174,9 +174,9 @@ export default function BottomPanel({
                 </div>
               </div>
             ) : (
-              <button type="button" onClick={onToggle} className="flex min-h-12 w-full items-center gap-3 text-left" aria-label="Keşif panelini aç">
+              <button type="button" onClick={onToggle} className="flex min-h-12 w-full items-center gap-3 text-left">
                 <span className="grid size-10 shrink-0 place-items-center rounded-full bg-leaf/10 text-leaf"><Sparkles className="size-4" /></span>
-                <span className="min-w-0 flex-1"><span className="block text-[13px] font-semibold text-white">Bir sonraki güzel tesadüfün</span><span className="mt-0.5 block truncate text-[11px] text-mint/60">Kategorileri ve keşif önerilerini yeniden aç.</span></span>
+                <span className="min-w-0 flex-1"><span className="block text-[13px] font-semibold text-white">Bir sonraki güzel tesadüfün</span><span className="mt-0.5 block truncate text-[11px] text-mint/60">Kategorileri ve keşif önerilerini yeniden aç.</span><span className="sr-only"> — keşif panelini aç</span></span>
                 <ChevronUp className="size-4 shrink-0 text-sun" />
               </button>
             )}
@@ -198,9 +198,10 @@ export default function BottomPanel({
         <section ref={(node) => { panelRef.current = node; }} aria-label="Keşif önerileri" className="mobile-discovery-panel mobile-fullscreen gold-frame pointer-events-auto fixed inset-0 z-50 flex flex-col overflow-y-auto bg-[#021b16] px-4 md:hidden">
           <div className="flex items-center justify-between gap-3">
             <p className="truncate text-[12px] text-mint/75">Yol üstündekilerden küçük ipuçları</p>
-            <button type="button" onClick={onToggle} aria-expanded={open} aria-label={open ? "Öneri panelini küçült" : "Öneri panelini genişlet"} className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border border-white/10 px-3 text-[12px] font-medium text-sun">
+            <button type="button" onClick={onToggle} aria-expanded={open} className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border border-white/10 px-3 text-[12px] font-medium text-sun">
               <MapPin className="size-3.5" />{total} iz
               <ChevronDown className={cn("size-4 transition-transform", !open && "rotate-180")} />
+              <span className="sr-only">{open ? " — öneri panelini küçült" : " — öneri panelini genişlet"}</span>
             </button>
           </div>
 
