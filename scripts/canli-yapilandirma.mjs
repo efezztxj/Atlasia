@@ -64,7 +64,27 @@ export function referencedAssetPaths(text) {
 }
 
 /** Parça grafiği taramasının üst sınırları (sonsuz istek/döngü koruması). */
-export const CRAWL_LIMITS = Object.freeze({ maxChunks: 24, maxDepth: 3 });
+export const CRAWL_LIMITS = Object.freeze({ maxChunks: 40, maxDepth: 3 });
+
+/**
+ * Tarama sırası: adı yapılandırmaya işaret eden parçalar önce denenir. Giriş paketi
+ * 40+ tembel parçaya referans verebildiği için rastgele sıra yapılandırmayı sınırın
+ * dışında bırakabiliyordu (1 Kasım 2026 canlı koşusu: 24 parça, `projectId=(yok)`).
+ */
+export function assetPriority(path) {
+  if (/firebaseconfig|firebase-config/i.test(path)) return 0;
+  if (/firebase|config/i.test(path)) return 1;
+  return 2;
+}
+
+export function prioritizeAssets(paths) {
+  return [...paths].sort((a, b) => assetPriority(a) - assetPriority(b));
+}
+
+/** Yapılandırma tamam mı? Tamamsa tarama erken biter. */
+function isComplete(config) {
+  return Boolean(config?.projectId && config?.authDomain && config?.apiKeyPresent);
+}
 
 function firstMatch(text, source) {
   const match = String(text).match(source);
@@ -147,9 +167,10 @@ export async function inspectLiveSite({
   // Parça grafiği: giriş → (varsa) tembel parçalar. Firebase yapılandırması T11'den
   // sonra `firebaseConfig-*.js` içinde; yalnız girişi taramak yanlış "eksik" veriyordu.
   const texts = [{ path: entry, text: entryJs }];
-  const queue = referencedAssetPaths(entryJs).map((path) => ({ path, depth: 1 }));
+  const queue = prioritizeAssets(referencedAssetPaths(entryJs)).map((path) => ({ path, depth: 1 }));
   const seen = new Set([entry]);
-  while (queue.length && texts.length < CRAWL_LIMITS.maxChunks) {
+  let config = extractFirebaseConfig(entryJs);
+  while (queue.length && texts.length < CRAWL_LIMITS.maxChunks && !isComplete(config)) {
     const { path, depth } = queue.shift();
     if (seen.has(path)) continue;
     seen.add(path);
@@ -162,19 +183,25 @@ export async function inspectLiveSite({
     if (!response.ok) continue;
     const text = await response.text();
     texts.push({ path, text });
+    config = mergeConfigs([config, extractFirebaseConfig(text)]);
     if (depth < CRAWL_LIMITS.maxDepth) {
-      for (const next of referencedAssetPaths(text)) {
-        if (!seen.has(next)) queue.push({ path: next, depth: depth + 1 });
-      }
+      const next = prioritizeAssets(referencedAssetPaths(text)).filter((path) => !seen.has(path));
+      queue.push(...next.map((path) => ({ path, depth: depth + 1 })));
+      // Öncelik korunur: kuyruk her turda yeniden sıralanır (config parçaları önce).
+      queue.sort((a, b) => assetPriority(a.path) - assetPriority(b.path));
     }
   }
 
-  const config = mergeConfigs(texts.map((chunk) => extractFirebaseConfig(chunk.text)));
+  config = mergeConfigs([
+    config,
+    ...texts.slice(1).map((chunk) => extractFirebaseConfig(chunk.text)),
+  ]);
   return {
     base,
     entry,
     bytes: entryJs.length,
     chunksScanned: texts.length,
+    scannedPaths: texts.map((chunk) => chunk.path),
     config,
   };
 }
@@ -250,7 +277,7 @@ async function main() {
   }
 
   if (process.env.GITHUB_ACTIONS === "true") {
-    const { config, entry, base, chunksScanned = 1 } = result;
+    const { config, entry, base, chunksScanned = 1, scannedPaths = [] } = result;
     const facts =
       `base=${base} | entry=${entry} | parca=${chunksScanned} | projectId=${config.projectId ?? "(yok)"} | ` +
       `authDomain=${config.authDomain ?? "(yok)"} | apiKey=${config.apiKeyPresent ? "var" : "YOK"} | ` +
@@ -258,7 +285,12 @@ async function main() {
     if (verdict.ok) {
       annotation("notice", "Canli yapilandirma", `Saglikli: ${facts}`);
     } else {
-      annotation("error", "Canli yapilandirma", `${facts} | Sorunlar: ${verdict.problems.join(" ; ")}`);
+      const paths = scannedPaths.slice(0, 12).join(",");
+      annotation(
+        "error",
+        "Canli yapilandirma",
+        `${facts} | Sorunlar: ${verdict.problems.join(" ; ")} | taranan=${paths}`,
+      );
     }
   }
 

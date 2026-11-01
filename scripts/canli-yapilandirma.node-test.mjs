@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   CRAWL_LIMITS,
+  assetPriority,
+  prioritizeAssets,
   entryAssetPath,
   evaluateConfig,
   extractFirebaseConfig,
@@ -189,5 +191,34 @@ describe("canli-yapilandirma (canlı paket denetimi)", () => {
     assert.equal(merged.authDomain, "atlasia-prod.firebaseapp.com");
     assert.equal(merged.apiKeyPresent, true);
     assert.equal(merged.mentionsDevProject, true);
+  });
+
+  it("yapılandırma parçası tarama sırasında öne alınır", () => {
+    const sorted = prioritizeAssets([
+      "/assets/MapView-abc.js",
+      "/assets/config-abc.js",
+      "/assets/firebaseConfig-DWU9OYui.js",
+      "/assets/react-vendor-BkL.js",
+    ]);
+    assert.equal(sorted[0], "/assets/firebaseConfig-DWU9OYui.js");
+    assert.equal(sorted[1], "/assets/config-abc.js");
+    assert.equal(assetPriority("/assets/MapView-abc.js"), 2);
+  });
+
+  it("giriş 40+ parçaya referans verse de yapılandırma erken bulunur (erken çıkış)", async () => {
+    const bulk = Array.from({ length: 45 }, (_, index) => `import("./MapView-${index}.js");`).join("");
+    const entryJs = `${bulk}import("./firebaseConfig-DWU9OYui.js");`;
+    let calls = 0;
+    const fetchImpl = async (url) => {
+      calls += 1;
+      if (!url.includes("/assets/")) return { ok: true, status: 200, text: async () => HTML };
+      if (url.includes("index-")) return { ok: true, status: 200, text: async () => entryJs };
+      if (url.includes("firebaseConfig-")) return { ok: true, status: 200, text: async () => PROD_JS };
+      return { ok: true, status: 200, text: async () => "const z=1;" };
+    };
+    const result = await inspectLiveSite({ base: "https://ornek.test", fetchImpl, stamp: "T1" });
+    assert.equal(result.config.projectId, "atlasia-prod");
+    assert.equal(result.chunksScanned, 2, "yapılandırma bulununca tarama durmalı");
+    assert.ok(calls <= 3, `fazla istek: ${calls}`);
   });
 });
