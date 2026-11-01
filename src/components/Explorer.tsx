@@ -30,7 +30,6 @@ import MapPerfOverlay from "./MapPerfOverlay";
 import { useAuth } from "../contexts/AuthContext";
 import { analytics } from "../lib/analytics";
 import { CollectionsProvider, isCloudAccount } from "../hooks/useCollections";
-import type { WeatherMode, WeatherStatus } from "../utils/mapWeather";
 import { GUIDE_PLACES } from "../data/places";
 import { parseShortcutTab, stripShortcutParam } from "../utils/appShortcut";
 import { formatAccuracy, useGeolocation } from "../hooks/useGeolocation";
@@ -149,18 +148,6 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
   // Adım 11: her günün bacağı varsa rota mod ayrımlı çizilir (patika kesikli,
   // yol düz); yoksa durak durak düz çizgiye düşer.
   const drawAtlasRoute = (route: AtlasRoute, preview: boolean) => {
-    // Rota + yağış: durakların varış havası planlayıcıda zaten hesaplanmış
-    // (`stop.weather`). Hava katmanı bunu ek ağ isteği olmadan işaretler.
-    // Önizlemede işaret yok — kullanıcı henüz onaylamadı.
-    window.dispatchEvent(new CustomEvent("atlasia:weather-stops", {
-      detail: preview
-        ? []
-        : route.days.flatMap((day) => day.stops).map((stop) => ({
-          lat: stop.lat,
-          lng: stop.lng,
-          rainy: stop.weather?.risk === "rainy",
-        })),
-    }));
     const legs = routeDrawLegs(route);
     if (legs) {
       mapRef.current?.drawRouteLegs(legs, preview);
@@ -305,13 +292,6 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
   const handleSlowDevice = useCallback(() => {
     if (!terrainTouched.current) setTerrain(false);
   }, []);
-  // Hava katmanı tek kaynaktan yönetilir: Katmanlar sayfası + sağ ray düğmesi.
-  const [weather, setWeather] = useState(false);
-  const [weatherStatus, setWeatherStatus] = useState<WeatherStatus>("empty");
-  // Hava katmanının ölçümü ve tahmin saati: Katmanlar sayfasından seçilir,
-  // MapView'a `atlasia:weather-mode` olayıyla taşınır (katman geç açılsa da uygulanır).
-  const [weatherMode, setWeatherMode] = useState<WeatherMode>("wind");
-  const [weatherHour, setWeatherHour] = useState(0);
   const [layersOpen, setLayersOpen] = useState(false);
   const [baseMap, setBaseMap] = useState<BaseMapStyle>(initialMapStyle);
   const [view, setView] = useState<ViewState>({ zoom: 2, lng: 30, lat: 30 });
@@ -517,37 +497,6 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
     closePanels();
     setProfileOpen(true);
   };
-  // Hava katmanı: parça yüklenemezse anahtar kapanır; veri durumu Katmanlar
-  // sayfasında dürüstçe gösterilir (Windy benzeri katman, utils/mapWeather.ts).
-  useEffect(() => {
-    const unavailable = () => setWeather(false);
-    const status = (event: Event) => {
-      const detail = (event as CustomEvent<WeatherStatus>).detail;
-      if (detail) setWeatherStatus(detail);
-    };
-    window.addEventListener("atlasia:weather-unavailable", unavailable);
-    window.addEventListener("atlasia:weather-status", status);
-    return () => {
-      window.removeEventListener("atlasia:weather-unavailable", unavailable);
-      window.removeEventListener("atlasia:weather-status", status);
-    };
-  }, []);
-
-  useEffect(() => {
-    window.dispatchEvent(new CustomEvent("atlasia:weather-mode", {
-      detail: { mode: weatherMode, hour: weatherHour },
-    }));
-  }, [weatherMode, weatherHour]);
-
-  const toggleWeather = useCallback(() => {
-    setWeather((current) => {
-      const next = !current;
-      setWeatherStatus(next ? "loading" : "empty");
-      window.dispatchEvent(new CustomEvent("atlasia:weather-toggle", { detail: next }));
-      return next;
-    });
-  }, []);
-
   const openAtlas = () => { closePanels(); setResumeRoute(null); setSpin(false); setAtlasOpen(true); };
 
   const openSettings = useCallback(() => {
@@ -1296,13 +1245,6 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
             onToggleLabels={() => setLabels((v) => !v)}
             terrain={terrain}
             onToggleTerrain={toggleTerrain}
-            weather={weather}
-            onToggleWeather={toggleWeather}
-            weatherStatus={weatherStatus}
-            weatherMode={weatherMode}
-            onWeatherMode={setWeatherMode}
-            weatherHour={weatherHour}
-            onWeatherHour={setWeatherHour}
             onReset={handleReset}
           />
         </Suspense>
