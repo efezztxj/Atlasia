@@ -138,11 +138,23 @@ geri alındı; bu bilgi bir daha aynı yolu denememek için buraya yazıldı. Ye
 Chrome olmadığı için (bkz. `AGENTS.md`) yalnız CI üzerinden ölçüm yapılabiliyor;
 her deneme ~13 dk.
 
-### Kalan seçenekler (karar gerekiyor)
+### Seçilen çözüm: fontları kendi origin'imizden servis (2026-11-01)
 
-| Seçenek | CLS | Bedeli |
-| --- | --- | --- |
-| Fontları kendi origin'imizden servis + `preload` | ~0, deterministik | ~50-60 kB yeni varlık; `@font-face` kuralları CSS bütçesine sığmıyor (HTML'de ~290 B pay var) |
-| Google Fonts URL'sinde `display=optional` | ~0, deterministik | Yavaş ilk yüklemede marka fontu hiç çizilmez (DejaVu/SF görünür) |
-| Hero yüksekliğini rezerve et (`min-h`) | ~0 | Mobilde kalıcı ~28 px fazla boşluk (görsel değişiklik) |
-| Hiçbiri (mevcut hâl) | 0,002-0,049 | Eşik 0,05: yeşil ama kırılgan |
+Karar: **self-host + yerel `@font-face`** (diğer seçenekler yerine). Gerekçe:
+CLS'yi deterministik olarak sıfırlar *ve* görünümü hiç değiştirmez; ayrıca
+render-bloklayan üçüncü taraf CSS'i kaldırdığı için LCP'ye de yarar.
+
+- Dosyalar: `public/fonts/{dm-sans,bricolage}-{latin,latin-ext}.woff2`
+  (`@fontsource-variable` paketlerinden alınan variable woff2'ler yalnız
+  kullanılan aralıklara kırpıldı). Toplam 176 kB; Türkçe metinde iki alt küme
+  de iner, `unicode-range` sayesinde başka dillerde yalnız latin.
+- Lisans: SIL OFL 1.1, tam metin `public/fonts/OFL.txt` içinde yayında.
+- `@font-face` kuralları `index.html` içinde **satır içi**: `<head>` içinde
+  görüldükleri için font indirmesi render-bloklayan CSS paketini beklemez ve
+  CSS gzip bütçesine (34 B pay) yük bindirmez. HTML bütçesinde ~280 B pay kaldı.
+- Üçüncü taraf bağlantılar kaldırıldı; CSP de daraltıldı: `style-src`'ten
+  `fonts.googleapis.com`, `font-src`'ten `fonts.gstatic.com` çıktı.
+- `src/config/selfHostedFonts.test.ts` kuralları, dosyaları, `unicode-range`
+  aralıklarını ve CSP daralmasını kilitler.
+
+Ölçüm: bir sonraki CI turunda `/` CLS'in 3/3 koşuda 0,00x kalması bekleniyor.
