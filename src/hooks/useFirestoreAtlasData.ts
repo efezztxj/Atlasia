@@ -349,10 +349,15 @@ export function useFirestoreAtlasData({
   const loadMorePosts = useCallback(async () => {
     const cursor = postCursorRef.current;
     if (!cursor || !hasMorePostsRef.current || loadingMorePostsRef.current) return;
+    // Kuşak muhafızı (AY-02): uid/enabled değişimi veya unmount, bekleyen sayfa
+    // isteğinin geç dönen yanıtını geçersizleştirir. Aksi hâlde çıkış yapan
+    // kullanıcının listesine eski sayfa eklenebilir.
+    const session = sessionRef.current;
     loadingMorePostsRef.current = true;
     setLoadingMorePosts(true);
     try {
       const page = await listPostsPage(cursor);
+      if (session !== sessionRef.current) return;
       setPostTail((current) => {
         const next = mergeRecordsById(current, page.items);
         postTailRef.current = next;
@@ -362,6 +367,7 @@ export function useFirestoreAtlasData({
       hasMorePostsRef.current = page.hasMore && page.cursor !== null;
       setHasMorePosts(hasMorePostsRef.current);
     } catch (failure) {
+      if (session !== sessionRef.current) return;
       markError("posts", failure instanceof Error ? failure : new Error("Gönderiler yüklenemedi."));
     } finally {
       loadingMorePostsRef.current = false;
@@ -372,11 +378,14 @@ export function useFirestoreAtlasData({
   const loadMoreStories = useCallback(async () => {
     const cursor = storyCursorRef.current;
     if (!cursor || !hasMoreStoriesRef.current || loadingMoreStoriesRef.current) return;
+    // Aynı kuşak muhafızı: geç dönen story sayfası yeni oturuma yazılmaz.
+    const session = sessionRef.current;
     loadingMoreStoriesRef.current = true;
     setLoadingMoreStories(true);
     try {
       const effectiveCutoff = Math.max(storyCutoffRef.current, Date.now() - STORY_TTL_MS);
       const page = await listStoriesPage(cursor, effectiveCutoff);
+      if (session !== sessionRef.current) return;
       setStoryTail((current) => {
         const next = mergeRecordsById(current, page.items);
         storyTailRef.current = next;
@@ -386,6 +395,7 @@ export function useFirestoreAtlasData({
       hasMoreStoriesRef.current = page.hasMore && page.cursor !== null;
       setHasMoreStories(hasMoreStoriesRef.current);
     } catch (failure) {
+      if (session !== sessionRef.current) return;
       markError("stories", failure instanceof Error ? failure : new Error("Story'ler yüklenemedi."));
     } finally {
       loadingMoreStoriesRef.current = false;
