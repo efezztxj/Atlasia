@@ -21,9 +21,9 @@
 
 | Ölçüm | Değer |
 |---|---|
-| `firestore.rules` satır | 1408 |
+| `firestore.rules` satır | 1410 |
 | Kural `match` bloğu | 37 |
-| Kural `allow` satırı | 163 |
+| Kural `allow` satırı | 164 |
 | Bileşik indeks | 4 |
 
 ## 3. Çalışma zamanı
