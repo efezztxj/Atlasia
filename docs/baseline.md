@@ -101,3 +101,36 @@ Olay sözleşmesi T2 ile kodda (bkz. `docs/olcum-ve-hata-izleme.md` §2b), ancak
 2. Lighthouse: yukarıdaki komutu 3 kez çalıştır, medyanı yaz.
 3. Huni: toplayıcıda son 7/28 günü oku.
 4. Her güncellemede bu dosyanın başındaki tarihi ve ölçüm sürümünü değiştir.
+
+## Tanıtım CLS kaynağı ve yedeği (2026-11-01)
+
+Lighthouse `/` CLS değeri koşudan koşuya **0,002 ↔ 0,049** arasında salınıyordu:
+eşiğin (0,05) tam altında, yani "yeşil ama kırılgan". Teşhis `layout-shifts`
+düğümleriyle kondu — kaynak `<div class="max-w-[700px]">` (0,048) ve
+`<span class="text-sun">` (0,002):
+
+1. Google Fonts `display=swap` ile geliyor; ilk boyama **yerel yedek** fontla
+   yapılıyor.
+2. Yedek font (Linux/Chrome'da DejaVu Sans) "DM Sans"tan ~%11, "Bricolage
+   Grotesque"tan ~%6 **geniş**. Hero paragrafı yedekle 3 satıra, gerçek fontla
+   2 satıra düşüyor → blok 28 px kısalıyor → `items-end` hizalı kapsayıcı
+   yerinden oynuyor.
+3. Font takası ilk boyamadan sonra olursa bu fark CLS olarak sayılıyor. Fontlar
+   hızlı gelirse CLS 0,000-0,002, yavaş gelirse 0,049.
+
+Düzeltme `index.html` içinde satır içi `@font-face` yedeği: `size-adjust` (ve
+`ascent-override`/`descent-override`/`line-gap-override`) değerleri, gerçek font
+dosyalarının advance genişlikleri yerel yedeklerle karşılaştırılarak hesaplandı
+(`fontTools`, latin + latin-ext alt kümeleri):
+
+| Yedek | Metin (DM Sans) | Başlık (Bricolage Grotesque) |
+| --- | --- | --- |
+| Arial (Windows/macOS; Liberation Sans ile metrik uyumlu) | %102,5 | %106,5 |
+| DejaVu Sans (Linux/Chrome varsayılanı) | %90 | %94 |
+
+Hero paragrafı örneği (14 px, 372 px genişlik): DM Sans 699 px (2 satır), DejaVu
+777 px (3 satır) → 90% ile 699 px (**2 satır**, takas anında kayma yok).
+Kurallar `#top` alt ağacına kapsanır; CSS gzip bütçesi dolu olduğu için satır
+içi verildi (HTML bütçesinde ~290 B pay kaldı) ve `src/config/fontFallbackMetrics.test.ts`
+bu bloğun sessizce bozulmasını engeller. Son görünüm değişmez: gerçek fontlar
+yığında yedeklerden önce durur.
