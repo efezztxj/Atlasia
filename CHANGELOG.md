@@ -1,5 +1,13 @@
 # Atlasia Update
 
+## 2026-11-01 (S4) — Lighthouse CI kapısı: gerçek LCP/TBT ölçümü + PWA kısayolu düzeltmesi
+
+- **S4 / P1-2 — performans artık gerçek tarayıcıda ölçülüyor:** bugüne dek tek performans kapısı *paket bütçesiydi* (gzip kB); küçük paket yavaş LCP verebilir. `@lhci/cli` eklendi, `lighthouserc.cjs` üretim derlemesini (`dist/`) mobil profilde **3 kez** ölçüp medyanı değerlendiriyor. Eşikler S4 kabul listesinden: performans **≥ 0,85**, erişilebilirlik **≥ 0,95**, CLS **≤ 0,05**. CI'da `npm run test:lighthouse` **zorunlu** adım (`continue-on-error` yok), rapor `lighthouse-reports` artifact'ı olarak saklanıyor. `src/config/lighthouseGate.test.ts` eşikleri, ölçülen sayfaları ve CI kablolamasını kilitliyor — eşiği sessizce düşürmek testi kırar.
+- **İki sayfa ölçülüyor:** `/` (tanıtım) ve `/?tab=kesfet` (uygulama kabuğu).
+- **Yol boyunca gerçek hata — PWA kısayolu soğuk açılışta çalışmıyordu:** manifest "Keşfet" kısayolu `./?tab=kesfet` diyor ama parametre yalnız `Explorer` içinde okunuyordu; `Explorer` ise misafir/oturum bayrağı olmadan mount olmuyor. Yani ana ekran kısayoluna basan kullanıcı tanıtım ekranına düşüyordu ve kısayol hiçbir şey açmıyordu. `App.tsx` artık geçerli kısayolda misafir oturumu açıyor; parametreyi `Explorer` temizleyip ilgili paneli açıyor (eylem iki kez tetiklenmiyor). Regresyon testi `src/App.test.ts`; düzeltme kaldırılınca kırmızı (mutasyonla doğrulandı).
+- **Bütçe dürüstlüğü:** düzeltme entry'yi 16.656 → **16.823 B gzip** yaptı; entry eşiği ölçüme göre 16.700 → **17.000** (%1,05 pay) yeniden bağlandı, gerekçe `scripts/bundle-budget.mjs` başlığında tarihli not olarak duruyor. İlk boya JS/HTML, toplam JS ve appShell eşikleri **değişmedi**.
+- Ayrıntı: `docs/teslimatlar/teslimat-s4-lighthouse-2026-11-01.md`.
+
 ## 2026-11-01 (gece) — Gerçek tarayıcıda axe kapısı (S3) + sayfalama kuşak koruması (S5)
 
 - **S3 / P1-4 — erişilebilirlik artık gerçek tarayıcıda kapı:** `@axe-core/playwright` eklendi ve `e2e/a11y.spec.ts` altı senaryoda **dokuz tarama** yapıyor (tanıtım masaüstü 1280×800 açık tema · tanıtım mobil 390×844 koyu tema · çerez paneli açık/kapalı · keşif kabuğu karşılama diyaloğu · harita yüzeyi · katmanlar paneli · İzler paneli · Kayıtlarım paneli). Kural seti `wcag2a/wcag2aa/wcag21a/wcag21aa`, eşik **critical + serious = 0**; `moderate/minor` ihlaller annotation'a yazılıyor. JSDOM'da ölçülemeyen kontrast ve odak hataları böylece PR kapısına girdi. Ek CI adımı gerekmedi: mevcut `test:e2e` adımı `e2e/` altındaki tüm spec'leri koşuyor. Ortak ağ sahtekârlığı `e2e/support/harness.ts` içine alındı.
