@@ -11,7 +11,14 @@ import {
 import openFreeMapDarkStyle from "../data/openFreeMapDarkStyle.json";
 import type { PlaceViewport } from "../lib/firestoreData";
 import type { Place, RouteLeg, ViewState } from "../types";
-import { shouldAdvanceSpin } from "../utils/mapLifecycle";
+import { shouldAdvanceSpin, shouldCommitView, shouldReportView } from "../utils/mapLifecycle";
+import {
+  detectDeviceTier,
+  measuredFps,
+  readDeviceSignals,
+  recommendedPixelRatio,
+  shouldLowerMapQuality,
+} from "../utils/deviceTier";
 import type { WeatherLayerHandle, WeatherMode, WeatherStopMark } from "../utils/mapWeather";
 import { attachMapResume } from "../lib/mapResume";
 
@@ -50,6 +57,8 @@ interface Props {
   onUserInteract: () => void;
   onViewChange: (v: ViewState) => void;
   onViewportChange?: (viewport: PlaceViewport) => void;
+  /** Ölçülen kare hızı düşükse bir kez çağrılır (ağır katmanları kapatmak için). */
+  onSlowDevice?: () => void;
 }
 
 const HOME_CENTER: [number, number] = [30, 30];
@@ -339,6 +348,7 @@ export default function MapView({
   onUserInteract,
   onViewChange,
   onViewportChange,
+  onSlowDevice,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -349,8 +359,8 @@ export default function MapView({
   const [ready, setReady] = useState(false);
 
   // En güncel değerleri harita olaylarında kullanmak için
-  const live = useRef({ onSelect, onMapClick, onUserInteract, onViewChange, onViewportChange, addMode, spin });
-  live.current = { onSelect, onMapClick, onUserInteract, onViewChange, onViewportChange, addMode, spin };
+  const live = useRef({ onSelect, onMapClick, onUserInteract, onViewChange, onViewportChange, addMode, spin, onSlowDevice });
+  live.current = { onSelect, onMapClick, onUserInteract, onViewChange, onViewportChange, addMode, spin, onSlowDevice };
   const internalMove = useRef(false);
 
   useImperativeHandle(ref, () => ({
@@ -571,6 +581,8 @@ export default function MapView({
 
     const initialStyle = initialStyleOptions.current;
     const markers = markersRef.current;
+    const deviceTier = detectDeviceTier(readDeviceSignals());
+    let appliedPixelRatio = recommendedPixelRatio(window.devicePixelRatio, deviceTier);
     const map = new maplibregl.Map({
       container: el,
       style: buildStyle(
@@ -589,6 +601,10 @@ export default function MapView({
       pitchWithRotate: true,
       doubleClickZoom: true,
       fadeDuration: 200,
+      // Telefonlarda devicePixelRatio 3'e kadar çıkar: tuval 9 kat piksel
+      // taranır ve sürükleme/zoom GPU'ya takılır. Uyarlanabilir oran bunu
+      // cihaz kademesine göre sınırlar.
+      pixelRatio: appliedPixelRatio,
     });
     mapRef.current = map;
 
@@ -636,11 +652,18 @@ export default function MapView({
     map.once("style.load", () => setReady(true));
     if (map.isStyleLoaded()) setReady(true);
 
-    const report = () => {
+    // Son bildirilen görünüm: mikro hareketlerde React state'i hiç güncellenmez
+    // (state aynı nesne kalırsa React yeniden render etmez).
+    let lastCommitted: ViewState | null = null;
+    const report = (force = false) => {
       const c = map.getCenter();
       const zoom = map.getZoom();
-      live.current.onViewChange({ zoom, lng: c.lng, lat: c.lat });
       const bounds = map.getBounds();
+      const spanDeg = bounds.getNorth() - bounds.getSouth();
+      const next = { zoom, lng: c.lng, lat: c.lat };
+      if (!force && lastCommitted && !shouldCommitView(lastCommitted, next, spanDeg)) return;
+      lastCommitted = next;
+      live.current.onViewChange(next);
       live.current.onViewportChange?.({
         zoom,
         bounds: {
@@ -651,13 +674,27 @@ export default function MapView({
         },
       });
     };
+
+    // Hareket sırasında bildirim sayısı sınırlanır: `zoom` olayı animasyon
+    // boyunca her karede gelir ve doğrudan iki state güncellemek tüm arayüzü
+    // yeniden çiziyordu. Sonda (moveend) her zaman tam bildirim yapılır, yani
+    // kullanıcı parmağını kaldırdığında görünüm kesinleşir.
+    let lastReportAt = Number.NEGATIVE_INFINITY;
+    const reportThrottled = () => {
+      const now = performance.now();
+      if (!shouldReportView(now, lastReportAt)) return;
+      lastReportAt = now;
+      report();
+    };
     map.on("moveend", () => {
       if (internalMove.current) return;
-      report();
+      lastReportAt = performance.now();
+      // Hareket bitti: eşik atlanır, kesin görünüm yazılır.
+      report(true);
     });
     map.on("zoom", () => {
       if (internalMove.current) return;
-      report();
+      reportThrottled();
     });
 
     // Kullanıcı etkileşimi → otomatik dönüşü durdur
@@ -672,31 +709,94 @@ export default function MapView({
       if (live.current.addMode) live.current.onMapClick(e.lngLat.lng, e.lngLat.lat);
     });
 
-    // Otomatik dönüş
+    // Otomatik dönüş. Döngü yalnız gerçekten dönülürken çalışır: eskiden
+    // dönüş kapalıyken de saniyede 60 kez boş callback koşuyordu (mobilde
+    // sürekli CPU/pil tüketimi). Kare yayına alınması gerektiğinde
+    // `ensureSpinLoop` çağrılır ve iş bitince döngü kendini durdurur.
     let raf = 0;
+    let spinDisposed = false;
     let lastFrameAt = 0;
     let lastSpinAt = performance.now();
     const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
     const tick = (t: number) => {
-      if (shouldAdvanceSpin(t, lastFrameAt, live.current.spin, document.hidden, motionPreference.matches, map.getZoom(), SPIN_MAX_ZOOM, map.isMoving())) {
-        const dt = Math.min(t - lastSpinAt, 1000 / 15);
-        lastFrameAt = t;
-        lastSpinAt = t;
-        const c = map.getCenter();
-        let lng = c.lng - (SPIN_DEG_PER_SEC * dt) / 1000;
-        if (lng < -180) lng += 360;
-        internalMove.current = true;
-        map.setCenter([lng, c.lat]);
-        internalMove.current = false;
+      // `raf` bu blok boyunca sıfırlanmaz: `map.setCenter` içinden senkron
+      // olarak yayılan bir olay döngüyü ikinci kez kurmasın.
+      if (spinDisposed) { raf = 0; return; }
+      if (!shouldAdvanceSpin(t, lastFrameAt, live.current.spin, document.hidden, motionPreference.matches, map.getZoom(), SPIN_MAX_ZOOM, map.isMoving())) {
+        raf = 0;
+        return;
       }
+      const dt = Math.min(t - lastSpinAt, 1000 / 15);
+      lastFrameAt = t;
+      lastSpinAt = t;
+      const c = map.getCenter();
+      let lng = c.lng - (SPIN_DEG_PER_SEC * dt) / 1000;
+      if (lng < -180) lng += 360;
+      internalMove.current = true;
+      map.setCenter([lng, c.lat]);
+      internalMove.current = false;
       raf = requestAnimationFrame(tick);
     };
-    raf = requestAnimationFrame(tick);
+    const ensureSpinLoop = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(tick);
+    };
+    ensureSpinLoop();
+    // Panel açıp kapatmak, sekme değiştirmek gibi durumlarda döngü yeniden başlatılır.
+    map.on("zoomstart", ensureSpinLoop);
+    map.on("resize", ensureSpinLoop);
+    // Sekmeye geri dönüşte kare döngüsü yeniden kurulur (arka planda durmuştu).
+    const onVisibilityForSpin = () => {
+      if (!document.hidden) ensureSpinLoop();
+    };
+    document.addEventListener("visibilitychange", onVisibilityForSpin);
 
-    report();
+    // Ölçülen kare hızı akıcı değilse piksel oranı bir kez düşürülür.
+    // Cihaz sinyalleri yanıltıcı olabildiği için gerçek ölçüm esas alınır.
+    // NOT: `setCenter` (autospin) `jumpTo` kullanır ve bu da movestart/moveend
+    // yayar; bu yüzden ölçüm yalnız kullanıcı hareketinde sayılır.
+    let qualityLowered = false;
+    let sampleFrames = 0;
+    let sampleStartAt = 0;
+    const onSampleFrame = () => {
+      if (!sampleStartAt) return;
+      sampleFrames += 1;
+    };
+    const onSampleStart = () => {
+      if (internalMove.current) return;
+      sampleStartAt = performance.now();
+      sampleFrames = 0;
+    };
+    const onSampleEnd = () => {
+      if (internalMove.current || !sampleStartAt) return;
+      const elapsed = performance.now() - sampleStartAt;
+      sampleStartAt = 0;
+      const fps = measuredFps(sampleFrames, elapsed);
+      if (!shouldLowerMapQuality(fps, appliedPixelRatio, qualityLowered)) return;
+      qualityLowered = true;
+      appliedPixelRatio = 1;
+      // `setPixelRatio` içinde `resize()` var; resize de movestart/moveend
+      // yayar. Olay dağıtımının içinden çağırmak yerine bir sonraki kareye
+      // bırakılır (yeniden giriş ve yarım kalan transform güncellemesi olmasın).
+      requestAnimationFrame(() => {
+        if (spinDisposed || !mapRef.current) return;
+        if (typeof map.setPixelRatio === "function") map.setPixelRatio(1);
+      });
+      // Ağır katmanları (arazi/tepe gölgesi) kapatma kararı sahibine bırakılır:
+      // kullanıcı kendi seçimini yaptıysa arayüz onu ezmez.
+      live.current.onSlowDevice?.();
+    };
+    map.on("render", onSampleFrame);
+    map.on("movestart", onSampleStart);
+    map.on("moveend", onSampleEnd);
+
+    report(true);
 
     return () => {
+      spinDisposed = true;
       cancelAnimationFrame(raf);
+      raf = 0;
+      document.removeEventListener("visibilitychange", onVisibilityForSpin);
       window.removeEventListener("atlasia:weather-toggle", onWeatherToggle);
       window.removeEventListener("atlasia:weather-mode", onWeatherMode);
       window.removeEventListener("atlasia:weather-stops", onWeatherStops);

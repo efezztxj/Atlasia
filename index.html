@@ -101,6 +101,10 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180.png" />
     <title>Atlasia — Dünyayı merakınla keşfet</title>
+    <!-- Harita karoları ilk boyamadan hemen sonra istenir; TLS el sıkışması
+         önceden yapılırsa ilk harita karesi daha erken gelir. -->
+    <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin />
+    <link rel="dns-prefetch" href="https://tiles.openfreemap.org" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

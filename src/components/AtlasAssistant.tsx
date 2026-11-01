@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { analytics } from "../lib/analytics";
 import { ArrowDown, ArrowUp, Bookmark, Check, ChevronDown, Clock3, ExternalLink, ImagePlus, MapPin, Navigation, RotateCcw, Send, Sparkles, ThumbsDown, ThumbsUp } from "lucide-react";
 import type { AtlasRoute, Place, RouteBrief, ViewState } from "../types";
@@ -44,7 +44,7 @@ interface Props {
 }
 const coordinates = (route: AtlasRoute) => route.days.flatMap((day) => decodePolyline(day.polyline));
 
-export default function AtlasAssistant({ open, onOpen, onClose, places, view, origin, selectedPlace, hasLocation, resumeRoute, dockExpanded, onOpenRouteEditor, onPreview, onDraw, onPulse, onFit, hiddenOnMobile }: Props) {
+export function AtlasAssistant({ open, onOpen, onClose, places, view, origin, selectedPlace, hasLocation, resumeRoute, dockExpanded, onOpenRouteEditor, onPreview, onDraw, onPulse, onFit, hiddenOnMobile }: Props) {
   const { saveRoute, savedRoutes } = useCollections();
   const panelRef = usePanelAccess(open, onClose);
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -338,3 +338,19 @@ function RouteResult({ route, approved, saved, onConfirm, onStop, onReorder, onS
     <div className="mt-4 flex flex-wrap gap-3 border-t border-white/10 pt-3 text-[12px]">{googleLinks.map((link, index) => <a key={link.url} href={link.url} target="_blank" rel="noreferrer" className="flex min-h-10 items-center gap-1.5 text-sun"><Navigation size={13} />Google Haritalar{googleLinks.length > 1 ? ` ${index + 1}/${googleLinks.length}` : ""} <ExternalLink size={12} /></a>)}{yandex && <a href={yandex} target="_blank" rel="noreferrer" className="flex min-h-10 items-center gap-1.5 text-sun">Yandex Haritalar <ExternalLink size={12} /></a>}{apple && <a href={apple} target="_blank" rel="noreferrer" className="flex min-h-10 items-center gap-1.5 text-mint">Apple'da ilk durak <ExternalLink size={12} /></a>}</div>{unavailableProviders.length > 0 && <ul className="mt-1 space-y-1 text-[11px] leading-relaxed text-mint/70">{unavailableProviders.map((message) => <li key={message}>{message}</li>)}</ul>}{splitNotice && <p className="mt-1 text-[11px] text-mint/70">{splitNotice}</p>}<p className="mt-1 text-[11px] text-mint/70">Yol mesafesi tahminidir.</p>{apple && <p className="mt-1 text-[11px] text-mint/70">Apple bağlantısı seçili günün ilk durağını açar.</p>}
   </section>;
 }
+/**
+ * Kapalı panel yalnız başlatıcı düğmesini çizer. Bu durumda `view`, `places`
+ * gibi harita verileri değişse de yeniden render gerekmez: düğme yalnız
+ * `hiddenOnMobile` / `dockExpanded` değerlerine bağlıdır. Panel açıldığında
+ * karşılaştırma false döner ve bileşen güncel prop'larla çizilir.
+ *
+ * Kapalıyken yok sayılan geri çağrılar (`onOpen` vb.) yalnız state
+ * setter'larını çağırdığı için bayat closure riski taşımaz.
+ */
+export function areAssistantPropsEqual(prev: Props, next: Props): boolean {
+  if (prev.open !== next.open) return false;
+  if (next.open) return false;
+  return prev.hiddenOnMobile === next.hiddenOnMobile && prev.dockExpanded === next.dockExpanded;
+}
+
+export default memo(AtlasAssistant, areAssistantPropsEqual);

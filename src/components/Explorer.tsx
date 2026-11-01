@@ -36,6 +36,7 @@ import { formatAccuracy, useGeolocation } from "../hooks/useGeolocation";
 import { useAtlasData } from "../hooks/useAtlasData";
 import { useFirestoreAtlasData } from "../hooks/useFirestoreAtlasData";
 import { useTheme } from "../hooks/useTheme";
+import { readDeviceSignals, recommendedTerrain } from "../utils/deviceTier";
 import type { InstallAppController } from "../hooks/useInstallApp";
 // A3: SDK başlatan `lib/firebase` yerine SDK'sız kapı. Explorer zaten Firestore
 // kullanıyor ama bu import yüzünden SDK, yapılandırma okuması için de değil,
@@ -265,9 +266,21 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
   const rawDiscoveries = cloud.places;
   const rawPosts = cloud.posts;
   const rawStories = cloud.stories;
-  const discoveries = rawDiscoveries.filter((pl) => !isBlocked(pl.authorUid));
-  const filteredPosts = rawPosts.filter((po) => !isBlocked(po.authorUid));
-  const filteredStories = rawStories.filter((st) => !isBlocked(st.authorUid));
+  // Bu üç liste harita hareketlerinde de render tetikleyen her durumda
+  // yeniden hesaplanıyordu; kaynak dizi ya da engel listesi değişmedikçe
+  // sonuç aynı olduğu için memo'ya alındı.
+  const discoveries = useMemo(
+    () => rawDiscoveries.filter((pl) => !isBlocked(pl.authorUid)),
+    [rawDiscoveries, isBlocked],
+  );
+  const filteredPosts = useMemo(
+    () => rawPosts.filter((po) => !isBlocked(po.authorUid)),
+    [rawPosts, isBlocked],
+  );
+  const filteredStories = useMemo(
+    () => rawStories.filter((st) => !isBlocked(st.authorUid)),
+    [rawStories, isBlocked],
+  );
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [category, setCategory] = useState<CategoryId | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -277,7 +290,20 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
   const [spin, setSpin] = useState(true);
   const [heroCompact, setHeroCompact] = useState(false);
   const [labels, setLabels] = useState(true);
-  const [terrain, setTerrain] = useState(true);
+  // Ağır arazi katmanı zayıf cihazda kapalı başlar (3B eğim de buna bağlı).
+  // Kullanıcı Katmanlar sayfasından her zaman açabilir; bu durumda otomatik
+  // düşürme devreye girmez.
+  const [terrain, setTerrain] = useState(() => recommendedTerrain(readDeviceSignals()));
+  const terrainTouched = useRef(false);
+  const toggleTerrain = useCallback(() => {
+    terrainTouched.current = true;
+    setTerrain((value) => !value);
+  }, []);
+  // Ölçülen kare hızı düşükse arayüz kendi kendine araziyi kapatır; kullanıcı
+  // kendi seçimini yaptıysa dokunulmaz.
+  const handleSlowDevice = useCallback(() => {
+    if (!terrainTouched.current) setTerrain(false);
+  }, []);
   // Hava katmanı tek kaynaktan yönetilir: Katmanlar sayfası + sağ ray düğmesi.
   const [weather, setWeather] = useState(false);
   const [weatherStatus, setWeatherStatus] = useState<WeatherStatus>("empty");
@@ -737,8 +763,14 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
       }
     });
   }, [notifications, user?.uid]);
-  const visibleNotifications = notifications.filter((item) => !isBlocked(item.actorUid));
-  const unreadCount = visibleNotifications.filter((n) => !n.read).length;
+  const visibleNotifications = useMemo(
+    () => notifications.filter((item) => !isBlocked(item.actorUid)),
+    [notifications, isBlocked],
+  );
+  const unreadCount = useMemo(
+    () => visibleNotifications.filter((n) => !n.read).length,
+    [visibleNotifications],
+  );
   const handleMarkAllRead = () => { if (user?.uid) void markAllRead(user.uid, notifications); };
   const handleNotificationRead = (id: string) => { if (user?.uid) void markNotificationRead(user.uid, id, true); };
   const clearSocialTarget = useCallback(() => setSocialTarget(null), []);
@@ -1149,6 +1181,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
             onMapClick={handleMapClick}
             showLabels={labels}
             terrainEnabled={terrain}
+            onSlowDevice={handleSlowDevice}
             baseMap={baseMap}
             theme={theme}
             spin={spin && !reducedMotion && !addMode && !draft}
@@ -1257,7 +1290,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
             labels={labels}
             onToggleLabels={() => setLabels((v) => !v)}
             terrain={terrain}
-            onToggleTerrain={() => setTerrain((v) => !v)}
+            onToggleTerrain={toggleTerrain}
             weather={weather}
             onToggleWeather={toggleWeather}
             weatherStatus={weatherStatus}
@@ -1562,7 +1595,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
         showLabels={labels}
         terrainEnabled={terrain}
         onToggleLabels={() => setLabels((value) => !value)}
-        onToggleTerrain={() => setTerrain((value) => !value)}
+        onToggleTerrain={toggleTerrain}
         onOpenLocation={() => { closePanels(); openSettings(); }}
         locationReady={!!geo.fix}
         places={visiblePlaces}

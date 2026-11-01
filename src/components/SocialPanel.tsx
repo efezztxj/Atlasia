@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, lazy, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Ban,
   CornerDownRight,
@@ -83,7 +83,7 @@ interface Props {
   onSocialTargetHandled?: () => void;
 }
 
-export default function SocialPanel({
+export function SocialPanel({
   open,
   onOpen,
   onClose,
@@ -937,3 +937,22 @@ export default function SocialPanel({
     </>
   );
 }
+
+/**
+ * Kapalı panel yalnız "İzler" başlatıcısını çizer; düğme `posts` içeriğine ve
+ * konuma bağlıdır. Harita `view`'i değiştiğinde (kaydırma/yakınlaştırma)
+ * yeniden render gerekmez. Panel açılınca karşılaştırma false döner.
+ */
+export function areSocialPropsEqual(prev: Props, next: Props): boolean {
+  if (prev.open !== next.open) return false;
+  if (next.open) return false;
+  // Kapalıyken görünen tek şey "İzler" başlatıcısıdır; üzerindeki sayaç
+  // gönderi sayısından ve görülmemiş *hikâye* sayısından beslenir. İkisi de
+  // karşılaştırılmazsa yeni hikâye geldiğinde rozet bayat kalır.
+  return prev.posts === next.posts
+    && prev.stories === next.stories
+    && prev.precise === next.precise
+    && prev.hasMorePosts === next.hasMorePosts;
+}
+
+export default memo(SocialPanel, areSocialPropsEqual);

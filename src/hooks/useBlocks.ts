@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { subscribeBlocks } from "../lib/moderation";
 
 export function useBlocks(uid: string | undefined) {
@@ -24,7 +24,12 @@ export function useBlocks(uid: string | undefined) {
   }, [uid]);
 
   const blockedSet = useMemo(() => new Set(blockedUids), [blockedUids]);
-  const isBlocked = (otherUid?: string | null) => !!otherUid && blockedSet.has(otherUid);
+  // Kimlik sabit: engel listesi değişmedikçe `isBlocked` yeniden üretilmez.
+  // Aksi hâlde ona bağlı `useMemo` filtreleri her render'da baştan hesaplanıyordu.
+  const isBlocked = useCallback(
+    (otherUid?: string | null) => !!otherUid && blockedSet.has(otherUid),
+    [blockedSet],
+  );
 
   return { blockedUids, blockedSet, isBlocked, ready };
 }
