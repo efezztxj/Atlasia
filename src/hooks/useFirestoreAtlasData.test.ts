@@ -425,6 +425,99 @@ describe("useFirestoreAtlasData orkestrasyonu", () => {
     expect(h.listStoriesPage).toHaveBeenCalledTimes(1);
   });
 
+  it("AY-02: oturum değişirse geç dönen sayfa yeni oturuma yazılmaz", async () => {
+    const { result, rerender } = renderData({ uid: "u1" });
+    act(() =>
+      h.postSubs[0].onChange({
+        items: [post("p2", 200)],
+        cursor: cursor("post-ilk"),
+        hasMore: true,
+      }),
+    );
+    act(() =>
+      h.storySubs[0].onChange({
+        items: [story("s2", NOW - 200_000)],
+        cursor: cursor("story-ilk"),
+        hasMore: true,
+        cutoffMs: NOW - 50_000_000,
+      }),
+    );
+
+    let resolvePosts: ((page: FirestorePage<FeedPost>) => void) | undefined;
+    let resolveStories: ((page: StoryPage) => void) | undefined;
+    h.listPostsPage.mockImplementationOnce(
+      () => new Promise<FirestorePage<FeedPost>>((resolve) => { resolvePosts = resolve; }),
+    );
+    h.listStoriesPage.mockImplementationOnce(
+      () => new Promise<StoryPage>((resolve) => { resolveStories = resolve; }),
+    );
+
+    let postsPromise: Promise<void> | undefined;
+    let storiesPromise: Promise<void> | undefined;
+    act(() => {
+      postsPromise = result.current.loadMorePosts();
+      storiesPromise = result.current.loadMoreStories();
+    });
+    expect(result.current.loadingMorePosts).toBe(true);
+    expect(result.current.loadingMoreStories).toBe(true);
+
+    // Oturum değişir (çıkış/giriş): kuşak artar, listeler sıfırlanır.
+    rerender({ uid: "u2" });
+
+    await act(async () => {
+      resolvePosts?.({ items: [post("sizinti", 50)], cursor: cursor("sonraki"), hasMore: true });
+      resolveStories?.({
+        items: [story("sizinti-story", NOW - 1_000)],
+        cursor: cursor("sonraki-story"),
+        hasMore: true,
+        cutoffMs: NOW - 50_000_000,
+      });
+      await postsPromise;
+      await storiesPromise;
+    });
+
+    // Eski oturumun sayfası yeni kullanıcının listesine sızmaz.
+    expect(result.current.posts).toEqual([]);
+    expect(result.current.stories).toEqual([]);
+    expect(result.current.hasMorePosts).toBe(false);
+    expect(result.current.hasMoreStories).toBe(false);
+    expect(result.current.error).toBeNull();
+    expect(result.current.loadingMorePosts).toBe(false);
+    expect(result.current.loadingMoreStories).toBe(false);
+  });
+
+  it("AY-02: eski oturumun sayfalama hatası yeni oturumun hata durumuna yazılmaz", async () => {
+    const { result, rerender } = renderData({ uid: "u1" });
+    act(() =>
+      h.postSubs[0].onChange({
+        items: [post("p1", 100)],
+        cursor: cursor("post-ilk"),
+        hasMore: true,
+      }),
+    );
+
+    let rejectPosts: ((error: Error) => void) | undefined;
+    h.listPostsPage.mockImplementationOnce(
+      () => new Promise<FirestorePage<FeedPost>>((_resolve, reject) => { rejectPosts = reject; }),
+    );
+
+    let postsPromise: Promise<void> | undefined;
+    act(() => {
+      postsPromise = result.current.loadMorePosts();
+    });
+
+    rerender({ uid: "u2" });
+
+    await act(async () => {
+      rejectPosts?.(new Error("eski oturumun ağ hatası"));
+      await postsPromise;
+    });
+
+    // Çıkış yapan kullanıcının hatası yeni oturumun ekranına taşınmaz.
+    expect(result.current.error).toBeNull();
+    expect(result.current.loadingMorePosts).toBe(false);
+  });
+
   it("canlı ilk sayfa kayınca yüklenmiş kuyruktaki yerinden çıkan gönderiyi kaybetmez", async () => {
     const { result } = renderData();
     const firstCursor = cursor("ilk");

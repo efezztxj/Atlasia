@@ -1,5 +1,11 @@
 # Atlasia Update
 
+## 2026-11-01 (gece) — Gerçek tarayıcıda axe kapısı (S3) + sayfalama kuşak koruması (S5)
+
+- **S3 / P1-4 — erişilebilirlik artık gerçek tarayıcıda kapı:** `@axe-core/playwright` eklendi ve `e2e/a11y.spec.ts` dört senaryoda **yedi tarama** yapıyor (tanıtım masaüstü 1280×800 açık tema · tanıtım mobil 390×844 koyu tema · çerez paneli açık/kapalı · keşif kabuğu karşılama diyaloğu · harita yüzeyi · katmanlar paneli). Kural seti `wcag2a/wcag2aa/wcag21a/wcag21aa`, eşik **critical + serious = 0**; `moderate/minor` ihlaller annotation'a yazılıyor. JSDOM'da ölçülemeyen kontrast ve odak hataları böylece PR kapısına girdi. Ek CI adımı gerekmedi: mevcut `test:e2e` adımı `e2e/` altındaki tüm spec'leri koşuyor. Ortak ağ sahtekârlığı `e2e/support/harness.ts` içine alındı.
+- **S5 / AY-02 — sayfalama kuşak koruması (gerçek sızıntı kapatıldı):** `loadMorePosts` ve `loadMoreStories`, `await` sonrasında oturum denetimi yapmıyordu; aynı dosyada `toggleLike` için olan `sessionRef` koruması sayfalamada yoktu. Sonuç: çıkış yapan kullanıcının **geç dönen sayfası yeni oturumun listesine** eklenebiliyor, eski oturumun ağ hatası yeni kullanıcının hata şeridine düşebiliyordu. İki fonksiyonda da istek öncesi kuşak yakalanıyor, kuşak değişmişse yanıt state'e yazılmıyor ve hata yayınlanmıyor; yükleme bayrakları `finally` ile her durumda iniyor. Düzeltme kaldırıldığında iki yeni test kırmızıya düşüyor (`expected [ { id: 'sizinti' } ] to deeply equal []`), düzeltmeyle yeşil — yani "kanıtlanmamış" notu artık **kanıtlanmış** bir hataya dönüştü. Testler 14 → 16.
+- Ayrıntı: `docs/teslimatlar/teslimat-s3-s5-2026-11-01.md`.
+
 ## 2026-11-01 (akşam) — Clarity "veri görünmüyor" sorunu ölçülebilir hâle getirildi
 
 - **Tarayıcıda durum görünürlüğü:** `src/lib/clarity.ts` artık betiğin gerçek durumunu tutuyor — `off` (izin yok), `loading`, `ready` (yüklendi), `blocked` (reklam engelleyici/DNT betiği düşürdü). Çerez panelinde izin verildiğinde "Clarity betiği yüklendi, kayıt 1-2 dakikada panelde görünür" ya da "Tarayıcın Clarity betiğini engelledi, bu oturumda hiçbir veri gönderilmiyor" satırı çıkıyor. Destek için `window.atlasiaClarityStatus()` eklendi (rıza, durum, betik var mı, proje kimliği).
