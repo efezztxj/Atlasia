@@ -15,7 +15,7 @@
 | Bileşen (`src/components/*.tsx`) | 48 |
 | Hook (`src/hooks/*.ts`) | 20 |
 | Kütüphane modülü (`src/lib/*.ts`) | 32 |
-| Doküman dosyası (`docs/**/*.md`) | 119 |
+| Doküman dosyası (`docs/**/*.md`) | 120 |
 
 ## 2. Güvenlik yüzeyi
 
