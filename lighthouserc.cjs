@@ -29,6 +29,9 @@ module.exports = {
         // Mobil form faktörü + simüle edilmiş 4G: S4'ün istediği profil.
         formFactor: "mobile",
         throttlingMethod: "simulate",
+        // CI konteynerinde /dev/shm küçük ve sandbox kısıtlı; Lighthouse'ın
+        // Chromium'u bu iki bayrak olmadan düşebiliyor (ölçümü etkilemez).
+        chromeFlags: "--no-sandbox --disable-dev-shm-usage",
         onlyCategories: ["performance", "accessibility"],
         // SEO/PWA puanları bu kapının konusu değil; ölçüm süresini kısaltır.
         skipAudits: ["canonical", "is-crawlable", "robots-txt", "structured-data"],

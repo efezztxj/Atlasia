@@ -118,6 +118,18 @@ jobs:
       # S4: gerçek LCP/TBT ölçen kapı. Paket bütçesi (kB) tek başına yeterli
       # değil; burada üretim derlemesi mobil profilde 3 kez ölçülür, medyan
       # değerlendirilir. Eşikler lighthouserc.cjs içinde ve düşürülmesi yasak.
+      #
+      # Chrome: koşucuda sistem Chrome'u garanti değil (ilk koşu "Chrome
+      # installation not found" ile düştü). Zaten bir önceki adımda kurulan
+      # Playwright Chromium'u kullanılıyor; yol sürüme göre değiştiği için
+      # `playwright-core`tan okunuyor.
+      - name: Chromium yolunu Lighthouse'a ver
+        run: |
+          CHROME=$(node -e "const { chromium } = require('playwright-core'); console.log(chromium.executablePath())")
+          test -x "$CHROME"
+          echo "CHROME_PATH=$CHROME" >> "$GITHUB_ENV"
+          "$CHROME" --version
+
       - name: Lighthouse CI kapısı (mobil · perf ≥ 0,85 · a11y ≥ 0,95)
         run: npm run test:lighthouse
 
