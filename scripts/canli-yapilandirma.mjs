@@ -350,6 +350,18 @@ async function main() {
   }
 
   if (process.env.GITHUB_ACTIONS === "true") {
+    // Clarity bulgusu da annotation olarak yayınlanır: iş log'u erişilemezse
+    // (bu depoda olduğu gibi) tek okunabilir kanıt annotations API'sidir.
+    const clarityFacts =
+      `script-src clarity=${clarity.scriptSrc.includes("https://scripts.clarity.ms") ? "var" : "YOK"} | ` +
+      `connect *.clarity=${clarity.connectSrc.includes("https://*.clarity.ms") ? "var" : "YOK"} | ` +
+      `tag=${clarity.tag?.status ?? "ulasilamadi"}`;
+    if (clarity.ok) {
+      annotation("notice", "Canli Clarity", `${clarityFacts} | ${clarity.notes?.join(" ; ") || "saglikli"}`);
+    } else {
+      annotation("error", "Canli Clarity", `${clarityFacts} | Sorunlar: ${clarity.problems.join(" ; ")}`);
+    }
+
     const { config, entry, base, chunksScanned = 1, scannedPaths = [] } = result;
     const facts =
       `base=${base} | entry=${entry} | parca=${chunksScanned} | projectId=${config.projectId ?? "(yok)"} | ` +
