@@ -14,7 +14,7 @@ Netlify Atlasia yayın hattının parçası değildir.
 
 ## Gereksinimler
 
-- Node.js 22.13+ veya 24+
+- Node.js 22.13+ (tek kaynak: `.nvmrc` = 22.13.0; CI dört iş akışında da bu dosyayı okur)
 - npm 10.9.2 (`packageManager` ile sabitlenmiştir)
 - Firestore güvenlik kuralı testleri için Java 21
 

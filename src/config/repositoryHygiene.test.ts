@@ -15,7 +15,7 @@ describe("depo hijyeni", () => {
       name: "atlasia",
       version: "0.1.0",
       packageManager: "npm@10.9.2",
-      engines: { node: "^22.13.0 || >=24.0.0" },
+      engines: { node: ">=22.13.0" },
     });
     expect(pkg.description).toContain("Atlasia");
   });

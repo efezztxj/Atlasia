@@ -1,5 +1,29 @@
 # Atlasia Update
 
+## 2026-11-01 — F1-6 (adım 4/5) + F5-6 + F4-4 + F5-4 (protokol)
+
+Plan §F1-6, §F5-6, §F4-4, §F5-4. **`Explorer.tsx` 969 → 642 satır** (başlangıç 1.796 → −1.154, %64).
+
+- **`src/hooks/useExplorerLifecycle.ts`** — altı açılış/yaşam döngüsü bağlantısı tek kancada:
+  yazar adı önbelleği, profil dizini eşitlemesi, paylaşılan rota bağlantısı (`?route=`/`#r=`),
+  kabul edilen arkadaşlık isteği uzlaştırması, manifest kısayolu (`?tab=`) ve davet bağlantısı.
+  6 davranış testi (`?tab=` bir kez + adresten silinir, aynı paylaşım iki kez açılmaz, cihaz
+  hesabı dizine yazmaz).
+- **`src/hooks/useExplorerDerived.ts`** — 13 saf türetme (görünür yerler, sahiplik kapısı,
+  açık yer, "şu an" seçili yer, yakınlık sayacı, engellenmiş yazar filtresi, okunmamış sayacı).
+  8 davranış testi (3,2 zoom eşiği, yazarsız yer sahipliği, kategori filtresi, canlı tazeleme).
+- **F5-6 — Node sürümü tek cevap:** `.nvmrc` 20 → **22.13.0**; dört iş akışı sabit `node-version: 22`
+  yazmayı bıraktı, `node-version-file: .nvmrc` okuyor; `engines.node` → `>=22.13.0`.
+  Yeni kapı `src/config/nodeVersion.test.ts` (4 test) çelişkiyi ve sabit sürüm dönüşünü yakalar.
+  **Açık:** `@firebase/app@0.16.4` `>=24.12.0` istiyor → Node 22'de `npm ci` `EBADENGINE` uyarısı
+  verir; Node 24 hattı bu ortamda doğrulanamadığı için karar ertelendi (uydurma yok).
+- **F4-4 — arşiv kuralı:** `docs/README.md` · "güncel durum" iddiası yalnız `docs/DURUM.md`'de,
+  tarihli notlar arşivdir, eskiler silinmez `docs/arsiv/`ya taşınır.
+- **F5-4 — insan erişilebilirlik protokolü:** `docs/erisilebilirlik-protokolu.md` (NVDA, VoiceOver,
+  yalnız klavye; görev metni + sonuç tablosu). **Uygulanmadı** — tablo "ölçülmedi" olarak boş.
+- **Ölçüm:** 191 dosya / 1.456 test · kapsam %65,42 / %56,02 / %60,67 / %70,38 (eşik 64/55/60/69) ·
+  JS 1.001.149 B gzip (bütçe 1.003.000 · pay 1.851 B) · SW 63/63.
+
 ## 2026-11-01 — F1-6 (adım 3): harita sahnesi `MapScene`'e taşındı
 
 Plan §F1-6. MapView, başlık, karşılama şeridi, arama, harita kontrolleri, yürüyüş düğmesi,

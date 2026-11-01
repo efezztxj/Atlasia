@@ -11,11 +11,11 @@
 | Ölçüm | Değer |
 |---|---|
 | Kaynak dosya (test hariç) | **168** |
-| Test dosyası | **189** |
+| Test dosyası | **190** |
 | Bileşen (`src/components/*.tsx`) | 53 |
 | Hook (`src/hooks/*.ts`) | 25 |
 | Kütüphane modülü (`src/lib/*.ts`) | 32 |
-| Doküman dosyası (`docs/**/*.md`) | 123 |
+| Doküman dosyası (`docs/**/*.md`) | 125 |
 
 ## 2. Güvenlik yüzeyi
 
@@ -30,7 +30,7 @@
 
 | Ölçüm | Değer |
 |---|---|
-| `engines.node` | `^22.13.0 || >=24.0.0` |
+| `engines.node` | `>=22.13.0` |
 | `packageManager` | `npm@10.9.2` |
 
 ## 4. Zorunlu kapılar

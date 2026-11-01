@@ -58,10 +58,12 @@ describe("üretim bağımlılığı güvenlik sabitlemeleri", () => {
 
   it("MapLibre v6 stil zincirinin motor şartını CI'da karşılar", () => {
     const workflow = readFileSync(".github/workflows/ci.yml", "utf8");
-
-    expect(manifest.engines?.node).toBe("^22.13.0 || >=24.0.0");
-    expect(workflow).toContain("name: Use Node.js 22");
-    expect(workflow).toMatch(/node-version:\s*22/);
+    // F5-6: tek cevap `.nvmrc`; alt sınır `engines` içinde, CI sabit sayı yazmaz.
+    const nvmrc = readFileSync(".nvmrc", "utf8").trim();
+    expect(manifest.engines?.node).toBe(">=22.13.0");
+    expect(workflow).toContain("node-version-file: .nvmrc");
+    // Zincirin şartı: Node >= 22 (@mapbox/jsonlint-lines-primitives@2.0.3).
+    expect(Number(nvmrc.split(".")[0])).toBeGreaterThanOrEqual(22);
   });
 
   it("Firebase'in dar gRPC aralığını ilk güvenli 1.x sürümüne override eder", () => {

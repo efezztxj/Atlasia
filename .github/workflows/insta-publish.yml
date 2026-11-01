@@ -94,11 +94,11 @@ jobs:
             echo "Zamanı gelen $count kayıt var."
           fi
 
-      - name: Use Node.js 22
+      - name: Use Node.js (.nvmrc)
         if: steps.queue.outputs.count != '0'
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 22
+          node-version-file: .nvmrc
 
       - name: Sırların varlığını denetle
         # Kurucu modda hiçbir ağ çağrısı yapılmaz, bu yüzden jeton zorunlu değil.

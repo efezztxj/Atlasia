@@ -23,3 +23,13 @@ sözleşmesi ve giriş belgeleri kalır: `README.md`, `AGENTS.md`, `CONTRIBUTING
 3. İçerik en az: görev, branch, taban/teslim commit, değişen dosyalar, koşulan
    komutlar ve sonuçları, kilitli dosya kontrolü, bilinen riskler.
 4. `reports/` ve `patches/` arşivdir; yeni dosya eklemek yerine `docs/` kullan.
+
+## Arşiv kuralı (F4-4)
+
+- **"Güncel durum" iddiası yalnız `docs/DURUM.md`'de** yazılır; o dosya
+  `npm run state:doc` ile üretilir ve `stateDoc.test.ts` bayat sayıyı yakalar.
+- Tarihli rapor/denetim/teslim notları yazıldığı günün fotoğrafıdır: dosya
+  adındaki tarih (**yyyy-mm-dd**) o günün doğrusudur, bugünün değil.
+- Bir konuda **birden çok** tarihli not varsa en yenisi geçerlidir; eskiler
+  silinmez, `docs/arsiv/` altına taşınır ve `docs/README.md`'deki tabloya not
+  düşülür. Silme yok: karar geçmişi kayıt altında kalır.
