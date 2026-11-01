@@ -7,7 +7,6 @@
  * yüzden App.tsx onu `lazy()` ile çağırır (bkz. config/lazyLoading.test.ts).
  */
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { Activity, Compass, Crosshair, MapPin, MousePointerClick, Plus, UserRound, UsersRound, X } from "lucide-react";
 import type { MapViewHandle } from "./MapView";
 import Header from "./Header";
 import Hero from "./Hero";
@@ -38,6 +37,9 @@ import { useTheme } from "../hooks/useTheme";
 import { useMapLayerPrefs } from "../hooks/useMapLayerPrefs";
 import { useDiscoveryFlow } from "../hooks/useDiscoveryFlow";
 import { FIRST_ROUTE_KEY, useExplorerEnvironment } from "../hooks/useExplorerEnvironment";
+import { MapSurfaceHints } from "./explorer/MapCanvas";
+import { AddModeBanner, DataErrorBanner, MobileSearchSheet, ToastBanner } from "./explorer/OverlayPanels";
+import { MobileTabBar, WalkFab } from "./explorer/DockChrome";
 import { useModerationInbox, useModeratorAccess } from "../hooks/useModerationInbox";
 import { usePanelStack } from "../hooks/usePanelStack";
 import type { InstallAppController } from "../hooks/useInstallApp";
@@ -972,16 +974,12 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
 
       {/* Mobil arama sayfası */}
       {searchOpen && (
-        <div className="fixed inset-0 z-[60] md:hidden">
-          <button type="button" aria-label="Aramayı kapat" onClick={() => setSearchOpen(false)} className="absolute inset-0 bg-black/55" />
-          <div className="mobile-search-sheet absolute inset-x-3 top-[calc(64px+env(safe-area-inset-top))] rounded-[24px] border border-leaf/30 bg-[#031d17] p-3 shadow-2xl">
-            <SearchBox
-              places={allPlaces}
-              onPick={(result) => { setSearchOpen(false); handleSearchPick(result); }}
-              onOpenFilters={() => { setSearchOpen(false); setDrawerOpen(true); }}
-            />
-          </div>
-        </div>
+        <MobileSearchSheet
+          places={allPlaces}
+          onPick={(result) => { setSearchOpen(false); handleSearchPick(result); }}
+          onClose={() => setSearchOpen(false)}
+          onOpenFilters={() => { setSearchOpen(false); setDrawerOpen(true); }}
+        />
       )}
 
       <MapControls
@@ -1008,17 +1006,15 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
       {/* Harita üstü eylem çifti — sol: yürüyüş kaydı (nötr cam), sağ: Atlas AI.
           Ekle artık alt çubuğun ortasında; ölçüler index.css →
           .mobile-walk-fab / .mobile-tab-add / .atlas-launcher. */}
-      {!trackRecorderOpen && <button
-        type="button"
-        onClick={() => {
-          if (guest) { askAccount("Yürüyüş kaydı için bir hesap aç ya da giriş yap."); return; }
-          setTrackRecorderOpen(true);
-        }}
-        aria-label="Yürüyüş kaydını aç"
-        title="Yürüyüş kaydı"
-
-        className={`mobile-walk-fab glass-panel gold-frame pressable grid place-items-center rounded-full md:hidden${panelOpen ? " max-md:hidden" : ""}`}
-      ><Activity size={19} strokeWidth={2} /></button>}
+      {!trackRecorderOpen && (
+        <WalkFab
+          panelOpen={panelOpen}
+          onClick={() => {
+            if (guest) { askAccount("Yürüyüş kaydı için bir hesap aç ya da giriş yap."); return; }
+            setTrackRecorderOpen(true);
+          }}
+        />
+      )}
       {layersOpen && (
         <Suspense fallback={null}>
           <MapLayersSheet
@@ -1091,84 +1087,33 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
         />
       </Suspense>
 
-      {/* İpucu + atıf */}
-      <div className="pointer-events-none absolute right-28 bottom-[30%] z-10 hidden flex-col items-end gap-2 text-right lg:flex">
-        <p className="flex items-center gap-2 text-[10.5px] font-medium tracking-[0.16em] text-mint/70 uppercase">
-          <span className="relative flex size-1.5">
-            <span className="absolute inline-flex size-full animate-ping rounded-full bg-leaf opacity-70" />
-            <span className="relative inline-flex size-1.5 rounded-full bg-leaf" />
-          </span>
-          Haritayı tut, döndür, keşfet
-        </p>
-        {precise && (
-          <button
-            onClick={handleClearLocation}
-            className="pointer-events-auto flex items-center gap-2 rounded-full border border-leaf/25 bg-ink/80 px-3 py-1.5 text-[11px] text-mint/85 transition hover:border-leaf/60 hover:text-white"
-            title="Konum işaretini kaldır"
-          >
-            <Crosshair className="size-3.5 text-leaf" />
-            <span className="max-w-[180px] truncate">{precise.label}</span>
-            <span className="text-mint/50">{formatAccuracy(precise.accuracy)}</span>
-            <X className="size-3" />
-          </button>
-        )}
-      </div>
-      <p role="contentinfo" className="pointer-events-none absolute inset-x-0 bottom-[2px] z-20 hidden px-2 text-center text-[11px] leading-none text-mint/45 md:block">
-        Harita © Esri, OpenFreeMap, OpenMapTiles ve OpenStreetMap katkıcıları · Yükseklik verisi: AWS Terrain Tiles
-      </p>
+      {/* İpucu + atıf (F1-6: harita yüzeyi kromu ayrı dosyada) */}
+      <MapSurfaceHints precise={precise} onClearLocation={handleClearLocation} />
 
       {/* M-18: Kalıcı canlı veri hata şeridi + Yeniden dene */}
       {showDataErrorBanner && (
-        <div role="alert" className="animate-rise absolute top-[88px] left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full border border-sun/30 bg-ink/90 py-2 pr-2 pl-4 text-[12px] text-mint shadow-xl shadow-black/50">
-          <span>Canlı veriler yüklenemedi · yerel kayıtlar gösteriliyor</span>
-          <button
-            type="button"
-            onClick={() => {
-              setDismissedDataError(null);
-              cloud.retry();
-            }}
-            className="flex items-center gap-1 rounded-full bg-sun px-3 py-1.5 text-[12px] font-semibold text-ink transition"
-          >
-            Yeniden dene
-          </button>
-          <button
-            type="button"
-            aria-label="Canlı veri uyarısını kapat"
-            onClick={() => setDismissedDataError(remote.error)}
-            className="grid size-7 place-items-center rounded-full text-mint/70 transition hover:bg-white/10"
-          >
-            <X className="size-3.5" />
-          </button>
-        </div>
+        <DataErrorBanner
+          onRetry={() => {
+            setDismissedDataError(null);
+            cloud.retry();
+          }}
+          onDismiss={() => setDismissedDataError(remote.error)}
+        />
       )}
 
       {/* Ekleme modu bandı */}
       {addMode && (
-        <div className="animate-rise absolute top-[88px] left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 rounded-full border border-leaf/40 bg-ink/90 py-2 pr-2 pl-4 text-[12.5px] text-mint shadow-xl shadow-black/50">
-          <MousePointerClick className="size-4 shrink-0 text-leaf" />
-          <span>Keşfini bırakmak istediğin noktaya dokun</span>
-          <button
-            onClick={() => {
-              if (precise) {
-                setAddMode(false);
-                setDraft({ lng: precise.lng, lat: precise.lat });
-                return;
-              }
-              openSettings();
-            }}
-            title="Keşfi bulunduğun tam noktaya bırak"
-            className="flex items-center gap-1.5 rounded-full border border-leaf/40 bg-leaf/10 px-3 py-1.5 text-[12px] font-semibold text-leaf transition hover:bg-leaf/20"
-          >
-            <Crosshair className="size-3.5" />
-            Tam konumum
-          </button>
-          <button
-            onClick={() => setAddMode(false)}
-            className="flex items-center gap-1 rounded-full bg-white/10 px-3 py-1.5 text-[12px] font-semibold text-white transition hover:bg-white/20"
-          >
-            <X className="size-3.5" /> İptal
-          </button>
-        </div>
+        <AddModeBanner
+          onUseHere={() => {
+            if (precise) {
+              setAddMode(false);
+              setDraft({ lng: precise.lng, lat: precise.lat });
+              return;
+            }
+            openSettings();
+          }}
+          onCancel={() => setAddMode(false)}
+        />
       )}
 
       {dockVisible && <BottomPanel
@@ -1468,54 +1413,16 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
         </Suspense>
       )}
 
-      {/* Mobil ana menü (2026-10-25 düzeni):
-          4 sekme + ortada çubuğun üstüne taşan tek birincil eylem (ekle).
-          "Kaydet" sekmesi kaldırıldı; kayıtlara sağ üstteki üç çizgi menüsünden
-          girilir, böylece çubuk beş eşit sekmeye sıkışmıyor. */}
-      <nav aria-label="Mobil ana menü" className="mobile-tab-bar fixed inset-x-0 bottom-0 z-40 flex h-[calc(58px+env(safe-area-inset-bottom))] items-start justify-around border-t border-leaf/20 bg-[#041d17] pb-[env(safe-area-inset-bottom)] md:hidden">
-        {[
-          { label: "Keşfet", icon: Compass, action: mobileExplore },
-          { label: "Topluluk", icon: UsersRound, action: () => { closePanels(); setFeedOpen(true); } },
-        ].map(({ label, icon: Icon, action }) => {
-          const isActive = mobileTab === label;
-          return (
-            <button key={label} type="button" onClick={action} aria-current={isActive ? "page" : undefined} className="mobile-tab-item flex min-h-[54px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 text-[10px] text-mint">
-              <span className="mobile-tab-icon">
-                <Icon size={19} strokeWidth={isActive ? 2.3 : 1.8} />
-              </span>
-              {label}
-            </button>
-          );
-        })}
-
-        <button
-          type="button"
-          onClick={startAdd}
-          aria-label={addMode ? "Ekleme modundan çık" : "Haritaya yeni keşif ekle"}
-          aria-pressed={addMode}
-          title={addMode ? "Ekleme modundan çık" : "Yeni keşif"}
-          className="mobile-tab-add"
-        >
-          <span className="btn-gold-round">
-            <Plus className="size-[24px]" strokeWidth={2.4} />
-          </span>
-        </button>
-
-        {[
-          { label: "Profil", icon: UserRound, action: openProfile },
-          { label: "İzlerim", icon: MapPin, action: openMyPlaces },
-        ].map(({ label, icon: Icon, action }) => {
-          const isActive = mobileTab === label;
-          return (
-            <button key={label} type="button" onClick={action} aria-current={isActive ? "page" : undefined} className="mobile-tab-item flex min-h-[54px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 text-[10px] text-mint">
-              <span className="mobile-tab-icon">
-                <Icon size={19} strokeWidth={isActive ? 2.3 : 1.8} fill={isActive && label === "İzlerim" ? "currentColor" : "none"} />
-              </span>
-              {label}
-            </button>
-          );
-        })}
-      </nav>
+      {/* Mobil ana menü (2026-10-25 düzeni) — çizim: DockChrome.tsx */}
+      <MobileTabBar
+        mobileTab={mobileTab}
+        addMode={addMode}
+        onExplore={mobileExplore}
+        onCommunity={() => { closePanels(); setFeedOpen(true); }}
+        onAdd={startAdd}
+        onProfile={openProfile}
+        onMyPlaces={openMyPlaces}
+      />
 
       {myBan && (
         <Suspense fallback={null}>
@@ -1539,14 +1446,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
       )}
 
 
-      {toast && (
-        <div
-          role="status"
-          className="mobile-toast gold-frame animate-rise absolute top-[88px] left-1/2 z-50 -translate-x-1/2 rounded-full bg-ink-2/95 px-5 py-2.5 text-[13px] whitespace-nowrap text-mint"
-        >
-          {toast}
-        </div>
-      )}
+      {toast && <ToastBanner toast={toast} />}
 
       <ConfirmDialogHost />
     </div>

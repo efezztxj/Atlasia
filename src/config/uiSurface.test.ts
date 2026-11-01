@@ -18,6 +18,9 @@ const indexHtml = read("index.html");
 const themeBoot = readFileSync(fileURLToPath(new URL("../../public/theme-boot.js", import.meta.url)), "utf8");
 // App.tsx ince kapıdır (landing + giriş); keşif yerleşimi Explorer.tsx içinde.
 const app = read("src/components/Explorer.tsx");
+// F1-6: mobil çubuk ve harita üstü FAB kendi dosyalarına taşındı; kapılar
+// işareti ARTIK DOĞRU dosyada arar (sessizce gevşetilmedi).
+const dockChrome = read("src/components/explorer/DockChrome.tsx");
 const mapControls = read("src/components/MapControls.tsx");
 const bottomPanel = read("src/components/BottomPanel.tsx");
 const hero = read("src/components/Hero.tsx");
@@ -149,7 +152,7 @@ describe("küçük ekran yerleşimi (≈360×640)", () => {
   it("ekle ayrı yüzen düğme değil, çubuğun ortasındaki birincil eylem", () => {
     // 2026-10-25: ayrı + FAB'ı kaldırıldı; tek altın eylem çubuğun ortasında.
     expect(app).not.toContain("mobile-add-fab");
-    expect(app).toContain("mobile-tab-add");
+    expect(dockChrome).toContain("mobile-tab-add");
     expect(css).toContain(".mobile-tab-add > span");
     // Çubuk yüksekliği değişmedi; daire çubuğun üstüne taşar.
     expect(barHeight).toBe(58);
@@ -157,9 +160,9 @@ describe("küçük ekran yerleşimi (≈360×640)", () => {
 
   it("alt çubuk dört sekme taşır; Kaydet sekmesi çubuktan kaldırıldı", () => {
     for (const label of ["Keşfet", "Topluluk", "Profil", "İzlerim"]) {
-      expect(app).toContain(`label: "${label}"`);
+      expect(dockChrome).toContain(`label: "${label}"`);
     }
-    expect(app).not.toContain('label: "Kaydet"');
+    expect(dockChrome).not.toContain('label: "Kaydet"');
   });
 
   it("kayıtlar sağ üstteki üç çizgi menüsünden açılıyor", () => {
@@ -186,7 +189,7 @@ describe("küçük ekran yerleşimi (≈360×640)", () => {
   it("açık panelde çakışan mobil katmanlar gizleniyor", () => {
     expect(app).toContain("hiddenOnMobile={panelOpen}");
     expect(mapControls).toContain('hiddenOnMobile && "max-md:hidden"');
-    expect(app).toMatch(/mobile-walk-fab[\s\S]{0,400}panelOpen \? " max-md:hidden"/);
+    expect(dockChrome).toMatch(/mobile-walk-fab[\s\S]{0,400}panelOpen \? " max-md:hidden"/);
   });
 });
 

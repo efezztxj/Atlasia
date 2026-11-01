@@ -1,5 +1,23 @@
 # Atlasia Update
 
+## 2026-11-01 — F1-6 (adım 1): harita kromu, geçici katmanlar ve alt çubuk ayrı dosyalarda
+
+Plan `docs/gorevler/10-10-yol-plani-2026-11-01.md` §F1-6. JSX bölmesinin ilk adımı:
+mantık taşımayan, "göster/gizle + geri çağrı" sözleşmesiyle çalışan parçalar çıkarıldı.
+
+- **`src/components/explorer/MapCanvas.tsx`** — `MapSurfaceHints`: tut-döndür ipucu,
+  atıf satırı, "konumu temizle" düğmesi (2 prop).
+- **`src/components/explorer/OverlayPanels.tsx`** — `DataErrorBanner`, `AddModeBanner`,
+  `MobileSearchSheet`, `ToastBanner` (en fazla 4 prop).
+- **`src/components/explorer/DockChrome.tsx`** — `MobileTabBar` (sekme sırası ürün
+  kararı olarak burada belgelendi), `WalkFab`.
+- **`Explorer.tsx` 1.568 → 1.469 satır.** Modül boyutu defteri 1.469'a kısıldı.
+- **11 yeni test** (`src/components/explorer/chrome.test.ts`): sekme sırası + `aria-current`,
+  ekleme modunda `aria-pressed`, hata şeridinin iki ayrı geri çağrısı, atıf lisans sahipleri.
+- **Kaynak metin kapıları taşındı, gevşetilmedi:** `uiSurface.test.ts` sekme/FAB işaretlerini
+  artık `DockChrome.tsx`'te, `darkMapSource.test.ts` atıf metnini artık `MapCanvas.tsx`'te
+  arıyor; Explorer'da atfın ikinci kopyası olmadığı da ayrıca ölçülüyor.
+
 ## 2026-11-01 — F1-2…F1-5: Explorer'ın dört durum kümesi kancalara ayrıldı (42 `useState` → 0)
 
 Plan `docs/gorevler/10-10-yol-plani-2026-11-01.md` §F1-2…F1-5. Davranış **değişmedi**;

@@ -13,6 +13,8 @@ interface OpenFreeMapStyle {
 
 const sourcePath = fileURLToPath(new URL("../components/MapView.tsx", import.meta.url));
 const appPath = fileURLToPath(new URL("../components/Explorer.tsx", import.meta.url));
+// F1-6: harita yüzeyi kromu (ipucu + atıf satırı) MapCanvas.tsx'e taşındı.
+const surfacePath = fileURLToPath(new URL("../components/explorer/MapCanvas.tsx", import.meta.url));
 const stylePath = fileURLToPath(new URL("../data/openFreeMapDarkStyle.json", import.meta.url));
 const headersPath = fileURLToPath(new URL("../../public/_headers", import.meta.url));
 
@@ -54,8 +56,11 @@ describe("keyless dark map source", () => {
 
   it("shows the required attribution and narrows CSP to the new tile origin", () => {
     expect(mapSource).toContain("OpenFreeMap © OpenMapTiles · OpenStreetMap contributors");
-    expect(appSource).toContain("Harita © Esri, OpenFreeMap, OpenMapTiles ve OpenStreetMap katkıcıları");
-    expect(appSource).not.toContain("Esri, CARTO");
+    const surfaceSource = readFileSync(surfacePath, "utf8");
+    expect(surfaceSource).toContain("Harita © Esri, OpenFreeMap, OpenMapTiles ve OpenStreetMap katkıcıları");
+    expect(surfaceSource).not.toContain("Esri, CARTO");
+    // Atıf tek yerde: Explorer'da ikinci bir kopya kalmadı.
+    expect(appSource).not.toContain("Harita © Esri");
     expect(headers).toContain("https://tiles.openfreemap.org");
     expect(headers).not.toContain("cartocdn.com");
     expect(headers).not.toContain("demotiles.maplibre.org");
