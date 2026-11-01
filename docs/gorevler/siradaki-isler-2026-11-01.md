@@ -56,6 +56,13 @@ operasyonu**. Ama iki tane *gerçek* kod/CI işi var: Clarity'nin CSP'de engelle
   bağımlılığı + maskeleme), §7 iki yeni sınır satırı, `README.md` "Ölçüm, hata izleme ve
   gizlilik" bölümü, `CHANGELOG.md` 2026-11-01 kaydı, karar defteri
   `docs/gorevler/olcum-yigini-karari-2026-11-01.md` (A/B/C, öneri B).
+- **S8 ✅ (yeni, 1 Kasım'da bulundu)** Haftalık `canli-dogrula` işi kırmızıydı: betik
+  yalnız giriş paketini tarıyordu, T11'den sonra Firebase yapılandırması tembel
+  `firebaseConfig-*.js` parçasında olduğu için "yapılandırma eksik" diyordu. Parça
+  grafiği taraması eklendi (24 parça / 3 derinlik sınırı), `mergeConfigs` ile alanlar
+  birleştiriliyor, gerçek eksik yapılandırma hâlâ kırmızı. **Anlamı:** son 3 gündür
+  "canlı yapılandırma" kapısı ölçüm yapmıyordu; bu, P0-5'in otomatik kanıtını da
+  sessizce bozuyordu.
 - **S6 🟡** #163/#156 birleşti; #162 (`actions/checkout` v7.0.1) Dependabot dalına
   dokunmak yerine **bu dalda** uygulandı (4 workflow + pin testi + `docs/github-actions-pins.md`)
   ve #162 onun yerine kapatıldı. #157 (`maplibre-gl` 6.16) lockfile çakışması yüzünden
