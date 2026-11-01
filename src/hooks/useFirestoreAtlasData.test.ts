@@ -46,7 +46,7 @@ const h = vi.hoisted(() => ({
   addPost: vi.fn<(input: NewPostInput) => Promise<void>>(),
   removePost: vi.fn<(id: string) => Promise<void>>(),
   addReply: vi.fn<(postId: string, uid: string, author: string, text: string) => Promise<void>>(),
-  togglePostLike: vi.fn<(postId: string, uid: string) => Promise<string[]>>(),
+  togglePostLike: vi.fn<(postId: string, uid: string) => Promise<{ liked: boolean; likeCount: number }>>(),
   addStory: vi.fn<(input: NewStoryInput) => Promise<void>>(),
   removeStory: vi.fn<(id: string) => Promise<void>>(),
   uploadPhoto: vi.fn<(file: File, kind: UploadPhotoKind) => Promise<string>>(),
@@ -203,7 +203,7 @@ beforeEach(() => {
   h.addPost.mockReset().mockResolvedValue(undefined);
   h.removePost.mockReset().mockResolvedValue(undefined);
   h.addReply.mockReset().mockResolvedValue(undefined);
-  h.togglePostLike.mockReset().mockResolvedValue(["u1"]);
+  h.togglePostLike.mockReset().mockResolvedValue({ liked: true, likeCount: 1 });
   h.addStory.mockReset().mockResolvedValue(undefined);
   h.removeStory.mockReset().mockResolvedValue(undefined);
   h.uploadPhoto.mockReset().mockResolvedValue("data:image/jpeg;base64,BULUT");
@@ -577,11 +577,13 @@ describe("useFirestoreAtlasData orkestrasyonu", () => {
       await result.current.toggleLike("post1");
     });
     expect(h.togglePostLike).toHaveBeenCalledWith("post1", "u1");
-    expect(result.current.posts[0].likedBy).toEqual(["u1"]);
+    // F2-1: uid hem üyelik listesine eklenir hem `likeCount` sunucu sonucundan gelir.
+    expect(result.current.posts[0].likedBy).toEqual(["baskasi", "u1"]);
+    expect(result.current.posts[0].likeCount).toBe(1);
 
     h.togglePostLike.mockRejectedValueOnce(new Error("beğeni reddi"));
     await expect(result.current.toggleLike("post1")).rejects.toThrow("beğeni reddi");
-    expect(result.current.posts[0].likedBy).toEqual(["u1"]);
+    expect(result.current.posts[0].likedBy).toEqual(["baskasi", "u1"]);
   });
 
   it("uid değişiminde tüm listeleri sıfırlar ve abonelikleri yeniler", () => {

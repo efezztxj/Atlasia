@@ -12,9 +12,19 @@
  */
 
 export const FIRESTORE_LIMITS = {
+  /** Eski şema (`likedBy` dizisi) üst sınırı — F2-1 sonrası yalnız okuma uyumluluğu. */
   likesPerPost: 500,
+  /** F2-1: kullanıcının kendi beğeni belgeleri (koleksiyon grubu sorgusu tavanı). */
+  myLikes: 500,
   postRepliesPage: 100,
 } as const;
+
+/**
+ * F2-1: "benim beğenilerim" koleksiyon-grubu sorgusunun tavanı.
+ * Skaler sabit: `firestoreLimits.test.ts` limit ifadelerini yalnız skaler
+ * sabitlerden çözebiliyor (nesne alanı değil).
+ */
+export const MY_LIKES_PAGE = 500;
 
 export const FIRESTORE_QUERY_LIMITS = {
   placeOverview: 40,

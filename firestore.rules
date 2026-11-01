@@ -199,7 +199,7 @@ service cloud.firestore {
              ])
              && data.keys().hasOnly([
                'author', 'authorUid', 'text', 'createdAt', 'likes',
-               'likedBy', 'kind', 'placeLabel', 'lng', 'lat', 'photo'
+               'likedBy', 'kind', 'placeLabel', 'lng', 'lat', 'photo', 'likeCount'
              ])
              && stringBetween(data.author, 1, 100)
              && stringBetween(data.authorUid, 1, 128)
@@ -210,10 +210,33 @@ service cloud.firestore {
              && data.likedBy is list
              && data.likedBy.size() <= 500
              && data.likedBy.toSet().size() == data.likedBy.size()
+             // F2-1: sayaç alanı opsiyonel; varsa negatif olamaz.
+             && (!('likeCount' in data) || (data.likeCount is int && data.likeCount >= 0))
              && data.kind == 'user'
              && (!('placeLabel' in data) || stringBetween(data.placeLabel, 1, 200))
              && hasValidOptionalLocation(data)
              && hasValidOptionalPhoto(data);
+    }
+
+    /**
+     * F2-1 — beğeni sayacı. `posts/{id}/likes/{uid}` belgesi ile gönderideki
+     * `likeCount` AYNI batch'te değişmek zorunda; istemci sayacı serbestçe yazamaz.
+     * Desen rota `saveCount` ile aynı (exists / existsAfter / getAfter).
+     */
+    function likeCounterMatches(postId, delta) {
+      let likePath = /databases/$(database)/documents/posts/$(postId)/likes/$(request.auth.uid);
+      let before = resource.data.get('likeCount', 0);
+      let after = request.resource.data.get('likeCount', 0);
+      return delta > 0
+             ? (!exists(likePath) && existsAfter(likePath) && after == before + 1)
+             : (exists(likePath) && !existsAfter(likePath) && before > 0 && after == before - 1);
+    }
+
+    /** Gönderi güncellemesi: yalnız `likeCount` ve alt koleksiyonla tutarlı ±1. */
+    function validLikeCounterUpdate(postId) {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return changed.hasOnly(['likeCount'])
+             && (likeCounterMatches(postId, 1) || likeCounterMatches(postId, -1));
     }
 
     function validLikeToggle() {
@@ -711,7 +734,9 @@ service cloud.firestore {
                     && request.resource.data.createdAt == request.time
                     && request.resource.data.likes == 0
                     && request.resource.data.likedBy.size() == 0;
-      allow update: if signedIn() && validPostInteraction();
+      // F2-1 geçiş penceresi: eski istemci `likedBy` ile, yeni istemci alt
+      // koleksiyon + `likeCount` ile yazar. İki yol da doğrulanır; serbest alan yok.
+      allow update: if signedIn() && (validPostInteraction() || validLikeCounterUpdate(postId));
       allow delete: if signedIn()
                     && (resource.data.authorUid == request.auth.uid || isModerator());
 
@@ -733,6 +758,56 @@ service cloud.firestore {
                           || (parentPostExists()
                               && get(/databases/$(database)/documents/posts/$(postId)).data.authorUid == request.auth.uid));
       }
+    }
+
+    match /posts/{postId}/likes/{likeUid} {
+      // Üyelik belgesi: anahtar = uid, alan da uid olmalı (koleksiyon grubu
+      // sorgusu `where("uid","==",kendi)` ile çalışır).
+      function ownLike() {
+        return request.auth.uid == likeUid;
+      }
+      function likeShape() {
+        return request.resource.data.keys().hasAll(['uid', 'createdAt'])
+               && request.resource.data.keys().hasOnly(['uid', 'createdAt'])
+               && request.resource.data.uid == request.auth.uid
+               && request.resource.data.createdAt == request.time;
+      }
+      function parentPostExists() {
+        return exists(/databases/$(database)/documents/posts/$(postId));
+      }
+      function counterIncreased() {
+        let postPath = /databases/$(database)/documents/posts/$(postId);
+        return exists(postPath)
+               && getAfter(postPath).data.get('likeCount', 0)
+                  == get(postPath).data.get('likeCount', 0) + 1;
+      }
+      function counterDecreased() {
+        let postPath = /databases/$(database)/documents/posts/$(postId);
+        return !existsAfter(postPath)
+               || (exists(postPath)
+                   && get(postPath).data.get('likeCount', 1) > 0
+                   && get(postPath).data.get('likeCount', 0)
+                      == getAfter(postPath).data.get('likeCount', 0) + 1);
+      }
+
+      allow get: if signedIn() && ownLike();
+      allow list: if signedIn() && boundedList(1);
+      allow create: if signedIn()
+                    && !banned()
+                    && ownLike()
+                    && parentPostExists()
+                    && likeShape()
+                    && counterIncreased();
+      allow update: if false;
+      allow delete: if signedIn() && ownLike() && counterDecreased();
+    }
+
+    /**
+     * Koleksiyon grubu: "benim beğenilerim" tek sorguda. Kural yalnız
+     * `likeUid == request.auth.uid` yollarını açar; başkasının beğenisi okunamaz.
+     */
+    match /{path=**}/likes/{likeUid} {
+      allow get, list: if signedIn() && request.auth.uid == likeUid;
     }
 
     match /stories/{storyId} {

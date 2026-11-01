@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { toggleLikedBy, totalLikes } from "./likes";
+import { likedByWith, toggleLikedBy, totalLikes } from "./likes";
 
 describe("toplam beğeni sözleşmesi", () => {
   it("seed tabanına benzersiz kullanıcı üyeliklerini ekler", () => {
@@ -135,5 +135,22 @@ describe("Tur 4 · seed birleşimi + snapshot atama tekdüzeliği", () => {
       likedBy: ["u1", "", "   ", 42, null, "u1"] as unknown as string[],
     };
     expect(totalLikes(post)).toBe(1);
+  });
+
+  it("F2-1: sayaç varsa tek doğru kaynak odur (eski likedBy yok sayılır)", () => {
+    expect(totalLikes({ likes: 0, likedBy: ["a", "b"], likeCount: 7 })).toBe(7);
+    expect(totalLikes({ likes: 3, likedBy: ["a"], likeCount: 0 })).toBe(0);
+    // Bozuk sayaç eski şemaya düşer: NaN/negatif sayı "sayaç yok" sayılmaz.
+    expect(totalLikes({ likes: 1, likedBy: ["a"], likeCount: Number.NaN })).toBe(2);
+    expect(totalLikes({ likes: 0, likedBy: [], likeCount: -5 })).toBe(0);
+  });
+
+  it("F2-1: likedByWith kendi uid'ini tekilleştirir ve sırayı bozmaz", () => {
+    expect(likedByWith(["a", "u1"], "u1", true)).toEqual(["a", "u1"]);
+    expect(likedByWith(["a", "u1"], "u1", false)).toEqual(["a"]);
+    expect(likedByWith(undefined, "u1", true)).toEqual(["u1"]);
+    // Boş/kirli değerler taşınmaz.
+    expect(likedByWith(["", "  ", "b"] as string[], "u1", true)).toEqual(["b", "u1"]);
+    expect(likedByWith(["a"], "   ", true)).toEqual(["a"]);
   });
 });

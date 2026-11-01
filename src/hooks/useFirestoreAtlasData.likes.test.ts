@@ -232,9 +232,22 @@ const fsim = vi.hoisted(() => {
     return sa < sb ? -1 : sa > sb ? 1 : 0;
   };
 
-  const evaluate = (q: FakeQuery): Item[] => {
+  /** F2-1: `collectionGroup("likes")` — adı `likes` ile biten tüm alt koleksiyonlar. */
+  const collect = (q: FakeQuery & { group?: boolean }): Item[] => {
+    if (!q.group) return [...colMap(q.col).entries()].map(([id, data]) => ({ id, data: { ...data } }));
+    const items: Item[] = [];
+    for (const [name, map] of store.entries()) {
+      if (!name.endsWith(`/${q.col}`)) continue;
+      for (const [id, data] of map.entries()) items.push({ id, data: { ...data } });
+    }
+    return items;
+  };
+
+  const evaluate = (q: FakeQuery & { group?: boolean }): Item[] => {
     const m = colMap(q.col);
-    let items: Item[] = [...m.entries()].map(([id, data]) => ({ id, data: { ...data } }));
+    let items: Item[] = q.group
+      ? collect(q)
+      : [...m.entries()].map(([id, data]) => ({ id, data: { ...data } }));
     const orders = q.cs.filter(isConstraint("orderBy"));
     const cmp = (a: Item, b: Item) => {
       for (const o of orders) {
@@ -269,6 +282,11 @@ const fsim = vi.hoisted(() => {
     if (!data) throw new Error("fake-firestore: belge yok");
     for (const [key, value] of Object.entries(patch)) {
       if (value && typeof value === "object" && "fieldOp" in value) {
+        const inc = value as { fieldOp: string; n?: number };
+        if (inc.fieldOp === "increment") {
+          data[key] = (typeof data[key] === "number" ? (data[key] as number) : 0) + (inc.n ?? 0);
+          continue;
+        }
         const op = value as { fieldOp: string; vals: unknown[] };
         const cur: unknown[] = Array.isArray(data[key]) ? [...(data[key] as unknown[])] : [];
         if (op.fieldOp === "union") {
@@ -288,14 +306,24 @@ const fsim = vi.hoisted(() => {
   const module = {
     arrayUnion: (...vals: unknown[]) => ({ fieldOp: "union", vals }),
     arrayRemove: (...vals: unknown[]) => ({ fieldOp: "remove", vals }),
-    collection: (_db: unknown, name: string) => ({ name }),
-    doc: (_db: unknown, col: string, id: string): Ref => ({ path: `${col}/${id}`, id, col }),
+    collection: (_db: unknown, ...parts: string[]) => ({ name: parts.join("/") }),
+    collectionGroup: (_db: unknown, name: string) => ({ name, group: true }),
+    doc: (_db: unknown, ...parts: string[]): Ref => ({
+      path: parts.join("/"),
+      id: parts[parts.length - 1],
+      col: parts.slice(0, -1).join("/"),
+    }),
+    increment: (n: number) => ({ fieldOp: "increment", n }),
     documentId: (): FieldSpec => ({ t: "docId" }),
     orderBy: (field: unknown, dir: "asc" | "desc" = "asc"): Constraint => ({ t: "orderBy", field: field as FieldSpec, dir }),
     limit: (n: number): Constraint => ({ t: "limit", n }),
     startAfter: (snap: unknown): Constraint => ({ t: "startAfter", snap: snap as DocSnap }),
     where: (field: string, op: string, value: unknown): Constraint => ({ t: "where", field, op, value }),
-    query: (col: { name: string }, ...cs: Constraint[]): FakeQuery => ({ col: col.name, cs }),
+    query: (col: { name: string; group?: boolean }, ...cs: Constraint[]): FakeQuery => ({
+      col: col.name,
+      cs,
+      ...(col.group ? { group: true } : {}),
+    }),
     getDocs: (q: FakeQuery) => Promise.resolve(snapshotOf(q.col, evaluate(q))),
     getDoc: (ref: Ref) => {
       const data = colMap(ref.col).get(ref.id);
@@ -339,8 +367,43 @@ const fsim = vi.hoisted(() => {
       applyPatch(ref, patch);
       return Promise.resolve();
     },
-    deleteDoc: async () => {},
-    setDoc: async () => {},
+    deleteDoc: (ref: Ref) => {
+      colMap(ref.col).delete(ref.id);
+      return Promise.resolve();
+    },
+    setDoc: (ref: Ref, data: Data) => {
+      colMap(ref.col).set(ref.id, { ...data });
+      return Promise.resolve();
+    },
+    writeBatch: () => {
+      const ops: Array<{ kind: "set" | "update" | "delete"; ref: Ref; patch: Data }> = [];
+      return {
+        set: (ref: Ref, data: Data) => { ops.push({ kind: "set", ref, patch: data }); },
+        update: (ref: Ref, patch: Data) => { ops.push({ kind: "update", ref, patch }); },
+        delete: (ref: Ref) => { ops.push({ kind: "delete", ref, patch: {} }); },
+        commit: () => {
+          const run = () => {
+            for (const op of ops) {
+              if (op.kind === "delete") colMap(op.ref.col).delete(op.ref.id);
+              else if (op.kind === "set") colMap(op.ref.col).set(op.ref.id, { ...op.patch });
+              else applyPatch(op.ref, op.patch);
+            }
+          };
+          if (failNext !== null) {
+            const e = failNext;
+            failNext = null;
+            return Promise.reject(e);
+          }
+          if (writeMode === "manual") {
+            return new Promise<void>((resolve, reject) => {
+              pending.push({ ref: ops[0].ref, patch: {}, resolve: () => { run(); resolve(); }, reject });
+            });
+          }
+          run();
+          return Promise.resolve();
+        },
+      };
+    },
     serverTimestamp: () => 0,
     Timestamp: class {
       static fromMillis(ms: number) {
@@ -358,6 +421,15 @@ const fsim = vi.hoisted(() => {
     getPost(id: string) {
       const d = colMap("posts").get(id);
       return d ? { ...d } : undefined;
+    },
+    /** F2-1: beğeni belgesi sunucuda var mı? */
+    hasLike(postId: string, uid: string) {
+      return colMap(`posts/${postId}/likes`).has(uid);
+    },
+    /** F2-1: göç edilmiş veri — beğeni belgesi + sayaç birlikte yazılır. */
+    seedLike(postId: string, uid: string, likeCount: number) {
+      colMap(`posts/${postId}/likes`).set(uid, { uid, createdAt: 0 });
+      colMap("posts").set(postId, { ...colMap("posts").get(postId), likeCount });
     },
     flushSnapshots() {
       for (const l of [...listeners]) {
@@ -515,17 +587,24 @@ describe("KOD-02 gerçek hook beğeni ve oturum muhafızı testleri", () => {
 
     await m.r.toggleLike("post-00");
     expect(likedByOf(m.r.posts, "post-00")).toEqual(["member-a"]);
-    expect(fsim.getPost("post-00")?.likedBy).toEqual(["member-a"]);
+    // F2-1: sunucu gerçeği = alt koleksiyon belgesi + sayaç (likedBy artık yazılmıyor).
+    expect(fsim.hasLike("post-00", "member-a")).toBe(true);
+    expect(fsim.getPost("post-00")?.likeCount).toBe(1);
   });
 
   it("5) ilk sayfa dışındaki eski kartta beğeni geri alındığında hemen beğenmemiş durumuna döner", async () => {
-    seedPosts(52, { "post-00": { likedBy: ["member-a", "member-b"] } });
+    // F2-1: göç edilmiş kayıt — beğeni belgesi + sayaç; `likedBy` yalnız gösterim.
+    seedPosts(52, { "post-00": { likedBy: ["member-a", "member-b"], likeCount: 2 } });
+    fsim.seedLike("post-00", "member-a", 2);
     const m = await mountWithTail("member-a");
     expect(likedByOf(m.r.posts, "post-00")).toEqual(["member-a", "member-b"]);
 
     await m.r.toggleLike("post-00");
     expect(likedByOf(m.r.posts, "post-00")).toEqual(["member-b"]);
-    expect(fsim.getPost("post-00")?.likedBy).toEqual(["member-b"]);
+    // Üyelik belgesi silinmiş, sayaç sıfıra inmiş olmalı.
+    expect(fsim.hasLike("post-00", "member-a")).toBe(false);
+    // 2 beğeniden biri kalktı: sayaç 1.
+    expect(fsim.getPost("post-00")?.likeCount).toBe(1);
   });
 
   it("6) gecikmeli Firestore yazımı tamamlanana kadar eski kartın beğeni durumu değişmez", async () => {
@@ -556,7 +635,8 @@ describe("KOD-02 gerçek hook beğeni ve oturum muhafızı testleri", () => {
 
     await expect(m.r.toggleLike("post-00")).rejects.toThrow("permission-denied");
     expect(likedByOf(m.r.posts, "post-00")).toEqual([]);
-    expect(fsim.getPost("post-00")?.likedBy).toEqual([]);
+    expect(fsim.hasLike("post-00", "member-a")).toBe(false);
+    expect(fsim.getPost("post-00")?.likeCount).toBeUndefined();
   });
 
   it("8) başarılı beğeni sonrası reddedilen geri alma mevcut beğeniyi kaldırmaz", async () => {
@@ -603,7 +683,7 @@ describe("KOD-02 gerçek hook beğeni ve oturum muhafızı testleri", () => {
     fsim.resolveWrite(0);
     await pendingLike;
     expect(likedByOf(m.r.posts, "post-51")).toEqual([]);
-    expect(fsim.getPost("post-51")?.likedBy).toEqual(["member-a"]);
+    expect(fsim.hasLike("post-51", "member-a")).toBe(true);
   });
 
   it("11) enabled değişiminde (kapat-aç) bekleyen eski beğeni yazısı yeni oturuma taşınmaz", async () => {
@@ -625,7 +705,7 @@ describe("KOD-02 gerçek hook beğeni ve oturum muhafızı testleri", () => {
     fsim.resolveWrite(0);
     await pendingLike;
     expect(likedByOf(m.r.posts, "post-51")).toEqual([]);
-    expect(fsim.getPost("post-51")?.likedBy).toEqual(["member-a"]);
+    expect(fsim.hasLike("post-51", "member-a")).toBe(true);
   });
 
   it("12) unmount sonrasında geciken beğeni yazısı son görünür sonucu değiştirmez", async () => {
@@ -642,7 +722,7 @@ describe("KOD-02 gerçek hook beğeni ve oturum muhafızı testleri", () => {
     await pendingLike;
 
     expect(likedByOf(m.r.posts, "post-00")).toEqual([]);
-    expect(fsim.getPost("post-00")?.likedBy).toEqual(["member-a"]);
+    expect(fsim.hasLike("post-00", "member-a")).toBe(true);
   });
 
   it("13) unmount edildiğinde tüm Firestore onSnapshot dinleyicilerini temizler", async () => {

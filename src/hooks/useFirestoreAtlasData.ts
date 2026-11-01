@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   activeStories,
-  applyPostLikedBy,
+  applyPostLikeState,
   addPlace as addPlaceFs,
   addPost as addPostFs,
   addReply as addReplyFs,
@@ -31,6 +31,7 @@ import {
   subscribePlacesInViewport,
   subscribePosts,
   subscribeStories,
+  listMyLikedPostIds,
   togglePostLike as togglePostLikeFs,
   uploadPhoto as uploadPhotoFs,
   viewportQueryWindows,
@@ -42,6 +43,7 @@ import {
 } from "../lib/firestoreData";
 import { analytics } from "../lib/analytics";
 import type { FeedPost, FeedReply, Place, Story, UploadPhotoKind } from "../types";
+import { likedByWith } from "../utils/likes";
 
 const STORY_PURGE_INTERVAL_MS = 15 * 60 * 1000;
 const STORY_PURGE_VISIBILITY_THROTTLE_MS = 5 * 60 * 1000;
@@ -101,6 +103,10 @@ export function useFirestoreAtlasData({
   const [hasMoreStories, setHasMoreStories] = useState(false);
   const [loadingMorePosts, setLoadingMorePosts] = useState(false);
   const [loadingMoreStories, setLoadingMoreStories] = useState(false);
+  // F2-1: "ben beğendim mi" bilgisi artık gönderi dokümanında değil, alt koleksiyonda.
+  // Oturumda bir kez koleksiyon-grubu sorgusuyla yüklenir.
+  const [myLiked, setMyLiked] = useState<Set<string>>(new Set());
+  const myLikedRef = useRef<Set<string>>(new Set());
 
   const postHeadRef = useRef<FeedPost[]>([]);
   const postTailRef = useRef<FeedPost[]>([]);
@@ -119,6 +125,23 @@ export function useFirestoreAtlasData({
   // Oturum muhafızı: uid/enabled değişimi veya unmount, bekleyen beğeni yazısının
   // yerel state/ref'e dönüşünü engeller. Firestore yazısı yine commit olur.
   const sessionRef = useRef(0);
+  // F2-1: oturum başına tek sorgu — kullanıcının beğendiği gönderi kimlikleri.
+  useEffect(() => {
+    if (!uid || !enabled || guest) {
+      myLikedRef.current = new Set();
+      setMyLiked(myLikedRef.current);
+      return;
+    }
+    let active = true;
+    void listMyLikedPostIds(uid)
+      .then((ids) => {
+        if (!active) return;
+        myLikedRef.current = new Set(ids);
+        setMyLiked(myLikedRef.current);
+      })
+      .catch((failure: unknown) => console.warn("[Atlasia] Beğeni listesi okunamadı:", failure));
+    return () => { active = false; };
+  }, [uid, enabled, guest]);
 
   const deleteDeletableExpiredStories = useCallback(
     (candidates: Story[]) => {
@@ -475,16 +498,21 @@ export function useFirestoreAtlasData({
     if (!isCloudReady) throw new Error("Bulut bağlantısı yok, beğeni kaydedilemez.");
     // Yazma başarısızsa istisna fırlar ve yerel durum değişmez (sahte başarı yok).
     const session = sessionRef.current;
-    const likedBy = await togglePostLikeFs(postId, uid);
+    const result = await togglePostLikeFs(postId, uid);
     // Oturum değiştiyse (uid/enabled/unmount) eski sonuç yeni oturuma uygulanmaz.
     if (session !== sessionRef.current) return;
+    const { liked } = result;
+    myLikedRef.current = liked
+      ? new Set([...myLikedRef.current, postId])
+      : new Set([...myLikedRef.current].filter((id) => id !== postId));
+    setMyLiked(myLikedRef.current);
     setPostHead((current) => {
-      const next = applyPostLikedBy(current, postId, likedBy);
+      const next = applyPostLikeState(current, postId, uid, result);
       postHeadRef.current = next;
       return next;
     });
     setPostTail((current) => {
-      const next = applyPostLikedBy(current, postId, likedBy);
+      const next = applyPostLikeState(current, postId, uid, result);
       postTailRef.current = next;
       return next;
     });
@@ -533,8 +561,10 @@ export function useFirestoreAtlasData({
     [viewportPlaces, ownedPlaces],
   );
   const posts = useMemo(
-    () => sortNewest(mergeRecordsById(postTail, postHead)),
-    [postHead, postTail],
+    () => sortNewest(mergeRecordsById(postTail, postHead)).map((post) => (
+      myLiked.has(post.id) ? { ...post, likedBy: likedByWith(post.likedBy, uid, true) } : post
+    )),
+    [postHead, postTail, myLiked, uid],
   );
   const stories = useMemo(
     () => sortNewest(activeStories(mergeRecordsById(storyTail, storyHead))),
