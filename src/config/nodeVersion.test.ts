@@ -5,6 +5,12 @@
  * `package.json` engines `^22.13 || >=24`. Bu kapı tek kaynağı kilitler:
  * **`.nvmrc`**. İş akışları sabit sayı yazmaz, dosyayı okur (`node-version-file`).
  *
+ * Not: `.nvmrc` **hat** yazar (`22`), tam yama değil. Tam yama (`22.13.0`)
+ * denendi ve CI'yı kırdı: Node 22.13 ile vitest'in kullandığı `undici`
+ * `Pool.schedule` aşamasında `TypeError: Cannot read properties of undefined
+ * (reading 'bind')` veriyor (run 41334088490). 22.x hattının güncel yamasında
+ * aynı test seti yeşil.
+ *
  * Açık kalan (ölçülmedi): `@firebase/app@0.16.4` `engines.node = ">=24.12.0"`
  * istiyor; Node 22 hattında `npm ci` bu paket için `EBADENGINE` **uyarısı**
  * üretir. Node 24.12+ hattına geçiş bu ortamda doğrulanamadığı için (yerel
@@ -26,7 +32,8 @@ function majorMinor(version: string): [number, number] {
 
 describe("F5-6 · Node sürümü tek cevap", () => {
   it(".nvmrc geçerli bir sürüm yazar", () => {
-    expect(nvmrc).toMatch(/^\d+\.\d+\.\d+$/);
+    // `22` (hat) ya da `22.13.0` (tam) kabul: ikisi de tek kaynak olarak çalışır.
+    expect(nvmrc).toMatch(/^\d+(\.\d+){0,2}$/);
   });
 
   it("engines ve .nvmrc çelişmez", () => {
@@ -34,9 +41,13 @@ describe("F5-6 · Node sürümü tek cevap", () => {
     expect(engines, "engines alanı tek alt sınır olmalı").toMatch(/^>=\d+\.\d+\.\d+$/);
     const minimum = engines.slice(2);
     const [minMajor, minMinor] = majorMinor(minimum);
-    const [major, minor] = majorMinor(nvmrc);
+    const parts = nvmrc.split(".").map(Number);
+    const [major, minor] = [parts[0], parts[1]];
     expect(major, ".nvmrc alt sınırın altında").toBeGreaterThanOrEqual(minMajor);
-    if (major === minMajor) expect(minor, ".nvmrc alt sınırın altında").toBeGreaterThanOrEqual(minMinor);
+    // Hattın en yeni yaması kurulur; alt sınır yalnız `engines`ta yaşar.
+    if (major === minMajor && minor !== undefined) {
+      expect(minor, ".nvmrc alt sınırın altında").toBeGreaterThanOrEqual(minMinor);
+    }
   });
 
   it("dört iş akışı da sabit sürüm yazmaz, .nvmrc dosyasını okur", () => {
