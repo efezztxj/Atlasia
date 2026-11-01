@@ -41,10 +41,15 @@ değerlerin altına çekmeyi kilitler.
 
 **İlk ölçüm (CI, 3 koşu/medyan):**
 
-| Sayfa | 1. ölçüm | hero AVIF/WebP sonrası | a11y | Not |
-|---|---|---|---|---|
-| `/` | 0,75–0,76 | **0,82** | **1,00** | hedefe 3 puan kaldı → borç küçüldü |
-| `/?tab=kesfet` | 0,35–0,39 | 0,36 | 0,96 | harita/WebGL kabuğu; hedefin çok altında → borç |
+| Sayfa | 1. ölçüm | hero AVIF/WebP sonrası | son ölçüm (koyu tema birleşmesi) | a11y | Not |
+|---|---|---|---|---|---|
+| `/` | 0,75–0,76 | 0,82 | **0,84** | **1,00** | hedefe 1 puan → borç neredeyse kapandı |
+| `/?tab=kesfet` | 0,35–0,39 | 0,36 | 0,43 | 1,00 | harita/WebGL kabuğu; hâlâ hedefin çok altında → borç |
+
+**Dikkat — CLS sınırda:** son ölçümde tanıtımın CLS'i **0,049** (eşik 0,05). Bu, eşiğin
+hemen altında; bir sonraki koşuda kırmızıya dönebilir. Bu yüzden özet betiği
+(`scripts/lighthouse-summary.mjs`) artık **CLS kaynaklarını** (düzeni kaydıran ilk iki
+düğüm) da annotation'a basıyor; sıradaki iş o kaydırmayı kaldırmak.
 
 Bu yüzden kapı **yeşil ama dürüst**: mevcut seviye kilitlendi, 0,85 hedefi
 aşağıdaki "performans borcu" listesinde açıkça duruyor. Tabana "hedefe ulaşıldı"
