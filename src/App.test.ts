@@ -99,6 +99,18 @@ describe("App kapısı", () => {
     expect(await screen.findByTestId("harita-kabugu")).toBeTruthy();
   });
 
+  it("manifest kısayolu (?tab=kesfet) soğuk açılışta tanıtımı atlar", async () => {
+    sessionStorage.clear();
+    window.history.replaceState(null, "", "/?tab=kesfet");
+    try {
+      render(createElement(App));
+      expect(await screen.findByTestId("harita-kabugu")).toBeTruthy();
+      expect(screen.queryByRole("button", { name: /Dünyayı keşfet/i })).toBeNull();
+    } finally {
+      window.history.replaceState(null, "", "/");
+    }
+  });
+
   it("üst menü ve alt bilgi CTA'ları kendi yerleşim adlarını taşır", async () => {
     // Her CTA haritaya geçtiği için her biri ayrı kurulumda denenir.
     for (const [index, placement] of [[0, "header"], [-1, "footer"]] as const) {

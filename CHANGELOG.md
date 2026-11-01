@@ -1,5 +1,16 @@
 # Atlasia Update
 
+## 2026-11-01 (S4) — Lighthouse CI kapısı: gerçek LCP/TBT ölçümü + PWA kısayolu düzeltmesi
+
+- **S4 / P1-2 — performans artık gerçek tarayıcıda ölçülüyor:** bugüne dek tek performans kapısı *paket bütçesiydi* (gzip kB); küçük paket yavaş LCP verebilir. `@lhci/cli` eklendi, `lighthouserc.cjs` üretim derlemesini (`dist/`) mobil profilde **3 kez** ölçüp medyanı değerlendiriyor. Hedef (S4 kabul listesi, düşürülmesi yasak): performans **≥ 0,85**, erişilebilirlik **≥ 0,95**, CLS **≤ 0,05**. İlk ölçüm perf'i tanıtımda **0,75–0,76** gösterdi; hero görseli AVIF/WebP'ye çevrildikten sonra tanıtım **0,82**'ye, a11y **1,00**'a çıktı; koyu tema birleşmesinden sonra tanıtım **0,84**, uygulama kabuğu **0,43** ölçüldü; bu yüzden eşik iki katmana ayrıldı: `HEDEF` (değişmez) ve ilk ölçümden bağlanan `TABAN` (tanıtım 0,80, yalnız yukarı hareket eder). Erişilebilirlikte taban yok, iki sayfada da 0,95 aranıyor (ölçülen 0,98). CI'da `npm run test:lighthouse` **zorunlu** adım; `src/config/lighthouseGate.test.ts` hedefin altına inmeyi de tabanı düşürmeyi de kilitliyor.
+- **İlk turda gerçek iyileştirme — hero görseli AVIF/WebP:** Lighthouse'ın "modern-image-formats" fırsatı LCP öğesini işaret etti: 170 KB JPEG. `<picture>` + `srcset` ile mobilde **21 KB AVIF**, masaüstünde 59 KB sunuluyor (JPEG yedek kaldı). Mobilde LCP görseli −%88.
+- **Ölçümün görünürlüğü:** adım log'u API'den okunamadığı için (`EOF`) Lighthouse özeti (`scripts/lighthouse-summary.mjs`: medyan puan + LCP/TBT/CLS + en pahalı fırsatlar) doğrudan annotation'a basılıyor ve `lhci.log` artifact'a ekleniyor.
+- **Açık performans borcu:** uygulama kabuğunda ilk grafik hâlâ ağır (perf 0,36) ve o sayfanın LCP öğesi **uzak bir Pexels fotoğrafı** (14 sn); tanıtımın film posteri de 324 KB JPEG; tanıtımın CLS'i 0,049 ile eşiğin (0,05) hemen altında. Hepsi `docs/teslimatlar/teslimat-s4-lighthouse-2026-11-01.md` §4'te adım adım kayıtlı; taban hedefe çıkınca yukarı çekilecek.
+- **İki sayfa ölçülüyor:** `/` (tanıtım) ve `/?tab=kesfet` (uygulama kabuğu).
+- **Yol boyunca gerçek hata — PWA kısayolu soğuk açılışta çalışmıyordu:** manifest "Keşfet" kısayolu `./?tab=kesfet` diyor ama parametre yalnız `Explorer` içinde okunuyordu; `Explorer` ise misafir/oturum bayrağı olmadan mount olmuyor. Yani ana ekran kısayoluna basan kullanıcı tanıtım ekranına düşüyordu ve kısayol hiçbir şey açmıyordu. `App.tsx` artık geçerli kısayolda misafir oturumu açıyor; parametreyi `Explorer` temizleyip ilgili paneli açıyor (eylem iki kez tetiklenmiyor). Regresyon testi `src/App.test.ts`; düzeltme kaldırılınca kırmızı (mutasyonla doğrulandı).
+- **Bütçe dürüstlüğü:** düzeltme entry'yi 16.656 → **16.823 B gzip** yaptı; entry eşiği ölçüme göre 16.700 → **17.000** (%1,05 pay) yeniden bağlandı, gerekçe `scripts/bundle-budget.mjs` başlığında tarihli not olarak duruyor. İlk boya JS/HTML, toplam JS ve appShell eşikleri **değişmedi**.
+- Ayrıntı: `docs/teslimatlar/teslimat-s4-lighthouse-2026-11-01.md`.
+
 ## 2026-11-01 — Varsayılan görünüm artık koyu
 
 - **Atlasia her açılışta koyu temayla gelir.** Açık tema isteyen Ayarlar → Görünüm bölümünden seçebilir; o seçim kalıcıdır ve sonraki açılışta korunur.

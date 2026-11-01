@@ -12,6 +12,7 @@ import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { analytics, type CtaPlacement } from "./lib/analytics";
 import LandingPage from "./components/LandingPage";
 import { useInstallApp, type InstallAppController } from "./hooks/useInstallApp";
+import { parseShortcutTab } from "./utils/appShortcut";
 
 // Oturum sonrası kabuk: harita + paneller + Firestore.
 const Explorer = lazy(() => import("./components/Explorer"));
@@ -34,6 +35,18 @@ function AuthGate({ installApp }: { installApp: InstallAppController }) {
   const previousUser = useRef(user);
 
   const closeAccess = () => { clearAccountRequest(); setAccessOpen(false); };
+
+  // İŞ 5 (manifest kısayolları) soğuk açılışta da çalışsın.
+  // Kısayol URL'i doğrudan haritayı hedefliyor (`/?tab=kesfet`) ama parametre
+  // yalnız `Explorer` içinde okunuyordu; yani kısayolla gelen kullanıcı, henüz
+  // misafir bayrağı yokken tanıtım ekranına düşüyor ve kısayol hiçbir şey
+  // açmıyordu. Burada yalnız tanıtım atlanır; parametreyi `Explorer` temizleyip
+  // ilgili paneli açar, böylece eylem iki kez tetiklenmez.
+  const shortcutStart = useRef(parseShortcutTab(typeof window === "undefined" ? "" : window.location.search));
+  useEffect(() => {
+    if (!shortcutStart.current || user || guest) return;
+    startGuest();
+  }, [user, guest, startGuest]);
 
   useEffect(() => {
     if (previousUser.current && !user) setAccessOpen(false);

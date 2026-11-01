@@ -52,3 +52,7 @@ __pycache__/
 /playwright-report/
 /test-results/
 
+# Lighthouse CI raporları (S4)
+/.lighthouseci/
+lhci.log
+lhci-tail.txt

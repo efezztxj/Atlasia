@@ -178,7 +178,16 @@ export const BUNDLE_BUDGET = Object.freeze({
     appShell: 603_400,
   }),
   categoryGzipBytes: Object.freeze({
-    entry: 17_000,
+    // 2026-11-01 (S4 + manifest kısayolu) — PWA kısayolu (`/?tab=kesfet`) soğuk
+  // açılışta tanıtım ekranına düşüyordu; parametre yalnız Explorer içinde
+  // okunuyordu. Düzeltme `App.tsx`e `parseShortcutTab` bağımlılığını getirdi.
+  // Ölçüm (`npm ci` + `npm run build`):
+  //   entry 16.656 -> **16.823** (+167)   · eşik 16.700 -> 17.000 (pay %1,05)
+  //   ilk boya JS 99.200 / 102.200 · ilk HTML 128.281 / 129.400 (değişmedi)
+  //   toplam JS 999.088 / 1.003.000 · appShell 583.601 / 603.400 (değişmedi)
+  // Yani artış yalnız tanıtımın ilk grafiğine binen gerçek ürün kodudur;
+  // kullanıcıya görünen diğer eşikler payla içinde kaldı.
+  entry: 17_000,
     reactVendor: 69_500,
     iconsVendor: 13_700,
     firebaseVendor: 164_500,

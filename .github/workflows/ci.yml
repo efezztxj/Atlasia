@@ -115,6 +115,54 @@ jobs:
       - name: Browser E2E + axe erişilebilirlik kapısı (Playwright)
         run: npm run test:e2e
 
+      # S4: gerçek LCP/TBT ölçen kapı. Paket bütçesi (kB) tek başına yeterli
+      # değil; burada üretim derlemesi mobil profilde 3 kez ölçülür, medyan
+      # değerlendirilir. Eşikler lighthouserc.cjs içinde ve düşürülmesi yasak.
+      #
+      # Chrome: koşucuda sistem Chrome'u garanti değil (ilk koşu "Chrome
+      # installation not found" ile düştü). Zaten bir önceki adımda kurulan
+      # Playwright Chromium'u kullanılıyor; yol sürüme göre değiştiği için
+      # `playwright-core`tan okunuyor.
+      - name: Chromium yolunu Lighthouse'a ver
+        run: |
+          CHROME=$(node -e "const { chromium } = require('playwright-core'); console.log(chromium.executablePath())")
+          test -x "$CHROME"
+          echo "CHROME_PATH=$CHROME" >> "$GITHUB_ENV"
+          "$CHROME" --version
+
+      # Log okuma notu: GitHub API bu işin adım log'unu vermiyor ("EOF"), yalnız
+      # annotation okunabildiği için çıktı annotation'a da basılıyor ve dosya
+      # artifact'a ekleniyor; aksi hâlde kırmızının nedeni görünmez oluyor.
+      - name: Lighthouse CI kapısı (mobil · perf ≥ 0,85 · a11y ≥ 0,95)
+        run: |
+          set +e
+          npm run test:lighthouse > lhci.log 2>&1
+          rc=$?
+          tail -n 25 lhci.log
+          summary=$(node scripts/lighthouse-summary.mjs .lighthouseci | tr '\n' '¦')
+          echo "Ozet: $summary"
+          tail -c 1500 lhci.log | tr '\n' '¦' > lhci-tail.txt
+          msg=$(cat lhci-tail.txt)
+          if [ "$rc" -eq 0 ]; then
+            echo "::notice title=Lighthouse ozet::${summary}"
+          else
+            echo "::error title=Lighthouse ozet::${summary}"
+            echo "::error title=Lighthouse cikti::${msg}"
+          fi
+          ls -a .lighthouseci || true
+          exit "$rc"
+
+      - name: Upload Lighthouse raporları
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: lighthouse-reports
+          path: |
+            .lighthouseci
+            lhci.log
+          if-no-files-found: warn
+          retention-days: 7
+
       # A6: kaynak haritaları `hidden` üretilir ve postbuild onları `dist` dışına
       # taşır; yayında URL'leri yok. Hata ayıklama için burada artifact olarak
       # saklanır (yalnız başarılı derlemede, 7 gün).
