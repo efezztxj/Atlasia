@@ -9,7 +9,7 @@ import {
   saveEssentialCookieConsent,
   type CookieConsentRecord,
 } from "../lib/cookieConsent";
-import { clarityConsent, setClarityConsent } from "../lib/clarity";
+import { CLARITY_STATUS_EVENT, clarityConsent, clarityStatus, setClarityConsent, type ClarityStatus } from "../lib/clarity";
 import { analytics } from "../lib/analytics";
 
 const LegalNotice = lazy(() => import("./LegalNotice"));
@@ -25,6 +25,9 @@ export default function CookieConsent() {
   const [open, setOpen] = useState<boolean>(() => readCookieConsent() === null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [clarityEnabled, setClarityEnabled] = useState(() => clarityConsent());
+  // "Clarity'de veri görünmüyor" şikâyetinin nedeni tarayıcıda görünsün:
+  // izin verilmedi / yükleniyor / yüklendi / engellendi.
+  const [clarityState, setClarityState] = useState<ClarityStatus>(() => clarityStatus());
   const [privacyOpen, setPrivacyOpen] = useState(false);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -48,20 +51,24 @@ export default function CookieConsent() {
       previousFocusRef.current = document.activeElement as HTMLElement | null;
       const current = readCookieConsent();
       setClarityEnabled(clarityConsent());
+      setClarityState(clarityStatus());
       setSaved(current);
       setOpen(true);
       setTimeout(() => (current ? closeRef.current ?? primaryRef.current : primaryRef.current)?.focus(), 0);
     };
     const onConsentChanged = () => setSaved(readCookieConsent());
 
+    const onClarityStatus = () => setClarityState(clarityStatus());
     window.addEventListener(COOKIE_PREFERENCES_EVENT, onOpenPreferences);
     window.addEventListener(COOKIE_CONSENT_EVENT, onConsentChanged);
+    window.addEventListener(CLARITY_STATUS_EVENT, onClarityStatus);
     // Panel tembel yüklendiği için, bağlanmadan önce yapılan "çerez tercihleri"
     // tıklaması olayı kaçırırdı; bayrak burada tüketilir.
     if (consumePendingCookiePreferences()) onOpenPreferences();
     return () => {
       window.removeEventListener(COOKIE_PREFERENCES_EVENT, onOpenPreferences);
       window.removeEventListener(COOKIE_CONSENT_EVENT, onConsentChanged);
+      window.removeEventListener(CLARITY_STATUS_EVENT, onClarityStatus);
     };
   }, []);
 
@@ -188,6 +195,24 @@ export default function CookieConsent() {
             <input type="checkbox" checked={clarityEnabled} onChange={(event) => setClarityEnabled(event.target.checked)} className="mt-1" />
             <span>Microsoft Clarity kullanım analizi ve oturum kaydına ayrıca izin veriyorum. Sayfa adresi, tıklama ve gezinme bilgileri Microsoft ile paylaşılabilir. Çerezler kullanılabilir; hassas içeriklerin korunması için maskeleme uygulanır. İzni çerez tercihlerinden geri alabilirsin.</span>
           </label>
+          {clarityEnabled && clarityState === "blocked" ? (
+            <p role="status" className="mt-2 rounded-xl border border-sun/40 bg-sun/10 px-3 py-2 text-[11px] leading-relaxed text-mint">
+              Tarayıcın Clarity betiğini engelledi (reklam engelleyici, izleme koruması veya “Do Not Track”). Bu
+              oturumda Microsoft’a hiçbir veri gönderilmiyor; panelde kayıt görünmemesinin nedeni budur.
+            </p>
+          ) : null}
+          {clarityEnabled && clarityState === "empty" ? (
+            <p role="status" className="mt-2 rounded-xl border border-sun/40 bg-sun/10 px-3 py-2 text-[11px] leading-relaxed text-mint">
+              Microsoft bu proje kimliği için Clarity betiğini göndermedi (HTTP 204). Clarity panelinde
+              <span className="font-semibold"> Project ID</span> ve projeye bağlı alan adı doğrulanmalı; kod tarafı hazır.
+            </p>
+          ) : null}
+          {clarityEnabled && clarityState === "ready" ? (
+            <p role="status" className="mt-2 text-[11px] leading-relaxed text-mint/70">
+              Clarity betiği yüklendi. Kayıt 1-2 dakika içinde Microsoft Clarity panelinde görünür; reklam
+              engelleyicin açıksa görünmez.
+            </p>
+          ) : null}
           <div className="mt-3 space-y-2">
             <button
               ref={primaryRef}

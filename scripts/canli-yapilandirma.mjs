@@ -234,6 +234,96 @@ export function mergeConfigs(configs) {
   return merged;
 }
 
+/** Clarity proje kimliği; yükleyici adresi buradan üretilir. */
+export const CLARITY_TAG_URL = "https://www.clarity.ms/tag/z6hdmwcwe6";
+
+/** Bot koruması ihtimalini ayırt etmek için gerçek masaüstü Chrome kimliği. */
+export const CHROME_UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36";
+
+/**
+ * Ölçüm katmanının canlı kanıtı: yayındaki CSP başlığı Clarity'ye izin veriyor mu
+ * ve Microsoft'un tag adresi gerçekten 200 dönüyor mu?
+ *
+ * Neden burada: "Clarity panelinde veri görünmüyor" şikâyetinin ilk iki aday nedeni
+ * CSP'nin betiği engellemesi ve proje kimliğinin geçersiz olması. İkisi de tarayıcı
+ * açmadan, dışarıdan ölçülebilir.
+ */
+export async function inspectClarity({ base, fetchImpl = globalThis.fetch, stamp = String(Date.now()) } = {}) {
+  const htmlResponse = await fetchImpl(bust(`${base}/`, stamp), { headers: { "cache-control": "no-cache" } });
+  const csp = htmlResponse.headers?.get?.("content-security-policy") ?? "";
+  const directive = (name) => {
+    const match = csp.match(new RegExp(`(?:^|;)\\s*${name} ([^;]+)`));
+    return match ? match[1].trim().split(/\s+/) : [];
+  };
+  const scriptSrc = directive("script-src");
+  const connectSrc = directive("connect-src");
+  const problems = [];
+  if (!csp) problems.push("yayında Content-Security-Policy başlığı yok");
+  if (csp && !scriptSrc.includes("https://www.clarity.ms")) {
+    problems.push("script-src içinde https://www.clarity.ms yok (Clarity yükleyicisi engellenir)");
+  }
+  if (csp && !scriptSrc.includes("https://scripts.clarity.ms")) {
+    problems.push("script-src içinde https://scripts.clarity.ms yok (Clarity çalışma zamanı engellenir)");
+  }
+  if (csp && !connectSrc.some((entry) => entry === "https://*.clarity.ms")) {
+    problems.push("connect-src içinde https://*.clarity.ms yok (oturum verisi gönderilemez)");
+  }
+
+  const notes = [];
+  const warnings = [];
+  let tag;
+  try {
+    const response = await fetchImpl(CLARITY_TAG_URL, { headers: { "cache-control": "no-cache" } });
+    tag = {
+      status: response.status,
+      ok: response.status === 200,
+      contentType: response.headers?.get?.("content-type") ?? null,
+    };
+    // Aynı adresi bir de tarayıcı kimliğiyle sor: 204 yalnız bot korumasından mı
+    // geliyor, yoksa proje kimliği gerçekten geçersiz mi? Ayrımı bu ölçüm yapar.
+    try {
+      const browserResponse = await fetchImpl(CLARITY_TAG_URL, {
+        headers: {
+          "user-agent": CHROME_UA,
+          referer: `${base}/`,
+          accept: "*/*",
+          "cache-control": "no-cache",
+        },
+      });
+      tag.browserStatus = browserResponse.status;
+      tag.browserContentType = browserResponse.headers?.get?.("content-type") ?? null;
+      if (browserResponse.status === 200) {
+        notes.push("tarayıcı kimliğiyle tag 200 döndü: yükleyici gerçek kullanıcıya ulaşıyor");
+      } else if (browserResponse.status === 204) {
+        // Dış servis davranışı: kapıyı kırmızıya düşürmek yerine yüksek sesle uyarır.
+        warnings.push(
+          "tarayıcı kimliğiyle de tag 204 (No Content): Microsoft bu proje kimliği için betik sunmuyor — Clarity panelinde Project ID ve alan adı doğrulanmalı",
+        );
+      }
+    } catch (probeError) {
+      notes.push(`tarayıcı kimliği denemesi yapılamadı: ${String(probeError?.message ?? probeError)}`);
+    }
+    if (response.status === 200) {
+      // Beklenen: JavaScript gövdesi.
+    } else if (response.status >= 400) {
+      problems.push(`Clarity tag adresi HTTP ${response.status} döndü (proje kimliği geçersiz olabilir)`);
+    } else {
+      // Tarayıcı dışı istek (Referer/Origin yok) 204 dönebiliyor; tek başına hata sayılmaz.
+      // Belirleyici kanıt gerçek tarayıcı koşusu: `npm run test:e2e:canli`.
+      notes.push(
+        `tag adresi tarayıcı dışı istekte HTTP ${response.status} döndü; tarayıcı doğrulaması belirleyici`,
+      );
+    }
+  } catch (error) {
+    // Ağ engeli bu denetimi ölçemez hâle getirir; hata değil, not olarak raporlanır.
+    notes.push(`Clarity tag adresine ulaşılamadı: ${String(error?.message ?? error)}`);
+    tag = { status: null, ok: false, contentType: null };
+  }
+
+  return { ok: problems.length === 0, problems, warnings, notes, scriptSrc, connectSrc, tag };
+}
+
 /**
  * GitHub Actions log'una erişilemeyen ortamlar için bulguyu annotation olarak
  * yayınlar (annotations API'den okunabilir). Annotation girdileri tek satırdır.
@@ -263,6 +353,24 @@ function printReport({ base, entry, bytes, config, chunksScanned = 1 }, { ok, pr
   }
 }
 
+function printClarityReport({ ok, problems, warnings = [], notes, scriptSrc, connectSrc, tag }) {
+  const line = (label, value) => console.log(`${label.padEnd(22)} ${value}`);
+  console.log("");
+  console.log("Clarity (rıza kapılı üçüncü taraf ölçüm) doğrulaması");
+  line("script-src:", scriptSrc.length ? scriptSrc.join(" ") : "(başlık yok)");
+  line("connect-src *.clarity:", connectSrc.includes("https://*.clarity.ms") ? "var" : "YOK");
+  line("tag adresi:", `${CLARITY_TAG_URL} → ${tag?.status ?? "ulaşılamadı"}${tag?.contentType ? ` (${tag.contentType})` : ""}`);
+  for (const warning of warnings) line("Uyarı:", warning);
+  for (const note of notes ?? []) line("Not:", note);
+  console.log("");
+  if (ok) {
+    console.log("SONUÇ: ✅ Clarity yapılandırması canlıda izinli ve tag erişilebilir");
+  } else {
+    console.log("SONUÇ: ❌ Clarity yapılandırması canlıda sorunlu");
+    for (const problem of problems) console.log(` - ${problem}`);
+  }
+}
+
 async function main() {
   const args = process.argv.slice(2);
   const baseIndex = args.indexOf("--base");
@@ -272,14 +380,30 @@ async function main() {
 
   const result = await inspectLiveSite({ base });
   const verdict = evaluateConfig(result.config, { expectedProject });
+  const clarity = await inspectClarity({ base });
 
   if (asJson) {
-    console.log(JSON.stringify({ ...result, ...verdict }, null, 2));
+    console.log(JSON.stringify({ ...result, ...verdict, clarity }, null, 2));
   } else {
     printReport(result, verdict);
+    printClarityReport(clarity);
   }
 
   if (process.env.GITHUB_ACTIONS === "true") {
+    // Clarity bulgusu da annotation olarak yayınlanır: iş log'u erişilemezse
+    // (bu depoda olduğu gibi) tek okunabilir kanıt annotations API'sidir.
+    const clarityFacts =
+      `script-src clarity=${clarity.scriptSrc.includes("https://scripts.clarity.ms") ? "var" : "YOK"} | ` +
+      `connect *.clarity=${clarity.connectSrc.includes("https://*.clarity.ms") ? "var" : "YOK"} | ` +
+      `tag=${clarity.tag?.status ?? "ulasilamadi"}/${clarity.tag?.browserStatus ?? "-"}`;
+    if (!clarity.ok) {
+      annotation("error", "Canli Clarity", `${clarityFacts} | Sorunlar: ${clarity.problems.join(" ; ")}`);
+    } else if ((clarity.warnings ?? []).length) {
+      annotation("warning", "Canli Clarity", `${clarityFacts} | ${clarity.warnings.join(" ; ")}`);
+    } else {
+      annotation("notice", "Canli Clarity", `${clarityFacts} | ${clarity.notes?.join(" ; ") || "saglikli"}`);
+    }
+
     const { config, entry, base, chunksScanned = 1, scannedPaths = [] } = result;
     const facts =
       `base=${base} | entry=${entry} | parca=${chunksScanned} | projectId=${config.projectId ?? "(yok)"} | ` +
@@ -297,7 +421,10 @@ async function main() {
     }
   }
 
-  if (!verdict.ok) process.exit(1);
+  if (!clarity.ok) {
+    for (const problem of clarity.problems) console.log(` - [clarity] ${problem}`);
+  }
+  if (!verdict.ok || !clarity.ok) process.exit(1);
 }
 
 if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) {
