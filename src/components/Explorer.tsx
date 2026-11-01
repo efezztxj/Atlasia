@@ -26,6 +26,7 @@ const AddDiscoveryModal = lazy(() => import("./AddDiscoveryModal"));
 import RecordsDock from "./RecordsDock";
 import RouteEditor from "./RouteEditor";
 import ConfirmDialogHost, { requestConfirm } from "./ConfirmDialog";
+import MapPerfOverlay from "./MapPerfOverlay";
 import { useAuth } from "../contexts/AuthContext";
 import { analytics } from "../lib/analytics";
 import { CollectionsProvider, isCloudAccount } from "../hooks/useCollections";
@@ -1814,6 +1815,8 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
       )}
 
       <ConfirmDialogHost />
+      {/* Yalnız adreste `?perf` varken çizilir; aksi hâlde null. */}
+      <MapPerfOverlay search={window.location.search} />
     </div>
   );
 }
