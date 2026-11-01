@@ -220,7 +220,7 @@ service cloud.firestore {
 
     /** F2-1: `likeCount` yoksa 0 say (eski dokümanlar). Hata üretmeyen erişim. */
     function likeCountOf(data) {
-      return 'likeCount' in data ? data.likeCount : 0;
+      return data.keys().hasAll(['likeCount']) ? data.likeCount : 0;
     }
 
     /**
@@ -741,9 +741,11 @@ service cloud.firestore {
                     && request.resource.data.createdAt == request.time
                     && request.resource.data.likes == 0
                     && request.resource.data.likedBy.size() == 0;
-      // F2-1 geçiş penceresi: eski istemci `likedBy` ile, yeni istemci alt
-      // koleksiyon + `likeCount` ile yazar. İki yol da doğrulanır; serbest alan yok.
-      allow update: if signedIn() && (validPostInteraction() || validLikeCounterUpdate(postId));
+      // F2-1 geçiş penceresi: iki ayrı `allow` — eski istemci `likedBy` ile, yeni
+      // istemci alt koleksiyon + `likeCount` ile yazar. Ayrı satır olmaları bilinçli:
+      // bir yolun değerlendirme hatası diğerini düşürmesin.
+      allow update: if signedIn() && validPostInteraction();
+      allow update: if signedIn() && validLikeCounterUpdate(postId);
       allow delete: if signedIn()
                     && (resource.data.authorUid == request.auth.uid || isModerator());
 
