@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { gzipSync } from "node:zlib";
+import { brotliCompressSync, gzipSync } from "node:zlib";
 
 const DEFAULT_DIST = fileURLToPath(new URL("../dist", import.meta.url));
 
@@ -231,6 +231,10 @@ function measureFile(distDir, fullPath) {
     path: relativePath,
     bytes: content.length,
     gzipBytes: gzipSync(content).length,
+    // Brotli: Cloudflare Pages varlıkları brotli ile servis eder; gzip tek başına
+    // gerçek ilk yükleme maliyetini olduğundan büyük gösteriyordu
+    // (docs/baseline.md §1 "Brotli ölçümü yapılmadı" notu bu satırla kapanır).
+    brotliBytes: brotliCompressSync(content).length,
     category: classifyBundleAsset(relativePath),
     kind: relativePath.endsWith(".js") ? "js" : relativePath.endsWith(".css") ? "css" : "other",
   };
@@ -304,8 +308,10 @@ export function summarizeBundle({ html, assets, initialAssetPaths }) {
     missingInitialAssets,
     totalJsBytes: sum(assets.filter((asset) => asset.kind === "js"), "bytes"),
     totalJsGzipBytes: sum(assets.filter((asset) => asset.kind === "js"), "gzipBytes"),
+    totalJsBrotliBytes: sum(assets.filter((asset) => asset.kind === "js"), "brotliBytes"),
     totalCssBytes: sum(assets.filter((asset) => asset.kind === "css"), "bytes"),
     totalCssGzipBytes: sum(assets.filter((asset) => asset.kind === "css"), "gzipBytes"),
+    totalCssBrotliBytes: sum(assets.filter((asset) => asset.kind === "css"), "brotliBytes"),
     initialBytes: html.bytes + sum(initialAssets, "bytes"),
     initialGzipBytes: html.gzipBytes + sum(initialAssets, "gzipBytes"),
     initialCssGzipBytes: sum(initialAssets.filter((asset) => asset.kind === "css"), "gzipBytes"),
@@ -438,6 +444,9 @@ export function formatBundleReport(summary, budget = BUNDLE_BUDGET) {
     `İlk HTML seti: ${formatBytes(summary.initialBytes)} ham / ${formatBytes(summary.initialGzipBytes)} gzip (bütçe ${formatBytes(budget.initialGzipBytes)})`,
     `Toplam JS: ${formatBytes(summary.totalJsBytes)} ham / ${formatBytes(summary.totalJsGzipBytes)} gzip (bütçe ${formatBytes(budget.totalJsGzipBytes)})`,
     `Toplam CSS: ${formatBytes(summary.totalCssBytes)} ham / ${formatBytes(summary.totalCssGzipBytes)} gzip (bütçe ${formatBytes(budget.totalCssGzipBytes)})`,
+    // Brotli satırı bilgi amaçlı: Cloudflare brotli servis ettiği için gerçek
+    // transfer maliyeti budur. Bütçe kapısı gzip üzerinden kalır (karşılaştırılabilirlik).
+    `Brotli (bilgi): JS ${formatBytes(summary.totalJsBrotliBytes)} · CSS ${formatBytes(summary.totalCssBrotliBytes)} · ilk set ${formatBytes(summary.initialAssets.reduce((total, asset) => total + asset.brotliBytes, summary.html.brotliBytes))}`,
     `İlk boya CSS: ${formatBytes(summary.initialCssGzipBytes)} gzip (bütçe ${formatBytes(budget.initialCssGzipBytes)}) · İlk boya JS: ${formatBytes(summary.initialJsGzipBytes)} gzip (bütçe ${formatBytes(budget.initialJsGzipBytes)})`,
     `Yolculuk — tanıtım: ${formatBytes(summary.journeys.landing)} gzip (bütçe ${formatBytes(budget.journeyGzipBytes.landing)}) · uygulama kabuğu: ${formatBytes(summary.journeys.appShell)} gzip (bütçe ${formatBytes(budget.journeyGzipBytes.appShell)})`,
     "",

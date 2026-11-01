@@ -233,3 +233,27 @@ test("satıcı (vendor) kategorileri bayatlama denetiminin dışında", () => {
   assert.notEqual(BUNDLE_BUDGET.staleness.gates.includes("reactVendor"), true);
   assert.notEqual(BUNDLE_BUDGET.staleness.gates.includes("firebaseVendor"), true);
 });
+
+test("brotli ölçümü gerçek transfer maliyetini verir ve gzip'ten büyük olamaz", (t) => {
+  // Cloudflare varlıkları brotli ile servis eder; baseline'daki "Brotli ölçülmedi"
+  // notu bu testin kilitlediği satırla kapanır. Kural: her varlık için
+  // brotli <= gzip (tersi sıkıştırma hatasıdır) ve toplamlar varlık toplamına eşit.
+  const distDir = makeDist(t);
+  writeFixture(distDir, "assets/map-vendor-map.js", "const map = 1;".repeat(500));
+  const summary = summarizeBundle(collectBundleAssets(distDir));
+
+  for (const asset of summary.assets) {
+    assert.ok(asset.brotliBytes > 0, `${asset.path} brotli ölçülmedi`);
+    assert.ok(
+      asset.brotliBytes <= asset.gzipBytes,
+      `${asset.path}: brotli (${asset.brotliBytes}) gzip'ten (${asset.gzipBytes}) büyük olamaz`,
+    );
+  }
+
+  const jsAssets = summary.assets.filter((asset) => asset.kind === "js");
+  assert.equal(
+    summary.totalJsBrotliBytes,
+    jsAssets.reduce((total, asset) => total + asset.brotliBytes, 0),
+  );
+  assert.match(formatBundleReport(summary), /Brotli \(bilgi\): JS/);
+});

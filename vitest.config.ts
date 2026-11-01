@@ -16,6 +16,26 @@ export default defineConfig({
     include: ["src/**/*.test.ts"],
     passWithNoTests: false,
     reporters: ["default"],
+    /*
+     * F0-2 — kapsam kapısı. Eşikler işkembeden değil, bu ağaçtaki İLK ÖLÇÜMDEN
+     * gelir (2026-11-01: statements %61,21 · branches %53,68 · functions %56,88 ·
+     * lines %66,07; 176 dosya / 1.346 test). Amaç "yüksek eşik" değil,
+     * **düşememek**: her faz sonunda +3 puan yukarı çekilir (plan §F0-2).
+     * Eşiği düşürmek için önce buradaki gerekçe satırının değişmesi gerekir.
+     */
+    coverage: {
+      provider: "v8",
+      reporter: ["text-summary", "json-summary"],
+      reportsDirectory: "coverage",
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: ["src/**/*.test.*"],
+      thresholds: {
+        lines: 65,
+        statements: 60,
+        functions: 55,
+        branches: 52,
+      },
+    },
     env: {
       VITE_FIREBASE_API_KEY: "",
       VITE_FIREBASE_AUTH_DOMAIN: "",

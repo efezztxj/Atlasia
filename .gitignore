@@ -52,3 +52,6 @@ __pycache__/
 /playwright-report/
 /test-results/
 
+
+# F0-2: kapsam çıktısı (sayılar CI'da ve docs/DURUM.md'de; ham rapor depoya girmez)
+/coverage/

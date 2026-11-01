@@ -1,5 +1,39 @@
 # Atlasia Update
 
+## 2026-11-01 — F0 ölçüm temeli: kapsam eşiği, brotli ölçümü, canlı durum dokümanı ve modül boyutu kapısı
+
+`docs/gorevler/10-10-yol-plani-2026-11-01.md` §F0 ve §F1-0 uygulandı. Dördü de **kapı**:
+bundan sonra "iyileşti" demek için ölçüm şart.
+
+- **F0-2 · Kapsam eşiği (`@vitest/coverage-v8@5.0.5`, vitest ile aynı hat):** `vitest.config.ts`
+  içine v8 kapsamı ve **eşikler** eklendi. Eşikler işkembeden değil, bu ağaçtaki ilk ölçümden
+  gelir: **statements %61,21 · branches %53,68 · functions %56,88 · lines %66,07** (176 dosya /
+  1.346 test). Kapı olarak 60/52/55/65 yazıldı; amaç "yüksek eşik" değil **düşememek** — her faz
+  sonunda +3 puan yukarı çekilir. `npm run test:cov` eklendi, `npm run check` artık kapsam
+  eşiğiyle koşuyor, CI'ın "Unit tests" adımı `test:cov` oldu. Ham rapor `coverage/` (gitignore).
+- **F0-4 · Brotli ölçümü:** `docs/baseline.md` §1'deki "Brotli ölçümü yapılmadı" notu kapandı.
+  `scripts/bundle-budget.mjs` her varlık için `brotliBytes` ölçüyor ve rapora satır basıyor.
+  İlk ölçüm (`npm run build`): **JS 996.790 B gzip ↔ 842.588 B brotli** · CSS 35.629 ↔ 28.224 ·
+  ilk set **108.766 B brotli**. Bütçe kapısı bilinçli olarak gzip'te kaldı (karşılaştırılabilirlik);
+  brotli bilgi satırıdır. Yeni test: brotli > gzip olamaz, toplamlar varlık toplamına eşit.
+- **F0-5 · Canlı durum dokümanı (`docs/DURUM.md`):** `scripts/state-doc.mjs` üretiyor,
+  `src/config/stateDoc.test.ts` bayatlamasını kırmızıya çeviriyor; `npm run state:doc` yazar,
+  `-- --check` denetler. Bilinçli tasarım: **LOC ve toplam test sayısı bu dosyaya yazılmaz** —
+  her commit'te değişen sayı dokümanı angaryaya çevirir, bayatlamayı çözmez. Yazılanlar yapısal
+  (dosya sayıları, kural blokları, indeks, kapı listesi). Tarihli raporlar "dondurulmuş kesit"
+  olarak kalıyor; güncel sayının tek adresi artık burası. Negatif test: eksik/bayat dosya `1` döner.
+- **F1-0 · Modül boyutu ratchet kapısı:** `src/config/moduleSize.test.ts`. `src/` altında 500
+  satırı aşan dosya yasak; bugünkü **12 dosya** borç defterinde (Explorer 1796 … mapWeather 530)
+  ve her satır o dosyanın **bugünkü boyutuyla üst sınır**: büyürse kırmızı, 500 altına inerse
+  kayıt silinmek zorunda, deftere yeni satır eklemek ayrı gerekçe ister. Negatif kontrol elle
+  yapıldı (620 satırlık geçici dosya → test kırmızı, dosya silindi).
+- **F0-1 · Lighthouse CI uygulanmadı (bilinçli):** bu ortamda Chromium indirilemiyor
+  (`npx playwright install chromium` → indirme hatası), yani `lhci` burada **doğrulanamadı**.
+  Depo kuralı gereği ("derlenmeyen/test edilmeyen kapı push edilmez") çalıştırılamayan bir CI
+  adımı eklenmedi; playbook'ta F0-1 açık kalıyor.
+- Kapılar: `typecheck` ✅ · `lint` ✅ (0 uyarı) · `test:cov` ✅ (178 dosya, eşikler geçti) ·
+  `test:scripts` ✅ (bundle-budget 15 test) · `build` ✅ (bütçe içinde, SW 63/63).
+
 ## 2026-11-01 — Clarity CSP kapanışı, ölçüm karar kaydı, `actions/checkout` v7.0.1 ve bağımlılık bakımı
 
 - **Clarity çalışma zamanı CSP'de engelleniyordu (PR #163):** `public/_headers` içindeki `script-src` yalnız `https://www.clarity.ms` (yükleyici) izniyordu; gerçek çalışma zamanı `https://scripts.clarity.ms` adresinden geldiği için rıza veren kullanıcıda bile betik bloklanıyordu. Adres açıkça eklendi (joker `*.clarity.ms` bilinçli olarak kullanılmadı), `src/config/cloudflareHeaders.test.ts` iki adresi de kilitliyor.
