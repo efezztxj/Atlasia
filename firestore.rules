@@ -719,7 +719,7 @@ service cloud.firestore {
       // bu yüzden kuralda aritmetik ya da koşullu alan okuması yok.
       match /likes/{likeUid} {
         allow get: if signedIn() && likeUid == request.auth.uid;
-        allow list: if signedIn() && likeUid == request.auth.uid;
+        allow list: if signedIn() && likeUid == request.auth.uid && boundedList(50);
         allow create: if signedIn()
                       && !banned()
                       && likeUid == request.auth.uid
@@ -1335,7 +1335,7 @@ service cloud.firestore {
 
     // F2-1 (sayısız beğeni): koleksiyon grubu yalnız kendi belgelerini listeler.
     match /{path=**}/likes/{likeUid} {
-      allow list: if signedIn() && resource.data.uid == request.auth.uid;
+      allow list: if signedIn() && resource.data.uid == request.auth.uid && boundedList(200);
     }
 
     match /{document=**} {
