@@ -13,12 +13,14 @@ import type { PlaceViewport } from "../lib/firestoreData";
 import type { Place, RouteLeg, ViewState } from "../types";
 import { shouldAdvanceSpin, shouldCommitView, shouldReportView } from "../utils/mapLifecycle";
 import {
+  DEGRADE_PIXEL_RATIO,
   detectDeviceTier,
   measuredFps,
   readDeviceSignals,
   recommendedHillshade,
   recommendedPixelRatio,
   shouldDisableTerrain,
+  shouldDropToMinimum,
   shouldLowerMapQuality,
 } from "../utils/deviceTier";
 import type { WeatherLayerHandle, WeatherMode, WeatherStopMark } from "../utils/mapWeather";
@@ -830,16 +832,22 @@ export default function MapView({
       const fps = measuredFps(sampleFrames, elapsed);
       if (!fps) return;
       lastFps = fps;
-      if (degradeStep === 0 && shouldLowerMapQuality(fps, appliedPixelRatio, false)) {
-        degradeStep = 1;
-        appliedPixelRatio = 1;
+      // Kalite öncelikli kademeli düşürme: önce yumuşak bir ara değer (1,5),
+      // görüntüyü bozmadan. Ancak hâlâ zorlanıyorsa ağır katman kapanır, en
+      // son çare piksel oranı 1'e iner.
+      const setRatio = (ratio: number) => {
+        appliedPixelRatio = ratio;
         // `setPixelRatio` içinde `resize()` var; resize de movestart/moveend
         // yayar. Olay dağıtımının içinden çağırmak yerine bir sonraki kareye
         // bırakılır (yeniden giriş ve yarım kalan transform güncellemesi olmasın).
         requestAnimationFrame(() => {
           if (spinDisposed || !mapRef.current) return;
-          if (typeof map.setPixelRatio === "function") map.setPixelRatio(1);
+          if (typeof map.setPixelRatio === "function") map.setPixelRatio(ratio);
         });
+      };
+      if (degradeStep === 0 && shouldLowerMapQuality(fps, appliedPixelRatio, false)) {
+        degradeStep = 1;
+        setRatio(Math.min(appliedPixelRatio, DEGRADE_PIXEL_RATIO));
         return;
       }
       if (degradeStep === 1 && shouldDisableTerrain(fps)) {
@@ -847,6 +855,11 @@ export default function MapView({
         // Ağır katman kararı sahibine bırakılır: kullanıcı kendi seçimini
         // yaptıysa arayüz onu ezmez (Explorer `terrainTouched` ile korur).
         live.current.onSlowDevice?.();
+        return;
+      }
+      if (degradeStep === 2 && shouldDropToMinimum(fps)) {
+        degradeStep = 3;
+        setRatio(1);
       }
     };
     map.on("render", onSampleFrame);

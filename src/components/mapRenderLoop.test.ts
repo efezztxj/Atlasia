@@ -59,7 +59,7 @@ describe("harita çizim döngüsü ve görünüm bildirimi", () => {
     expect(mapView).toMatch(/pixelRatio: appliedPixelRatio,/);
   });
 
-  it("tepe gölgesi dokunmatik cihazda kapalı başlar, arazi 3B kalır", () => {
+  it("tepe gölgesi yalnız zayıf cihazda kapalı başlar (kalite önceliği)", () => {
     expect(mapView).toContain("hillshade: recommendedHillshade(signals)");
     expect(mapView).toMatch(/layout: \{ visibility: hillshade \? "visible" : "none" \}/);
     // Görünürlük hem arazi hem tepe gölgesi koşuluna bağlı.
@@ -70,6 +70,9 @@ describe("harita çizim döngüsü ve görünüm bildirimi", () => {
     expect(mapView).toContain("shouldDisableTerrain");
     expect(mapView).toMatch(/degradeStep === 0 && shouldLowerMapQuality/);
     expect(mapView).toMatch(/degradeStep === 1 && shouldDisableTerrain/);
+    // Son çare 1'e iner; ilk adım görüntüyü bozmayan ara değerdir.
+    expect(mapView).toMatch(/degradeStep === 2 && shouldDropToMinimum/);
+    expect(mapView).toContain("DEGRADE_PIXEL_RATIO");
     // Arazi kararı sahibine bırakılır (kullanıcı seçimini ezmemek için).
     expect(mapView).toContain("live.current.onSlowDevice?.()");
   });
@@ -93,7 +96,8 @@ describe("harita çizim döngüsü ve görünüm bildirimi", () => {
     expect(mapView).toContain("shouldLowerMapQuality");
     expect(mapView).toMatch(/map\.on\("movestart", onSampleStart\)/);
     expect(mapView).toMatch(/map\.on\("moveend", onSampleEnd\)/);
-    expect(mapView).toMatch(/map\.setPixelRatio\(1\)/);
+    // Piksel oranı rAF içinde uygulanır (resize yeniden girişi olmasın).
+    expect(mapView).toMatch(/map\.setPixelRatio\(ratio\)/);
   });
 
   it("arazi varsayılanı cihaz sinyallerine bağlı, kullanıcı seçimi ezilmiyor", () => {

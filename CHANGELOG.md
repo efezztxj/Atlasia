@@ -1,5 +1,15 @@
 # Atlasia Update
 
+## 2026-11-01 — Kalite turu: yayın akıcı çıktı, görüntü keskinleştirildi
+
+- **Gözlem:** `atlasia.pages.dev` (production build) akıcı; buradaki önizleme `vite dev`. Fark yapısal: dev'de `StrictMode` **çift render** eder, kod minify değildir, HMR yükü vardır; production'da bunların hiçbiri yok. Yani "kasıyor" geri bildiriminin bir kısmı dev önizlemesine aitti ve tur 1-5 düzeltmeleri yayında çalışıyor.
+- **Dokunmatikte piksel tavanı 1,5 → 2:** 1,5 telefonda gözle görülür biçimde yumuşaktı. 2 = retina keskinliği; DPR 3 cihazda 9 kat yerine 4 kat piksel taranır, görüntü farkı pratikte ayırt edilmez.
+- **Düşük kademe tavanı 1,25 → 1,5:** zayıf cihazda bile yumuşak görüntü yok.
+- **Tepe gölgesi (hillshade) artık yalnız gerçekten zayıf cihazda kapalı:** araziyle aynı tek kapıya bağlandı (`isWeakDevice`: veri tasarrufu, azaltılmış hareket, `deviceMemory <= 3`, dokunmatik + en fazla 4 çekirdek). Modern telefon (6-8 çekirdek) gölgesini korur.
+- **Kademeli düşürme kalite korumalı 3 adıma çıktı:** <40 FPS → piksel 1,5 · <28 FPS → arazi kapalı · <22 FPS → piksel 1 (`MIN_CRITICAL_FPS`, `DEGRADE_PIXEL_RATIO`). Eskiden ilk adım doğrudan 1'e indiriyordu; artık görüntüyü bozmayan ara değerle başlıyor.
+- **Ayrıca (önceki tur):** `?perf` ekran üstü teşhis paneli (`MapPerfOverlay`) — parametre yoksa hiçbir şey çizmez, `perfEnabled` testle kilitli.
+- **Doğrulama:** `tsc --noEmit`, `eslint --max-warnings=0`, `vitest run` (180 dosya / **1.404 test**), `vite build`, `bundle-budget` bütçe içinde (JS 999.591 B / 1.003.000 gzip), `test:bundle-budget` 14 test.
+
 ## 2026-11-01 — Kasma turu 5: kalan gecikme için ölçüm kancası + kademeli düşürme
 
 - **"Hâlâ bi tık gecikiyor" tahmine bırakılmadı:** `window.atlasiaMapPerf()` eklendi. Uygulanan ayarları ve **son ölçülen kare hızını** döndürür: `tier`, `coarsePointer`, `cores`, `memory`, `pixelRatio`, `devicePixelRatio`, `terrain`, `hillshade`, `markers`, `fps`, `degradeStep`. Böylece bildirim sayıya bağlanır; hangi ayarın düşürüldüğü cihazda görülür.
