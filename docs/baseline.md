@@ -29,11 +29,28 @@ Komut: `npm run build` (üretim derlemesi; `scripts/bundle-budget.mjs` gzip öl�
 > gzip değeri verebilir. Yukarıdaki sayılar bu ağaçtaki son ölçümdür; eşik
 > karşılaştırmalarında marj bu kadar oynayabilir.
 
-> Plan hedefi "ilk yüklemede JS < 250 KB brotli". **Brotli ölçümü yapılmadı**;
-> yukarıdaki değerler gzip. Brotli tipik olarak gzip'ten ~%10–15 küçüktür, yani
-> gerçek ilk yükleme büyük olasılıkla hedefin altında — ama bu bir çıkarım,
-> ölçüm değil. Ölçmek için: `dist/assets/*.js` dosyalarını `brotli -q 11` ile
-> sıkıştırıp ilk HTML setindeki parçaları topla.
+> **Brotli artık ölçülüyor (F0-4, 2026-11-01).** `scripts/bundle-budget.mjs` her varlık
+> için `brotliBytes` hesaplıyor ve rapora satır basıyor. Aynı ağaçtaki ölçüm:
+> **JS 996.790 B gzip ↔ 842.588 B brotli (−%15,5)** · CSS 35.629 ↔ 28.224 ·
+> **ilk set 108.766 B brotli** (gzip 127.993). Yani "ilk yüklemede JS < 250 KB brotli"
+> plan hedefi **karşılanıyor** (108,8 KB). Bütçe kapısı bilinçli olarak gzip'te kalıyor:
+> brotli sayısı bilgi amaçlıdır, eşik değildir.
+
+## 1b. Test kapsamı — ölçüldü (2026-11-01, F0-2)
+
+Komut: `npm run test:cov` (`@vitest/coverage-v8@5.0.5`, v8 sağlayıcısı).
+Kapsam `src/**/*.{ts,tsx}` (test dosyaları hariç).
+
+| Ölçüm | Değer | Kapı eşiği | Marj |
+|---|---|---|---|
+| Statements | **%61,21** (7.407/12.099) | %60 | 1,21 puan |
+| Branches | **%53,68** (4.419/8.231) | %52 | 1,68 puan |
+| Functions | **%56,88** (1.644/2.890) | %55 | 1,88 puan |
+| Lines | **%66,07** (6.413/9.705) | %65 | 1,07 puan |
+
+Eşikler **ratchet**'tır: hedef "yüksek" değil, "düşememek". Plan §F0-2 gereği her faz
+sonunda +3 puan yukarı çekilir; 10/10 hedefi %80 satır. Ölçüm anındaki test seti:
+176 dosya / 1.346 test (kapsam koşusu sonrası 178 dosya — yeni kapı testleri dahil).
 
 ## 2. Core Web Vitals (Lighthouse mobil) — ölçülmedi
 
