@@ -8,13 +8,8 @@
  */
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { MapViewHandle } from "./MapView";
-import Header from "./Header";
-import Hero from "./Hero";
-import SearchBox from "./SearchBox";
-import MapControls from "./MapControls";
 import BottomPanel from "./BottomPanel";
 import type { SettingsContentProps } from "./SettingsPanel";
-const NearbyAudioGuide = lazy(() => import("./NearbyAudioGuide"));
 const SocialPanel = lazy(() => import("./SocialPanel"));
 const AtlasAssistant = lazy(() => import("./AtlasAssistant"));
 import ConfirmDialogHost from "./ConfirmDialog";
@@ -33,9 +28,8 @@ import { useDiscoveryFlow } from "../hooks/useDiscoveryFlow";
 import { useModerationActions } from "../hooks/useModerationActions";
 import { usePlaceCrud, usePlaceNavigation } from "../hooks/usePlaceActions";
 import { useExplorerEnvironment } from "../hooks/useExplorerEnvironment";
-import { MapSurfaceHints } from "./explorer/MapCanvas";
-import { AddModeBanner, DataErrorBanner, MobileSearchSheet, ToastBanner } from "./explorer/OverlayPanels";
-import { WalkFab } from "./explorer/DockChrome";
+import { MapScene } from "./explorer/MapScene";
+import { AddModeBanner, DataErrorBanner, ToastBanner } from "./explorer/OverlayPanels";
 import { PanelStack } from "./explorer/PanelStack";
 import { useModerationInbox, useModeratorAccess } from "../hooks/useModerationInbox";
 import { usePanelStack } from "../hooks/usePanelStack";
@@ -70,34 +64,17 @@ import { startAppCheck } from "../lib/firebase";
 // çalıştırıldığı anda, ilk Firestore okumasından önce bir kez başlatılır.
 startAppCheck();
 
-const MapView = lazy(() => import("./MapView"));
 // Profil paneli yalnız açılınca yüklenir (ilk paket bütçesi).
 // Yer detayı paneli yalnız bir yer seçilince açılır; advices/panel kodu
 // başlangıç grafiğinde durmasın (bundle bütçesi marjı dar).
 // Yürüyüş kaydı yalnız "Yürüyüş kaydı" düğmesine basılınca açılır;
 // iz toplama/sadeleştirme kodu (utils/track) başlangıç grafiğinde durmaz.
-const TrackRecorderPanel = lazy(() => import("./TrackRecorderPanel"));
-const MapLayersSheet = lazy(() => import("./MapLayersSheet"));
 // Raporlar/moderasyon paneli ayrı parça: kuyruk yalnız ihtiyaç anında yüklenir.
 /** T5: misafirken engellenen eylem; hesap açılınca tüketilir. */
 const PENDING_INTENT_KEY = "atlasia.pendingIntent.v1";
 type PendingIntent = "place" | "route" | "feed" | "none";
 /** Cihazda ilk rota oluşturuldu mu (T2 aktivasyon bayrağı). */
 
-function MapLoadingSkeleton() {
-  return (
-    <div
-      className="absolute inset-0 grid place-items-center bg-ink"
-      role="status"
-      aria-label="Harita yükleniyor"
-    >
-      <div className="flex flex-col items-center gap-3 text-mint/75">
-        <span className="size-12 animate-pulse rounded-full border border-leaf/40 bg-leaf/10" />
-        <span className="text-sm">Harita hazırlanıyor…</span>
-      </div>
-    </div>
-  );
-}
 
 function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
   const mapRef = useRef<MapViewHandle>(null);
@@ -614,184 +591,21 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
       <a href="#harita" className="skip-link">
         İçeriğe geç
       </a>
-      <main id="harita" aria-label="Keşif haritası" className="contents" tabIndex={-1}>
-        <Suspense fallback={<MapLoadingSkeleton />}>
-          <MapView
-            ref={mapRef}
-            places={visiblePlaces}
-            activeId={activeId}
-            onSelect={handleSelect}
-            addMode={addMode}
-            onMapClick={handleMapClick}
-            showLabels={labels}
-            terrainEnabled={terrain}
-            baseMap={baseMap}
-            theme={theme}
-            spin={spin && !reducedMotion && !addMode && !draft}
-            onUserInteract={() => { setSpin(false); setHeroCompact(true); }}
-            onViewChange={setView}
-            onViewportChange={setMapViewport}
-          />
-        </Suspense>
-      </main>
-
-      <Header
-        onOpenDrawer={() => { closePanels(); setDrawerOpen(true); }}
-        onAdd={startAdd}
-        addMode={addMode}
-        placeCount={allPlaces.length}
-        locationReady={!!geo.fix}
-        onOpenSettings={() => openSettings()}
-        onOpenRecords={openRecords}
-        onOpenProfile={openProfile}
-        onOpenNotifications={() => {
-          if (guest) { askAccount("Bildirimler için bir hesap aç ya da giriş yap."); return; }
-          const next = !notificationsOpen;
-          closePanels();
-          setNotificationsOpen(next);
+      {/* Harita sahnesi (F1-6 adım 3) — çizim MapScene'de, karar burada. */}
+      <MapScene
+        {...{
+        activeId, addMode, allPlaces, askAccount, atlasOpen, baseMap, closePanels, draft,
+        drawAtlasRoute, focusPlace, geo, guest, handleClearLocation, handleLocate, handleMapClick,
+        handleReset, handleSearchPick, handleSelect, heroCompact, heroHidden, labels, layersOpen,
+        mapRef, notificationsOpen, openAtlas, openProfile, openRecords, openSettings, panelOpen,
+        precise, reducedMotion, searchOpen, setAtlasOpen, setBaseMap, setDrawerOpen,
+        setHeroCompact, setLabels, setLayersOpen, setMapViewport, setNotificationsOpen,
+        setResumeRoute, setSearchOpen, setSpin, setStoryPlace, setTerrain, setToast,
+        setTrackRecorderOpen, setView, setWeatherHour, setWeatherMode, spin, startAdd, terrain,
+        theme, toggleWeather, trackPreviewDrawn, trackRecorderOpen, unreadCount, user, view,
+        visiblePlaces, weather, weatherHour, weatherMode, weatherStatus,
         }}
-         onOpenSearch={() => { closePanels(); setSearchOpen(true); }}
-         notificationsOpen={notificationsOpen}
-         profileName={user?.displayName ?? ""}
-         unreadCount={unreadCount}
-       />
-
-      {/* Hero - her ekranda göster, sadece mobil için özel stil */}
-      <nav
-        aria-label="Karşılama"
-        className="mobile-home-content pointer-events-none absolute inset-x-0 top-[68px] z-30 px-3 pt-3 md:top-[72px] md:z-10 md:px-8 md:pt-12"
-      >
-        <div className="mx-auto flex max-w-[1340px] flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-5">
-          <Hero hidden={heroHidden} compact={heroCompact} />
-          {/* SearchBox sadece masaüstünde */}
-          <div className="hidden md:order-2 md:block">
-            <SearchBox
-              places={allPlaces}
-              onPick={handleSearchPick}
-            onOpenFilters={() => { closePanels(); setDrawerOpen(true); }}
-            />
-          </div>
-        </div>
-      </nav>
-
-      {/* Mobil arama sayfası */}
-      {searchOpen && (
-        <MobileSearchSheet
-          places={allPlaces}
-          onPick={(result) => { setSearchOpen(false); handleSearchPick(result); }}
-          onClose={() => setSearchOpen(false)}
-          onOpenFilters={() => { setSearchOpen(false); setDrawerOpen(true); }}
-        />
-      )}
-
-      <MapControls
-        onZoomIn={() => {
-          setSpin(false);
-          mapRef.current?.zoomIn();
-        }}
-        onZoomOut={() => mapRef.current?.zoomOut()}
-        onReset={handleReset}
-        onLocate={handleLocate}
-        onOpenLayers={() => {
-          const next = !layersOpen;
-          closePanels();
-          setLayersOpen(next);
-        }}
-        layersOpen={layersOpen}
-        onToggleTrackRecorder={() => setTrackRecorderOpen((open) => !open)}
-        trackRecorderOpen={trackRecorderOpen}
-        onToggleAtlas={() => (atlasOpen ? setAtlasOpen(false) : openAtlas())}
-        atlasOpen={atlasOpen}
-        hiddenOnMobile={panelOpen}
       />
-
-      {/* Harita üstü eylem çifti — sol: yürüyüş kaydı (nötr cam), sağ: Atlas AI.
-          Ekle artık alt çubuğun ortasında; ölçüler index.css →
-          .mobile-walk-fab / .mobile-tab-add / .atlas-launcher. */}
-      {!trackRecorderOpen && (
-        <WalkFab
-          panelOpen={panelOpen}
-          onClick={() => {
-            if (guest) { askAccount("Yürüyüş kaydı için bir hesap aç ya da giriş yap."); return; }
-            setTrackRecorderOpen(true);
-          }}
-        />
-      )}
-      {layersOpen && (
-        <Suspense fallback={null}>
-          <MapLayersSheet
-            open={layersOpen}
-            onClose={() => setLayersOpen(false)}
-            baseMap={baseMap}
-            onBaseMap={setBaseMap}
-            labels={labels}
-            onToggleLabels={() => setLabels((v) => !v)}
-            terrain={terrain}
-            onToggleTerrain={() => setTerrain((v) => !v)}
-            weather={weather}
-            onToggleWeather={toggleWeather}
-            weatherStatus={weatherStatus}
-            weatherMode={weatherMode}
-            onWeatherMode={setWeatherMode}
-            weatherHour={weatherHour}
-            onWeatherHour={setWeatherHour}
-            onReset={handleReset}
-          />
-        </Suspense>
-      )}
-
-
-      {trackRecorderOpen && (
-        <Suspense fallback={null}>
-          <TrackRecorderPanel
-            uid={user?.uid ?? ""}
-            cloudAccount={user?.backend === "firebase"}
-            onClose={() => {
-              setTrackRecorderOpen(false);
-              // Panel kapanırken yarım kalan önizleme haritada kalmamalı (K-01).
-              if (trackPreviewDrawn.current) {
-                mapRef.current?.clearRoute();
-                trackPreviewDrawn.current = false;
-              }
-            }}
-            onPreview={(coords) => {
-              if (coords.length < 2) {
-                // drawRoute boş koordinatta sessizce döner; temizlik ayrı yapılır.
-                if (trackPreviewDrawn.current) mapRef.current?.clearRoute();
-                trackPreviewDrawn.current = false;
-                return;
-              }
-              mapRef.current?.drawRoute(coords, true);
-              trackPreviewDrawn.current = true;
-            }}
-            onFinished={(track, route) => {
-              trackPreviewDrawn.current = false;
-              if (routeDrawLegs(route)) drawAtlasRoute(route, false);
-              else mapRef.current?.drawRoute(decodePolyline(track.polyline), false);
-              setResumeRoute(route);
-              setTrackRecorderOpen(false);
-              setAtlasOpen(true);
-              setToast("İz gizli olarak kaydedildi. Yürüyüş taslağı hazır.");
-            }}
-          />
-        </Suspense>
-      )}
-
-      <Suspense fallback={null}>
-        <NearbyAudioGuide
-          location={precise}
-          places={GUIDE_PLACES}
-          onOpenPlace={(place) => {
-            closePanels();
-            focusPlace(place, 15);
-            setStoryPlace(place);
-          }}
-        />
-      </Suspense>
-
-      {/* İpucu + atıf (F1-6: harita yüzeyi kromu ayrı dosyada) */}
-      <MapSurfaceHints precise={precise} onClearLocation={handleClearLocation} />
-
       {/* M-18: Kalıcı canlı veri hata şeridi + Yeniden dene */}
       {showDataErrorBanner && (
         <DataErrorBanner

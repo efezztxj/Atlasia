@@ -155,7 +155,9 @@ describe("map label calibration", () => {
   });
 
   it("wires live theme changes through App and MapView without reloading the style", () => {
-    const appSource = readFileSync(appPath, "utf8");
+    // F1-6 adım 3: `theme={theme}` bağlantısı Explorer'dan MapScene'e taşındı.
+    const appSource = readFileSync(appPath, "utf8")
+      + readFileSync(fileURLToPath(new URL("../components/explorer/MapScene.tsx", import.meta.url)), "utf8");
     const mapViewSource = readFileSync(mapViewPath, "utf8");
 
     expect(appSource).toContain("theme={theme}");

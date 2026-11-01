@@ -5,14 +5,20 @@ const read = (path: string) => readFileSync(path, "utf8");
 // F1-6: koşullu panellerin bir kısmı `explorer/PanelStack.tsx` içinde yaşıyor;
 // tembellik kapısı her iki dosyayı birlikte okur (gevşeme değil, taşınma).
 const PANEL_HOSTS = "src/components/Explorer.tsx src/components/explorer/PanelStack.tsx";
+// F1-6 adım 3: harita sahnesi (MapView, iz kaydedici, sesli rehber) MapScene.tsx'e taşındı.
+const MAP_SCENE = "src/components/explorer/MapScene.tsx";
 
 describe("ağır istemci modüllerinin tembel yüklenmesi", () => {
   it("MapView bileşenini Suspense iskeleti arkasında dinamik yükler", () => {
-    const explorer = read("src/components/Explorer.tsx");
-    expect(explorer).toContain('lazy(() => import("./MapView"))');
-    expect(explorer).toContain("<Suspense fallback={<MapLoadingSkeleton />}> ".trim());
-    expect(explorer).toContain('aria-label="Harita yükleniyor"');
-    expect(explorer).not.toMatch(/^import MapView.+from "\.\/MapView";/m);
+    const events = read("src/App.tsx") + read(MAP_SCENE);
+    expect(read(MAP_SCENE)).toContain('lazy(() => import("../MapView"))');
+    expect(read(MAP_SCENE)).toContain("<Suspense fallback={<MapLoadingSkeleton />}> ".trim());
+    expect(read(MAP_SCENE)).toContain('aria-label="Harita yükleniyor"');
+    expect(read(MAP_SCENE)).not.toMatch(/^import MapView.+from "\.\.\/MapView";/m);
+    // Explorer artık MapView'ı doğrudan import etmiyor (tek sahip MapScene).
+    // Explorer yalnız tutamacın TİPİNİ kullanır (MapViewHandle), bileşeni değil.
+    expect(read("src/components/Explorer.tsx")).not.toMatch(/lazy\(\(\) => import\("\.\/MapView"\)\)|^import MapView/m);
+    expect(events).toContain("MapLoadingSkeleton");
   });
 
   it("isteğe bağlı 6 panel (sosyal, çekmece, Atlas, yerlerim, sokak, ekle) tembel yüklenir", () => {
@@ -51,13 +57,13 @@ describe("ağır istemci modüllerinin tembel yüklenmesi", () => {
   });
 
   it("koşullu paneller (yer detayı, yürüyüş kaydı) statik import edilmez", () => {
-    const app = PANEL_HOSTS.split(" ").map(read).join("\n");
+    const app = (PANEL_HOSTS + " " + MAP_SCENE).split(" ").map(read).join("\n");
     // Bu iki panel yalnız kullanıcı eylemiyle açılır. Statik import, panelin
     // bağımlılıklarını (yer tavsiyeleri, iz toplama/sadeleştirme) ilk yüke taşır.
     expect(app).toMatch(/lazy\(\(\) => import\("\.{1,2}\/PlaceDetails"\)\)/);
-    expect(app).toContain('lazy(() => import("./TrackRecorderPanel"))');
+    expect(app).toMatch(/lazy\(\(\) => import\("\.{1,2}\/TrackRecorderPanel"\)\)/);
     expect(app).not.toMatch(/^import PlaceDetails from "\.\/PlaceDetails";/m);
-    expect(app).not.toMatch(/^import TrackRecorderPanel from "\.\/TrackRecorderPanel";/m);
+    expect(app).not.toMatch(/^import TrackRecorderPanel from "\.{1,2}\/TrackRecorderPanel";/m);
     // Lazy bileşen Suspense içinde olmalı; aksi hâlde React askıya almayı işleyemez.
     expect(app).toMatch(/<Suspense fallback=\{null\}>\s*<PlaceDetails/);
     expect(app).toMatch(/<Suspense fallback=\{null\}>\s*<TrackRecorderPanel/);

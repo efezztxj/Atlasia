@@ -1,5 +1,22 @@
 # Atlasia Update
 
+## 2026-11-01 — F1-6 (adım 3): harita sahnesi `MapScene`'e taşındı
+
+Plan §F1-6. MapView, başlık, karşılama şeridi, arama, harita kontrolleri, yürüyüş düğmesi,
+katman sayfası, iz kaydedici, sesli rehber ve harita yüzeyi ipuçları (177 satır) tek
+bileşende toplandı. **`Explorer.tsx` 969 → 783 satır** (başlangıç 1.796 → **-1.013**, %56).
+
+- **`src/components/explorer/MapScene.tsx`** — 61 prop; 32'si kancalardan `Pick<>` ile
+  (`PanelFlags`, `MapLayerPrefs`, `DiscoveryFlow`), 30'u `MapSceneExtras` arayüzünde.
+  Bileşen durum sahibi değil: hiç `useState`/abonelik yok.
+- **Tembel yükleme korundu:** `MapView`, `MapLayersSheet`, `TrackRecorderPanel`,
+  `NearbyAudioGuide` lazy bildirimleri ve `MapLoadingSkeleton` bileşenle birlikte taşındı.
+- **Kaynak metin kapıları taşındı, gevşetilmedi:** `lazyLoading` (MapView/Suspense iskeleti,
+  yer detayı + iz kaydedici), `uiSurface` (harita rayı bağlantıları), `mapLabelCalibration`
+  (`theme={theme}` bağı), `guestMode` (yürüyüş kaydı kapısı) artık `MapScene.tsx`'i de okuyor.
+- **Ölçüm:** 187 dosya / 1.438 test · kapsam %64,63 / %55,47 / %59,92 / %69,59 ·
+  JS 1.000.678 B gzip (bütçe 1.003.000 · pay 2.322 B) · SW 63/63.
+
 ## 2026-11-01 — F2-1b/F2-1c: yer eylemleri ve konum akışı kancalara ayrıldı
 
 Plan §F2-1. `Explorer.tsx` **1.190 → 969 satır** (başlangıç 1.796 → **-827**).

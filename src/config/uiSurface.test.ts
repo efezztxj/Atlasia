@@ -288,8 +288,10 @@ describe("masaüstü harita kontrolleri", () => {
     expect(mapControls).toContain("onToggleTrackRecorder");
     expect(mapControls).toContain("onToggleAtlas");
     expect(mapControls).toContain('controls="atlas-assistant"');
-    expect(app).toContain("trackRecorderOpen={trackRecorderOpen}");
-    expect(app).toContain("atlasOpen={atlasOpen}");
+    // F1-6 adım 3: harita kontrollerinin bağlandığı yer MapScene.tsx.
+    const mapScene = read("src/components/explorer/MapScene.tsx");
+    expect(mapScene).toContain("trackRecorderOpen={trackRecorderOpen}");
+    expect(mapScene).toContain("atlasOpen={atlasOpen}");
   });
 });
 

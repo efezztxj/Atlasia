@@ -20,6 +20,8 @@ const explorer = read("src/components/Explorer.tsx");
 // metni artık orada aranır. Explorer'ın kendi kapıları (sosyal, rota, bildirim)
 // yerinde durmaya devam ediyor.
 const placeActions = read("src/hooks/usePlaceActions.ts");
+// F1-6 adım 3: yürüyüş kaydı kapısı MapScene'e taşındı.
+const mapScene = read("src/components/explorer/MapScene.tsx");
 const firestoreHook = read("src/hooks/useFirestoreAtlasData.ts");
 const localHook = read("src/hooks/useAtlasData.ts");
 const rules = read("firestore.rules");
@@ -51,6 +53,8 @@ describe("T4 · misafir yazamaz (istemci kapısı)", () => {
     // Kapıya bağlı eylemler: iz ekleme, topluluk yazıları, rota, profil, bildirim.
     // İz ekleme kapısı kancada; kalanlar Explorer'da.
     expect(placeActions, "İz eklemek için bir hesap aç kapısı eksik").toContain("İz eklemek için bir hesap aç");
+    // Kalan kapılar: sosyal yazılar Explorer'da, bildirim/rota PanelStack'te.
+    const panelStackSource = read("src/components/explorer/PanelStack.tsx");
     for (const intent of [
       "Paylaşmak için bir hesap aç",
       "Yanıt yazmak için bir hesap aç",
@@ -61,7 +65,8 @@ describe("T4 · misafir yazamaz (istemci kapısı)", () => {
       "Profil ve kayıtlar için bir hesap aç",
       "Bildirimler için bir hesap aç",
     ]) {
-      expect(explorer, `${intent} kapısı eksik`).toContain(intent);
+      const host = explorer + panelStackSource + mapScene;
+      expect(host, `${intent} kapısı eksik`).toContain(intent);
     }
   });
 
