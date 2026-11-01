@@ -139,11 +139,14 @@ jobs:
           npm run test:lighthouse > lhci.log 2>&1
           rc=$?
           tail -n 25 lhci.log
-          tail -c 1800 lhci.log | tr '\n' '¦' > lhci-tail.txt
+          summary=$(node scripts/lighthouse-summary.mjs .lighthouseci | tr '\n' '¦')
+          echo "Ozet: $summary"
+          tail -c 1500 lhci.log | tr '\n' '¦' > lhci-tail.txt
           msg=$(cat lhci-tail.txt)
           if [ "$rc" -eq 0 ]; then
-            echo "::notice title=Lighthouse::${msg}"
+            echo "::notice title=Lighthouse ozet::${summary}"
           else
+            echo "::error title=Lighthouse ozet::${summary}"
             echo "::error title=Lighthouse cikti::${msg}"
           fi
           ls -a .lighthouseci || true
