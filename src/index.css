@@ -1096,6 +1096,7 @@ html[data-theme="light"] :is(.text-mint\/65, .md\:text-mint\/65):not([class*="ho
 }
 /* P18-LIGHT-AA:end */
 
+
 /* P19-LIGHT-DANGER:start
  * Açık temada yıkıcı eylem tonları beyaz kart üzerinde 1,3:1'e düşüyordu:
  * "Hesaptan çık" (text-red-200/90) ve "Hesabımı ve verilerimi sil" (/80)

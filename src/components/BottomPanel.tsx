@@ -124,6 +124,7 @@ export default function BottomPanel({
             ref={(node) => { panelRef.current = node; }}
             aria-label="Daraltılmış keşif önerisi"
             className="mobile-discovery-panel desktop-discovery-panel gold-frame pointer-events-auto rounded-[22px] bg-[#021915] p-2.5 max-md:fixed max-md:inset-x-3 max-md:bottom-[calc(88px+env(safe-area-inset-bottom))] max-md:z-20 md:rounded-[28px] md:p-4"
+           
           >
             {current ? (
               <div className="flex min-w-0 items-center gap-1.5 md:gap-3">

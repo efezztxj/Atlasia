@@ -130,9 +130,13 @@ describe("TrackRecorderPanel · onaylı kaydet akışı", () => {
     const { onPreview, onFinished } = renderPanel();
     await recordWalking();
     fireEvent.click(screen.getByRole("button", { name: /^Bitir$/ }));
-    await waitFor(() => expect(screen.getByRole("button", { name: "Taslağı at" })).toBeTruthy());
+    await waitFor(() => expect(screen.getByRole("button", { name: /Vazgeç/ })).toBeTruthy());
 
-    fireEvent.click(screen.getByRole("button", { name: "Taslağı at" }));
+    // WCAG 2.5.3 (Label in Name): erişilebilir ad, görünen metni içermek zorunda.
+    const discard = screen.getByRole("button", { name: /Vazgeç/ });
+    expect(discard.getAttribute("aria-label")?.toLowerCase()).toContain("vazgeç");
+
+    fireEvent.click(discard);
 
     expect(screen.queryByText(/Kayıt bitti · taslak/)).toBeNull();
     expect(onPreview).toHaveBeenLastCalledWith([]);
