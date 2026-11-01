@@ -26,11 +26,12 @@
  */
 const HEDEF = Object.freeze({ performance: 0.85, accessibility: 0.95, cls: 0.05 });
 
-// İlk ölçüm (CI, 1 Kasım 2026, 3 koşu/medyan):
-//   /              perf 0,75–0,76 · a11y 0,98
-//   /?tab=kesfet   perf 0,35–0,39 · a11y (>= 0,95)
-// Taban bu ölçümün hemen altına bağlandı: mevcut davranış kilitlenir, hedef borç kalır.
-const TABAN = Object.freeze({ landing: 0.75, appShell: 0.35 });
+// Ölçümler (CI, 1 Kasım 2026, 3 koşu/medyan):
+//   1) kapı ilk açıldığında:  /  perf 0,75–0,76 · a11y 0,98 · /?tab=kesfet perf 0,35–0,39
+//   2) hero AVIF/WebP'ye çevrildikten sonra: / perf **0,82** · a11y **1,00**
+// Taban her turda ölçülenin bir adım altına bağlanır ve **yalnız yukarı** hareket eder:
+// böylece kazanılan puan geri kaybedilemez, hedef (0,85) borç olarak açık kalır.
+const TABAN = Object.freeze({ landing: 0.8, appShell: 0.35 });
 
 module.exports = {
   ci: {

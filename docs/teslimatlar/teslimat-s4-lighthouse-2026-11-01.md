@@ -33,7 +33,7 @@ S4 ve G4 kabul listesi gerçek LCP/TBT ölçen bir kapı istiyordu.
 | | Tanım | Değer |
 |---|---|---|
 | `HEDEF` | S4 kabul listesi; **asla düşürülmez** | perf ≥ 0,85 · a11y ≥ 0,95 · CLS ≤ 0,05 |
-| `TABAN` | İlk gerçek ölçümden bağlanan **regresyon tabanı**; yalnız **yukarı** hareket eder | tanıtım 0,75 · uygulama kabuğu 0,35 |
+| `TABAN` | Ölçülenin bir adım altına bağlanan **regresyon tabanı**; yalnız **yukarı** hareket eder | tanıtım **0,80** · uygulama kabuğu **0,35** |
 
 Erişilebilirlikte taban **yok**: iki sayfada da doğrudan `HEDEF` (0,95) aranıyor.
 `src/config/lighthouseGate.test.ts` hem `HEDEF`in altına inmeyi hem `TABAN`ı bugünkü
@@ -41,10 +41,10 @@ değerlerin altına çekmeyi kilitler.
 
 **İlk ölçüm (CI, 3 koşu/medyan):**
 
-| Sayfa | perf | a11y | Not |
-|---|---|---|---|
-| `/` | **0,75–0,76** | **0,98** | hedefin 10 puan altında → borç |
-| `/?tab=kesfet` | **0,35–0,39** | ≥ 0,95 | harita/WebGL kabuğu; hedefin çok altında → borç |
+| Sayfa | 1. ölçüm | hero AVIF/WebP sonrası | a11y | Not |
+|---|---|---|---|---|
+| `/` | 0,75–0,76 | **0,82** | **1,00** | hedefe 3 puan kaldı → borç küçüldü |
+| `/?tab=kesfet` | 0,35–0,39 | 0,36 | 0,96 | harita/WebGL kabuğu; hedefin çok altında → borç |
 
 Bu yüzden kapı **yeşil ama dürüst**: mevcut seviye kilitlendi, 0,85 hedefi
 aşağıdaki "performans borcu" listesinde açıkça duruyor. Tabana "hedefe ulaşıldı"
@@ -78,11 +78,15 @@ yer ayrılıyor (CLS 0,012 ölçüldü). `src/config/imagePipelineT10.test.ts` h
    worker (148 KB) yüzünden ağır. Sıradaki adım: haritayı boşta (`requestIdleCallback`)
    başlatmak, ilk kare için statik bir poster/iskelet göstermek ve maplibre'ı yalnız
    "harita açıldı" olayından sonra indirmek.
-2. **Tanıtım (0,75–0,76):** film posteri hâlâ 324 KB JPEG — aynı yöntemle WebP'ye
+2. **Uygulama kabuğunun LCP'si uzak bir görsel:** ölçümde LCP öğesi
+   `https://images.pexels.com/...` çıktı (14 sn, `loading="lazy"`). Yani harita hazır
+   olana kadar ekrandaki en büyük öğe Pinterest/Pexels fotoğrafı oluyor. Sıradaki adım:
+   kart görsellerini ölçülü boyuta indirmek ve harita iskeletini ilk LCP adayı yapmak.
+3. **Tanıtım (0,82):** film posteri hâlâ 324 KB JPEG — aynı yöntemle WebP'ye
    çevrilmeli (bu PR'da kapsam dışı bırakıldı, `landingVideoT6.test.ts` poster yolunu
    kilitliyor). Ayrıca `icons-vendor` (13 KB) ilk sette; kullanılan ikonlar
    `content-visibility`/`defer` ile aşağı çekilebilir.
-3. **Ölçüm istikrarı:** 3 koşu/medyan ±%3-5 oynayabiliyor; taban bu yüzden ölçülenin
+4. **Ölçüm istikrarı:** 3 koşu/medyan ±%3-5 oynayabiliyor; taban bu yüzden ölçülenin
    bir adım altında. Hedefe çıkıldığında `TABAN` yukarı çekilip kilit güncellenmeli.
 
 ## 5. Yol boyunca bulunan gerçek hata: PWA kısayolu soğuk açılışta çalışmıyordu

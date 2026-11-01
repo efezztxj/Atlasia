@@ -30,8 +30,9 @@ function frozen(name: "HEDEF" | "TABAN"): Record<string, number> {
 const HEDEF = frozen("HEDEF");
 const TABAN = frozen("TABAN");
 
-// 1 Kasım 2026 ilk CI ölçümünün altına inilemez (regresyon tabanı).
-const TABAN_ALT_SINIR = { landing: 0.75, appShell: 0.35 } as const;
+// Bugüne kadar ölçülen en iyi değerin altına inilemez (regresyon tabanı).
+// tanıtım 0,82 (hero AVIF/WebP sonrası) · uygulama kabuğu 0,36-0,39.
+const TABAN_ALT_SINIR = { landing: 0.8, appShell: 0.35 } as const;
 
 describe("S4 Lighthouse kapısı", () => {
   it("HEDEF S4 kabul listesinden aşağı inmez", () => {
