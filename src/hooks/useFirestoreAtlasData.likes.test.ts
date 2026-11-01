@@ -232,9 +232,19 @@ const fsim = vi.hoisted(() => {
     return sa < sb ? -1 : sa > sb ? 1 : 0;
   };
 
+  // F2-1 (sayısız beğeni): alt koleksiyon + koleksiyon grubu desteği.
+  // `#group:<ad>` sanal koleksiyondur: tüm `.../<ad>` haritalarını birleştirir.
   const evaluate = (q: FakeQuery): Item[] => {
-    const m = colMap(q.col);
-    let items: Item[] = [...m.entries()].map(([id, data]) => ({ id, data: { ...data } }));
+    let items: Item[] = [];
+    if (q.col.startsWith("#group:")) {
+      const name = q.col.slice("#group:".length);
+      for (const [path, map] of store.entries()) {
+        if (path !== name && !path.endsWith(`/${name}`)) continue;
+        for (const [id, data] of map.entries()) items.push({ id, data: { ...data } });
+      }
+    } else {
+      items = [...colMap(q.col).entries()].map(([id, data]) => ({ id, data: { ...data } }));
+    }
     const orders = q.cs.filter(isConstraint("orderBy"));
     const cmp = (a: Item, b: Item) => {
       for (const o of orders) {
@@ -288,8 +298,13 @@ const fsim = vi.hoisted(() => {
   const module = {
     arrayUnion: (...vals: unknown[]) => ({ fieldOp: "union", vals }),
     arrayRemove: (...vals: unknown[]) => ({ fieldOp: "remove", vals }),
-    collection: (_db: unknown, name: string) => ({ name }),
-    doc: (_db: unknown, col: string, id: string): Ref => ({ path: `${col}/${id}`, id, col }),
+    collection: (_db: unknown, ...segs: string[]) => ({ name: segs.join("/") }),
+    collectionGroup: (_db: unknown, name: string) => ({ name: `#group:${name}` }),
+    doc: (_db: unknown, ...segs: string[]): Ref => {
+      const id = segs[segs.length - 1];
+      const col = segs.slice(0, -1).join("/");
+      return { path: [...segs].join("/"), id, col };
+    },
     documentId: (): FieldSpec => ({ t: "docId" }),
     orderBy: (field: unknown, dir: "asc" | "desc" = "asc"): Constraint => ({ t: "orderBy", field: field as FieldSpec, dir }),
     limit: (n: number): Constraint => ({ t: "limit", n }),
