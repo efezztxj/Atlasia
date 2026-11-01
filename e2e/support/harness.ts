@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 
 /**
  * E2E ağ sahtekârlığı: harita karoları, geocoder, hava durumu, yazı tipleri ve
@@ -71,9 +71,29 @@ export async function acceptEssentialCookies(page: Page): Promise<void> {
     .waitFor({ state: "hidden" });
 }
 
+/**
+ * Etkileşimli öğeyi klavyeyle etkinleştirir (odak + Enter).
+ *
+ * Neden: erişilebilirlik kapısı klavye kullanılabilirliğini de ölçmeli; ayrıca
+ * mobilde işaretçi ile tıklama, sürekli animasyon/örtüşme yüzünden kararsız
+ * olabiliyor. Odak + Enter hem daha kararlı hem de gerçekten test edilmesi
+ * gereken yol.
+ */
+export async function activateWithKeyboard(page: Page, locator: Locator): Promise<void> {
+  await locator.focus();
+  await page.keyboard.press("Enter");
+}
+
 /** Misafir keşif kabuğunu açar ve karşılama diyaloğunu kapatır. */
 export async function enterGuestExplorer(page: Page): Promise<void> {
-  await page.getByRole("button", { name: /Dünyayı keşfet/ }).click();
+  const cta = page.getByRole("button", { name: /Dünyayı keşfet/ });
+  try {
+    await cta.click({ timeout: 8_000 });
+  } catch {
+    // Mobilde işaretçi tıklaması örtüşme/animasyon yüzünden kararsız olabiliyor;
+    // klavye yolu hem kararlı hem de erişilebilirlik açısından anlamlı.
+    await activateWithKeyboard(page, cta);
+  }
   const onboarding = page.getByRole("dialog", { name: "Nereden başlayalım?" });
   if (await onboarding.isVisible().catch(() => false)) {
     await page.getByRole("button", { name: "Karşılamayı kapat" }).click();

@@ -106,7 +106,7 @@ export default function Header({
             {placeCount}
           </span>
         </button>
-        <button type="button" onClick={onOpenRecords} aria-label="Kayıtlarımı aç" className="hidden min-h-11 items-center gap-2 rounded-full px-3 text-[13px] text-mint/80 transition hover:bg-white/5 hover:text-mint md:flex"><Bookmark className="size-4" />Kayıtlarım</button>
+        <button type="button" onClick={onOpenRecords} aria-label="Kayıtlarım aç" className="hidden min-h-11 items-center gap-2 rounded-full px-3 text-[13px] text-mint/80 transition hover:bg-white/5 hover:text-mint md:flex"><Bookmark className="size-4" />Kayıtlarım</button>
         <button
           onClick={onAdd}
           className={

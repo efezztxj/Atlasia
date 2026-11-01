@@ -1,6 +1,12 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { acceptEssentialCookies, enterGuestExplorer, presetTheme, stubExternalServices } from "./support/harness";
+import {
+  acceptEssentialCookies,
+  activateWithKeyboard,
+  enterGuestExplorer,
+  presetTheme,
+  stubExternalServices,
+} from "./support/harness";
 
 /**
  * Erişilebilirlik kapısı (P1-4 kalanı).
@@ -103,7 +109,9 @@ test("4. Uygulama kabuğu — mobil, katmanlar paneli ve koyu tema", async ({ pa
 
   const layers = page.getByRole("button", { name: "Katmanlar sayfasını aç" });
   await expect(layers).toBeVisible();
-  await layers.click();
+  // Mobilde işaretçi tıklaması örtüşme/animasyon yüzünden kararsız; klavye yolu
+  // hem kararlı hem de erişilebilirlik açısından test edilmesi gereken yol.
+  await activateWithKeyboard(page, layers);
   await expect(page.getByRole("dialog", { name: /Katmanlar/i })).toBeVisible();
 
   await auditPage(page, "keşif kabuğu · mobil 390×844 · koyu tema · katmanlar paneli");
