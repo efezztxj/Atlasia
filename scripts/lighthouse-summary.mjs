@@ -41,7 +41,9 @@ if (!reports.length) {
 
 const groups = new Map();
 for (const report of reports) {
-  const url = new URL(report.finalDisplayedUrl ?? report.finalUrl ?? report.requestedUrl ?? "http://localhost/");
+  // `requestedUrl` kullanılıyor: finalDisplayedUrl, uygulama `?tab=` parametresini
+  // adresten sildiği için iki sayfayı aynı anahtara düşürüyordu.
+  const url = new URL(report.requestedUrl ?? report.finalDisplayedUrl ?? "http://localhost/");
   const key = `${url.pathname}${url.search}`;
   if (!groups.has(key)) groups.set(key, []);
   groups.get(key).push(report);
@@ -66,6 +68,9 @@ for (const [key, runs] of groups) {
     .slice(0, 3)
     .map(([id, value]) => `${id} (-${Math.round(value.details.overallSavingsMs)} ms)`);
   if (opportunities.length) lines.push(`  fırsatlar: ${opportunities.join(" · ")}`);
+
+  const lcpElement = runs[0].audits?.["largest-contentful-paint-element"]?.details?.items?.[0]?.items?.[0]?.node?.snippet;
+  if (lcpElement) lines.push(`  LCP öğesi: ${String(lcpElement).slice(0, 160)}`);
 }
 
 console.log(lines.join("\n"));
