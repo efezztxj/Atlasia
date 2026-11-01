@@ -715,6 +715,20 @@ service cloud.firestore {
       allow delete: if signedIn()
                     && (resource.data.authorUid == request.auth.uid || isModerator());
 
+      // F2-1 (sayısız beğeni): beğeni = kişi başı belge; sayaç alanı YOK,
+      // bu yüzden kuralda aritmetik ya da koşullu alan okuması yok.
+      match /likes/{likeUid} {
+        allow get: if signedIn() && likeUid == request.auth.uid;
+        allow list: if signedIn() && likeUid == request.auth.uid;
+        allow create: if signedIn()
+                      && !banned()
+                      && likeUid == request.auth.uid
+                      && request.resource.data.uid == request.auth.uid;
+        allow update: if false;
+        allow delete: if signedIn()
+                      && (likeUid == request.auth.uid || isModerator());
+      }
+
       match /replies/{replyId} {
         function parentPostExists() {
           return exists(/databases/$(database)/documents/posts/$(postId));
@@ -1319,8 +1333,14 @@ service cloud.firestore {
       allow delete: if signedIn() && request.auth.uid == resource.data.declinerUid;
     }
 
+    // F2-1 (sayısız beğeni): koleksiyon grubu yalnız kendi belgelerini listeler.
+    match /{path=**}/likes/{likeUid} {
+      allow list: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
+
   }
 }

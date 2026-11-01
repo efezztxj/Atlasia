@@ -72,12 +72,12 @@ describe("rules-inventory — bu depodaki firestore.rules", () => {
   const summary = summarize(blocks);
   const byPath = new Map(blocks.map((block) => [block.path, block]));
 
-  it("35 match bloğu var, 4'ü iç içe", () => {
-    assert.equal(summary.total, 35);
-    assert.equal(summary.nested, 4);
+  it("37 match bloğu var, 5'i iç içe", () => {
+    assert.equal(summary.total, 37);
+    assert.equal(summary.nested, 5);
     assert.deepEqual(
       blocks.filter((block) => block.parent !== null).map((block) => block.path),
-      ["/replies/{replyId}", "/messages/{messageId}", "/joinAttempts/{joinId}", "/invites/{invitedUid}"],
+      ["/likes/{likeUid}", "/replies/{replyId}", "/messages/{messageId}", "/joinAttempts/{joinId}", "/invites/{invitedUid}"],
     );
   });
 
@@ -114,7 +114,11 @@ describe("rules-inventory — bu depodaki firestore.rules", () => {
   });
 
   it("fail-closed yakalayıcı korunuyor", () => {
-    assert.deepEqual(summary.collectionGroups, ["/{path=**}/replies/{replyId}", "/{document=**}"]);
+    assert.deepEqual(summary.collectionGroups, [
+      "/{path=**}/replies/{replyId}",
+      "/{path=**}/likes/{likeUid}",
+      "/{document=**}",
+    ]);
     const catchAll = byPath.get("/{document=**}");
     assert.equal(describeCondition(catchAll.allows.get("get") ?? "false"), "kapalı");
     // Joker bloğun tamamı read/write false olmalı: tek satırda birleşik yazım.
@@ -127,7 +131,7 @@ describe("rules-inventory — bu depodaki firestore.rules", () => {
 
   it("markdown çıktısı tüm blokları ve satır numaralarını taşır", () => {
     const markdown = toMarkdown(blocks);
-    assert.match(markdown, /Toplam \*\*35\*\* match bloğu/);
+    assert.match(markdown, /Toplam \*\*37\*\* match bloğu/);
     for (const block of blocks) {
       assert.ok(markdown.includes(`\`${block.parent ? `${block.parent} → ${block.path}` : block.path}\``), `${block.path} tabloda yok`);
       assert.ok(markdown.includes(`| ${block.line} |`), `${block.path} satır numarası yok`);
