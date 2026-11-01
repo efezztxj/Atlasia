@@ -8,7 +8,7 @@ interface Props {
   onLocate: () => void;
   onToggleTrackRecorder: () => void;
   trackRecorderOpen: boolean;
-  /** Masaüstü ve telefonda tek "Katmanlar" düğmesi: altlık, yer adları, 3B arazi ve hava katmanı orada. */
+  /** Masaüstü ve telefonda tek "Katmanlar" düğmesi: altlık, yer adları ve 3B arazi orada. */
   onOpenLayers: () => void;
   layersOpen: boolean;
   onToggleAtlas: () => void;
