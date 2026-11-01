@@ -1716,11 +1716,6 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
               focusPlace(next, 16);
               setStoryPlace(next);
             }}
-            onVerify={(status, note) => {
-              const target = liveStoryPlace;
-              if (!target) return Promise.resolve();
-              return freshness.verify(target.id, status, note);
-            }}
           />
         </Suspense>
       )}
