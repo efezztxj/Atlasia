@@ -93,9 +93,16 @@ describe("ağır istemci modüllerinin tembel yüklenmesi", () => {
   });
 
   it("shareLink ve fflate başlangıç grafiğine statik import edilmez", () => {
-    for (const path of ["src/components/Explorer.tsx", "src/components/RouteEditor.tsx"]) {
+    // F1-6 adım 4: paylaşım bağlantısı açma kodu Explorer'dan kancaya taşındı.
+    const lifecycle = read("src/hooks/useExplorerLifecycle.ts");
+    expect(lifecycle).toContain("shareLinkUrl");
+    expect(lifecycle).toContain('import("../utils/shareLink")');
+    for (const path of [
+      "src/components/Explorer.tsx",
+      "src/hooks/useExplorerLifecycle.ts",
+      "src/components/RouteEditor.tsx",
+    ]) {
       const source = read(path);
-      expect(source, path).toContain("shareLinkUrl");
       expect(source, path).not.toMatch(/^import [^;]+ from "[./]+utils\/shareLink";/m);
       expect(source, path).not.toContain('from "fflate"');
     }

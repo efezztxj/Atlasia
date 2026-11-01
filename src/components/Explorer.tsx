@@ -6,7 +6,7 @@
  * import edilirse Firebase SDK'sı yeniden ilk yükleme grafiğine girer, bu
  * yüzden App.tsx onu `lazy()` ile çağırır (bkz. config/lazyLoading.test.ts).
  */
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import type { MapViewHandle } from "./MapView";
 import BottomPanel from "./BottomPanel";
 import type { SettingsContentProps } from "./SettingsPanel";
@@ -16,8 +16,6 @@ import ConfirmDialogHost from "./ConfirmDialog";
 import { useAuth } from "../contexts/AuthContext";
 import { analytics } from "../lib/analytics";
 import { CollectionsProvider, isCloudAccount } from "../hooks/useCollections";
-import { GUIDE_PLACES } from "../data/places";
-import { parseShortcutTab, stripShortcutParam } from "../utils/appShortcut";
 import { useGeolocation } from "../hooks/useGeolocation";
 import { useLocationFlow } from "../hooks/useLocationFlow";
 import { useAtlasData } from "../hooks/useAtlasData";
@@ -28,6 +26,8 @@ import { useDiscoveryFlow } from "../hooks/useDiscoveryFlow";
 import { useModerationActions } from "../hooks/useModerationActions";
 import { usePlaceCrud, usePlaceNavigation } from "../hooks/usePlaceActions";
 import { useExplorerEnvironment } from "../hooks/useExplorerEnvironment";
+import { useExplorerLifecycle } from "../hooks/useExplorerLifecycle";
+import { useExplorerDerived } from "../hooks/useExplorerDerived";
 import { MapScene } from "./explorer/MapScene";
 import { AddModeBanner, DataErrorBanner, ToastBanner } from "./explorer/OverlayPanels";
 import { PanelStack } from "./explorer/PanelStack";
@@ -39,11 +39,8 @@ import type { InstallAppController } from "../hooks/useInstallApp";
 // modül yüklenirken başlatılıyordu; kapı dosyası hiçbir SDK import etmez.
 import { isCloudReady, firebaseConfigSummary } from "../lib/firebaseConfig";
 import type { PlaceViewport } from "../lib/firestoreData";
-import { ROUTE_OPEN_MESSAGES, openPublishedRoute } from "../lib/publishedRouteOpen";
 import { freshnessReaderUid } from "../lib/verifications";
-import { readShareTokenFromUrl } from "../utils/shareLinkUrl";
 import type { AtlasRoute, Place, ViewState } from "../types";
-import { haversineKm } from "../utils/geo";
 import { storageGet, storageSet } from "../utils/storage";
 import { decodePolyline } from "../utils/polyline";
 import { routeDrawLegs } from "../utils/routeLegs";
@@ -53,10 +50,8 @@ import { markNotificationRead, markAllRead } from "../lib/notifications";
 import {
   markWarningRead,
 } from "../lib/moderation";
-import { takePendingInvite, type SocialTarget } from "../utils/inviteLink";
+import type { SocialTarget } from "../utils/inviteLink";
 import { useMobileBackClose } from "../hooks/useMobileBackClose";
-// friendships zaten ilk pakette (moderation.ts); dinamik import bölmez.
-import { ensureFriendIndex } from "../lib/friendships";
 import { startAppCheck } from "../lib/firebase";
 
 // App Check (reCAPTCHA Enterprise ~350 KB + `_GRECAPTCHA` çerezi) yalnız
@@ -185,8 +180,6 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
   const rawPosts = cloud.posts;
   const rawStories = cloud.stories;
   const discoveries = rawDiscoveries.filter((pl) => !isBlocked(pl.authorUid));
-  const filteredPosts = rawPosts.filter((po) => !isBlocked(po.authorUid));
-  const filteredStories = rawStories.filter((st) => !isBlocked(st.authorUid));
   const [settingsOpen, setSettingsOpen] = useState(false);
   // F1-1: harita katmanı tercihleri (spin/heroCompact/labels/terrain/weather*/
   // layersOpen/baseMap) artık kendi kancasında; adlar aynı kaldığı için
@@ -302,73 +295,6 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
   const backLayerClose = smallScreen ? closeTopLayer() : null;
   useMobileBackClose(!!backLayerClose, () => backLayerClose?.());
 
-  useEffect(() => { if (user?.displayName) storageSet("atlasia.author", user.displayName); }, [user?.displayName]);
-  // Arkadaş aramasında görünmek için profil dizine yazılır (ad değişmediyse yazım yok).
-  // Kapı profileSync'te: cihaz hesabı buluta yazmaz, uygun olmayan ad denenmez.
-  const profileSyncUid = user?.uid;
-  const profileSyncBackend = user?.backend;
-  const profileSyncName = user?.displayName;
-  const profileSyncPhoto = user?.photoURL;
-  useEffect(() => {
-    if (!profileSyncUid || profileSyncBackend !== "firebase") return;
-    void import("../lib/profileSync")
-      .then(({ syncProfileForUser }) => syncProfileForUser({
-        uid: profileSyncUid,
-        backend: profileSyncBackend,
-        displayName: profileSyncName,
-        photoURL: profileSyncPhoto,
-      }))
-      .catch((failure: unknown) => console.warn("[Atlasia] Profil arama dizinine yazılamadı:", failure));
-  }, [profileSyncUid, profileSyncBackend, profileSyncName, profileSyncPhoto]);
-  const handledShareLinkRef = useRef<string | null>(null);
-  useEffect(() => {
-    let active = true;
-    const openFromLocation = () => {
-      const params = new URLSearchParams(window.location.search);
-      const routeId = params.get("route");
-      // P20 fragment'tadır (#r=); eski ?r= biçimi de okunur. Yayınlanmış
-      // rotanın ?route= bağlantısı (Adım 5) öncelikli ve değişmedi.
-      const shareToken = readShareTokenFromUrl(window.location.href);
-      const linkKey = routeId ? `route:${routeId}` : shareToken ? `share:${shareToken}` : null;
-      // Aynı bağlantı iki kez açılmaz (açılış + hash değişimi çift tetiklemesin).
-      if (!linkKey || handledShareLinkRef.current === linkKey) return;
-      handledShareLinkRef.current = linkKey;
-      if (routeId) {
-        void openPublishedRoute(routeId).then((outcome) => {
-          if (!active) return;
-          if (outcome.status === "opened") {
-            setResumeRoute(outcome.route);
-            setAtlasOpen(true);
-          }
-          setToast(outcome.message);
-        });
-      } else if (shareToken) {
-        // P20: rota bağlantının içinde gelir. Doğrulama shareLink'te; burada
-        // yalnız önizleme açılır — kaydetmek kullanıcının açık eylemidir.
-        // Açma/doğrulama kodu (fflate dahil) tembel yüklenir: ilk paket bütçesi.
-        void import("../utils/shareLink").then(({ parseRouteShareLink }) => parseRouteShareLink(shareToken)).then((outcome) => {
-          if (!active) return;
-          if (outcome.ok) {
-            setResumeRoute(outcome.route);
-            setAtlasOpen(true);
-            setToast(ROUTE_OPEN_MESSAGES.opened);
-          } else {
-            setToast(outcome.message);
-          }
-        }, () => {
-          if (active) setToast("Paylaşılan rota açılamadı. Bağlantını kontrol edip sayfayı yenile.");
-        });
-      }
-    };
-    openFromLocation();
-    // Uygulama açıkken adrese yapıştırılan #r= bağlantısı da açılsın.
-    window.addEventListener("hashchange", openFromLocation);
-    return () => {
-      active = false;
-      window.removeEventListener("hashchange", openFromLocation);
-    };
-  }, [setAtlasOpen, setResumeRoute, setToast]);
-
   // F1-2: panel bayraklarının kapanışı kancada (`closeAllPanels`); katman ve
   // hikâye kapatmaları burada kalır çünkü onlar başka kümelere ait.
   const closePanels = useCallback(() => {
@@ -415,28 +341,6 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
   const myAppeal = myAppeals[0] ?? null;
   const latestAnnouncement = announcements[0] ?? null;
 
-  // Kabul edilen arkadaşlık isteği: karşı taraf benim listeme yazamaz (kural);
-  // "friend_accepted" bildirimi gelince kendi listemi ben tamamlarım.
-  const reconciledFriendsRef = useRef(new Set<string>());
-  useEffect(() => {
-    const uid = user?.uid;
-    if (!uid) return;
-    const pending = notifications.filter((item) => item.type === "friend_accepted" && item.actorUid && !reconciledFriendsRef.current.has(item.actorUid));
-    if (pending.length === 0) return;
-    pending.forEach((item) => reconciledFriendsRef.current.add(item.actorUid));
-    void import("../lib/userProfiles").then(async (profiles) => {
-      for (const item of pending) {
-        try {
-          const profile = await profiles.fetchUserProfile(item.actorUid).catch(() => null);
-          await ensureFriendIndex(uid, item.actorUid, profile?.displayName ?? "Gezgin");
-        } catch (failure) {
-          console.warn("[Atlasia] Arkadaş listesi tamamlanamadı:", failure);
-        }
-      }
-    });
-  }, [notifications, user?.uid]);
-  const visibleNotifications = notifications.filter((item) => !isBlocked(item.actorUid));
-  const unreadCount = visibleNotifications.filter((n) => !n.read).length;
   const handleMarkAllRead = () => { if (user?.uid) void markAllRead(user.uid, notifications); };
   const handleNotificationRead = (id: string) => { if (user?.uid) void markNotificationRead(user.uid, id, true); };
   const clearSocialTarget = useCallback(() => setSocialTarget(null), []);
@@ -447,49 +351,29 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
   }, [closePanels, setFeedOpen]);
   const openGroupFromNotification = useCallback((groupId: string) => openSocial({ kind: "group", groupId }), [openSocial]);
   const openFriendsFromNotification = useCallback(() => openSocial({ kind: "friends" }), [openSocial]);
-  // Davet bağlantısı (main.tsx açılışta yakalar; giriş sonrası burada tüketilir).
-  useEffect(() => {
-    const invite = takePendingInvite();
-    if (invite) openSocial({ kind: "invite", invite });
-  }, [openSocial]);
 
+  // F1-6 adım 4: açılış/yaşam döngüsü bağlantıları (yazar adı, profil dizini,
+  // paylaşılan rota, arkadaşlık uzlaştırma, ?tab= kısayolu, davet) kancada.
+  useExplorerLifecycle({
+    user, notifications, setResumeRoute, setAtlasOpen, setToast, setSpin, setAddMode,
+    setDrawerOpen, setFeedOpen, setRecordsOpen, setProfileOpen, setMyPlacesOpen,
+    setSettingsOpen, setStoryPlace, setStreetPlace, setNotificationsOpen, setPanelOpen, openSocial,
+  });
   // F2-1c: konum akışı (uçuş, ters ad, izin/hata toast'ları, temizleme) kancada.
   const { precise, handleLocate, handleAllowLocation, handleShowLocation, handleClearLocation } = useLocationFlow({
     geo, mapRef, preciseLabel, setPreciseLabel, setLocationLabel, setToast,
     setSpin, setActiveId, openSettings, closeSettings, setProfileOpen,
   });
 
-  const allPlaces = useMemo(
-    () => freshness.withFreshness([...discoveries, ...GUIDE_PLACES]),
-    [discoveries, freshness],
-  );
-  const canManagePlace = useCallback(
-    (place: Place) => Boolean(user) && place.kind === "user" && (place.authorUid ? place.authorUid === user!.uid : !remote.ready),
-    [remote.ready, user],
-  );
-  const myPlaces = useMemo(() => discoveries.filter(canManagePlace), [discoveries, canManagePlace]);
-  const visiblePlaces = useMemo(
-    () => (category ? allPlaces.filter((p) => p.category === category) : allPlaces),
-    [allPlaces, category],
-  );
-
-  const activePlace = activeId ? allPlaces.find((p) => p.id === activeId) : undefined;
-  // Tazelik verisi canlı değiştiğinde açık detay paneli de güncel özeti gösterir.
-  const liveStoryPlace = storyPlace
-    ? allPlaces.find((item) => item.id === storyPlace.id) ?? storyPlace
-    : null;
-  const current =
-    activePlace ??
-    (visiblePlaces.length ? visiblePlaces[featuredIdx % visiblePlaces.length] : undefined);
-
-  const nearby = useMemo(() => {
-    if (view.zoom < 3.2) return discoveries.length;
-    const km =
-      ((window.innerWidth / 1024) * 40075 * Math.max(Math.cos((view.lat * Math.PI) / 180), 0.2)) /
-      2 ** view.zoom;
-    return discoveries.filter((d) => haversineKm(view.lat, view.lng, d.lat, d.lng) <= km).length;
-  }, [discoveries, view]);
-
+  // F1-6 adım 5: saf türetmeler (görünür yerler, sahiplik, açık yer, yakınlık,
+  // yazar filtresi, okunmamış sayacı) kancada; adlar aynı kaldı.
+  const {
+    allPlaces, canManagePlace, myPlaces, visiblePlaces, activePlace, liveStoryPlace, current,
+    nearby, heroHidden, filteredPosts, filteredStories, visibleNotifications, unreadCount,
+  } = useExplorerDerived({
+    discoveries, freshness, uid: user?.uid, remoteReady: remote.ready, category, featuredIdx,
+    activeId, storyPlace, view, rawPosts, rawStories, notifications, isBlocked,
+  });
   // F2-1b: yer gezinme eylemleri kancada (uçuş, seçim, filtre, arama, sıfırlama).
   const { focusPlace, handleSelect, handleCategory, handleCycle, handleSearchPick, handleReset, handleDrawerPick, handleFeedGoTo } =
     usePlaceNavigation({
@@ -521,7 +405,6 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
     setStoryPlace, setStreetPlace, setSpin,
   });
 
-  const heroHidden = view.zoom > 3.4;
   // Keşif kartı yalnız ekranı bütünüyle kaplayan katmanlarda gizlenir.
   // Profil / İzlerim / Topluluk / Atlas AI açıldığında kart yerinde kalır
   // (kullanıcı isteği 2026-10-25 ve 2026-10-27): panel kapanınca "kart nerede?"
@@ -533,30 +416,6 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
   }, [dockVisible, setDiscoverySpace]);
   const mobileExplore = () => { closePanels(); setHeroCompact(false); setPanelOpen(true); };
   const openMyPlaces = () => { closePanels(); setMyPlacesOpen(true); };
-  // İŞ 5: manifest kısayolları (?tab=…). Yalnız var olan panelleri açar; panel
-  // kapatma mantığı closePanels ile aynı. Parametre okunduktan sonra adresten
-  // silinir, yenilemede eylem ikinci kez tetiklenmez.
-  const shortcutHandled = useRef(false);
-  useEffect(() => {
-    if (shortcutHandled.current) return;
-    const action = parseShortcutTab(window.location.search);
-    if (!action) return;
-    shortcutHandled.current = true;
-    window.history.replaceState(null, "", stripShortcutParam(window.location.href));
-    setDrawerOpen(false);
-    setFeedOpen(false);
-    setAtlasOpen(false);
-    setRecordsOpen(false);
-    setProfileOpen(false);
-    setMyPlacesOpen(false);
-    setSettingsOpen(false);
-    setStoryPlace(null);
-    setStreetPlace(null);
-    setNotificationsOpen(false);
-    if (action === "explore") setPanelOpen(true);
-    else if (action === "add") { setSpin(false); setAddMode(true); }
-    else setProfileOpen(true);
-  }, [setSpin, setAtlasOpen, setDrawerOpen, setFeedOpen, setMyPlacesOpen, setNotificationsOpen, setPanelOpen, setProfileOpen, setRecordsOpen, setAddMode]);
   const mobileTab = myPlacesOpen ? "İzlerim" : recordsOpen ? "Kaydet" : feedOpen ? "Topluluk" : profileOpen ? "Profil" : "Keşfet";
   const settingsContentProps: SettingsContentProps = {
     theme,
