@@ -161,3 +161,51 @@ doğrulama için DevTools Performance kaydı hâlâ gerekli.
 3. **`Explorer` parçalama:** satır içi geri çağrıların `useCallback`'e
    alınması ve `Header`/`BottomPanel` için `memo`. Harita hareketi artık
    çoğunlukla render üretmediği için kazanç küçüldü.
+
+---
+
+# Tur 3 — uyarlanabilir harita kalitesi (kullanıcı isteği: "dünya, tuşlar kasmayacak")
+
+## Yeni kök neden
+
+MapLibre tuvali cihazın `devicePixelRatio` değeriyle çiziliyordu. Telefonlarda
+DPR 3'e kadar çıkıyor: **1 px'lik görüntü için 9 kat piksel** taranıyor.
+Kamera hareketi GPU'ya bağlı olduğu için, arayüz tarafı ne kadar rahatlarsa
+rahatlasın harita sürükleme/yakınlaştırma akıcı olmuyordu. Ayrıca terrain +
+tepe gölgesi düşük donanımlı cihazlarda varsayılan açıktı.
+
+## Yapılanlar
+
+| Değişiklik | Dosya | Kazanç |
+|---|---|---|
+| `detectDeviceTier`, `recommendedPixelRatio`, `recommendedTerrain`, `measuredFps`, `shouldLowerMapQuality`, `readDeviceSignals` | `utils/deviceTier.ts` (yeni) | Cihaza göre ayar; saf fonksiyonlar test edilebilir |
+| Tuval `pixelRatio` sınırı (düşük 1,25 · yüksek 2) | `components/MapView.tsx` | Telefonda piksel yükü 9 kat yerine ~1,5 kat |
+| `movestart`→`moveend` kare ölçümü, <40 FPS'te oranı bir kez 1'e indirme | `components/MapView.tsx` | Sinyaller yanılsa bile gerçek ölçüm devreye girer |
+| Arazi varsayılanı kademeye bağlı | `components/Explorer.tsx` | Düşük cihazda GPU yükü baştan düşük; kullanıcı açabilir |
+| `preconnect` + `dns-prefetch` (karo sunucusu) | `index.html` | İlk harita karesi daha erken |
+| Testler | `utils/deviceTier.test.ts` (10), `mapRenderLoop.test.ts` (9) | Kurallar kilitli |
+
+## Doğrulama (tur 3)
+
+| Komut | Sonuç |
+|---|---|
+| `npx tsc --noEmit` | Geçti |
+| `npx eslint . --max-warnings=0` | Geçti |
+| `npx vitest run` | 179 dosya / **1.386 test** geçti |
+| `npx vite build` | Başarılı |
+| `node scripts/bundle-budget.mjs` | Bütçe içinde: toplam JS 998.609 B gzip (1.003.000), uygulama kabuğu 583.441 B (603.400) |
+
+## Bilinçli olarak yapılmayanlar
+
+- **Panel modüllerini harita sonrasına ertelemek:** kullanıcı "tuşlar da
+  kızmasın/gecikmesin" dediği için, başlatıcı düğmelerin daha geç görünmesine
+  yol açacak erteleme uygulanmadı. Bu kalem ~55 KB gzip kazandırır ama
+  etkileşim hissini bozar; gerekirse ayrı karar olarak duruyor.
+- **Kalite tercihini ayarlara eklemek:** arazi anahtarı zaten Katmanlar
+  sayfasında var; yeni ayar eklemek ekran kalabalığı olurdu.
+
+## Ölçüm sınırı (aynı)
+
+Gerçek tarayıcı bu ortamda çalıştırılamadı (Chromium yok, `libnspr4` yok,
+paket depoları kapalı). FPS kazanımı cihaz üstünde DevTools Performance ile
+doğrulanmalı; koddaki etki matematiksel (piksel sayısı) ve testlerle gösterildi.

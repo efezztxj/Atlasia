@@ -12,6 +12,13 @@ import openFreeMapDarkStyle from "../data/openFreeMapDarkStyle.json";
 import type { PlaceViewport } from "../lib/firestoreData";
 import type { Place, RouteLeg, ViewState } from "../types";
 import { shouldAdvanceSpin, shouldCommitView, shouldReportView } from "../utils/mapLifecycle";
+import {
+  detectDeviceTier,
+  measuredFps,
+  readDeviceSignals,
+  recommendedPixelRatio,
+  shouldLowerMapQuality,
+} from "../utils/deviceTier";
 import type { WeatherLayerHandle, WeatherMode, WeatherStopMark } from "../utils/mapWeather";
 import { attachMapResume } from "../lib/mapResume";
 
@@ -571,6 +578,8 @@ export default function MapView({
 
     const initialStyle = initialStyleOptions.current;
     const markers = markersRef.current;
+    const deviceTier = detectDeviceTier(readDeviceSignals());
+    let appliedPixelRatio = recommendedPixelRatio(window.devicePixelRatio, deviceTier);
     const map = new maplibregl.Map({
       container: el,
       style: buildStyle(
@@ -589,6 +598,10 @@ export default function MapView({
       pitchWithRotate: true,
       doubleClickZoom: true,
       fadeDuration: 200,
+      // Telefonlarda devicePixelRatio 3'e kadar çıkar: tuval 9 kat piksel
+      // taranır ve sürükleme/zoom GPU'ya takılır. Uyarlanabilir oran bunu
+      // cihaz kademesine göre sınırlar.
+      pixelRatio: appliedPixelRatio,
     });
     mapRef.current = map;
 
@@ -734,6 +747,30 @@ export default function MapView({
       if (!document.hidden) ensureSpinLoop();
     };
     document.addEventListener("visibilitychange", onVisibilityForSpin);
+
+    // Ölçülen kare hızı akıcı değilse piksel oranı bir kez düşürülür.
+    // Cihaz sinyalleri yanıltıcı olabildiği için gerçek ölçüm esas alınır.
+    let qualityLowered = false;
+    let sampleFrames = 0;
+    let sampleStartAt = 0;
+    const onSampleFrame = () => { sampleFrames += 1; };
+    const onSampleStart = () => {
+      sampleStartAt = performance.now();
+      sampleFrames = 0;
+    };
+    const onSampleEnd = () => {
+      if (!sampleStartAt) return;
+      const elapsed = performance.now() - sampleStartAt;
+      sampleStartAt = 0;
+      const fps = measuredFps(sampleFrames, elapsed);
+      if (!shouldLowerMapQuality(fps, appliedPixelRatio, qualityLowered)) return;
+      qualityLowered = true;
+      appliedPixelRatio = 1;
+      map.setPixelRatio(1);
+    };
+    map.on("render", onSampleFrame);
+    map.on("movestart", onSampleStart);
+    map.on("moveend", onSampleEnd);
 
     report(true);
 

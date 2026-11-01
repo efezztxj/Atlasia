@@ -1,5 +1,14 @@
 # Atlasia Update
 
+## 2026-11-01 — Kasma turu 3: uyarlanabilir harita kalitesi (piksel oranı + arazi) ve karo preconnect
+
+- **Telefonlarda 9 kat piksel sorunu kapatıldı:** MapLibre tuvali cihazın `devicePixelRatio` değeriyle çiziliyordu; telefonlarda bu 3'e kadar çıktığı için 1 px'lik görüntü adına 9 kat piksel taranıyor, sürükleme/yakınlaştırma GPU'ya takılıyordu. Yeni `src/utils/deviceTier.ts` cihazı `low`/`high` kademesine ayırıyor (`hardwareConcurrency`, `deviceMemory`, kaba işaretçi, veri tasarrufu, azaltılmış hareket) ve `MapView` tuvali `recommendedPixelRatio()` ile sınırlı oranda çiziyor (düşük kademe 1,25 · yüksek kademe 2 tavanı). Görünüm güçlü cihazlarda değişmiyor.
+- **Gerçek ölçüme dayalı tek kademeli düşürme:** cihaz sinyalleri yanıltıcı olabildiği için `movestart`→`moveend` arasındaki kareler sayılıyor (`measuredFps`, en az 250 ms pencere). Kare hızı 40 FPS'in altındaysa piksel oranı **bir kez** 1'e indiriliyor (`shouldLowerMapQuality`); ölçüm gürültüsüyle kalitenin inip çıkması engellendi.
+- **Ağır arazi katmanı cihaza göre:** terrain + tepe gölgesi düşük kademede varsayılan kapalı başlıyor (`recommendedTerrain`), kullanıcı Katmanlar sayfasından yine açabiliyor. Kullanıcının açık tercihini sessizce ezmiyor.
+- **İlk harita karesi daha erken:** `index.html` içine `https://tiles.openfreemap.org` için `preconnect` + `dns-prefetch` eklendi (CSP zaten bu kaynağa izinliyor; yeni dış servis yok).
+- **Yeni testler:** `src/utils/deviceTier.test.ts` (10 test — kademe kuralları, DPR tavanları, ölçüm eşiği, kısa pencere koruması) ve `mapRenderLoop.test.ts` 6 → 9 test (pixelRatio bağlantısı, çalışma zamanı düşürme, arazi varsayılanı kilitli).
+- **Doğrulama:** `tsc --noEmit`, `eslint --max-warnings=0`, `vitest run` (179 dosya / **1.386 test**), `vite build`, `bundle-budget` bütçe içinde (toplam JS 998.609 B / 1.003.000 gzip; uygulama kabuğu 583.441 B / 603.400).
+
 ## 2026-11-01 — Kasma turu 2: mikro hareketlerde state güncellenmiyor, kapalı paneller render dışında
 
 - **Görünüm commit eşiği (`utils/mapLifecycle.ts`):** yeni `shouldCommitView()` + `VIEW_ZOOM_EPSILON = 0.15` / `VIEW_CENTER_EPSILON_RATIO = 0.015`. `MapView` artık son bildirdiği görünümü (`lastCommitted`) tutuyor ve eşiği geçmeyen mikro hareketlerde `onViewChange`/`onViewportChange` **hiç çağırmıyor**: React state aynı nesne kaldığı için `Explorer` yeniden render olmuyor. `moveend` ve ilk yükleme eşiği atlıyor (`report(true)`), yani sürükleme bitince değer kesin. Boylam sarması (180. meridyen) ayrıca ele alındı; sahte 359°'lik sıçrama bildirilmiyor.

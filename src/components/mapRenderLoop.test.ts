@@ -52,6 +52,24 @@ describe("harita çizim döngüsü ve görünüm bildirimi", () => {
     expect(mapView).toContain('document.removeEventListener("visibilitychange", onVisibilityForSpin)');
   });
 
+  it("harita tuvali cihaz DPR'ı yerine uyarlanabilir oranla çizilir", () => {
+    // Telefonlarda DPR 3 → 9 kat piksel; kademe sınırı bunu keser.
+    expect(mapView).toContain("recommendedPixelRatio(window.devicePixelRatio, deviceTier)");
+    expect(mapView).toMatch(/pixelRatio: appliedPixelRatio,/);
+  });
+
+  it("ölçülen kare hızı düşükse piksel oranı bir kez düşürülür", () => {
+    expect(mapView).toContain("shouldLowerMapQuality");
+    expect(mapView).toMatch(/map\.on\("movestart", onSampleStart\)/);
+    expect(mapView).toMatch(/map\.on\("moveend", onSampleEnd\)/);
+    expect(mapView).toMatch(/map\.setPixelRatio\(1\)/);
+  });
+
+  it("ağır arazi katmanı cihaz kademesine göre başlar", () => {
+    const explorer = readFileSync("src/components/Explorer.tsx", "utf8");
+    expect(explorer).toContain("useState(() => recommendedTerrain(detectDeviceTier(readDeviceSignals())))");
+  });
+
   it("pin etiketi bulanıklığı yalnız görünürken uygulanır", () => {
     const start = css.indexOf(".atl-pin__label {");
     const base = css.slice(start, css.indexOf("}", start));

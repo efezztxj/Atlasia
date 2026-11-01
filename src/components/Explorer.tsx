@@ -36,6 +36,7 @@ import { formatAccuracy, useGeolocation } from "../hooks/useGeolocation";
 import { useAtlasData } from "../hooks/useAtlasData";
 import { useFirestoreAtlasData } from "../hooks/useFirestoreAtlasData";
 import { useTheme } from "../hooks/useTheme";
+import { detectDeviceTier, readDeviceSignals, recommendedTerrain } from "../utils/deviceTier";
 import type { InstallAppController } from "../hooks/useInstallApp";
 // A3: SDK başlatan `lib/firebase` yerine SDK'sız kapı. Explorer zaten Firestore
 // kullanıyor ama bu import yüzünden SDK, yapılandırma okuması için de değil,
@@ -289,7 +290,9 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
   const [spin, setSpin] = useState(true);
   const [heroCompact, setHeroCompact] = useState(false);
   const [labels, setLabels] = useState(true);
-  const [terrain, setTerrain] = useState(true);
+  // Ağır arazi katmanı yalnız güçlü cihazda açık başlar; zayıf cihazda
+  // kullanıcı isterse Katmanlar sayfasından yine açabilir.
+  const [terrain, setTerrain] = useState(() => recommendedTerrain(detectDeviceTier(readDeviceSignals())));
   // Hava katmanı tek kaynaktan yönetilir: Katmanlar sayfası + sağ ray düğmesi.
   const [weather, setWeather] = useState(false);
   const [weatherStatus, setWeatherStatus] = useState<WeatherStatus>("empty");
