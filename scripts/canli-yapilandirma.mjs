@@ -97,9 +97,12 @@ function firstMatch(text, source) {
  */
 export function extractFirebaseConfig(text) {
   const source = String(text);
-  const projectId = firstMatch(source, /projectId\s*:\s*["']([^"']+)["']/);
-  const authDomain = firstMatch(source, /authDomain\s*:\s*["']([^"']+)["']/);
-  const apiKey = firstMatch(source, /apiKey\s*:\s*["']([^"']+)["']/);
+  // Vite 8 / Rolldown dizgileri **backtick** ile de yazabilir
+  // (`projectId:\`atlasia-dev\``). Yalnız tek/çift tırnak kabul etmek, canlı
+  // yapılandırmayı 1 Kasım 2026'da yanlış "eksik" gösteren asıl kök nedendi.
+  const projectId = firstMatch(source, /projectId\s*:\s*["'`]([^"'`]+)["'`]/);
+  const authDomain = firstMatch(source, /authDomain\s*:\s*["'`]([^"'`]+)["'`]/);
+  const apiKey = firstMatch(source, /apiKey\s*:\s*["'`]([^"'`]+)["'`]/);
   // Ham anahtar hiçbir çıktıya girmesin: yalnız "var mı" ve maskeli biçim döner.
   return {
     projectId,

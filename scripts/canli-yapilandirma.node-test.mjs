@@ -21,6 +21,9 @@ const HTML = `<!doctype html><html><head>
 
 const PROD_JS = `const c={apiKey:"AIzaSyABCDEFGHIJKLMNOP",authDomain:"atlasia-prod.firebaseapp.com",projectId:"atlasia-prod",messagingSenderId:"21255827476"};`;
 const DEV_JS = `const c={apiKey:"AIzaSyDEVKEY",authDomain:"atlasia-dev.firebaseapp.com",projectId:"atlasia-dev"};`;
+// Vite 8 / Rolldown çıktısı: aynı nesne, dizgiler backtick ile.
+const ROLLDOWN_JS =
+  "var e={apiKey:`AIzaSyPRODKEY`,authDomain:`atlasia-prod.firebaseapp.com`,projectId:`atlasia-prod`,messagingSenderId:`21255827476`};";
 
 describe("canli-yapilandirma (canlı paket denetimi)", () => {
   it("entry paketini module script'ten bulur", () => {
@@ -45,6 +48,15 @@ describe("canli-yapilandirma (canlı paket denetimi)", () => {
     assert.equal(config.apiKeyMasked, "AIza…MNOP");
     assert.ok(!JSON.stringify(config).includes("AIzaSyABCDEFGHIJKLMNOP"), "tam anahtar sızmamalı");
     assert.equal(config.mentionsDevProject, false);
+  });
+
+  it("Vite 8 / Rolldown backtick çıktısını da okur (1 Kasım canlı hatası)", () => {
+    const config = extractFirebaseConfig(ROLLDOWN_JS);
+    assert.equal(config.projectId, "atlasia-prod");
+    assert.equal(config.authDomain, "atlasia-prod.firebaseapp.com");
+    assert.equal(config.apiKeyPresent, true);
+    assert.equal(config.apiKeyMasked, "AIza…DKEY");
+    assert.equal(evaluateConfig(config, { expectedProject: "atlasia-prod" }).ok, true);
   });
 
   it("atlasia-device-* yerel depolama adları yanlış alarm vermez", () => {
