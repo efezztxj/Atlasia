@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { SUPPORT_EMAIL } from "../content/landingStatic";
 
 /**
  * T19 — içerik/SEO meta seti kilidi.
@@ -51,6 +52,12 @@ describe("T19 · head meta seti", () => {
       const url = String(node.url ?? "");
       if (url) expect(url.startsWith(ORIGIN)).toBe(true);
     }
+    const organization = nodes.find((node) => node["@type"] === "Organization")!;
+    expect(organization.email).toBe(SUPPORT_EMAIL);
+    expect(organization.sameAs).toEqual([
+      "https://www.instagram.com/atlasia.world0/",
+      "https://www.tiktok.com/@atlasia.w",
+    ]);
     const site = nodes.find((node) => node["@type"] === "WebSite")!;
     expect(site.inLanguage).toBe("tr-TR");
     // Doğrulanamayan sosyal kanıt (puan/oylama) yapısal veriye girmez.

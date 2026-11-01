@@ -34,6 +34,14 @@ describe("T18 · footer yüzeyi", () => {
     await waitFor(() => expect(onOpen).toHaveBeenCalledTimes(1));
   });
 
+  it("destek ve sosyal profil bağlantıları görünür", async () => {
+    render(createElement(LandingPage, { onStart: vi.fn() }));
+    const email = await screen.findByRole("link", { name: "atlasiaworld0@gmail.com" });
+    expect(email.getAttribute("href")).toBe("mailto:atlasiaworld0@gmail.com");
+    expect(screen.getByRole("link", { name: "Instagram" }).getAttribute("href")).toBe("https://www.instagram.com/atlasia.world0/");
+    expect(screen.getByRole("link", { name: "TikTok" }).getAttribute("href")).toBe("https://www.tiktok.com/@atlasia.w");
+  });
+
   it("site dili yazılı ve `lang` ile tutarlı", async () => {
     render(createElement(LandingPage, { onStart: vi.fn() }));
     const line = await screen.findByText(/Site dili: Türkçe \(tr\)/);
