@@ -17,12 +17,17 @@ Plan §F1-6, §F5-6, §F4-4, §F5-4. **`Explorer.tsx` 969 → 642 satır** (baş
   Yeni kapı `src/config/nodeVersion.test.ts` (4 test) çelişkiyi ve sabit sürüm dönüşünü yakalar.
   **Açık:** `@firebase/app@0.16.4` `>=24.12.0` istiyor → Node 22'de `npm ci` `EBADENGINE` uyarısı
   verir; Node 24 hattı bu ortamda doğrulanamadığı için karar ertelendi (uydurma yok).
+  **Ders (ölçüldü):** `.nvmrc` tam yama olarak `22.13.0` yazılınca CI kırmızı oldu —
+  vitest'in `Pool.schedule` yolunda `undici` `TypeError: Cannot read properties of undefined
+  (reading 'bind')`. Hat (`22`) yazılınca aynı test seti yeşil. `.nvmrc` bu yüzden **hat**
+  yazar; alt sınır `engines`ta durur. Teşhis, iş akışı logu indirilemediği için test adımının
+  son 40 satırını check-run annotation'ına taşıyan adımla yapıldı (CI'da kalıcı).
 - **F4-4 — arşiv kuralı:** `docs/README.md` · "güncel durum" iddiası yalnız `docs/DURUM.md`'de,
   tarihli notlar arşivdir, eskiler silinmez `docs/arsiv/`ya taşınır.
 - **F5-4 — insan erişilebilirlik protokolü:** `docs/erisilebilirlik-protokolu.md` (NVDA, VoiceOver,
   yalnız klavye; görev metni + sonuç tablosu). **Uygulanmadı** — tablo "ölçülmedi" olarak boş.
-- **Ölçüm:** 191 dosya / 1.456 test · kapsam %65,42 / %56,02 / %60,67 / %70,38 (eşik 64/55/60/69) ·
-  JS 1.001.149 B gzip (bütçe 1.003.000 · pay 1.851 B) · SW 63/63.
+- **Ölçüm:** 190 dosya / 1.456 test · kapsam %65,42 / %56,02 / %60,67 / %70,38 (eşik **64/55/60/69**) ·
+  JS 1.001.149 B gzip (bütçe 1.003.000 · pay 1.851 B) · SW 63/63 · `test:scripts` 7/7.
 
 ## 2026-11-01 — F1-6 (adım 3): harita sahnesi `MapScene`'e taşındı
 
