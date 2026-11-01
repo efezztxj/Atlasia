@@ -105,6 +105,8 @@ describe("ölçüm · tanımlı her olay gerçekten çağrılıyor", () => {
     "src/components/Explorer.tsx",
     // F1-6: rota olayları (firstRouteCreated, routePublished) PanelStack'e taşındı.
     "src/components/explorer/PanelStack.tsx",
+    // F2-1b: placeCreated olayı usePlaceActions kancasına taşındı.
+    "src/hooks/usePlaceActions.ts",
     "src/contexts/AuthContext.tsx",
     "src/hooks/useFirestoreAtlasData.ts",
     "src/lib/telemetryBootstrap.ts",

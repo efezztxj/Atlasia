@@ -1,5 +1,20 @@
 # Atlasia Update
 
+## 2026-11-01 — F2-1b/F2-1c: yer eylemleri ve konum akışı kancalara ayrıldı
+
+Plan §F2-1. `Explorer.tsx` **1.190 → 969 satır** (başlangıç 1.796 → **-827**).
+
+- **`usePlaceActions.ts`** — iki kanca: `usePlaceNavigation` (uçuş/seçim/filtre/arama/sıfırlama/
+  çekmece/akışa git) ve `usePlaceCrud` (ekle · haritaya tıkla · kaydet · sil). Misafir kapısı (T5),
+  onay akışı ve Türkçe hata mesajı birebir korundu. **18 test.**
+- **`useLocationFlow.ts`** — konumun haritaya çizilmesi, ters ad çözümlemesi (250 m eşiği +
+  aborted istek koruması), izin/hata toast'ları, "konumu temizle". **11 test.**
+- **Kaynak metin kapıları taşındı, gevşetilmedi:** `guestMode` (iz ekleme kapısı) ve
+  `siteSurface` (`placeCreated` olayı) artık kancayı da okuyor; Explorer'ın kendi kapıları
+  yerinde duruyor.
+- **Kapsam:** %64,64 / %55,47 / %59,94 / %69,60 → eşikler **63 / 54 / 59 / 68**'e çekildi.
+- **Bundle:** 1.000.173 B gzip (bütçe 1.003.000 · pay 2.827 B).
+
 ## 2026-11-01 — F2-1a: moderasyon eylemleri `useModerationActions` kancasında
 
 Plan §F2-1. `Explorer.tsx` içindeki on `useCallback` (rapor durumu, ban, ban kaldırma, uyarı,

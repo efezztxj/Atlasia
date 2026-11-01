@@ -16,6 +16,10 @@ import { describe, expect, it } from "vitest";
 const read = (path: string) => readFileSync(path, "utf8");
 const app = read("src/App.tsx");
 const explorer = read("src/components/Explorer.tsx");
+// F2-1b: iz ekleme/kaydetme kapıları `usePlaceActions` kancasına taşındı; kapı
+// metni artık orada aranır. Explorer'ın kendi kapıları (sosyal, rota, bildirim)
+// yerinde durmaya devam ediyor.
+const placeActions = read("src/hooks/usePlaceActions.ts");
 const firestoreHook = read("src/hooks/useFirestoreAtlasData.ts");
 const localHook = read("src/hooks/useAtlasData.ts");
 const rules = read("firestore.rules");
@@ -45,8 +49,9 @@ describe("T4 · misafir yazamaz (istemci kapısı)", () => {
     expect(explorer).toContain("const guest = !user");
     expect(explorer).toContain("const askAccount = useCallback");
     // Kapıya bağlı eylemler: iz ekleme, topluluk yazıları, rota, profil, bildirim.
+    // İz ekleme kapısı kancada; kalanlar Explorer'da.
+    expect(placeActions, "İz eklemek için bir hesap aç kapısı eksik").toContain("İz eklemek için bir hesap aç");
     for (const intent of [
-      "İz eklemek için bir hesap aç",
       "Paylaşmak için bir hesap aç",
       "Yanıt yazmak için bir hesap aç",
       "Beğenmek için bir hesap aç",

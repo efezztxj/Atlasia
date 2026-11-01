@@ -17,19 +17,21 @@ import type { SettingsContentProps } from "./SettingsPanel";
 const NearbyAudioGuide = lazy(() => import("./NearbyAudioGuide"));
 const SocialPanel = lazy(() => import("./SocialPanel"));
 const AtlasAssistant = lazy(() => import("./AtlasAssistant"));
-import ConfirmDialogHost, { requestConfirm } from "./ConfirmDialog";
+import ConfirmDialogHost from "./ConfirmDialog";
 import { useAuth } from "../contexts/AuthContext";
 import { analytics } from "../lib/analytics";
 import { CollectionsProvider, isCloudAccount } from "../hooks/useCollections";
 import { GUIDE_PLACES } from "../data/places";
 import { parseShortcutTab, stripShortcutParam } from "../utils/appShortcut";
-import { formatAccuracy, useGeolocation } from "../hooks/useGeolocation";
+import { useGeolocation } from "../hooks/useGeolocation";
+import { useLocationFlow } from "../hooks/useLocationFlow";
 import { useAtlasData } from "../hooks/useAtlasData";
 import { useFirestoreAtlasData } from "../hooks/useFirestoreAtlasData";
 import { useTheme } from "../hooks/useTheme";
 import { useMapLayerPrefs } from "../hooks/useMapLayerPrefs";
 import { useDiscoveryFlow } from "../hooks/useDiscoveryFlow";
 import { useModerationActions } from "../hooks/useModerationActions";
+import { usePlaceCrud, usePlaceNavigation } from "../hooks/usePlaceActions";
 import { useExplorerEnvironment } from "../hooks/useExplorerEnvironment";
 import { MapSurfaceHints } from "./explorer/MapCanvas";
 import { AddModeBanner, DataErrorBanner, MobileSearchSheet, ToastBanner } from "./explorer/OverlayPanels";
@@ -44,11 +46,10 @@ import type { InstallAppController } from "../hooks/useInstallApp";
 import { isCloudReady, firebaseConfigSummary } from "../lib/firebaseConfig";
 import type { PlaceViewport } from "../lib/firestoreData";
 import { ROUTE_OPEN_MESSAGES, openPublishedRoute } from "../lib/publishedRouteOpen";
-import { placeDeleteErrorMessage } from "../lib/firestoreValue";
 import { freshnessReaderUid } from "../lib/verifications";
 import { readShareTokenFromUrl } from "../utils/shareLinkUrl";
-import type { AtlasRoute, CategoryId, Place, ViewState } from "../types";
-import { haversineKm, reverseName, type SearchResult } from "../utils/geo";
+import type { AtlasRoute, Place, ViewState } from "../types";
+import { haversineKm } from "../utils/geo";
 import { storageGet, storageSet } from "../utils/storage";
 import { decodePolyline } from "../utils/polyline";
 import { routeDrawLegs } from "../utils/routeLegs";
@@ -293,8 +294,6 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
 
   // --- Konum izni ---
   const geo = useGeolocation();
-  const geocodedAt = useRef<{ lng: number; lat: number } | null>(null);
-  const announced = useRef(false);
 
   // --- Mobil geri tuşu ---
   // Telefonda geri tuşu/kenar jesti uygulamadan çıkarmak yerine ekranda en
@@ -477,65 +476,11 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
     if (invite) openSocial({ kind: "invite", invite });
   }, [openSocial]);
 
-  const precise = useMemo(
-    () =>
-      geo.fix
-        ? {
-            label: preciseLabel ?? "Tam konumun",
-            lng: geo.fix.lng,
-            lat: geo.fix.lat,
-            accuracy: geo.fix.accuracy,
-          }
-        : null,
-    [geo.fix, preciseLabel],
-  );
-
-  // Location and storage share one panel; receiving a fix does not close it.
-  useEffect(() => {
-    const fix = geo.fix;
-    if (!fix) {
-      mapRef.current?.clearMe();
-      announced.current = false;
-      geocodedAt.current = null;
-      setPreciseLabel(null);
-      return;
-    }
-
-    const first = !announced.current;
-    mapRef.current?.showMe(fix.lng, fix.lat, fix.accuracy, first);
-    if (first) {
-      announced.current = true;
-      setSpin(false);
-      setActiveId(null);
-      setToast(`Konumun bulundu · ${formatAccuracy(fix.accuracy)}`);
-    }
-  }, [geo.fix, setSpin, setActiveId, setToast, setPreciseLabel]);
-
-  useEffect(() => {
-    const fix = geo.fix;
-    if (!fix) return;
-    const last = geocodedAt.current;
-    const moved = !last || haversineKm(last.lat, last.lng, fix.lat, fix.lng) > 0.25;
-    if (!moved) return;
-    const ctrl = new AbortController();
-    reverseName(fix.lat, fix.lng, ctrl.signal).then((name) => {
-      if (ctrl.signal.aborted || !name) return;
-      geocodedAt.current = { lng: fix.lng, lat: fix.lat };
-      setPreciseLabel(name);
-      setLocationLabel(name);
-    });
-    return () => ctrl.abort();
-  }, [geo.fix, setSpin, setLocationLabel, setPreciseLabel]);
-
-  // Hata durumlarını kullanıcıya anlat
-  useEffect(() => {
-    if (geo.status === "denied" && announced.current) {
-      setToast("Konum izni kapatıldı.");
-    }
-    if (geo.status === "timeout") setToast("Konum zaman aşımına uğradı, tekrar dene.");
-    if (geo.status === "unavailable") setToast("Konum şu an alınamıyor.");
-  }, [geo.status, setToast]);
-
+  // F2-1c: konum akışı (uçuş, ters ad, izin/hata toast'ları, temizleme) kancada.
+  const { precise, handleLocate, handleAllowLocation, handleShowLocation, handleClearLocation } = useLocationFlow({
+    geo, mapRef, preciseLabel, setPreciseLabel, setLocationLabel, setToast,
+    setSpin, setActiveId, openSettings, closeSettings, setProfileOpen,
+  });
 
   const allPlaces = useMemo(
     () => freshness.withFreshness([...discoveries, ...GUIDE_PLACES]),
@@ -568,98 +513,14 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
     return discoveries.filter((d) => haversineKm(view.lat, view.lng, d.lat, d.lng) <= km).length;
   }, [discoveries, view]);
 
-  const focusPlace = useCallback((p: Place, zoom = 8) => {
-    setActiveId(p.id);
-    setSpin(false);
-    setLocationLabel(p.region);
-    mapRef.current?.flyTo(p.lng, p.lat, zoom);
-  }, [setSpin, setActiveId, setLocationLabel]);
-
-  const handleSelect = useCallback(
-    (id: string) => {
-      const p = allPlaces.find((x) => x.id === id);
-      if (!p) return;
-      setPanelOpen(true);
-      focusPlace(p);
-      setStoryPlace(p);
-      setStreetPlace(null);
-      setAtlasOpen(false);
-      setDrawerOpen(false);
-      setFeedOpen(false);
-      setRecordsOpen(false);
-    },
-    [allPlaces, focusPlace, setAtlasOpen, setDrawerOpen, setFeedOpen, setPanelOpen, setRecordsOpen],
-  );
-
-  const handleCategory = (c: CategoryId | null) => {
-    setCategory(c);
-    setActiveId(null);
-    setFeaturedIdx(0);
-  };
-
-  const handleCycle = (dir: 1 | -1) => {
-    if (!visiblePlaces.length) return;
-    const idx = Math.max(
-      0,
-      visiblePlaces.findIndex((p) => p.id === current?.id),
-    );
-    const next = (idx + dir + visiblePlaces.length) % visiblePlaces.length;
-    setActiveId(null);
-    setFeaturedIdx(next);
-  };
-
-  const handleSearchPick = (r: SearchResult) => {
-    setSpin(false);
-    if (r.place) {
-      setCategory(null);
-      setPanelOpen(true);
-      focusPlace(r.place);
-      setStoryPlace(r.place);
-      setStreetPlace(null);
-      setFeedOpen(false);
-      setAtlasOpen(false);
-      return;
-    }
-    setActiveId(null);
-    setLocationLabel(r.label);
-    if (r.bbox) mapRef.current?.fitBox(r.bbox);
-    else mapRef.current?.flyTo(r.lng, r.lat, 10);
-  };
-
-  const handleReset = () => {
-    setSpin(true);
-    setHeroCompact(false);
-    setActiveId(null);
-    setLocationLabel("Dünya");
-    mapRef.current?.reset();
-  };
-
-  const handleLocate = useCallback(() => openSettings(), [openSettings]);
-
-  const handleAllowLocation = useCallback(() => {
-    setToast("Konumun aranıyor…");
-    geo.request();
-  }, [geo, setToast]);
-
-  const handleShowLocation = () => {
-    if (!geo.fix) return;
-    setSpin(false);
-    setActiveId(null);
-    setLocationLabel(preciseLabel ?? "Konumun");
-    mapRef.current?.showMe(geo.fix.lng, geo.fix.lat, geo.fix.accuracy, true);
-    closeSettings();
-    setProfileOpen(false);
-  };
-
-  const handleClearLocation = useCallback(() => {
-    geo.clear();
-    announced.current = false;
-    geocodedAt.current = null;
-    setPreciseLabel(null);
-    setLocationLabel("Dünya");
-    mapRef.current?.clearMe();
-    setToast("Konum işareti kaldırıldı.");
-  }, [geo, setToast, setLocationLabel, setPreciseLabel]);
+  // F2-1b: yer gezinme eylemleri kancada (uçuş, seçim, filtre, arama, sıfırlama).
+  const { focusPlace, handleSelect, handleCategory, handleCycle, handleSearchPick, handleReset, handleDrawerPick, handleFeedGoTo } =
+    usePlaceNavigation({
+      allPlaces, visiblePlaces, current, mapRef,
+      setActiveId, setSpin, setHeroCompact, setLocationLabel, setPanelOpen,
+      setStoryPlace, setStreetPlace, setAtlasOpen, setDrawerOpen, setFeedOpen,
+      setRecordsOpen, setCategory, setFeaturedIdx,
+    });
 
   /**
    * Misafir bir yazma eylemine kalkarsa: kısa bilgi + giriş/kayıt ekranı.
@@ -674,96 +535,14 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
     requireAccount(intent);
   }, [requireAccount, setToast]);
 
-  const startAdd = () => {
-    if (guest) { askAccount("İz eklemek için bir hesap aç ya da giriş yap.", "place"); return; }
-    closePanels();
-    setSpin(false);
-    setDrawerOpen(false);
-    setAddMode(true);
-  };
-
-  const handleMapClick = useCallback((lng: number, lat: number) => {
-    setAddMode(false);
-    setDraft({ lng, lat });
-  }, [setAddMode, setDraft]);
-
-  const handleSave = async (data: {
-    title: string;
-    category: CategoryId;
-    note: string;
-    author: string;
-    region: string;
-    photo?: string;
-  }) => {
-    if (!draft) return;
-    if (guest) { askAccount("İz kaydetmek için bir hesap aç ya da giriş yap."); return; }
-    const created = await cloud.addPlace({
-      title: data.title,
-      region: data.region,
-      category: data.category,
-      lng: draft.lng,
-      lat: draft.lat,
-      note: data.note || "Bu keşif için henüz bir ipucu bırakılmadı.",
-      author: data.author || "Gezgin",
-      photo: data.photo,
-    });
-    analytics.placeCreated({
-      account: cloudAccount ? "cloud" : "device",
-      category: data.category,
-      hasPhoto: Boolean(data.photo),
-    });
-    setDraft(null);
-    setCategory(null);
-    setPanelOpen(true);
-    focusPlace(created, Math.max(view.zoom, 8));
-    setToast(cloudAccount ? "İzin Atlasia haritasına eklendi." : "İzin bu cihazdaki haritana eklendi.");
-  };
-
-  const handleDelete = async (p: Place): Promise<boolean> => {
-    if (!canManagePlace(p)) {
-      setToast("Yalnızca kendi izlerini silebilirsin.");
-      return false;
-    }
-    const accepted = await requestConfirm({
-      title: "İzi sil",
-      message: `“${p.title}” izini kalıcı olarak silmek istiyor musun?`,
-      confirmLabel: "Sil",
-      danger: true,
-    });
-    if (!accepted) return false;
-    try {
-      await cloud.removePlace(p.id);
-      if (activeId === p.id) setActiveId(null);
-      setStoryPlace((currentPlace) => currentPlace?.id === p.id ? null : currentPlace);
-      setStreetPlace((currentPlace) => currentPlace?.id === p.id ? null : currentPlace);
-      setFeaturedIdx(0);
-      setToast("İzin haritadan silindi.");
-      return true;
-    } catch (error) {
-      console.error("[Atlasia] Pin silinemedi:", error);
-      setToast(placeDeleteErrorMessage(error));
-      return false;
-    }
-  };
-
-  const handleDrawerPick = (p: Place) => {
-    setDrawerOpen(false);
-    setPanelOpen(true);
-    focusPlace(p);
-    setStoryPlace(p);
-    setStreetPlace(null);
-    setFeedOpen(false);
-    setAtlasOpen(false);
-  };
-
-  /** Akıştaki bir gönderi ya da story'nin konumuna uç */
-  const handleFeedGoTo = useCallback((lng: number, lat: number, label: string) => {
-    setSpin(false);
-    setActiveId(null);
-    setLocationLabel(label);
-    mapRef.current?.flyTo(lng, lat, 9);
-    if (window.innerWidth < 1024) setFeedOpen(false);
-  }, [setSpin, setFeedOpen, setActiveId, setLocationLabel]);
+  // F2-1b: ekle/kaydet/sil de kancada; misafir kapısı ve onay akışı aynı.
+  const { startAdd, handleMapClick, handleSave, handleDelete } = usePlaceCrud({
+    draft, setDraft, activeId, guest, cloudAccount, view,
+    addPlace: cloud.addPlace, removePlace: cloud.removePlace,
+    canManagePlace, askAccount, closePanels, focusPlace, setToast, setAddMode,
+    setActiveId, setCategory, setFeaturedIdx, setPanelOpen, setDrawerOpen,
+    setStoryPlace, setStreetPlace, setSpin,
+  });
 
   const heroHidden = view.zoom > 3.4;
   // Keşif kartı yalnız ekranı bütünüyle kaplayan katmanlarda gizlenir.

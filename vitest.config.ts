@@ -22,7 +22,8 @@ export default defineConfig({
      * tabanına çekilir (plan §F0-2).
      *  · İlk ölçüm (F1-1 öncesi): 61,21 / 53,68 / 56,88 / 66,07
      *  · F1-1 sonrası:             61,50 / 53,78 / 57,21 / 66,40
-     *  · F1-2…F1-5 sonrası:        62,93 / 54,41 / 58,57 / 67,73  ← buradaki taban
+     *  · F1-2…F1-5 sonrası:        62,93 / 54,41 / 58,57 / 67,73
+     *  · F2-1b/F2-1c sonrası:      64,64 / 55,47 / 59,94 / 69,60  ← buradaki taban
      * Eşiği düşürmek için önce buradaki gerekçe satırının değişmesi gerekir.
      */
     coverage: {
@@ -32,9 +33,9 @@ export default defineConfig({
       include: ["src/**/*.{ts,tsx}"],
       exclude: ["src/**/*.test.*"],
       thresholds: {
-        lines: 67,
-        statements: 62,
-        functions: 58,
+        lines: 68,
+        statements: 63,
+        functions: 59,
         branches: 54,
       },
     },
