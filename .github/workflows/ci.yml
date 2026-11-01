@@ -57,7 +57,16 @@ jobs:
         # annotation'ı olarak API'den de okunabilsin (kurallar adımıyla aynı fikir).
         # Kapsam eşiği (vitest.config.ts) bu adımda zorunludur: eşik altına düşen
         # PR kırmızı olur; eşiği düşürmek kod değişikliği + gerekçe ister.
-        run: npm run test:cov -- --reporter=default --reporter=github-actions
+        run: |
+          set -o pipefail
+          npm run test:cov -- --reporter=default --reporter=github-actions 2>&1 | tee /tmp/atlasia-tests.log
+
+      # GEÇİCİ hata ayıklama: bu ortamda iş akışı logu indirilemiyor (gh run --log
+      # boş dönüyor). Test adımı düşerse son 40 satır check-run annotation'ı olur.
+      - name: Test log tail (hata ayıklama)
+        if: failure()
+        run: |
+          tail -40 /tmp/atlasia-tests.log 2>/dev/null | sed 's/^/::error::/' || true
 
       - name: Script tests (no credentials)
         run: npm run test:scripts
