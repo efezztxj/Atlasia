@@ -1,4 +1,4 @@
-import type { Place } from "../types";
+import type { HistoricVerification, Place, HistoricSourceReference } from "../types";
 import { haversineKm } from "./geo";
 import { EPHESUS_CENTER, EPHESUS_HISTORIC_SITES } from "../data/ephesusFixture";
 
@@ -10,7 +10,7 @@ import { EPHESUS_CENTER, EPHESUS_HISTORIC_SITES } from "../data/ephesusFixture";
  */
 
 const OVERPASS_ENDPOINT = "https://overpass-api.de/api/interpreter";
-const CACHE_KEY = "atlasia.historic.cache.v1";
+const CACHE_KEY = "atlasia.historic.cache.v2";
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const MEMORY_TTL_MS = 30 * 60 * 1000;
 const MAX_RADIUS_M = 2000;
@@ -275,27 +275,87 @@ async function fetchWikipediaSummary(lang: HistoryLang, title: string, signal?: 
   }
 }
 
-async function fetchWikidataSitelink(qid: string, signal?: AbortSignal): Promise<{ lang: HistoryLang; title: string } | null> {
+interface WikidataEntity {
+  missing?: string;
+  labels?: Partial<Record<HistoryLang, { value?: string }>>;
+  claims?: Record<string, Array<{
+    rank?: string;
+    mainsnak?: { snaktype?: string; datavalue?: { value?: unknown } };
+  }>>;
+  sitelinks?: Record<string, { title?: string }>;
+}
+
+interface WikidataRecord {
+  qid: string;
+  label: string;
+  coordinates: { lat: number; lng: number } | null;
+  sitelink: { lang: HistoryLang; title: string } | null;
+}
+
+async function fetchWikidataRecord(qid: string, signal?: AbortSignal): Promise<WikidataRecord | null> {
   if (!/^Q\d+$/.test(qid)) return null;
-  const url = `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${encodeURIComponent(qid)}&props=sitelinks&format=json&origin=*`;
+  const url = `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${encodeURIComponent(qid)}&props=labels|claims|sitelinks&languages=tr|en&format=json&origin=*`;
   try {
     const res = await fetchWithTimeout(url, signal, WIKI_TIMEOUT_MS);
     if (!res.ok) return null;
-    const data = (await res.json()) as { entities?: Record<string, { sitelinks?: Record<string, { title: string }> }> };
-    const links = data.entities?.[qid]?.sitelinks;
-    if (!links) return null;
+    const data = (await res.json()) as { entities?: Record<string, WikidataEntity> };
+    const entity = data.entities?.[qid];
+    if (!entity || entity.missing !== undefined) return null;
+
+    const coordinateClaim = (entity.claims?.P625 ?? []).find((claim) => {
+      if (claim.rank === "deprecated" || claim.mainsnak?.snaktype !== "value") return false;
+      const value = claim.mainsnak?.datavalue?.value as { latitude?: unknown; longitude?: unknown } | undefined;
+      return Number.isFinite(value?.latitude) && Number.isFinite(value?.longitude);
+    });
+    const coordinateValue = coordinateClaim?.mainsnak?.datavalue?.value as { latitude: number; longitude: number } | undefined;
+    const sitelinks = entity.sitelinks ?? {};
+    let sitelink: WikidataRecord["sitelink"] = null;
     for (const lang of HISTORY_SUMMARY_LANGS) {
-      const link = links[`${lang}wiki`];
-      if (link?.title) return { lang, title: link.title };
+      const title = sitelinks[`${lang}wiki`]?.title;
+      if (title) {
+        sitelink = { lang, title };
+        break;
+      }
     }
-    return null;
+    return {
+      qid,
+      label: entity.labels?.tr?.value ?? entity.labels?.en?.value ?? qid,
+      coordinates: coordinateValue ? { lat: coordinateValue.latitude, lng: coordinateValue.longitude } : null,
+      sitelink,
+    };
   } catch {
     return null;
   }
 }
 
+function openStreetMapRecordUrl(place: Place): string {
+  const match = /^osm-historic-(node|way|relation)-(\d+)$/.exec(place.id);
+  return match ? `https://www.openstreetmap.org/${match[1]}/${match[2]}` : "https://www.openstreetmap.org/";
+}
+
+function crossCheckHistoricPlace(place: Place, qid: string | undefined, wikidata: WikidataRecord | null, summary: WikiSummary | null): HistoricVerification {
+  const sources: HistoricSourceReference[] = [{ kind: "openstreetmap", label: "OpenStreetMap", url: openStreetMapRecordUrl(place) }];
+  if (wikidata) sources.push({ kind: "wikidata", label: `Wikidata · ${wikidata.qid}`, url: `https://www.wikidata.org/wiki/${wikidata.qid}` });
+  if (summary) sources.push({ kind: "wikipedia", label: `Wikipedia · ${summary.lang}`, url: summary.url });
+
+  const locationMatch: HistoricVerification["locationMatch"] = wikidata?.coordinates
+    ? haversineKm(place.lat, place.lng, wikidata.coordinates.lat, wikidata.coordinates.lng) <= 2 ? "match" : "mismatch"
+    : "unknown";
+  const wikiMatchesEntity = Boolean(
+    wikidata?.sitelink && summary
+    && summary.title.replaceAll("_", " ").trim().toLocaleLowerCase("tr")
+      === wikidata.sitelink.title.replaceAll("_", " ").trim().toLocaleLowerCase("tr"),
+  );
+  const status: HistoricVerification["status"] = locationMatch === "mismatch"
+    ? "conflict"
+    : sources.length === 3 && locationMatch === "match" && Boolean(qid) && wikiMatchesEntity
+      ? "corroborated"
+      : "partial";
+  return { status, sourceCount: sources.length, expectedSources: 3, locationMatch, sources };
+}
+
 async function enrichPlacesWithWikipedia(places: Place[], signal?: AbortSignal): Promise<Place[]> {
-  // concurrency control: max 3 at a time, max 15 total
+  // Same-origin UI request fans out to at most 15 places, with max 3 workers.
   const limit = Math.min(places.length, 15);
   const enriched: Place[] = [...places];
   let cursor = 0;
@@ -305,41 +365,49 @@ async function enrichPlacesWithWikipedia(places: Place[], signal?: AbortSignal):
       const idx = cursor++;
       const place = enriched[idx];
       const tags = (place as Place & { _wikiTags?: Record<string, string> })._wikiTags;
+      const qid = tags?.wikidata?.split(";")[0].trim();
+      let wikidata: WikidataRecord | null = null;
       let summary: WikiSummary | null = null;
       try {
+        if (qid) wikidata = await fetchWikidataRecord(qid, signal);
         const raw = tags?.wikipedia ?? "";
         const sep = raw.indexOf(":");
         const tagLang = sep > 0 ? raw.slice(0, sep) : "";
-        // Etiketteki madde politika dilindeyse doğrudan; değilse wikidata'dan tr/en bağlantısı aranır.
-        if (sep > 0 && isHistoryLang(tagLang)) summary = await fetchWikipediaSummary(tagLang, raw.slice(sep + 1), signal);
-        if (!summary && tags?.wikidata) {
-          const link = await fetchWikidataSitelink(tags.wikidata.split(";")[0].trim(), signal);
-          if (link) summary = await fetchWikipediaSummary(link.lang, link.title, signal);
-        }
-        // Etiket yoksa tahmin yok: konum/isim yakınlığıyla madde aranmaz.
+        // Prefer the article linked by Wikidata (same entity); fall back only to an explicit OSM link.
+        // Never guess a Wikipedia page from a name or nearby coordinates.
+        if (wikidata?.sitelink) summary = await fetchWikipediaSummary(wikidata.sitelink.lang, wikidata.sitelink.title, signal);
+        if (!summary && sep > 0 && isHistoryLang(tagLang)) summary = await fetchWikipediaSummary(tagLang, raw.slice(sep + 1), signal);
       } catch {
         summary = null;
       }
-      if (summary) {
-        enriched[idx] = {
-          ...place,
+
+      const historyVerification = crossCheckHistoricPlace(place, qid, wikidata, summary);
+      const dataSources = [OSM_ATTRIBUTION];
+      if (wikidata) dataSources.push(`Wikidata (${wikidata.label}): https://www.wikidata.org/wiki/${wikidata.qid}`);
+      if (summary) dataSources.push(`Wikipedia (${summary.lang}): ${summary.title} — ${WIKIPEDIA_LICENSE}`);
+      enriched[idx] = {
+        ...place,
+        ...(summary ? {
           story: summary.text,
-          dataSources: [OSM_ATTRIBUTION, `Wikipedia (${summary.lang}): ${summary.title} — ${WIKIPEDIA_LICENSE}`],
           historySource: { name: "Wikipedia", title: summary.title, url: summary.url, license: WIKIPEDIA_LICENSE, lang: summary.lang },
-        };
-      }
-      // temizle internal tag
+        } : {}),
+        dataSources,
+        historyVerification,
+      };
       delete (enriched[idx] as Place & { _wikiTags?: unknown })._wikiTags;
     }
   }
 
   const workers = Array.from({ length: Math.min(3, limit) }, () => worker());
   await Promise.all(workers);
-  // temizle kalan tag'ler
   for (let i = limit; i < enriched.length; i++) {
     delete (enriched[i] as Place & { _wikiTags?: unknown })._wikiTags;
-    // for non-enriched beyond limit, also ensure dataSources
-    if (!enriched[i].dataSources) enriched[i].dataSources = ["© OpenStreetMap contributors (ODbL)"];
+    if (!enriched[i].dataSources) enriched[i].dataSources = [OSM_ATTRIBUTION];
+    // Every returned result is explicitly marked as unchecked when it falls outside
+    // the bounded enrichment window instead of implying a multi-source verification.
+    if (!enriched[i].historyVerification) {
+      enriched[i].historyVerification = crossCheckHistoricPlace(enriched[i], undefined, null, null);
+    }
   }
   return enriched;
 }

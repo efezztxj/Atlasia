@@ -2,7 +2,8 @@ import type { Place } from "../types";
 import { haversineKm } from "./geo";
 
 /** P14: yer detayındaki "Yakındaki tarihî yerler" listesinin saf sıralama/biçim kuralları. */
-export const NEARBY_HISTORY_MAX = 6;
+export const NEARBY_HISTORY_MAX = 60;
+export const NEARBY_HISTORY_PREVIEW = 6;
 
 export type Nearby = { place: Place; km: number };
 
@@ -10,7 +11,10 @@ export function pickNearby(origin: Place, places: Place[], max = NEARBY_HISTORY_
   return places
     .filter((candidate) => candidate.id !== origin.id && candidate.title.trim().toLocaleLowerCase("tr") !== origin.title.trim().toLocaleLowerCase("tr"))
     .map((candidate) => ({ place: candidate, km: haversineKm(origin.lat, origin.lng, candidate.lat, candidate.lng) }))
-    .sort((a, b) => Number(Boolean(b.place.historySource)) - Number(Boolean(a.place.historySource)) || a.km - b.km)
+    .sort((a, b) => {
+      const rank = (place: Place) => place.historyVerification?.status === "corroborated" ? 2 : place.historySource ? 1 : 0;
+      return rank(b.place) - rank(a.place) || a.km - b.km;
+    })
     .slice(0, max);
 }
 
