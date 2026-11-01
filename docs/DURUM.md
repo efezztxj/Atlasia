@@ -21,7 +21,7 @@
 
 | Ölçüm | Değer |
 |---|---|
-| `firestore.rules` satır | 1401 |
+| `firestore.rules` satır | 1408 |
 | Kural `match` bloğu | 37 |
 | Kural `allow` satırı | 163 |
 | Bileşik indeks | 4 |
