@@ -1,5 +1,17 @@
 # Atlasia Update
 
+## 2026-11-01 — F6-2: kapasite modeli (Spark darboğazı ölçüldü)
+
+`docs/kapasite-modeli.md`. Kod sabitlerinden (`firestoreLimits.ts`) okunan sayfalarla
+oturum maliyeti ve Spark limitleri karşılaştırıldı:
+
+- **Bugünkü darboğaz ağ çıkışı:** popüler gönderide `likedBy` 500 uid'e dayandığında
+  50 gönderilik akış ≈ **720 KB**; 10 GiB/ay ⇒ ≈ **69 DAU**.
+- **F2-1 sonrası darboğaz okumaya kayar:** akış ≈ **20 KB**, egress ≈ **400 DAU**,
+  okuma ≈ **96 DAU** (yazma 1.960 DAU). Yani beğeni alt koleksiyonu ≈ **5,8× kapasite**.
+- Oturum başına eylem sayıları **varsayım** olarak işaretlendi (telemetri D7'de açılınca
+  yeniden hesaplanacak); fiyat/limit satırları Console'da doğrulanmalı.
+
 ## 2026-11-01 — F1-6 (adım 4/5) + F5-6 + F4-4 + F5-4 (protokol)
 
 Plan §F1-6, §F5-6, §F4-4, §F5-4. **`Explorer.tsx` 969 → 642 satır** (başlangıç 1.796 → −1.154, %64).
