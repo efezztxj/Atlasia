@@ -112,7 +112,7 @@ jobs:
       - name: Install Playwright Chromium for E2E smoke suite
         run: npx playwright install --with-deps chromium
 
-      - name: Browser E2E smoke tests (Playwright)
+      - name: Browser E2E + axe erişilebilirlik kapısı (Playwright)
         run: npm run test:e2e
 
       # A6: kaynak haritaları `hidden` üretilir ve postbuild onları `dist` dışına

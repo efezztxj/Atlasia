@@ -116,3 +116,34 @@ test("4. Uygulama kabuğu — mobil, katmanlar paneli ve koyu tema", async ({ pa
 
   await auditPage(page, "keşif kabuğu · mobil 390×844 · koyu tema · katmanlar paneli");
 });
+
+test("5. Uygulama kabuğu — masaüstü, İzler paneli", async ({ page }) => {
+  await presetTheme(page, "light");
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/");
+  await acceptEssentialCookies(page);
+  await enterGuestExplorer(page);
+
+  // Hapın erişilebilir adı "İzler <sayaç>"; WCAG 2.5.3 gereği görünen metni içerir.
+  const pill = page.getByRole("button", { name: /^İzler/ });
+  await expect(pill).toBeVisible();
+  await activateWithKeyboard(page, pill);
+  await expect(page.getByRole("region", { name: "İzler" })).toBeVisible();
+
+  await auditPage(page, "keşif kabuğu · masaüstü · açık tema · izler paneli");
+});
+
+test("6. Uygulama kabuğu — masaüstü, Kayıtlarım paneli", async ({ page }) => {
+  await presetTheme(page, "light");
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/");
+  await acceptEssentialCookies(page);
+  await enterGuestExplorer(page);
+
+  const records = page.getByRole("button", { name: "Kayıtlarım aç" });
+  await expect(records).toBeVisible();
+  await activateWithKeyboard(page, records);
+  await expect(page.getByRole("complementary", { name: "Kayıtlarım" })).toBeVisible();
+
+  await auditPage(page, "keşif kabuğu · masaüstü · açık tema · kayıtlarım paneli");
+});
