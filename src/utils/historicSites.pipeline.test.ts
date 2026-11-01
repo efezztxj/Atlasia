@@ -51,7 +51,7 @@ describe("P14 tarihçe eşleştirme ve atıf", () => {
   it("wikidata etiketi → tr madde öncelikli; özet + madde adresi + lisans taşınır", async () => {
     const calls = stubFetch((url) => {
       if (url.startsWith("https://overpass-api.de/")) return overpass([{ type: "node", id: 1, lat: 38.42, lon: 27.13, tags: { historic: "monument", name: "Saat Kulesi", wikidata: "Q123" } }]);
-      if (url.includes("wikidata.org")) return { entities: { Q123: { sitelinks: { enwiki: { title: "Clock Tower" }, trwiki: { title: "İzmir Saat Kulesi" } } } } };
+      if (url.includes("wikidata.org")) return { entities: { Q123: { labels: { tr: { value: "İzmir Saat Kulesi" } }, claims: { P625: [{ mainsnak: { snaktype: "value", datavalue: { value: { latitude: 38.42, longitude: 27.13 } } } }] }, sitelinks: { enwiki: { title: "Clock Tower" }, trwiki: { title: "İzmir Saat Kulesi" } } } } };
       if (url.startsWith("https://tr.wikipedia.org/api/rest_v1/page/summary/")) return { title: "İzmir Saat Kulesi", extract: "İzmir Saat Kulesi, Konak Meydanı'nda 1901'de yapılmış tarihî bir saat kulesidir.", content_urls: { desktop: { page: "https://tr.wikipedia.org/wiki/%C4%B0zmir_Saat_Kulesi" } } };
       return undefined;
     });
@@ -61,7 +61,28 @@ describe("P14 tarihçe eşleştirme ve atıf", () => {
     expect(place.story).toContain("1901");
     expect(place.historySource).toEqual({ name: "Wikipedia", title: "İzmir Saat Kulesi", url: "https://tr.wikipedia.org/wiki/%C4%B0zmir_Saat_Kulesi", license: "CC BY-SA 4.0", lang: "tr" });
     expect(place.dataSources).toContain("© OpenStreetMap contributors (ODbL)");
+    expect(place.dataSources?.some((source) => source.startsWith("Wikidata"))).toBe(true);
+    expect(place.historyVerification).toMatchObject({ status: "corroborated", sourceCount: 3, expectedSources: 3, locationMatch: "match" });
+    expect(place.historyVerification?.sources.map((source) => source.kind)).toEqual(["openstreetmap", "wikidata", "wikipedia"]);
     expect(calls.some((url) => url.includes("en.wikipedia.org"))).toBe(false);
+  });
+
+  it("üç kaynakta Wikidata koordinatı farklıysa kaydı teyit edilmiş saymaz", async () => {
+    stubFetch((url) => {
+      if (url.startsWith("https://overpass-api.de/")) return overpass([{ type: "node", id: 8, lat: 38.42, lon: 27.13, tags: { historic: "monument", name: "Saat Kulesi", wikidata: "Q123" } }]);
+      if (url.includes("wikidata.org")) return {
+        entities: {
+          Q123: {
+            claims: { P625: [{ mainsnak: { snaktype: "value", datavalue: { value: { latitude: 41.0, longitude: 29.0 } } } }] },
+            sitelinks: { trwiki: { title: "Saat Kulesi" } },
+          },
+        },
+      };
+      if (url.startsWith("https://tr.wikipedia.org/api/rest_v1/page/summary/")) return { title: "Saat Kulesi", extract: "Saat Kulesi, tarihî ve mimari açıdan önemli bir yapıdır.", content_urls: { desktop: { page: "https://tr.wikipedia.org/wiki/Saat_Kulesi" } } };
+      return undefined;
+    });
+    const result = await fetchHistoricSitesDetailed(CENTER, 1000);
+    expect(result.places[0].historyVerification).toMatchObject({ status: "conflict", sourceCount: 3, locationMatch: "mismatch" });
   });
 
   it("etiket yoksa tahmin üretilmez: konum/isim araması yapılmaz, hikâye boş kalır", async () => {
@@ -70,6 +91,7 @@ describe("P14 tarihçe eşleştirme ve atıf", () => {
     expect(result.places[0].story).toBeUndefined();
     expect(result.places[0].historySource).toBeUndefined();
     expect(result.places[0].dataSources).toEqual(["© OpenStreetMap contributors (ODbL)"]);
+    expect(result.places[0].historyVerification).toMatchObject({ status: "partial", sourceCount: 1, expectedSources: 3, locationMatch: "unknown" });
     expect(calls.filter((url) => !url.startsWith("https://overpass-api.de/"))).toEqual([]);
   });
 

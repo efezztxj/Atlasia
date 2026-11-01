@@ -200,6 +200,25 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDele
           ) : place.dataSources?.length ? (
             <p className="mt-2 text-[11px] leading-relaxed text-mint/70" data-testid="place-attribution">Kaynak: {place.dataSources.join(" · ")}</p>
           ) : null}
+          {place.historyVerification ? (
+            <section aria-label="Tarihî kaynak çapraz kontrolü" className="mt-3 rounded-xl border border-leaf/20 bg-white/[0.025] p-3">
+              <p className="text-[12px] font-semibold text-mint">
+                {place.historyVerification.status === "corroborated"
+                  ? "3 kayıt eşleşiyor · konumlar 2 km içinde"
+                  : place.historyVerification.status === "conflict"
+                    ? "Kaynak uyuşmazlığı · bu yer teyit edilmiş sayılmaz"
+                    : `${place.historyVerification.sourceCount}/3 kaynak bulundu · teyit yetersiz`}
+              </p>
+              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-mint/70">
+                {place.historyVerification.sources.map((source) => (
+                  <a key={source.kind} href={source.url} target="_blank" rel="noreferrer" className="underline underline-offset-2">{source.label}</a>
+                ))}
+              </div>
+              <p className="mt-1 text-[10.5px] leading-relaxed text-mint/55">Bu çapraz kontrol saha/uzman teyidi değildir. Konum uyuşmazlığı varsa bilgiye güvenme; gitmeden resmî kaynağa bak.</p>
+            </section>
+          ) : place.category === "history" ? (
+            <p className="mt-3 text-[11px] leading-relaxed text-sun/80">Bu tarihî yer için canlı 3 kaynak çapraz kontrolü yapılmadı; doğrulanmış sayılmaz.</p>
+          ) : null}
 
           <Suspense fallback={<div role="status" aria-label="Yakındaki tarihçe yükleniyor" className="skeleton mt-7 h-24 w-full" />}>
             <NearbyHistory key={place.id} place={place} onOpen={onOpenPlace} />
