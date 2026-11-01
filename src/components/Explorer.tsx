@@ -9,7 +9,6 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import type { MapViewHandle } from "./MapView";
 import BottomPanel from "./BottomPanel";
-import type { SettingsContentProps } from "./SettingsPanel";
 const SocialPanel = lazy(() => import("./SocialPanel"));
 const AtlasAssistant = lazy(() => import("./AtlasAssistant"));
 import ConfirmDialogHost from "./ConfirmDialog";
@@ -29,6 +28,7 @@ import { useExplorerEnvironment } from "../hooks/useExplorerEnvironment";
 import { useExplorerLifecycle } from "../hooks/useExplorerLifecycle";
 import { useExplorerDerived } from "../hooks/useExplorerDerived";
 import { MapScene } from "./explorer/MapScene";
+import { buildSettingsContent } from "./explorer/settingsContent";
 import { AddModeBanner, DataErrorBanner, ToastBanner } from "./explorer/OverlayPanels";
 import { PanelStack } from "./explorer/PanelStack";
 import { useModerationInbox, useModeratorAccess } from "../hooks/useModerationInbox";
@@ -417,30 +417,15 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
   const mobileExplore = () => { closePanels(); setHeroCompact(false); setPanelOpen(true); };
   const openMyPlaces = () => { closePanels(); setMyPlacesOpen(true); };
   const mobileTab = myPlacesOpen ? "İzlerim" : recordsOpen ? "Kaydet" : feedOpen ? "Topluluk" : profileOpen ? "Profil" : "Keşfet";
-  const settingsContentProps: SettingsContentProps = {
-    theme,
-    onTheme: setTheme,
-    installApp,
-    mapBounds: mapViewport?.bounds ?? null,
-    location: {
-      supported: geo.supported,
-      secure: geo.secure,
-      permission: geo.permission,
-      status: geo.status,
-      fix: geo.fix,
-      label: preciseLabel,
-    },
-    onAllowLocation: handleAllowLocation,
-    onClearLocation: handleClearLocation,
-    onShowLocation: handleShowLocation,
-    // Raporlar yalnız bulut hesabında anlamlı (cihaz hesabı Firestore'a yazmaz).
-    onOpenReports: cloudAccount
-      ? () => { closePanels(); setReportsOpen(true); }
-      : undefined,
-    onOpenAdmin: cloudAccount && moderator
-      ? () => { closePanels(); setAdminOpen(true); }
-      : undefined,
-  };
+  // F1-6 adım 6: ayarlar içeriği saf aktarım; karar `buildSettingsContent`te.
+  const settingsContentProps = buildSettingsContent({
+    theme, setTheme, installApp, mapBounds: mapViewport?.bounds ?? null, geo, preciseLabel,
+    onAllowLocation: handleAllowLocation, onClearLocation: handleClearLocation,
+    onShowLocation: handleShowLocation, cloudAccount, moderator,
+    openReports: () => { closePanels(); setReportsOpen(true); },
+    openAdmin: () => { closePanels(); setAdminOpen(true); },
+  });
+
 
   return (
     <div

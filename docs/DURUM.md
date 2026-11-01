@@ -10,7 +10,7 @@
 
 | Ölçüm | Değer |
 |---|---|
-| Kaynak dosya (test hariç) | **168** |
+| Kaynak dosya (test hariç) | **169** |
 | Test dosyası | **190** |
 | Bileşen (`src/components/*.tsx`) | 53 |
 | Hook (`src/hooks/*.ts`) | 25 |
