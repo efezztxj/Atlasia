@@ -124,6 +124,7 @@ export default function BottomPanel({
             ref={(node) => { panelRef.current = node; }}
             aria-label="Daraltılmış keşif önerisi"
             className="mobile-discovery-panel desktop-discovery-panel gold-frame pointer-events-auto rounded-[22px] bg-[#021915] p-2.5 max-md:fixed max-md:inset-x-3 max-md:bottom-[calc(88px+env(safe-area-inset-bottom))] max-md:z-20 md:rounded-[28px] md:p-4"
+            data-surface="dark"
           >
             {current ? (
               <div className="flex min-w-0 items-center gap-1.5 md:gap-3">
@@ -195,7 +196,7 @@ export default function BottomPanel({
       )}
     >
       <div className="w-full max-w-[920px]">
-        <section ref={(node) => { panelRef.current = node; }} aria-label="Keşif önerileri" className="mobile-discovery-panel mobile-fullscreen gold-frame pointer-events-auto fixed inset-0 z-50 flex flex-col overflow-y-auto bg-[#021b16] px-4 md:hidden">
+        <section ref={(node) => { panelRef.current = node; }} aria-label="Keşif önerileri" data-surface="dark" className="mobile-discovery-panel mobile-fullscreen gold-frame pointer-events-auto fixed inset-0 z-50 flex flex-col overflow-y-auto bg-[#021b16] px-4 md:hidden">
           <div className="flex items-center justify-between gap-3">
             <p className="truncate text-[12px] text-mint/75">Yol üstündekilerden küçük ipuçları</p>
             <button type="button" onClick={onToggle} aria-expanded={open} className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border border-white/10 px-3 text-[12px] font-medium text-sun">
@@ -287,7 +288,7 @@ export default function BottomPanel({
           </span>
         </div>
 
-        <section aria-label="Keşif önerileri" className="desktop-discovery-panel gold-frame pointer-events-auto hidden animate-rise rounded-[28px] bg-[#021915] p-4 md:block md:p-6">
+        <section aria-label="Keşif önerileri" data-surface="dark" className="desktop-discovery-panel gold-frame pointer-events-auto hidden animate-rise rounded-[28px] bg-[#021915] p-4 md:block md:p-6">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <h2 className="font-display text-[17px] leading-tight font-semibold tracking-tight text-white md:text-[21px]">

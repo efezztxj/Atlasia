@@ -1093,6 +1093,23 @@ html[data-theme="light"] :is(.text-mint\/65, .md\:text-mint\/65):not([class*="ho
 }
 /* P18-LIGHT-AA:end */
 
+/* P20-DARK-SURFACE-AA:start
+ * Kimi yüzeyler her iki temada da koyu kalır (İzler paneli, keşif kartı, kayıtlar,
+ * harita üstü katmanlar). P18 açık-tema eşlemesi bu yüzeylerde mint tonlarını
+ * `--color-mint`in AÇIK tema değeriyle karıştırıyor; sonuç koyu-üstü-koyu metin.
+ * Gerçek vaka: İzler paneli karakter sayacı `text-mint/35` açık temada 4,14:1
+ * (AA eşiği 4,5:1) ile kırmızıya düştü — gerçek tarayıcıdaki axe kapısı yakaladı.
+ * Bu yüzeylerde koyu temanın eşlemesi aynen geçerli: hiyerarşi koyu temayla aynı,
+ * yani yeni bir görsel dil icat edilmiyor.
+ * Kilit: src/config/accessibility.test.ts (yüzey sayısı + AA doğrulaması). */
+html[data-theme="light"] [data-surface="dark"] :is(.text-mint\/35, .text-mint\/40, .text-mint\/45, .text-mint\/50, .text-mint\/55, .text-mint\/60, .text-mint\/65) {
+  color: #cfe0d6;
+}
+html[data-theme="light"] [data-surface="dark"] :is(.text-mint\/70, .text-mint\/75, .text-mint\/80, .text-mint\/85) {
+  color: #dceae1;
+}
+/* P20-DARK-SURFACE-AA:end */
+
 /* P19-LIGHT-DANGER:start
  * Açık temada yıkıcı eylem tonları beyaz kart üzerinde 1,3:1'e düşüyordu:
  * "Hesaptan çık" (text-red-200/90) ve "Hesabımı ve verilerimi sil" (/80)

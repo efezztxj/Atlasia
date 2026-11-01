@@ -405,6 +405,7 @@ export default function SocialPanel({
           "lg:inset-x-auto lg:bottom-7 lg:left-6 lg:h-[min(64vh,600px)] lg:w-[380px] lg:rounded-[26px] lg:pb-0",
         )}
         aria-label="İzler"
+        data-surface="dark"
         style={{ translate: `0 ${dragY}px`, transition: dragging ? "none" : "translate 180ms ease" }}
       >
         <div

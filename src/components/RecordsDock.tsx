@@ -102,7 +102,7 @@ export default function RecordsDock({ onClose, onPlace, onRoute }: Props) {
       : tab === "routes" ? "Paylaşılan bir rotayı açıp kaydet; cihazların arasında eşitlensin."
         : tab === "discover" ? "Filtreleri değiştir veya daha sonra yeniden dene." : "Yürüyüş kaydı başlattığında iz burada yalnız sana görünür.";
 
-  return <aside aria-labelledby="records-title" className="atlas-sheet mobile-fullscreen gold-frame fixed inset-x-3 bottom-7 z-[55] mx-auto flex max-w-[1020px] flex-col overflow-y-auto rounded-[28px] bg-[#031c16] p-4 md:z-40 md:block md:overflow-hidden md:p-6" onKeyDown={(event) => event.key === "Escape" && onClose()}>
+  return <aside aria-labelledby="records-title" data-surface="dark" className="atlas-sheet mobile-fullscreen gold-frame fixed inset-x-3 bottom-7 z-[55] mx-auto flex max-w-[1020px] flex-col overflow-y-auto rounded-[28px] bg-[#031c16] p-4 md:z-40 md:block md:overflow-hidden md:p-6" onKeyDown={(event) => event.key === "Escape" && onClose()}>
     <header className="flex shrink-0 items-center justify-between gap-3"><div><h2 id="records-title" className="font-display text-xl font-semibold">Kayıtlarım</h2><p className="mt-1 text-[13px] text-mint/70">Kişisel izlerin gizli; yalnız açık rotalar keşifte görünür.</p></div><button type="button" onClick={onClose} aria-label="Kayıtları kapat" className="grid size-11 place-items-center rounded-full hover:bg-white/5"><X size={18} /></button></header>
     <nav aria-label="Kayıt türü" className="segmented segmented-scroll no-scrollbar mt-4 shrink-0 overflow-x-auto">
       <button type="button" aria-pressed={tab === "places"} onClick={() => setTab("places")} className="text-[13px]"><Bookmark size={14} />Yerler <span className="segmented-count">{savedPlaces.length}</span></button>
