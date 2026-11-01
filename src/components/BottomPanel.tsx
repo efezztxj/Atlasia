@@ -130,7 +130,9 @@ export default function BottomPanel({
                 <button
                   type="button"
                   onClick={onToggle}
-                  aria-label={`Keşif panelini aç: ${current.title}`}
+                  // WCAG 2.5.3 (Label in Name): aria-label görünen metni içermediği için
+                  // erişilebilir ad içerikten türetiliyor; eylem ipucu görsel-gizli metinle
+                  // ekleniyor. Böylece ad = görünen başlık/yazar/not + "keşif panelini aç".
                   className="flex min-w-0 flex-1 items-center gap-2.5 text-left md:gap-4"
                 >
                   <PlaceThumb place={current} className="h-12 w-14 shrink-0 rounded-xl ring-1 ring-white/10 md:h-[58px] md:w-[72px]" />
@@ -144,6 +146,7 @@ export default function BottomPanel({
                     </span>
                     <span className="mt-1 block truncate text-[10.5px] leading-snug text-mint/65 md:text-[11.5px]">{current.note}</span>
                   </span>
+                  <span className="sr-only"> — keşif panelini aç</span>
                 </button>
 
                 <div className="flex shrink-0 items-center gap-1.5 md:gap-2">
