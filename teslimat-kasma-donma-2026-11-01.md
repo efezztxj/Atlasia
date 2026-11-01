@@ -280,3 +280,67 @@ kaynağından doğrulandı. **Dört gerçek kusur bulundu ve kapatıldı.**
 | `node scripts/bundle-budget.mjs` | Bütçe içinde: toplam JS 998.756 B gzip (1.003.000) |
 | `npm run audit:check` | Üretim bağımlılıklarında açık yok |
 | Dev sunucu duman testi | `index` + değişen 4 modül HTTP 200 |
+
+---
+
+# Tur 5 — "hâlâ bi tık gecikiyor": ölçüm kancası + kademeli düşürme
+
+Kullanıcı geri bildirimi: düzeltmelerden sonra harita **hâlâ** hafif gecikiyor.
+Bu turda tahmin yerine (a) cihaz üstü ölçüm, (b) dokunmatikte gerçek kazanç,
+(c) ölçüme dayalı iki aşamalı düşürme uygulandı.
+
+## Maplibre kaynağından doğrulanan kalan maliyetler
+
+| Maliyet | Kaynak | Not |
+|---|---|---|
+| Marker başına kare başına yükseklik örneklemesi | `Marker._update`: `if (this._map.terrain) … locationToScreenPoint()` → `terrain.getElevationForLngLat` | Arazi açıkken her marker her harekette DEM örnekler |
+| Marker başına 100 ms'de bir ışın izleme | `_updateCovered` (throttle 100 ms) → `_raycastTerrain`, `MAX_SAMPLES = 512` + bisection | Arazi açıkken CPU'da |
+| Hillshade tam ekran geçişi | `terrain-relief` (hillshade katmanı, DEM okur) | Dekoratif; 3B his terrain'ten gelir |
+| Piksel oranı | `devicePixelRatio` 2 vs 1,5 | Telefonda **%44** daha az piksel |
+| Boşta 15 FPS harita çizimi | otomatik dönüş döngüsü | Panel kaydırmasıyla aynı CPU'yu paylaşıyordu |
+
+## Yapılanlar
+
+| Değişiklik | Dosya | Kazanç |
+|---|---|---|
+| `window.atlasiaMapPerf()` | `components/MapView.tsx` | `tier, dpr, pixelRatio, terrain, hillshade, markers, fps, step` — bildirim artık sayıya bağlanabilir |
+| `TOUCH_MAX_PIXEL_RATIO = 1.5` | `utils/deviceTier.ts` | Dokunmatikte piksel tavanı 2 → 1,5 (%44 az piksel) |
+| `recommendedHillshade()` | `utils/deviceTier.ts` | Hillshade dokunmatikte kapalı; terrain (3B) korunuyor |
+| `shouldDisableTerrain()` / `MIN_TERRAIN_FPS = 28` | `utils/deviceTier.ts` | 2. aşama düşürme |
+| Kademeli düşürme (40 FPS → DPR 1, 28 FPS → arazi kapalı, her adım bir kez) | `components/MapView.tsx` | Gerçek ölçüme dayalı; kullanıcı seçimini ezmiyor |
+| Panel açıkken otomatik dönüş duruyor + `spinResumeRef` ile canlandırma | `Explorer.tsx`, `MapView.tsx` | Panel kaydırması sırasında harita çizimi CPU paylaşmıyor |
+
+**Ek olarak bulunan hata:** döngü koşul sağlanmadığında kendini durdurduğu için,
+`spin` yeniden `true` olduğunda (panel kapandı) otomatik dönüş **bir daha
+başlamıyordu**. `spinResumeRef` + `useEffect(… , [spin])` eklendi.
+
+## Bütçe kararı
+
+`mapView` parçası 9.100 → **9.316 B gzip** (aynı parçaya giren teşhis + kademeli
+düşürme kodu). `scripts/bundle-budget.mjs` içindeki gerekçe bloğuna ölçüm ve
+pay yazılarak eşik 9.400'e çekildi (%0,9 pay). Yeni bağımlılık yok; ilk boya ve
+toplam JS eşikleri değişmedi.
+
+## Doğrulama (tur 5)
+
+| Komut | Sonuç |
+|---|---|
+| `npx tsc --noEmit` | Geçti |
+| `npx eslint . --max-warnings=0` | Geçti |
+| `npx vitest run` | 179 dosya / **1.398 test** geçti |
+| `npx vite build` | Başarılı |
+| `node scripts/bundle-budget.mjs` | **Bütçe içinde** (toplam JS 999.057 B / 1.003.000 gzip) |
+| `npm run test:bundle-budget` | 14 test geçti |
+| `vite dev` | `index` + değişen modüller 200 |
+
+## Kullanıcıdan istenen tek şey
+
+Cihazda tarayıcı konsolunda:
+
+```js
+window.atlasiaMapPerf()
+```
+
+Dönen `fps` ve `step` değerleri, kalan gecikmenin hangi ayarda olduğunu kesin
+gösterir: `step: 0` + düşük `fps` → GPU/piksel sınırı; `step: 2` + hâlâ düşük
+`fps` → harita dışı (arayüz) tarafı.

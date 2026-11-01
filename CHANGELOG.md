@@ -1,5 +1,14 @@
 # Atlasia Update
 
+## 2026-11-01 — Kasma turu 5: kalan gecikme için ölçüm kancası + kademeli düşürme
+
+- **"Hâlâ bi tık gecikiyor" tahmine bırakılmadı:** `window.atlasiaMapPerf()` eklendi. Uygulanan ayarları ve **son ölçülen kare hızını** döndürür: `tier`, `coarsePointer`, `cores`, `memory`, `pixelRatio`, `devicePixelRatio`, `terrain`, `hillshade`, `markers`, `fps`, `degradeStep`. Böylece bildirim sayıya bağlanır; hangi ayarın düşürüldüğü cihazda görülür.
+- **Dokunmatikte piksel tavanı 2 → 1,5:** telefonda DPR 2 ile 1,5 arasındaki fark gözle zor ayrılır ama piksel sayısı **%44 azalır**. Sürüklemede hissedilen gecikmenin büyük kısmı buradan geliyor (`TOUCH_MAX_PIXEL_RATIO`).
+- **Tepe gölgesi (hillshade) dokunmatikte kapalı:** hillshade, DEM okuyan **ayrı bir tam ekran geçişi**. Dokunmatikte kapatıldı; arazinin 3B hissi (terrain + eğim) korunuyor, yalnızca dekoratif gölgeleme düşüyor (`recommendedHillshade`). Masaüstünde görünüm değişmedi.
+- **Kademeli düşürme 2 aşamaya çıktı:** <40 FPS → piksel oranı 1'e iner; <28 FPS → arazi kapatılır (`shouldDisableTerrain`, `MIN_TERRAIN_FPS`). Her adım bir kez uygulanır, ölçüm yalnız kullanıcı hareketinde sayılır. Arazi kararı hâlâ sahibine bırakılır — kullanıcı kendi seçimini yaptıysa ezilmez.
+- **Panel açıkken harita dönmüyor:** açık bir sayfa/panel varken otomatik dönüş durur (`sheetOpen`); 15 FPS'lik harita çizimi panel kaydırmasıyla aynı ana iş parçacığını paylaşıp gecikme yaratıyordu. Döngü kendini durdurduğu için `spin` yeniden `true` olduğunda `spinResumeRef` ile canlandırılıyor — bu olmadan otomatik dönüş bir daha başlamazdı.
+- **Doğrulama:** `tsc --noEmit`, `eslint --max-warnings=0`, `vitest run` (179 dosya / **1.398 test**), `vite build`, `bundle-budget` bütçe içinde (JS 999.147 B / 1.003.000 gzip), `audit:check`. Test dağılımı: `deviceTier.test.ts` 15, `mapRenderLoop.test.ts` 14.
+
 ## 2026-11-01 (gece) — Gerçek tarayıcıda axe kapısı (S3) + sayfalama kuşak koruması (S5)
 
 - **S3 / P1-4 — erişilebilirlik artık gerçek tarayıcıda kapı:** `@axe-core/playwright` eklendi ve `e2e/a11y.spec.ts` altı senaryoda **dokuz tarama** yapıyor (tanıtım masaüstü 1280×800 açık tema · tanıtım mobil 390×844 koyu tema · çerez paneli açık/kapalı · keşif kabuğu karşılama diyaloğu · harita yüzeyi · katmanlar paneli · İzler paneli · Kayıtlarım paneli). Kural seti `wcag2a/wcag2aa/wcag21a/wcag21aa`, eşik **critical + serious = 0**; `moderate/minor` ihlaller annotation'a yazılıyor. JSDOM'da ölçülemeyen kontrast ve odak hataları böylece PR kapısına girdi. Ek CI adımı gerekmedi: mevcut `test:e2e` adımı `e2e/` altındaki tüm spec'leri koşuyor. Ortak ağ sahtekârlığı `e2e/support/harness.ts` içine alındı.
