@@ -54,3 +54,5 @@ __pycache__/
 
 # Lighthouse CI raporları (S4)
 /.lighthouseci/
+lhci.log
+lhci-tail.txt

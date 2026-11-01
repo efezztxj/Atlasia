@@ -38,8 +38,9 @@ describe("S4 Lighthouse kapısı", () => {
 
   it("CI adımı zorunlu (continue-on-error yok) ve rapor artifact olarak saklanır", () => {
     expect(manifest.scripts["test:lighthouse"]).toBe("lhci autorun");
-    const step = /- name: Lighthouse CI kapısı[\s\S]{0,200}?run: npm run test:lighthouse/.exec(workflow);
+    const step = /- name: Lighthouse CI kapısı[\s\S]*?(?=\n {6}- name:)/.exec(workflow);
     expect(step, "Lighthouse adımı CI'da yok").toBeTruthy();
+    expect(step?.[0]).toContain("npm run test:lighthouse");
     expect(step?.[0]).not.toContain("continue-on-error");
     expect(workflow).toContain("name: lighthouse-reports");
   });

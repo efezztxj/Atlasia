@@ -131,24 +131,23 @@ jobs:
           "$CHROME" --version
 
       # Log okuma notu: GitHub API bu işin adım log'unu vermiyor ("EOF"), yalnız
-      # annotation okunabiliyor. Bu yüzden hata çıktısı annotation'a parçalanarak
-      # basılıyor ve dosya artifact'a ekleniyor; aksi hâlde kırmızının nedeni
-      # görünmez oluyor.
+      # annotation okunabildiği için çıktı annotation'a da basılıyor ve dosya
+      # artifact'a ekleniyor; aksi hâlde kırmızının nedeni görünmez oluyor.
       - name: Lighthouse CI kapısı (mobil · perf ≥ 0,85 · a11y ≥ 0,95)
         run: |
-          rc=0
-          npm run test:lighthouse > /tmp/lhci.log 2>&1 || rc=$?
-          tail -n 40 /tmp/lhci.log
-          if [ "$rc" -ne 0 ]; then
-            python3 - <<'PY'
-          body = open("/tmp/lhci.log", errors="ignore").read()
-          parts = [body[i:i + 3500] for i in range(0, min(len(body), 10500), 3500)]
-          for index, part in enumerate(parts, start=1):
-              escaped = part.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
-              print(f"::error title=Lighthouse hatasi {index}/{len(parts)}::{escaped}")
-          PY
-            exit 1
+          set +e
+          npm run test:lighthouse > lhci.log 2>&1
+          rc=$?
+          tail -n 25 lhci.log
+          tail -c 1800 lhci.log | tr '\n' '¦' > lhci-tail.txt
+          msg=$(cat lhci-tail.txt)
+          if [ "$rc" -eq 0 ]; then
+            echo "::notice title=Lighthouse::${msg}"
+          else
+            echo "::error title=Lighthouse cikti::${msg}"
           fi
+          ls -a .lighthouseci || true
+          exit "$rc"
 
       - name: Upload Lighthouse raporları
         if: always()
@@ -157,7 +156,7 @@ jobs:
           name: lighthouse-reports
           path: |
             .lighthouseci
-            /tmp/lhci.log
+            lhci.log
           if-no-files-found: warn
           retention-days: 7
 
