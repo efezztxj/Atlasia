@@ -1,5 +1,24 @@
 # Atlasia Update
 
+## 2026-11-01 — F1-6 (adım 2): panel orkestrasyonu `PanelStack`'e taşındı (228 satır)
+
+Plan §F1-6. Kayıtlar, rota düzenleyici, profil, izlerim, çekmece, raporlar, bildirimler,
+ekleme modalı, ayarlar, karşılama, yer ayrıntısı, sokak bakışı ve moderasyon uyarıları
+tek koşullu bloktan `src/components/explorer/PanelStack.tsx` dosyasına taşındı.
+
+- **Bileşen durum sahibi değil:** hiç `useState` yok, hiç abonelik yok. Prop'lar doğrudan
+  kancalardan geliyor (`Pick<PanelStack|ModerationInbox|DiscoveryFlow|ExplorerEnvironment|MapLayerPrefs>`),
+  böylece aynı tip iki yerde yazılmıyor.
+- **`Explorer.tsx` 1.469 → 1.254 satır.** Modül boyutu defteri 1.254'e kısıldı.
+  Toplam `useState`: 58 → 6.
+- **Tembel yükleme kazanımı korundu:** 14 `lazy()` bildirimi de birlikte taşındı; kapı
+  (`lazyLoading.test.ts`) iki dosyayı birlikte okuyarak tembelliği ölçmeye devam ediyor.
+- **Kaynak metin kapıları taşındı, gevşetilmedi:** `uiSurface` (kayıtlar girişi), `siteSurface`
+  (rota olayları), `onboardingT8` (karşılama bağlantıları), `lazyLoading` (yol biçimi `./` ya
+  da `../` kabul edilir, tembellik yine zorunlu).
+- **Ölçülen maliyet:** JS 998.547 → **1.000.216 B gzip** (bütçe 1.003.000 → 2.784 B pay kaldı);
+  modül sınırı ve prop nesnesi bu farkı üretiyor. Kapsam %62,97 / %54,59 / %58,70 / %67,77.
+
 ## 2026-11-01 — F1-6 (adım 1): harita kromu, geçici katmanlar ve alt çubuk ayrı dosyalarda
 
 Plan `docs/gorevler/10-10-yol-plani-2026-11-01.md` §F1-6. JSX bölmesinin ilk adımı:

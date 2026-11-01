@@ -13,17 +13,10 @@ import Hero from "./Hero";
 import SearchBox from "./SearchBox";
 import MapControls from "./MapControls";
 import BottomPanel from "./BottomPanel";
-import SettingsPanel, { type SettingsContentProps } from "./SettingsPanel";
-import Onboarding from "./Onboarding";
+import type { SettingsContentProps } from "./SettingsPanel";
 const NearbyAudioGuide = lazy(() => import("./NearbyAudioGuide"));
 const SocialPanel = lazy(() => import("./SocialPanel"));
-const MyPlacesPanel = lazy(() => import("./MyPlacesPanel"));
-const Drawer = lazy(() => import("./Drawer"));
 const AtlasAssistant = lazy(() => import("./AtlasAssistant"));
-const StreetPeek = lazy(() => import("./StreetPeek"));
-const AddDiscoveryModal = lazy(() => import("./AddDiscoveryModal"));
-import RecordsDock from "./RecordsDock";
-import RouteEditor from "./RouteEditor";
 import ConfirmDialogHost, { requestConfirm } from "./ConfirmDialog";
 import { useAuth } from "../contexts/AuthContext";
 import { analytics } from "../lib/analytics";
@@ -36,10 +29,11 @@ import { useFirestoreAtlasData } from "../hooks/useFirestoreAtlasData";
 import { useTheme } from "../hooks/useTheme";
 import { useMapLayerPrefs } from "../hooks/useMapLayerPrefs";
 import { useDiscoveryFlow } from "../hooks/useDiscoveryFlow";
-import { FIRST_ROUTE_KEY, useExplorerEnvironment } from "../hooks/useExplorerEnvironment";
+import { useExplorerEnvironment } from "../hooks/useExplorerEnvironment";
 import { MapSurfaceHints } from "./explorer/MapCanvas";
 import { AddModeBanner, DataErrorBanner, MobileSearchSheet, ToastBanner } from "./explorer/OverlayPanels";
-import { MobileTabBar, WalkFab } from "./explorer/DockChrome";
+import { WalkFab } from "./explorer/DockChrome";
+import { PanelStack } from "./explorer/PanelStack";
 import { useModerationInbox, useModeratorAccess } from "../hooks/useModerationInbox";
 import { usePanelStack } from "../hooks/usePanelStack";
 import type { InstallAppController } from "../hooks/useInstallApp";
@@ -52,7 +46,7 @@ import { ROUTE_OPEN_MESSAGES, openPublishedRoute } from "../lib/publishedRouteOp
 import { placeDeleteErrorMessage } from "../lib/firestoreValue";
 import { freshnessReaderUid } from "../lib/verifications";
 import { readShareTokenFromUrl } from "../utils/shareLinkUrl";
-import type { AtlasRoute, CategoryId, Place, RouteVisibility, ViewState } from "../types";
+import type { AtlasRoute, CategoryId, Place, ViewState } from "../types";
 import { haversineKm, reverseName, type SearchResult } from "../utils/geo";
 import { storageGet, storageSet } from "../utils/storage";
 import { decodePolyline } from "../utils/polyline";
@@ -79,7 +73,6 @@ import {
   type Report,
   type ReportStatus,
 } from "../lib/moderation";
-import NotificationsPanel from "./NotificationsPanel";
 import { takePendingInvite, type SocialTarget } from "../utils/inviteLink";
 import { useMobileBackClose } from "../hooks/useMobileBackClose";
 // friendships zaten ilk pakette (moderation.ts); dinamik import bölmez.
@@ -93,19 +86,13 @@ startAppCheck();
 
 const MapView = lazy(() => import("./MapView"));
 // Profil paneli yalnız açılınca yüklenir (ilk paket bütçesi).
-const ProfilePanel = lazy(() => import("./ProfilePanel"));
 // Yer detayı paneli yalnız bir yer seçilince açılır; advices/panel kodu
 // başlangıç grafiğinde durmasın (bundle bütçesi marjı dar).
-const PlaceDetails = lazy(() => import("./PlaceDetails"));
 // Yürüyüş kaydı yalnız "Yürüyüş kaydı" düğmesine basılınca açılır;
 // iz toplama/sadeleştirme kodu (utils/track) başlangıç grafiğinde durmaz.
 const TrackRecorderPanel = lazy(() => import("./TrackRecorderPanel"));
 const MapLayersSheet = lazy(() => import("./MapLayersSheet"));
 // Raporlar/moderasyon paneli ayrı parça: kuyruk yalnız ihtiyaç anında yüklenir.
-const ReportsPanel = lazy(() => import("./ReportsPanel"));
-const SuspensionNotice = lazy(() => import("./SuspensionNotice"));
-const WarningNotice = lazy(() => import("./ModerationNotices").then((m) => ({ default: m.WarningNotice })));
-const AnnouncementBanner = lazy(() => import("./ModerationNotices").then((m) => ({ default: m.AnnouncementBanner })));
 /** T5: misafirken engellenen eylem; hesap açılınca tüketilir. */
 const PENDING_INTENT_KEY = "atlasia.pendingIntent.v1";
 type PendingIntent = "place" | "route" | "feed" | "none";
@@ -1218,233 +1205,32 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
       />
       </Suspense>
 
-      {recordsOpen && <RecordsDock onClose={() => setRecordsOpen(false)} onPlace={(place) => { closePanels(); focusPlace(place); setStoryPlace(place); }} onRoute={(route) => { closePanels(); setResumeRoute(route); setAtlasOpen(true); }} />}
-      {routeEditorRoute && <RouteEditor
-        route={routeEditorRoute}
-        onClose={() => setRouteEditorRoute(null)}
-        onSaved={(route, visibility: RouteVisibility) => {
-          const stops = route.days.reduce((total, day) => total + day.stops.length, 0);
-          analytics.routePublished({
-            account: cloudAccount ? "cloud" : "device",
-            visibility: visibility === "private" ? "private" : "public",
-            stops,
-          });
-          // Aktivasyon metriği: cihazda ilk kez rota oluşturma. Yerel bayrak,
-          // aynı kullanıcının sonraki rotalarının sayacı şişirmesini engeller.
-          if (!storageGet(FIRST_ROUTE_KEY)) {
-            analytics.firstRouteCreated({ account: cloudAccount ? "cloud" : "device", stops });
-            storageSet(FIRST_ROUTE_KEY, "1");
-          }
-          setResumeRoute(route);
-          setAtlasOpen(true);
-          drawAtlasRoute(route, false);
-          setToast(visibility === "private" ? "Rota hesabında özel olarak kaydedildi." : "Rota yayımlandı. Kalıcı bağlantı hazır.");
+      {/* Panel orkestrasyonu (F1-6 adım 2) — karar burada, çizim PanelStack'te. */}
+      <PanelStack
+        {...{
+        activeWarning, addMode, adminOpen, announcements, appeals, askAccount, atlasOpen, bans,
+        canManagePlace, category, closePanels, closeSettings, cloudAccount, dismissOnboarding,
+        dismissedAnnouncement, draft, drawAtlasRoute, drawerOpen, focusPlace, guest, handleAppeal,
+        handleBan, handleCategory, handleCreateAnnouncement, handleDelete,
+        handleDeleteAnnouncement, handleDrawerPick, handleFetchHistory, handleLiftBan,
+        handleLocate, handleMarkAllRead, handleNotificationRead, handleReportStatus,
+        handleResolveAppeal, handleSave, handleTakedown, handleWarn, labels, latestAnnouncement,
+        liveStoryPlace, logout, markWarningRead, mobileExplore, mobileTab, modActions, moderator,
+        myAppeal, myBan, myPlaces, myPlacesOpen, myReports, myReportsError, notificationsOpen,
+        onboarding, openAtlas, openFriendsFromNotification, openGroupFromNotification,
+        openMyPlaces, openProfile, openRecords, openSettings, profileOpen, queue, queueError,
+        queueLoading, recordsOpen, reportsOpen, routeEditorRoute, setAdminOpen, setAtlasOpen,
+        setDismissedAnnouncement, setDraft, setDrawerOpen, setFeedOpen, setLabels, setMyPlacesOpen,
+        setNotificationsOpen, setPanelOpen, setProfileOpen, setRecordsOpen, setReportsOpen,
+        setResumeRoute, setRouteEditorRoute, setStoryPlace, setStreetPlace, setTerrain, setToast,
+        settingsContentProps, settingsOpen, smallScreen, startAdd, storyPlace, streetPlace,
+        terrain, unreadCount, visibleNotifications, visiblePlaces,
+        locationReady: !!geo.fix,
+        verify: (id, status, note) => freshness.verify(id, status, note),
+        uploadPhoto: cloud.uploadPhoto,
+        uid: user?.uid ?? "",
         }}
-      />}
-      {profileOpen && (
-        <Suspense fallback={null}>
-          <ProfilePanel
-            onClose={() => setProfileOpen(false)}
-            onRecords={openRecords}
-            settings={settingsContentProps}
-            myPlacesCount={myPlaces.length}
-            onMyPlaces={openMyPlaces}
-            unreadCount={unreadCount}
-            onNotifications={() => { closePanels(); setNotificationsOpen(true); }}
-            onAtlasAI={openAtlas}
-          />
-        </Suspense>
-      )}
-      {myPlacesOpen && (
-        <Suspense fallback={null}>
-        <MyPlacesPanel
-          places={myPlaces}
-          onClose={() => setMyPlacesOpen(false)}
-          onPlace={(place) => {
-            closePanels();
-            setPanelOpen(true);
-            focusPlace(place);
-            setStoryPlace(place);
-          }}
-          onDelete={handleDelete}
-        />
-        </Suspense>
-      )}
-
-      <Suspense fallback={null}>
-      <Drawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        onAdd={startAdd}
-        showLabels={labels}
-        terrainEnabled={terrain}
-        onToggleLabels={() => setLabels((value) => !value)}
-        onToggleTerrain={() => setTerrain((value) => !value)}
-        onOpenLocation={() => { closePanels(); openSettings(); }}
-        locationReady={!!geo.fix}
-        places={visiblePlaces}
-        category={category}
-        onCategory={handleCategory}
-        onPick={handleDrawerPick}
-        isMine={canManagePlace}
-        onRecords={openRecords}
       />
-      </Suspense>
-
-      {(reportsOpen || (adminOpen && moderator)) && (
-        <Suspense fallback={null}>
-          <ReportsPanel
-            open
-            admin={adminOpen && moderator}
-            onClose={() => { setReportsOpen(false); setAdminOpen(false); }}
-            uid={user!.uid}
-            moderator={moderator}
-            myReports={myReports}
-            myReportsError={myReportsError}
-            queue={queue}
-            queueLoading={queueLoading}
-            queueError={queueError}
-            onStatus={handleReportStatus}
-            bans={bans}
-            onBan={handleBan}
-            onLiftBan={handleLiftBan}
-            onWarn={handleWarn}
-            onTakedown={handleTakedown}
-            appeals={appeals}
-            onResolveAppeal={handleResolveAppeal}
-            modActions={modActions}
-            announcements={announcements}
-            onCreateAnnouncement={handleCreateAnnouncement}
-            onDeleteAnnouncement={handleDeleteAnnouncement}
-            onFetchHistory={handleFetchHistory}
-          />
-        </Suspense>
-      )}
-
-      {notificationsOpen && (
-        <NotificationsPanel notifications={visibleNotifications} unreadCount={unreadCount} onClose={() => setNotificationsOpen(false)} onMarkAllRead={handleMarkAllRead} onMarkRead={handleNotificationRead} onOpenGroup={openGroupFromNotification} onOpenFriends={openFriendsFromNotification} />
-      )}
-
-      {draft && (
-        <Suspense fallback={null}>
-        <AddDiscoveryModal
-          draft={draft}
-          uploadPhoto={cloud.uploadPhoto}
-          onClose={() => setDraft(null)}
-          onSave={handleSave}
-        />
-        </Suspense>
-      )}
-
-      {settingsOpen && (
-        <SettingsPanel onClose={closeSettings} {...settingsContentProps} />
-      )}
-
-      {onboarding && (
-        <Onboarding
-          guest={guest}
-          onClose={() => {
-            analytics.onboardingChoice({ choice: "skip", guest });
-            dismissOnboarding();
-          }}
-          onNearby={() => {
-            analytics.onboardingChoice({ choice: "nearby", guest });
-            dismissOnboarding();
-            handleLocate();
-          }}
-          onRoute={() => {
-            analytics.onboardingChoice({ choice: "route", guest });
-            dismissOnboarding();
-            // Misafirde rota yayımlamak hesap ister; T5 niyeti kaydedilir ve
-            // hesap açılışında Atlas AI'a dönülür.
-            if (guest) {
-              askAccount("Rota oluşturmak için bir hesap aç ya da giriş yap.", "route");
-              return;
-            }
-            setAtlasOpen(true);
-          }}
-          onLeave={() => {
-            analytics.onboardingChoice({ choice: "leave", guest });
-            dismissOnboarding();
-            startAdd();
-          }}
-        />
-      )}
-
-      {liveStoryPlace && (
-        <Suspense fallback={null}>
-          <PlaceDetails
-            place={liveStoryPlace}
-            onClose={() => setStoryPlace(null)}
-            onStreet={() => {
-              const place = liveStoryPlace;
-              if (!place) return;
-              if (smallScreen) setStoryPlace(null);
-              setStreetPlace(place);
-            }}
-            onPlan={() => {
-              const place = liveStoryPlace;
-              if (!place) return;
-              closePanels();
-              focusPlace(place);
-              setAtlasOpen(true);
-            }}
-            canDelete={canManagePlace(liveStoryPlace)}
-            onDelete={() => handleDelete(liveStoryPlace)}
-            onOpenPlace={(next) => {
-              focusPlace(next, 16);
-              setStoryPlace(next);
-            }}
-            onVerify={(status, note) => {
-              const target = liveStoryPlace;
-              if (!target) return Promise.resolve();
-              return freshness.verify(target.id, status, note);
-            }}
-          />
-        </Suspense>
-      )}
-      {streetPlace && !atlasOpen && (
-        <Suspense fallback={null}>
-        <StreetPeek
-          place={streetPlace}
-          corner={storyPlace ? "left" : "right"}
-          onClose={() => setStreetPlace(null)}
-        />
-        </Suspense>
-      )}
-
-      {/* Mobil ana menü (2026-10-25 düzeni) — çizim: DockChrome.tsx */}
-      <MobileTabBar
-        mobileTab={mobileTab}
-        addMode={addMode}
-        onExplore={mobileExplore}
-        onCommunity={() => { closePanels(); setFeedOpen(true); }}
-        onAdd={startAdd}
-        onProfile={openProfile}
-        onMyPlaces={openMyPlaces}
-      />
-
-      {myBan && (
-        <Suspense fallback={null}>
-          <SuspensionNotice ban={myBan} appeal={myAppeal} onAppeal={handleAppeal} onSignOut={logout} />
-        </Suspense>
-      )}
-
-      {!myBan && activeWarning && (
-        <Suspense fallback={null}>
-          <WarningNotice warning={activeWarning} onAcknowledge={markWarningRead} />
-        </Suspense>
-      )}
-
-      {!myBan && latestAnnouncement && dismissedAnnouncement !== latestAnnouncement.id && (
-        <Suspense fallback={null}>
-          <AnnouncementBanner
-            announcement={latestAnnouncement}
-            onDismiss={(id) => { setDismissedAnnouncement(id); storageSet("atlasia.announcement.dismissed", id); }}
-          />
-        </Suspense>
-      )}
-
 
       {toast && <ToastBanner toast={toast} />}
 

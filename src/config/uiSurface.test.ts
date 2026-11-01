@@ -21,6 +21,7 @@ const app = read("src/components/Explorer.tsx");
 // F1-6: mobil çubuk ve harita üstü FAB kendi dosyalarına taşındı; kapılar
 // işareti ARTIK DOĞRU dosyada arar (sessizce gevşetilmedi).
 const dockChrome = read("src/components/explorer/DockChrome.tsx");
+const panelStack = read("src/components/explorer/PanelStack.tsx");
 const mapControls = read("src/components/MapControls.tsx");
 const bottomPanel = read("src/components/BottomPanel.tsx");
 const hero = read("src/components/Hero.tsx");
@@ -166,7 +167,7 @@ describe("küçük ekran yerleşimi (≈360×640)", () => {
   });
 
   it("kayıtlar sağ üstteki üç çizgi menüsünden açılıyor", () => {
-    expect(app).toContain("onRecords={openRecords}");
+    expect(panelStack).toContain("onRecords={openRecords}");
     expect(drawer).toContain("onRecords");
     expect(drawer).toContain("Kayıtlarım");
   });

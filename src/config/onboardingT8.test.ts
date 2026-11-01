@@ -18,6 +18,8 @@ import Onboarding from "../components/Onboarding";
 const explorer = readFileSync("src/components/Explorer.tsx", "utf8");
 /** F1-5: karşılama bayrağı kancaya taşındı; sözleşme orada da aranır. */
 const environment = readFileSync("src/hooks/useExplorerEnvironment.ts", "utf8");
+/** F1-6: karşılama paneli ve çıkış bağlantıları PanelStack'e taşındı. */
+const panelStack = readFileSync("src/components/explorer/PanelStack.tsx", "utf8");
 const analyticsSource = readFileSync("src/lib/analytics.ts", "utf8");
 
 afterEach(() => cleanup());
@@ -63,7 +65,7 @@ describe("T8 · misafir/üye ayrımı", () => {
 
 describe("T8 · Explorer bağlantısı", () => {
   it("misafir rotada kayıt kapısı ve `route` niyeti kullanır", () => {
-    const block = explorer.slice(explorer.indexOf("<Onboarding"));
+    const block = panelStack.slice(panelStack.indexOf("<Onboarding"));
     expect(block).toContain('askAccount("Rota oluşturmak için bir hesap aç ya da giriş yap.", "route")');
   });
 
@@ -82,7 +84,7 @@ describe("T8 · Explorer bağlantısı", () => {
   });
 
   it("her çıkış `onboarding_choice` olayı üretir", () => {
-    const block = explorer.slice(explorer.indexOf("<Onboarding"), explorer.indexOf("/>", explorer.indexOf("<Onboarding")));
+    const block = panelStack.slice(panelStack.indexOf("<Onboarding"), panelStack.indexOf("/>", panelStack.indexOf("<Onboarding")));
     const choices = [...block.matchAll(/onboardingChoice\(\{ choice: "(\w+)"/g)].map((m) => m[1]);
     expect(choices.sort()).toEqual(["leave", "nearby", "route", "skip"]);
     expect(block).toContain("guest={guest}");

@@ -103,6 +103,8 @@ describe("ölçüm · tanımlı her olay gerçekten çağrılıyor", () => {
     "src/components/ReportDialog.tsx",
     "src/App.tsx",
     "src/components/Explorer.tsx",
+    // F1-6: rota olayları (firstRouteCreated, routePublished) PanelStack'e taşındı.
+    "src/components/explorer/PanelStack.tsx",
     "src/contexts/AuthContext.tsx",
     "src/hooks/useFirestoreAtlasData.ts",
     "src/lib/telemetryBootstrap.ts",

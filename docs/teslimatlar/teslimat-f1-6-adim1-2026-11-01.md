@@ -63,3 +63,42 @@ riski ortadan kalktı.
    içine ikinci bileşen; ~65 prop'luk arayüz tek seferde yazılmalı ve `typecheck` ile kapanmalı.
 2. **F1-6 adım 3 / F2-1:** işleyici kümeleri (yer/rota CRUD, rapor/ban akışları) kancalara →
    `Explorer.tsx` ≤ 400 satır, modül boyutu allowlist'inden çıkarma.
+
+---
+
+# Ek — F1-6 adım 2 (panel orkestrasyonu)
+
+**Commit:** bu dosyanın eklendiği commit · **Dosya:** `src/components/explorer/PanelStack.tsx`
+
+## Ne değişti
+
+`Explorer.tsx` içindeki **228 satırlık** koşullu panel bloğu (kayıtlar → rota düzenleyici →
+profil → izlerim → çekmece → raporlar → bildirimler → ekleme modalı → ayarlar → karşılama →
+yer ayrıntısı → sokak bakışı → mobil çubuk → moderasyon uyarıları → duyuru) `PanelStack`
+bileşenine taşındı. **`Explorer.tsx` 1.469 → 1.254 satır.**
+
+Bileşen **durum sahibi değil**: `useState`/abonelik yok. Prop'lar kancalardan `Pick<>` ile
+geliyor; `Explorer`'a özgü 47 el/veri prop'u `PanelStackExtras` arayüzünde tek yerde tanımlı.
+Bloğun gövdesi programatik olarak taşındı; yalnız 4 erişim prop'a çevrildi
+(`cloud.uploadPhoto`, `user!.uid`, `!!geo.fix`, `freshness.verify`) — davranış aynı.
+
+## Kapılar
+
+| Kapı | Durum | Not |
+|---|---|---|
+| `typecheck` / `lint` (`--max-warnings=0`) | ✅ | 0 hata, 0 uyarı |
+| `test:cov` | ✅ 184 dosya / 1.396 test · %62,97 / %54,59 / %58,70 / %67,77 | eşik 62/54/58/67 |
+| `test:scripts` | ✅ 4/4 | |
+| `build` | ✅ JS **1.000.216 B gzip** (bütçe 1.003.000) · CSS 35.629/35.700 · SW 63/63 | **pay 2.784 B** |
+| `state:doc --check` | ✅ | |
+
+Kaynak metin kapıları taşındı: `lazyLoading` (iki dosya birlikte; `./` ve `../` yol biçimi),
+`uiSurface` (kayıtlar girişi), `siteSurface` (rota olayları), `onboardingT8` (karşılama).
+
+## Kalan (adım 3)
+
+`Explorer.tsx` 1.254 satır; plan hedefi ≤ 400. Kalan ~850 satırın ~600'ü **işleyici mantığı**
+(yer/rota CRUD, rapor/ban, arşiv, konum). Bunlar kancalara taşınmadan 400 hedefi tutmaz —
+F2-1 ile birlikte yürütülmeli. JSX tarafında taşınacak son parçalar: `MapView` sahnesi,
+`Header` + `Hero` + `SearchBox` bloğu, `MapControls`, `BottomPanel`, `AtlasAssistant`,
+`SocialPanel`, `Drawer` çağrıları.

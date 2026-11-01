@@ -2,6 +2,9 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const read = (path: string) => readFileSync(path, "utf8");
+// F1-6: koşullu panellerin bir kısmı `explorer/PanelStack.tsx` içinde yaşıyor;
+// tembellik kapısı her iki dosyayı birlikte okur (gevşeme değil, taşınma).
+const PANEL_HOSTS = "src/components/Explorer.tsx src/components/explorer/PanelStack.tsx";
 
 describe("ağır istemci modüllerinin tembel yüklenmesi", () => {
   it("MapView bileşenini Suspense iskeleti arkasında dinamik yükler", () => {
@@ -13,10 +16,15 @@ describe("ağır istemci modüllerinin tembel yüklenmesi", () => {
   });
 
   it("isteğe bağlı 6 panel (sosyal, çekmece, Atlas, yerlerim, sokak, ekle) tembel yüklenir", () => {
-    const explorer = read("src/components/Explorer.tsx");
+    const hosts = PANEL_HOSTS.split(" ").map(read);
     for (const name of ["SocialPanel", "MyPlacesPanel", "Drawer", "AtlasAssistant", "StreetPeek", "AddDiscoveryModal"]) {
-      expect(explorer).toContain(`lazy(() => import("./${name}"))`);
-      expect(explorer).not.toMatch(new RegExp(`^import ${name} from "\\./${name}";`, "m"));
+      // Yol biçimi dosya konumuna göre değişir (`./X` ya da `../X`); kapı
+      // tembelliği ölçer, yol yazımını değil.
+      const lazyPattern = new RegExp(`lazy\\(\\(\\) => import\\(\\"\.{1,2}/${name}\\"\\)\\)`);
+      expect(hosts.some((host) => lazyPattern.test(host)), name).toBe(true);
+      for (const host of hosts) {
+        expect(host, name).not.toMatch(new RegExp(`^import ${name} from "\\./${name}";`, "m"));
+      }
     }
   });
 
@@ -43,10 +51,10 @@ describe("ağır istemci modüllerinin tembel yüklenmesi", () => {
   });
 
   it("koşullu paneller (yer detayı, yürüyüş kaydı) statik import edilmez", () => {
-    const app = read("src/components/Explorer.tsx");
+    const app = PANEL_HOSTS.split(" ").map(read).join("\n");
     // Bu iki panel yalnız kullanıcı eylemiyle açılır. Statik import, panelin
     // bağımlılıklarını (yer tavsiyeleri, iz toplama/sadeleştirme) ilk yüke taşır.
-    expect(app).toContain('lazy(() => import("./PlaceDetails"))');
+    expect(app).toMatch(/lazy\(\(\) => import\("\.{1,2}\/PlaceDetails"\)\)/);
     expect(app).toContain('lazy(() => import("./TrackRecorderPanel"))');
     expect(app).not.toMatch(/^import PlaceDetails from "\.\/PlaceDetails";/m);
     expect(app).not.toMatch(/^import TrackRecorderPanel from "\.\/TrackRecorderPanel";/m);
