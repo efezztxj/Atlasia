@@ -116,12 +116,29 @@ export default function LandingPage({ onStart }: Props) {
 
     <main className="landing-page h-dvh overflow-y-auto scroll-smooth bg-[#020d17] text-white">
       <section className="relative isolate min-h-dvh overflow-hidden border-b border-white/10">
-        <img
-          src="/images/atlasia-earth-hero.jpg"
-          alt="Gece ışıklarıyla Avrupa, Akdeniz ve Türkiye'nin uzaydan görünümü"
-          className="absolute inset-0 -z-20 size-full object-cover object-[66%_center]"
-          fetchPriority="high"
-        />
+        {/* S4: hero LCP öğesi. JPEG 170 KB yerine AVIF/WebP sunulur; mobilde
+            800w varyant (~21 KB AVIF) iner, masaüstünde 1376w. JPEG yalnız
+            desteklemeyen tarayıcı için yedek. */}
+        <picture className="absolute inset-0 -z-20 block">
+          <source
+            type="image/avif"
+            srcSet="/images/atlasia-earth-hero-800.avif 800w, /images/atlasia-earth-hero.avif 1376w"
+            sizes="100vw"
+          />
+          <source
+            type="image/webp"
+            srcSet="/images/atlasia-earth-hero-800.webp 800w, /images/atlasia-earth-hero.webp 1376w"
+            sizes="100vw"
+          />
+          <img
+            src="/images/atlasia-earth-hero.jpg"
+            fetchPriority="high"
+            alt="Gece ışıklarıyla Avrupa, Akdeniz ve Türkiye'nin uzaydan görünümü"
+            width={1376}
+            height={768}
+            className="size-full object-cover object-[66%_center]"
+          />
+        </picture>
         <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(1,10,18,.96)_0%,rgba(1,10,18,.76)_34%,rgba(1,10,18,.18)_68%,rgba(1,10,18,.26)_100%)] max-md:bg-[linear-gradient(180deg,rgba(1,10,18,.7)_0%,rgba(1,10,18,.43)_38%,rgba(1,10,18,.96)_100%)]" />
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_70%_16%,rgba(234,181,79,.13),transparent_30%)]" />
 

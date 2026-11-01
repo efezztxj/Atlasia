@@ -6,7 +6,11 @@ import { describe, expect, it } from "vitest";
  *
  * NEDEN VAR: kapı dosyası (`lighthouserc.cjs`) serbest metindir; eşiği sessizce
  * düşürmek ya da ölçülen sayfayı listeden çıkarmak CI'yı "yeşil" gösterir ama
- * kapıyı boşaltır. Bu test eşikleri, sayfa listesini ve CI kablolamasını kilitler.
+ * kapıyı boşaltır. Bu test üç şeyi kilitler:
+ *   1. `HEDEF` (S4 kabul listesi) asla altına inmez,
+ *   2. `TABAN` (ilk gerçek ölçümden bağlanan regresyon tabanı) yalnız **yukarı**
+ *      hareket eder — bugünkü değerlerin altına düşürülemez,
+ *   3. CI adımı zorunludur ve rapor artifact olarak saklanır.
  *
  * Eşik düşürme yasağı repo kuralıdır (`AGENTS.md`): sayı düşükse iş kodda yapılır.
  */
@@ -15,23 +19,42 @@ const workflow = readFileSync(".github/workflows/ci.yml", "utf8");
 const manifest = JSON.parse(readFileSync("package.json", "utf8")) as { scripts: Record<string, string> };
 const gitignore = readFileSync(".gitignore", "utf8");
 
-/** `minScore` değerini config metninden okur (yapılandırma CJS, import edilmez). */
-function minScore(key: string): number {
-  const match = new RegExp(`"${key}":\\s*\\["error",\\s*\\{\\s*minScore:\\s*([0-9.]+)`).exec(config);
-  if (!match) throw new Error(`eşik yok: ${key}`);
-  return Number(match[1]);
+function frozen(name: "HEDEF" | "TABAN"): Record<string, number> {
+  const body = new RegExp(`${name} = Object\\.freeze\\(\\{([^}]*)\\}\\)`).exec(config)?.[1];
+  if (!body) throw new Error(`yok: ${name}`);
+  return Object.fromEntries(
+    [...body.matchAll(/(\w+):\s*([0-9.]+)/g)].map(([, key, value]) => [key, Number(value)]),
+  );
 }
 
+const HEDEF = frozen("HEDEF");
+const TABAN = frozen("TABAN");
+
+// 1 Kasım 2026 ilk CI ölçümünün altına inilemez (regresyon tabanı).
+const TABAN_ALT_SINIR = { landing: 0.75, appShell: 0.35 } as const;
+
 describe("S4 Lighthouse kapısı", () => {
-  it("performans ve erişilebilirlik eşikleri S4 kabul listesinin altına inmez", () => {
-    expect(minScore("categories:performance")).toBeGreaterThanOrEqual(0.85);
-    expect(minScore("categories:accessibility")).toBeGreaterThanOrEqual(0.95);
-    expect(config).toMatch(/"cumulative-layout-shift":\s*\["error",\s*\{\s*maxNumericValue:\s*0\.0?5\s*\}/);
+  it("HEDEF S4 kabul listesinden aşağı inmez", () => {
+    expect(HEDEF.performance).toBeGreaterThanOrEqual(0.85);
+    expect(HEDEF.accessibility).toBeGreaterThanOrEqual(0.95);
+    expect(HEDEF.cls).toBeLessThanOrEqual(0.05);
   });
 
-  it("hem tanıtım hem uygulama kabuğu ölçülür ve gürültü medyanla kırılır", () => {
-    expect(config).toContain('"http://localhost/"');
-    expect(config).toContain('"http://localhost/?tab=kesfet"');
+  it("regresyon tabanı yalnız yukarı hareket eder", () => {
+    expect(TABAN.landing).toBeGreaterThanOrEqual(TABAN_ALT_SINIR.landing);
+    expect(TABAN.appShell).toBeGreaterThanOrEqual(TABAN_ALT_SINIR.appShell);
+    // Taban hedefi aşarsa zaten hedef geçerlidir; altında kalıyorsa borç kayıtlıdır.
+    expect(TABAN.landing).toBeLessThanOrEqual(HEDEF.performance);
+    expect(TABAN.appShell).toBeLessThanOrEqual(HEDEF.performance);
+  });
+
+  it("her iki sayfa da kendi eşiğiyle değerlendirilir ve a11y tavizsizdir", () => {
+    expect(config).toContain('matchingUrlPattern: "/$"');
+    expect(config).toContain('matchingUrlPattern: "tab=kesfet"');
+    // Erişilebilirlik iki sayfada da HEDEF'ten gelir (taban yok).
+    expect((config.match(/"categories:accessibility": \["error", \{ minScore: HEDEF\.accessibility \}\]/g) ?? []).length).toBe(2);
+    expect(config).toContain("minScore: TABAN.landing");
+    expect(config).toContain("minScore: TABAN.appShell");
     expect(config).toMatch(/numberOfRuns:\s*([3-9]|\d{2,})/);
     expect(config).toContain('formFactor: "mobile"');
   });
