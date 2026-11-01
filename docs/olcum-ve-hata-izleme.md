@@ -237,7 +237,8 @@ Uç nokta tanımlı değilse modül **sessizdir**: ne hata kaydı ne huni olayı
 olduğu için görünür hâle getirildi:
 
 1. **Tarayıcıda tek satır teşhis:**
-   `window.atlasiaErrorLog()` → `{ status, hint, endpointConfigured, consent, sessionId, records }`
+   `await window.atlasiaErrorLog()` → `{ status, hint, endpointConfigured, consent, sessionId, records }`
+   (tembel yüklenir: teşhis kodu ayrı parçada, tanıtımın entry bütçesine girmez.)
    - `status: "endpoint-missing"` → toplayıcı adresi yok, hiçbir şey gönderilmiyor.
    - `status: "consent-off"` → adres var, kullanıcı analitik izni vermedi.
    - `status: "ready"` → kayıtlar gönderiliyor.

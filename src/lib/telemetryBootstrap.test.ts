@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { analyticsConsentGranted, startTelemetry, telemetryDiagnostics } from "./telemetryBootstrap";
+import { analyticsConsentGranted, startTelemetry } from "./telemetryBootstrap";
+import { telemetryDiagnostics } from "./telemetryDiagnostics";
 import { createTelemetry, type TelemetryRecord } from "./telemetry";
 import { COOKIE_CONSENT_MAX_AGE_SECONDS, COOKIE_CONSENT_VERSION } from "./cookieConsent";
 
@@ -147,11 +148,15 @@ describe("telemetryDiagnostics (uç nokta/rıza teşhisi)", () => {
     expect(JSON.stringify(snapshot.records)).not.toContain("kisi@ornek.com");
   });
 
-  it("pencereye bağlanır: `window.atlasiaErrorLog()` çağrılabilir", () => {
-    const fake = fakeWindow() as unknown as Window & { atlasiaErrorLog?: () => { status: string } };
+  it("pencereye bağlanır: `await window.atlasiaErrorLog()` teşhisi döndürür", async () => {
+    const fake = fakeWindow() as unknown as Window & {
+      atlasiaErrorLog?: () => Promise<{ status: string; records: unknown[] }>;
+    };
     const { telemetry } = buildTelemetry(true, null);
     startTelemetry({ telemetry, target: fake });
     expect(typeof fake.atlasiaErrorLog).toBe("function");
-    expect(fake.atlasiaErrorLog?.().status).toBe("endpoint-missing");
+    // Tembel yükleme: teşhis kodu ayrı parçada, entry bütçesine girmez.
+    const snapshot = await fake.atlasiaErrorLog?.();
+    expect(snapshot?.status).toBe("endpoint-missing");
   });
 });
