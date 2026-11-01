@@ -1,12 +1,14 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  CLARITY_TAG_URL,
   CRAWL_LIMITS,
   assetPriority,
   prioritizeAssets,
   entryAssetPath,
   evaluateConfig,
   extractFirebaseConfig,
+  inspectClarity,
   inspectLiveSite,
   mainAssetPaths,
   mergeConfigs,
@@ -232,5 +234,82 @@ describe("canli-yapilandirma (canlı paket denetimi)", () => {
     assert.equal(result.config.projectId, "atlasia-prod");
     assert.equal(result.chunksScanned, 2, "yapılandırma bulununca tarama durmalı");
     assert.ok(calls <= 3, `fazla istek: ${calls}`);
+  });
+
+  describe("Clarity canlı doğrulaması", () => {
+    const CSP_OK =
+      "default-src 'self'; script-src 'self' https://www.clarity.ms https://scripts.clarity.ms https://apis.google.com; " +
+      "connect-src 'self' https://www.clarity.ms https://*.clarity.ms; img-src 'self' https://*.clarity.ms";
+
+    const siteWith = (csp) => async (url) => {
+      if (url.startsWith(CLARITY_TAG_URL)) {
+        return { ok: true, status: 200, headers: new Map([["content-type", "text/javascript"]]), text: async () => "" };
+      }
+      return {
+        ok: true,
+        status: 200,
+        headers: new Map(csp ? [["content-security-policy", csp]] : []),
+        text: async () => "<html></html>",
+      };
+    };
+
+    it("CSP iki Clarity adresini de izliyorsa ve tag 200 ise yeşil", async () => {
+      const result = await inspectClarity({ base: "https://ornek.test", fetchImpl: siteWith(CSP_OK) });
+      assert.equal(result.ok, true, result.problems.join(" | "));
+      assert.equal(result.tag.status, 200);
+      assert.ok(result.scriptSrc.includes("https://scripts.clarity.ms"));
+    });
+
+    it("scripts.clarity.ms eksikse kırmızı (1 Kasım öncesi durum)", async () => {
+      const broken = CSP_OK.replace(" https://scripts.clarity.ms", "");
+      const result = await inspectClarity({ base: "https://ornek.test", fetchImpl: siteWith(broken) });
+      assert.equal(result.ok, false);
+      assert.ok(result.problems.some((p) => p.includes("scripts.clarity.ms")));
+    });
+
+    it("connect-src *.clarity.ms yoksa oturum verisi gönderilemez diye uyarır", async () => {
+      const broken = CSP_OK.replace(" https://*.clarity.ms;", ";");
+      const result = await inspectClarity({ base: "https://ornek.test", fetchImpl: siteWith(broken) });
+      assert.equal(result.ok, false);
+      assert.ok(result.problems.some((p) => p.includes("connect-src")));
+    });
+
+    it("CSP başlığı hiç yoksa kırmızı", async () => {
+      const result = await inspectClarity({ base: "https://ornek.test", fetchImpl: siteWith(null) });
+      assert.equal(result.ok, false);
+      assert.ok(result.problems.some((p) => p.includes("Content-Security-Policy")));
+    });
+
+    it("tag adresi 200 değilse proje kimliğini sorgular", async () => {
+      const fetchImpl = async (url) => {
+        if (url.startsWith(CLARITY_TAG_URL)) {
+          return { ok: false, status: 404, headers: new Map(), text: async () => "" };
+        }
+        return {
+          ok: true,
+          status: 200,
+          headers: new Map([["content-security-policy", CSP_OK]]),
+          text: async () => "<html></html>",
+        };
+      };
+      const result = await inspectClarity({ base: "https://ornek.test", fetchImpl });
+      assert.equal(result.ok, false);
+      assert.ok(result.problems.some((p) => p.includes("HTTP 404")));
+    });
+
+    it("ağ engeli kırmızı değil, not üretir", async () => {
+      const fetchImpl = async (url) => {
+        if (url.startsWith(CLARITY_TAG_URL)) throw new Error("fetch failed");
+        return {
+          ok: true,
+          status: 200,
+          headers: new Map([["content-security-policy", CSP_OK]]),
+          text: async () => "<html></html>",
+        };
+      };
+      const result = await inspectClarity({ base: "https://ornek.test", fetchImpl });
+      assert.equal(result.ok, true);
+      assert.ok(result.notes.some((n) => n.includes("ulaşılamadı")));
+    });
   });
 });

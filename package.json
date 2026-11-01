@@ -30,6 +30,7 @@
     "backup:firestore": "node scripts/firestore-backup.mjs",
     "restore:firestore": "node scripts/firestore-restore.mjs",
     "test:e2e": "playwright test",
+    "test:e2e:canli": "playwright test --config playwright.canli.config.ts",
     "test:canli": "node --test scripts/canli-yapilandirma.node-test.mjs",
     "dogrula:canli": "node scripts/canli-yapilandirma.mjs",
     "rules:inventory": "node scripts/rules-inventory.mjs",

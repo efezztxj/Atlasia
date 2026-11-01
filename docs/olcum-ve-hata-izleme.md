@@ -159,6 +159,23 @@ olarak kullanılmaz. 1 Kasım 2026'da `scripts.clarity.ms` eksikti ve rıza vere
 bile çalışma zamanı CSP tarafından engelleniyordu (PR #163 ile kapandı,
 `src/config/cloudflareHeaders.test.ts` bunu kilitler).
 
+**Panelde veri görünmüyorsa sıra (1 Kasım 2026):**
+
+1. **İzin verildi mi?** Çerez panelindeki ayrı kutu işaretlenmeden betik hiç yüklenmez.
+   Panelde durum satırı yazar: `off` / `loading` / `ready` / `blocked`.
+2. **`blocked` yazıyorsa** reklam engelleyici, izleme koruması veya "Do Not Track"
+   betiği düşürmüştür; o oturumda Microsoft'a **hiçbir veri gitmez**. Beyaz listeye
+   `clarity.ms` ve `scripts.clarity.ms` eklenince çalışır.
+3. **`ready` yazıp panelde kayıt yoksa** ilk oturumun düşmesi 1-2 dakika sürer;
+   ayrıca Clarity panelinde doğru proje (`z6hdmwcwe6`) açık olmalı.
+4. **Sunucu tarafı teyidi:** `npm run dogrula:canli` yayındaki CSP'yi ve tag adresini
+   ölçer; `npm run test:e2e:canli` gerçek Chromium'la rıza akışını çalıştırıp tag'in
+   200 döndüğünü ve CSP ihlali olmadığını doğrular (haftalık workflow:
+   `Canlı Clarity doğrulaması`).
+
+**Destek komutu:** rızalı oturumda tarayıcı konsolunda `window.atlasiaClarityStatus()`
+rıza, durum, betik varlığı ve proje kimliğini tek satırda döndürür.
+
 **Doğrulama (rızalı oturum):** DevTools → Network'te `clarity.ms` istekleri görünür;
 kayıt panelde ~1-2 dk içinde düşer. Rıza kapalıyken bu adreslere **tek istek** çıkmaz.
 
