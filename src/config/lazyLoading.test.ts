@@ -20,7 +20,7 @@ describe("ağır istemci modüllerinin tembel yüklenmesi", () => {
     for (const name of ["SocialPanel", "MyPlacesPanel", "Drawer", "AtlasAssistant", "StreetPeek", "AddDiscoveryModal"]) {
       // Yol biçimi dosya konumuna göre değişir (`./X` ya da `../X`); kapı
       // tembelliği ölçer, yol yazımını değil.
-      const lazyPattern = new RegExp(`lazy\\(\\(\\) => import\\(\\"\.{1,2}/${name}\\"\\)\\)`);
+      const lazyPattern = new RegExp("lazy\\(\\(\\) => import\\([\"']\\.{1,2}/" + name + "[\"']\\)\\)");
       expect(hosts.some((host) => lazyPattern.test(host)), name).toBe(true);
       for (const host of hosts) {
         expect(host, name).not.toMatch(new RegExp(`^import ${name} from "\\./${name}";`, "m"));
