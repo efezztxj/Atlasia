@@ -33,16 +33,13 @@ interface DeviceProfile {
 /** Cihaz üstü harita performans teşhisi (destek için `window.atlasiaMapPerf()`). */
 export interface MapPerfSnapshot {
   tier: "low" | "high";
-  coarsePointer: boolean;
-  cores: number | null;
-  memory: number | null;
+  dpr: number;
   pixelRatio: number;
-  devicePixelRatio: number;
   terrain: boolean;
   hillshade: boolean;
   markers: number;
   fps: number;
-  degradeStep: number;
+  step: number;
 }
 
 declare global {
@@ -635,12 +632,8 @@ export default function MapView({
     const initialStyle = initialStyleOptions.current;
     const markers = markersRef.current;
     // Profil render sırasında dolduruldu; kurulumda her zaman hazırdır.
-    const profile = deviceProfileRef.current ?? {
-      signals: readDeviceSignals(),
-      tier: "high" as const,
-      hillshade: true,
-      pixelRatio: 1,
-    };
+    const profile = deviceProfileRef.current;
+    if (!profile) return;
     let appliedPixelRatio = profile.pixelRatio;
     const map = new maplibregl.Map({
       container: el,
@@ -864,16 +857,13 @@ export default function MapView({
     // bağlamak için uygulanan ayarlar ve son ölçülen kare hızı okunabilir.
     const perfSnapshot = () => ({
       tier: profile.tier,
-      coarsePointer: profile.signals.coarsePointer,
-      cores: profile.signals.hardwareConcurrency ?? null,
-      memory: profile.signals.deviceMemory ?? null,
+      dpr: window.devicePixelRatio,
       pixelRatio: appliedPixelRatio,
-      devicePixelRatio: window.devicePixelRatio,
       terrain: Boolean(map.getTerrain()),
       hillshade: profile.hillshade,
       markers: markers.size,
       fps: Math.round(lastFps),
-      degradeStep,
+      step: degradeStep,
     });
     window.atlasiaMapPerf = perfSnapshot;
 
