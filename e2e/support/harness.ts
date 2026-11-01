@@ -50,11 +50,14 @@ export async function stubExternalServices(page: Page): Promise<void> {
   );
 }
 
-/** Kayıtlı temayı ilk boyamadan önce uygular (theme-boot.js ile aynı anahtar). */
+/**
+ * Kayıtlı temayı ilk boyamadan önce uygular (theme-boot.js ile aynı anahtar).
+ * Varsayılan koyu; anahtar `v2` — `v1` yalnız geçiş için okunur.
+ */
 export async function presetTheme(page: Page, theme: "light" | "dark" | "midnight"): Promise<void> {
   await page.addInitScript((value) => {
     try {
-      window.localStorage.setItem("atlasia.theme.v1", value);
+      window.localStorage.setItem("atlasia.theme.v2", value);
     } catch {
       // Depolama kapalıysa varsayılan tema ile devam edilir.
     }
