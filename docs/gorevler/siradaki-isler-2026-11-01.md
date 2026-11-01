@@ -32,18 +32,35 @@ operasyonu**. Ama iki tane *gerçek* kod/CI işi var: Clarity'nin CSP'de engelle
 
 | # | İş | Neden şimdi | Kabul kriteri | Emek |
 |---|---|---|---|---|
-| **S1** | **PR #163'ü merge et** (CSP'ye `https://scripts.clarity.ms` izni) | Şu an rıza veren kullanıcıda bile Clarity çalışmıyor: script `script-src 'self'`e takılıyor → analitik "var" görünüyor, veri gelmiyor | CI yeşil (öyle), merge + deploy sonrası rızalı oturumda Clarity panelinde 1 oturum görülmesi | 10 dk + 1 saha teyidi |
-| **S2** | **Clarity'nin doküman/karar borcunu kapat** | `clarity` kelimesi `docs/`, `README.md`, `CHANGELOG.md` içinde **hiç geçmiyor**; yalnız `src/lib/clarity.ts` + `legal.ts` metninde var. Ayrıca T1'deki kendi Cloudflare Worker'ı ile **iki ayrı ölçüm yığını** duruyor | (a) CHANGELOG kaydı, (b) `docs/olcum-ve-hata-izleme.md`'ye "hangi veri nerede" tablosu, (c) README veri sağlayıcı listesine Microsoft Clarity, (d) **karar kaydı**: Clarity = oturum/etkileşim, Worker = huni olayları **veya** Worker emekli | 2-3 saat |
+| **S1** ✅ | **PR #163'ü merge et** (CSP'ye `https://scripts.clarity.ms` izni) | Şu an rıza veren kullanıcıda bile Clarity çalışmıyor: script `script-src 'self'`e takılıyor → analitik "var" görünüyor, veri gelmiyor | CI yeşil (öyle), merge + deploy sonrası rızalı oturumda Clarity panelinde 1 oturum görülmesi | 10 dk + 1 saha teyidi |
+| **S2** ✅ | **Clarity'nin doküman/karar borcunu kapat** | `clarity` kelimesi `docs/`, `README.md`, `CHANGELOG.md` içinde **hiç geçmiyor**; yalnız `src/lib/clarity.ts` + `legal.ts` metninde var. Ayrıca T1'deki kendi Cloudflare Worker'ı ile **iki ayrı ölçüm yığını** duruyor | (a) CHANGELOG kaydı, (b) `docs/olcum-ve-hata-izleme.md`'ye "hangi veri nerede" tablosu, (c) README veri sağlayıcı listesine Microsoft Clarity, (d) **karar kaydı**: Clarity = oturum/etkileşim, Worker = huni olayları **veya** Worker emekli | 2-3 saat |
 | **S3** | **Gerçek sayfada `axe` kapısı** (P1-4'ün kalanı) | Bugün `axe-core` yalnız 5 bileşen testinde koşuyor (JSDOM); tanıtım, harita kabuğu, paneller gerçek tarayıcıda taranmıyor | `@axe-core/playwright` ile 4 akış × 2 tema × 390×844; kritik/ciddi ihlal 0; CI'da zorunlu adım | ~1,5 gün |
 | **S4** | **Lighthouse CI** (P1-2'nin kalanı) | Performans kapısı yalnız *paket bütçesi*; gerçek LCP/TBT ölçen kapı yok, G4 kabul listesi bunu istiyor | Mobil profilde tanıtım + uygulama kabuğu; perf ≥ 85, a11y ≥ 95; eşik PR'da zorunlu (ilk koşuda gerçek sayıya göre bağlanır) | ~1 gün |
 | **S5** | **`loadMorePosts/Stories` oturum koruması** (AY-02) | `useFirestoreAtlasData.ts:349-361`: `await listPostsPage` sonrası UID/generation denetimi yok. Sızıntı **kanıtlanmadı**, önce test yazılmalı | Kullanıcı değişimi + geç yanıt için regresyon testi; hata görünürse kuşak (generation) kapısı; cursor/sıralama bozulmaz | ~yarım gün |
-| **S6** | **Dependabot trafiğini kapat** | #157 (maplibre 6.16) ve #156 (lucide 1.61) yeşil; **#162 kırmızı** çünkü `src/config/githubActions.test.ts` pin listesi eski SHA'yı bekliyor; #155 (dev tooling) 3 gün önceki koşuda kırmızı, nedeni log'lardan okunamadı | #162'de pin testi + `docs/github-actions-pins.md` güncellenir; #155 yeniden koşup nedeni yazılır; her biri **ayrı** PR, toplu merge yok | ~2-3 saat |
+| **S6** 🟡 | **Dependabot trafiğini kapat** | #157 (maplibre 6.16) ve #156 (lucide 1.61) yeşil; **#162 kırmızı** çünkü `src/config/githubActions.test.ts` pin listesi eski SHA'yı bekliyor; #155 (dev tooling) 3 gün önceki koşuda kırmızı, nedeni log'lardan okunamadı | #162'de pin testi + `docs/github-actions-pins.md` güncellenir; #155 yeniden koşup nedeni yazılır; her biri **ayrı** PR, toplu merge yok | ~2-3 saat |
 | **S7** | **Durum defterlerini tazele** | `ana-yol-acik-kalanlar-2026-10-23.md` AY-01'i "hata, düzeltilmedi" diyor ama `FriendsTab.tsx:119-138` artık `searchSeqRef` ile sıra koruyor ve 16 testi var; #78/#79-83 satırları da kapalı | AY tablosuna "1 Kasım kesiti" kolonu; kapananlara kanıt satırı + `iyilestirme-plani-durum` tarih damgası | ~1-2 saat |
 
 > Not: S3/S4 bilinçli olarak "kapı ekle" işleri. Repo kuralı gereği **eşiği yeşile çevirmek için
 > düşürmek yasak**; ilk koşunun gerçek sayısı yazılıp eşik ona göre bağlanacak.
 
 ---
+
+### 1 Kasım akşamı durumu
+
+- **S1 ✅** PR #163 birleşti (`b06bc8e`). Not: `main` dal koruması "1 onay" istiyordu;
+  merge `--admin` ile yapıldı. Yani bu değişiklik **bağımsız gözden geçirilmeden** yayına
+  gitti — telafi: 1 satırlık CSP eklemesi, kapsamı `src/config/cloudflareHeaders.test.ts`
+  ile iki adres + joker yasağı olarak kilitli, CI yeşil. Yine de kural gereği bir sonraki
+  kod PR'ında normal review akışına dönülmeli.
+- **S2 ✅** `docs/olcum-ve-hata-izleme.md` §5c (iki katmanlı veri akışı tablosu + CSP
+  bağımlılığı + maskeleme), §7 iki yeni sınır satırı, `README.md` "Ölçüm, hata izleme ve
+  gizlilik" bölümü, `CHANGELOG.md` 2026-11-01 kaydı, karar defteri
+  `docs/gorevler/olcum-yigini-karari-2026-11-01.md` (A/B/C, öneri B).
+- **S6 🟡** #163/#156 birleşti; #162 (`actions/checkout` v7.0.1) Dependabot dalına
+  dokunmak yerine **bu dalda** uygulandı (4 workflow + pin testi + `docs/github-actions-pins.md`)
+  ve #162 onun yerine kapatıldı. #157 (`maplibre-gl` 6.16) lockfile çakışması yüzünden
+  `@dependabot rebase` ile kuyruğa alındı. #155 (TypeScript 7 + typescript-eslint)
+  gerekçeli olarak ertelendi, kapatılmadı.
 
 ## 2. Kod değil — operatör/senin tarafında (ben yapamam)
 
@@ -74,8 +91,8 @@ operasyonu**. Ama iki tane *gerçek* kod/CI işi var: Clarity'nin CSP'de engelle
 
 ## 4. Önerilen sıra (3 oturumluk)
 
-1. **Oturum 1 (bugün, ~2-3 saat):** S1 (merge) → S2 (doküman + karar) → S6 (#162 pin testi).
-   Gerekçe: üçü de yarım kalmış işi kapatıyor; hiçbiri yeni özellik değil, hiçbiri bütçeyi büyütmüyor.
+1. ~~**Oturum 1 (bugün, ~2-3 saat):** S1 (merge) → S2 (doküman + karar) → S6 (#162 pin testi).~~
+   **Tamamlandı (1 Kasım).** Kalan: #157 rebase sonrası yeşil olursa birleştirmek.
 2. **Oturum 2 (~2 gün):** S3 (axe E2E) → S4 (Lighthouse CI). Gerekçe: G4/G5 kapıları bunlarsız kapanmıyor;
    ikisi de ölçüm üretiyor, ölçüm de sonraki her kararın girdisi.
 3. **Oturum 3 (~1 gün):** S5 (kuşak koruması) → S7 (defter tazeleme).
@@ -94,7 +111,7 @@ O3 için bir iPhone + bir Android ayarla.
 | AY-01 / #76 | FriendsTab aramasında eski yanıt yenisini eziyor, düzeltilmedi | **Düzeltilmiş**: `FriendsTab.tsx:119-138` `searchSeqRef` + UID kapısı; `FriendsTab.test.ts` 16 test |
 | AY-26 / #78 | Mobil sadeleştirme PR'ı açık | **Kapalı** (merge edildi) |
 | AY-27 / #79-83 | 6 Dependabot PR'ı açık, CI kırmızı | Bugün **4** açık (#155-157, #162), #157/#156 yeşil |
-| „Analitik yok" (MVP planı §1.6) | Üretimde hiç analitik yok | Kısmen eski: rıza kapılı Clarity `main`'de (CSP düzeltmesi #163 bekliyor) |
+| „Analitik yok" (MVP planı §1.6) | Üretimde hiç analitik yok | **Eski**: rıza kapılı Clarity `main`'de ve CSP artık izin veriyor (#163, 1 Kasım). Kalan: panelde ilk oturumun görülmesi + maskeleme teyidi |
 | „E2E/Playwright yok" (aynı tablo) | Tarayıcı testi yok | **Var**: `e2e/smoke.spec.ts` CI'da koşuyor; eksik olan `axe` ve Lighthouse katmanı |
 
 ---

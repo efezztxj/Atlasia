@@ -2,6 +2,19 @@
 
 CI içindeki üçüncü taraf action'lar değişebilir `@v4` etiketleriyle değil, tam 40 karakterlik commit SHA'larıyla çalışır. Okunabilir sürüm etiketi satır sonu yorumunda korunur.
 
+1 Kasım 2026 güncellemesi (Dependabot #162 karşılandı, PR yerine bu dalda uygulandı):
+`actions/checkout` `v4.4.0` → **`v7.0.1`** (`3d3c42e5aac5ba805825da76410c181273ba90b1`).
+`git ls-remote --tags https://github.com/actions/checkout.git` çıktısı `v7` ve `v7.0.1`
+etiketlerinin ikisini de aynı SHA'ya işaret ediyor; GitHub commit API `verified=true`,
+`reason=valid`, mesaj `prep v7.0.1 release (#2531)`. Dört workflow (ci, canli-dogrula,
+insta-publish, rules-windows) aynı pin'e güncellendi ve `src/config/githubActions.test.ts`
+izinli kümesi bu SHA ile kilitlendi. Gerekçe: `v4.4.0` Node 20 çalıştırıyordu ve GitHub
+bu action için Node 24'e zorunlu geçişi duyurdu (annotation uyarısı); `v7.0.1` bu
+deprecation'ı kapatıyor. Girdiler değişmedi (`fetch-depth` kullanılmıyor).
+
+Diğer pinler (`setup-node` v7.1.0, `setup-java` v6.1.0, `cache` v6.1.0,
+`upload-artifact` v7.0.2) bu turda değişmedi.
+
 22 Ekim 2026 güncellemesi (Dependabot #6 karşılandı): `actions/setup-java`
 `v6.1.0` → `b843ebf9b913146b38da2eaa7aeddf76074ae1ad`. `git ls-remote --tags`
 etiketi aynı SHA'ya işaret ediyor; GitHub commit API `verified=true`,

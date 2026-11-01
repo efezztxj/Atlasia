@@ -1,5 +1,14 @@
 # Atlasia Update
 
+## 2026-11-01 — Clarity CSP kapanışı, ölçüm karar kaydı, `actions/checkout` v7.0.1 ve bağımlılık bakımı
+
+- **Clarity çalışma zamanı CSP'de engelleniyordu (PR #163):** `public/_headers` içindeki `script-src` yalnız `https://www.clarity.ms` (yükleyici) izniyordu; gerçek çalışma zamanı `https://scripts.clarity.ms` adresinden geldiği için rıza veren kullanıcıda bile betik bloklanıyordu. Adres açıkça eklendi (joker `*.clarity.ms` bilinçli olarak kullanılmadı), `src/config/cloudflareHeaders.test.ts` iki adresi de kilitliyor.
+- **Ölçüm yığını dokümantasyonu (S2):** Microsoft Clarity bugüne dek `docs/`, `README.md` ve bu dosyada hiç geçmiyordu. `docs/olcum-ve-hata-izleme.md` §5c eklendi: birinci taraf huni ile Clarity'nin rıza anahtarları, topladığı veri, maskeleme, geri alma ve CSP bağımlılığı tek tabloda; §7 bilinen sınırlara "iki katman" ve "maskeleme doğrulanmadı" satırları eklendi; `README.md` yeni "Ölçüm, hata izleme ve gizlilik" bölümüyle güncellendi.
+- **Açık karar kaydı:** `docs/gorevler/olcum-yigini-karari-2026-11-01.md` — Clarity'nin mi, birinci taraf Worker'ın mı, yoksa ikisinin birlikte mi kalacağı üç seçenek ve gerekçelerle yazıldı; öneri "ikisi birlikte, iş bölümü yazılı" (Clarity nitel, Worker nicel KPI). Karar onaylanmadan `VITE_TELEMETRY_ENDPOINT` doldurulmuyor ve yeni üçüncü taraf araç eklenmiyor.
+- **`actions/checkout` `v4.4.0` → `v7.0.1` (Dependabot #162 karşılandı):** Dependabot PR'ı pin testini (`src/config/githubActions.test.ts`) kırdığı için değişiklik bu dalda uygulandı: dört workflow (`ci`, `canli-dogrula`, `insta-publish`, `rules-windows`) yeni SHA'ya (`3d3c42e5aac5ba805825da76410c181273ba90b1`) sabitlendi, `git ls-remote` etiketi ve GitHub commit API `verified=true` ile doğrulandı, `docs/github-actions-pins.md` kaydı eklendi. Gerekçe: `v4.4.0` Node 20'de çalışıyordu ve GitHub bu action için Node 24 zorunluluğunu duyurdu.
+- **`lucide-react` 1.59.0 → 1.61.0 (PR #156)** birleştirildi; `maplibre-gl` 6.16.0 PR'ı (#157) lockfile çakışması nedeniyle `@dependabot rebase` ile yeniden kuyruğa alındı.
+- **`typescript` 7.0.2 + `typescript-eslint` grubu (#155) ertelendi:** TS 7 Go tabanlı derleyiciye geçiş; `typescript-eslint` peer aralığı ve lint config uyumu ayrı bir doğrulama istiyor. PR kapatılmadı, gerekçe PR'a yorum olarak yazıldı.
+
 ## 2026-10-29 — Ürün/mimari kararları (M-51, M-23/P0-4, T20, C1/M-53), erişilebilir ConfirmDialog (M-33), Spark restore CLI (P1-7/M-58), bileşen axe testleri (M-46/M-48) ve CI Playwright E2E süiti (D1/M-49)
 
 - **SW yeni favicon ön önbelleği (`atlasia-shell-v9`):** `PR #150` ile `index.html`'e eklenen `/icons/icon-32.png` ve `/icons/icon-180.png` varlıkları `public/sw.js` `SHELL` listesine eklendi, önbellek sürümü `atlasia-shell-v9`'a yükseltildi (`scripts/sw.node-test.mjs`).
