@@ -102,6 +102,14 @@ const DEFAULT_DIST = fileURLToPath(new URL("../dist", import.meta.url));
  *   toplam JS 984.682 -> 996.818  (main bu turda 997.500'e çıkardı)
  *   entry eşiği 20.400 -> 21.200 (ölçüme %3,2 pay)
  *
+ * 2026-11-01 (varsayılan koyu tema) — Atlasia artık her açılışta koyu
+ * geliyor. `useTheme` içine küçük bir geçiş katmanı girdi: yeni anahtar
+ * `atlasia.theme.v2`, eski `v1` kaydındaki "light" (o zamanki VARSAYILAN)
+ * koyuya çevrilir, bilinçli "midnight" korunur. Ölçüm (`npm ci` +
+ * `npm run build`): entry 16.690 -> **16.700 B gzip**; eşik 16.700'de
+ * sıfır pay kalınca 17.000'e alındı (%1,8 pay). Toplam JS değişmedi
+ * (999.8 KB / 1.003.000).
+ *
  * 2026-11-01 (kasma turu 5) — `mapView` parçası ölçüm kancası ve kademeli
  * düşürme ile büyüdü (yeni bağımlılık yok, yalnız bu parçaya giren kod):
  *   + cihaz üstü teşhis `window.atlasiaMapPerf()` (8 alanlı anlık görüntü)
@@ -170,7 +178,7 @@ export const BUNDLE_BUDGET = Object.freeze({
     appShell: 603_400,
   }),
   categoryGzipBytes: Object.freeze({
-    entry: 16_700,
+    entry: 17_000,
     reactVendor: 69_500,
     iconsVendor: 13_700,
     firebaseVendor: 164_500,

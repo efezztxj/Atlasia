@@ -16,14 +16,22 @@
   var NIGHT_COLOR = "#021512";
   var MIDNIGHT_COLOR = "#071827";
   var LIGHT_COLOR = "#ffffff";
-  var theme = "light";
+  // Varsayılan görünüm koyu (2026-11-01). Açık tema Ayarlar'dan seçilebilir.
+  var DEFAULT_THEME = "dark";
+  var STORAGE_KEY = "atlasia.theme.v2";
+  // Eski anahtardaki "light" kullanıcı tercihi değil, eski VARSAYILANdı:
+  // geçişte koyuya çevrilir, yalnız bilinçli "midnight" korunur.
+  var LEGACY_STORAGE_KEY = "atlasia.theme.v1";
+  var theme = DEFAULT_THEME;
   try {
-    var storedTheme = localStorage.getItem("atlasia.theme.v1");
+    var storedTheme = localStorage.getItem(STORAGE_KEY);
     if (storedTheme === "light" || storedTheme === "dark" || storedTheme === "midnight") {
       theme = storedTheme;
+    } else if (localStorage.getItem(LEGACY_STORAGE_KEY) === "midnight") {
+      theme = "midnight";
     }
   } catch (error) {
-    // Depolama kapalı olabilir; erişilebilir varsayılan açık tema kalır.
+    // Depolama kapalı olabilir; erişilebilir varsayılan koyu tema kalır.
   }
   var root = document.documentElement;
   root.dataset.theme = theme;

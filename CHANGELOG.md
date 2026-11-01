@@ -1,5 +1,13 @@
 # Atlasia Update
 
+## 2026-11-01 — Varsayılan görünüm artık koyu
+
+- **Atlasia her açılışta koyu temayla gelir.** Açık tema isteyen Ayarlar → Görünüm bölümünden seçebilir; o seçim kalıcıdır ve sonraki açılışta korunur.
+- **Dönüş yapan kullanıcılar için geçiş:** eski kayıt anahtarındaki (`atlasia.theme.v1`) `light` değeri kullanıcı tercihi değil, uygulamanın o zamanki varsayılanıydı — bu yüzden koyuya çevrilir. Bilinçli `midnight` (gece) seçimi olduğu gibi korunur.
+- **İlk karede doğru renk:** tema ilk boyamadan önce `public/theme-boot.js` ile uygulanır (CSP uyumlu, satır içi betik yok) ve `index.html` içindeki `theme-color` artık koyu (`#021512`) — açık renk sıçraması yok.
+- **Değişmeyenler:** `midnight` teması, tema seçici, harita/etiket renkleri ve `landing`/`auth` ekranlarının kendi sinematik paleti aynı.
+- **Doğrulama:** `tsc --noEmit`, `eslint --max-warnings=0`, `vitest run` (180 dosya / **1.407 test**), `vite build`, `bundle-budget` bütçe içinde (entry 16.700 / 17.000 · toplam JS 999.833 / 1.003.000 gzip).
+
 ## 2026-11-01 — Kalite turu: yayın akıcı çıktı, görüntü keskinleştirildi
 
 - **Gözlem:** `atlasia.pages.dev` (production build) akıcı; buradaki önizleme `vite dev`. Fark yapısal: dev'de `StrictMode` **çift render** eder, kod minify değildir, HMR yükü vardır; production'da bunların hiçbiri yok. Yani "kasıyor" geri bildiriminin bir kısmı dev önizlemesine aitti ve tur 1-5 düzeltmeleri yayında çalışıyor.
