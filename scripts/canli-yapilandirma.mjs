@@ -275,7 +275,17 @@ export async function inspectClarity({ base, fetchImpl = globalThis.fetch, stamp
       ok: response.status === 200,
       contentType: response.headers?.get?.("content-type") ?? null,
     };
-    if (!tag.ok) problems.push(`Clarity tag adresi HTTP ${response.status} döndü (proje kimliği geçersiz olabilir)`);
+    if (response.status === 200) {
+      // Beklenen: JavaScript gövdesi.
+    } else if (response.status >= 400) {
+      problems.push(`Clarity tag adresi HTTP ${response.status} döndü (proje kimliği geçersiz olabilir)`);
+    } else {
+      // Tarayıcı dışı istek (Referer/Origin yok) 204 dönebiliyor; tek başına hata sayılmaz.
+      // Belirleyici kanıt gerçek tarayıcı koşusu: `npm run test:e2e:canli`.
+      notes.push(
+        `tag adresi tarayıcı dışı istekte HTTP ${response.status} döndü; tarayıcı doğrulaması belirleyici`,
+      );
+    }
   } catch (error) {
     // Ağ engeli bu denetimi ölçemez hâle getirir; hata değil, not olarak raporlanır.
     notes.push(`Clarity tag adresine ulaşılamadı: ${String(error?.message ?? error)}`);

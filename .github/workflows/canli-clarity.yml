@@ -6,6 +6,14 @@ name: Canlı Clarity doğrulaması
 # 200 döndüğünü ve CSP ihlali olmadığını doğrular. Deploy yapmaz.
 
 on:
+  # workflow_dispatch yalnız varsayılan dalda kayıtlıyken tetiklenebildiği için
+  # dal üzerinde de çalışabilsin diye dar kapsamlı push tetikleyicisi eklendi.
+  push:
+    branches: [main, "arena/**"]
+    paths:
+      - "e2e/canli-clarity.spec.ts"
+      - "playwright.canli.config.ts"
+      - ".github/workflows/canli-clarity.yml"
   workflow_dispatch:
   schedule:
     - cron: "0 7 * * 1"
