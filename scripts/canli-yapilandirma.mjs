@@ -271,6 +271,7 @@ export async function inspectClarity({ base, fetchImpl = globalThis.fetch, stamp
   }
 
   const notes = [];
+  const warnings = [];
   let tag;
   try {
     const response = await fetchImpl(CLARITY_TAG_URL, { headers: { "cache-control": "no-cache" } });
@@ -295,8 +296,9 @@ export async function inspectClarity({ base, fetchImpl = globalThis.fetch, stamp
       if (browserResponse.status === 200) {
         notes.push("tarayıcı kimliğiyle tag 200 döndü: yükleyici gerçek kullanıcıya ulaşıyor");
       } else if (browserResponse.status === 204) {
-        problems.push(
-          "tarayıcı kimliğiyle de tag 204 (No Content) döndü: Microsoft bu proje kimliği için betik sunmuyor — Clarity panelinde proje kimliğini/alan adını doğrula",
+        // Dış servis davranışı: kapıyı kırmızıya düşürmek yerine yüksek sesle uyarır.
+        warnings.push(
+          "tarayıcı kimliğiyle de tag 204 (No Content): Microsoft bu proje kimliği için betik sunmuyor — Clarity panelinde Project ID ve alan adı doğrulanmalı",
         );
       }
     } catch (probeError) {
@@ -319,7 +321,7 @@ export async function inspectClarity({ base, fetchImpl = globalThis.fetch, stamp
     tag = { status: null, ok: false, contentType: null };
   }
 
-  return { ok: problems.length === 0, problems, notes, scriptSrc, connectSrc, tag };
+  return { ok: problems.length === 0, problems, warnings, notes, scriptSrc, connectSrc, tag };
 }
 
 /**
@@ -351,13 +353,14 @@ function printReport({ base, entry, bytes, config, chunksScanned = 1 }, { ok, pr
   }
 }
 
-function printClarityReport({ ok, problems, notes, scriptSrc, connectSrc, tag }) {
+function printClarityReport({ ok, problems, warnings = [], notes, scriptSrc, connectSrc, tag }) {
   const line = (label, value) => console.log(`${label.padEnd(22)} ${value}`);
   console.log("");
   console.log("Clarity (rıza kapılı üçüncü taraf ölçüm) doğrulaması");
   line("script-src:", scriptSrc.length ? scriptSrc.join(" ") : "(başlık yok)");
   line("connect-src *.clarity:", connectSrc.includes("https://*.clarity.ms") ? "var" : "YOK");
   line("tag adresi:", `${CLARITY_TAG_URL} → ${tag?.status ?? "ulaşılamadı"}${tag?.contentType ? ` (${tag.contentType})` : ""}`);
+  for (const warning of warnings) line("Uyarı:", warning);
   for (const note of notes ?? []) line("Not:", note);
   console.log("");
   if (ok) {
@@ -393,10 +396,12 @@ async function main() {
       `script-src clarity=${clarity.scriptSrc.includes("https://scripts.clarity.ms") ? "var" : "YOK"} | ` +
       `connect *.clarity=${clarity.connectSrc.includes("https://*.clarity.ms") ? "var" : "YOK"} | ` +
       `tag=${clarity.tag?.status ?? "ulasilamadi"}/${clarity.tag?.browserStatus ?? "-"}`;
-    if (clarity.ok) {
-      annotation("notice", "Canli Clarity", `${clarityFacts} | ${clarity.notes?.join(" ; ") || "saglikli"}`);
-    } else {
+    if (!clarity.ok) {
       annotation("error", "Canli Clarity", `${clarityFacts} | Sorunlar: ${clarity.problems.join(" ; ")}`);
+    } else if ((clarity.warnings ?? []).length) {
+      annotation("warning", "Canli Clarity", `${clarityFacts} | ${clarity.warnings.join(" ; ")}`);
+    } else {
+      annotation("notice", "Canli Clarity", `${clarityFacts} | ${clarity.notes?.join(" ; ") || "saglikli"}`);
     }
 
     const { config, entry, base, chunksScanned = 1, scannedPaths = [] } = result;

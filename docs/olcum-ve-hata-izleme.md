@@ -159,16 +159,33 @@ olarak kullanılmaz. 1 Kasım 2026'da `scripts.clarity.ms` eksikti ve rıza vere
 bile çalışma zamanı CSP tarafından engelleniyordu (PR #163 ile kapandı,
 `src/config/cloudflareHeaders.test.ts` bunu kilitler).
 
+**1 Kasım 2026 ölçümü — "panelde veri yok" vakasının kanıtı:**
+
+| Ölçüm | Sonuç |
+|---|---|
+| Yayındaki CSP (`script-src`) | ✅ `https://www.clarity.ms` ve `https://scripts.clarity.ms` izinli |
+| Yayındaki CSP (`connect-src`) | ✅ `https://*.clarity.ms` izinli |
+| Rıza akışı → `<script>` eklenmesi | ✅ gerçek Chromium'da eklendi (E2E) |
+| `https://www.clarity.ms/tag/z6hdmwcwe6` | ❌ **HTTP 204 (No Content)** — Node isteğinde de, masaüstü Chrome kimliğiyle de, referer'lı gerçek tarayıcıda da |
+
+204, "sunucu bu proje kimliği için betik göndermiyor" demektir; tarayıcı bunu başarılı
+sayar ve **hiçbir şey çalışmaz**. Bu yüzden panel boş kalır. İki aday neden var:
+(1) Project ID yanlış/eski ya da proje aktif değil, (2) projeye bağlı alan adı
+(`atlasia.pages.dev`) tanımlı değil. Kod tarafı bunu **`empty`** durumu olarak
+gösterir; sessizce "yüklendi" demez.
+
 **Panelde veri görünmüyorsa sıra (1 Kasım 2026):**
 
 1. **İzin verildi mi?** Çerez panelindeki ayrı kutu işaretlenmeden betik hiç yüklenmez.
-   Panelde durum satırı yazar: `off` / `loading` / `ready` / `blocked`.
+   Panelde durum satırı yazar: `off` / `loading` / `ready` / `empty` / `blocked`.
 2. **`blocked` yazıyorsa** reklam engelleyici, izleme koruması veya "Do Not Track"
    betiği düşürmüştür; o oturumda Microsoft'a **hiçbir veri gitmez**. Beyaz listeye
    `clarity.ms` ve `scripts.clarity.ms` eklenince çalışır.
-3. **`ready` yazıp panelde kayıt yoksa** ilk oturumun düşmesi 1-2 dakika sürer;
+3. **`empty` yazıyorsa** Microsoft 204 döndürüyor: Clarity panelinde Project ID'yi
+   ve projeye bağlı alan adını doğrula (kod tarafı hazır).
+4. **`ready` yazıp panelde kayıt yoksa** ilk oturumun düşmesi 1-2 dakika sürer;
    ayrıca Clarity panelinde doğru proje (`z6hdmwcwe6`) açık olmalı.
-4. **Sunucu tarafı teyidi:** `npm run dogrula:canli` yayındaki CSP'yi ve tag adresini
+5. **Sunucu tarafı teyidi:** `npm run dogrula:canli` yayındaki CSP'yi ve tag adresini
    ölçer; `npm run test:e2e:canli` gerçek Chromium'la rıza akışını çalıştırıp tag'in
    200 döndüğünü ve CSP ihlali olmadığını doğrular (haftalık workflow:
    `Canlı Clarity doğrulaması`).

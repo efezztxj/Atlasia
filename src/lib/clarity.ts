@@ -20,7 +20,7 @@ declare global {
  * izin verilmemiş (`off`), istek yolda (`loading`), yüklendi (`ready`) veya
  * tarayıcı/reklam engelleyici betiği düşürdü (`blocked`).
  */
-export type ClarityStatus = "off" | "loading" | "ready" | "blocked";
+export type ClarityStatus = "off" | "loading" | "ready" | "empty" | "blocked";
 
 export interface ClarityStatusSnapshot {
   consent: boolean;
@@ -95,8 +95,22 @@ export function startClarity(): void {
   const script = document.createElement("script");
   script.async = true;
   script.src = TAG_URL;
-  // Reklam engelleyici/DNT betiği düşürürse sessiz kalmayalım: panelde gösterilir.
-  script.addEventListener("load", () => setStatus("ready"));
+  // Microsoft, geçersiz/aktif olmayan proje kimliklerinde **HTTP 204** döndürüyor:
+  // tarayıcı bunu başarılı sayar, `load` olayı tetiklenir ama hiç JavaScript gelmez.
+  // Yani "yüklendi" demek yanıltıcı olur; yükleyicinin gerçekten çalıştığını ancak
+  // `window.clarity` stub'ının değişmesi ya da kuyruğun boşalması gösterir.
+  script.addEventListener("load", () => {
+    queueMicrotask(() => {
+      if (window.clarity !== queue || (window.clarity?.q?.length ?? 0) === 0) {
+        setStatus("ready");
+        return;
+      }
+      setTimeout(() => {
+        if (window.clarity !== queue || (window.clarity?.q?.length ?? 0) === 0) setStatus("ready");
+        else setStatus("empty");
+      }, 1500);
+    });
+  });
   script.addEventListener("error", () => setStatus("blocked"));
   setStatus("loading");
   document.head.appendChild(script);

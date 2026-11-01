@@ -201,6 +201,12 @@ export default function CookieConsent() {
               oturumda Microsoft’a hiçbir veri gönderilmiyor; panelde kayıt görünmemesinin nedeni budur.
             </p>
           ) : null}
+          {clarityEnabled && clarityState === "empty" ? (
+            <p role="status" className="mt-2 rounded-xl border border-sun/40 bg-sun/10 px-3 py-2 text-[11px] leading-relaxed text-mint">
+              Microsoft bu proje kimliği için Clarity betiğini göndermedi (HTTP 204). Clarity panelinde
+              <span className="font-semibold"> Project ID</span> ve projeye bağlı alan adı doğrulanmalı; kod tarafı hazır.
+            </p>
+          ) : null}
           {clarityEnabled && clarityState === "ready" ? (
             <p role="status" className="mt-2 text-[11px] leading-relaxed text-mint/70">
               Clarity betiği yüklendi. Kayıt 1-2 dakika içinde Microsoft Clarity panelinde görünür; reklam
