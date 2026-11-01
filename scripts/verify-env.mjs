@@ -22,6 +22,8 @@
  * Hata mesajları yalnız değişken ADINI ve kural nedenini yazar, gizli değeri asla yazmaz.
  */
 
+import { readFileSync } from "node:fs";
+
 const REQUIRED = [
   "VITE_FIREBASE_API_KEY",
   "VITE_FIREBASE_AUTH_DOMAIN",
@@ -66,6 +68,81 @@ function hasNonEmptyValue(value) {
 
 export function missingVars(env = process.env) {
   return REQUIRED.filter((name) => !hasNonEmptyValue(env[name]));
+}
+
+/**
+ * Ölçüm/hata izleme görünürlüğü uyarıları (build'i **kırmaz**).
+ *
+ * NEDEN: `VITE_TELEMETRY_ENDPOINT` tanımlı değilse `captureError` sessizce
+ * hiçbir şey göndermez (src/lib/telemetry.ts). Yani üretimde kullanıcı çökse de
+ * kimsenin haberi olmaz. Ayrıca uç nokta `*.workers.dev` gibi CSP'de izinli
+ * olmayan bir host'a bakıyorsa istekler tarayıcıda bloklanır (connect-src).
+ * İkisi de deploy'u durdurmaz — nedeni 2026-10-25 kesintisiyle aynı: yalnız
+ * Cloudflare panelinde görülebilen bir değer yüzünden teşhis edilemeyen kilit
+ * oluşturmuyoruz. Uyarı, CI log'unda ve deploy çıktısında görünür.
+ *
+ * @param {NodeJS.ProcessEnv} env
+ * @param {string} headersSource public/_headers içeriği
+ * @returns {{ name: string, code: string, message: string }[]}
+ */
+export function measurementWarnings(env = process.env, headersSource = "") {
+  if (!shouldEnforce(env)) return [];
+
+  const warnings = [];
+  const raw = typeof env.VITE_TELEMETRY_ENDPOINT === "string" ? env.VITE_TELEMETRY_ENDPOINT.trim() : "";
+
+  if (!raw) {
+    warnings.push({
+      name: "VITE_TELEMETRY_ENDPOINT",
+      code: "telemetry_endpoint_missing",
+      message:
+        "Error monitoring is OFF: VITE_TELEMETRY_ENDPOINT is not set, so crash and unhandled-rejection records stay in the browser " +
+        "(check the live state with window.atlasiaErrorLog()). See docs/olcum-ve-hata-izleme.md",
+    });
+    return warnings;
+  }
+
+  // Göreli adres (ör. /api/telemetry) aynı origin demektir: 'self' yeterli.
+  if (raw.startsWith("/")) return warnings;
+
+  try {
+    new URL(raw);
+  } catch {
+    warnings.push({
+      name: "VITE_TELEMETRY_ENDPOINT",
+      code: "telemetry_endpoint_invalid",
+      message: "VITE_TELEMETRY_ENDPOINT is not a valid absolute URL; the browser will not be able to send records",
+    });
+    return warnings;
+  }
+
+  const host = new URL(raw).host;
+  const cspLine = headersSource
+    .split("\n")
+    .find((line) => line.trim().toLowerCase().startsWith("content-security-policy:")) ?? "";
+  const connectSrc = /connect-src([^;]*)/i.exec(cspLine)?.[1] ?? "";
+  // `connect-src 'self'` dağıtımın kendi host'unu kapsar; Cloudflare deploy
+  // adresini CF_PAGES_URL verir.
+  let selfHost = null;
+  if (env.CF_PAGES_URL) {
+    try {
+      selfHost = new URL(env.CF_PAGES_URL).host;
+    } catch {
+      selfHost = null;
+    }
+  }
+  const allowedBySelf = connectSrc.includes("'self'") && selfHost !== null && host === selfHost;
+  if (connectSrc && !connectSrc.includes(host) && !allowedBySelf) {
+    warnings.push({
+      name: "VITE_TELEMETRY_ENDPOINT",
+      code: "telemetry_endpoint_blocked_by_csp",
+      message:
+        `Telemetry endpoint host (${host}) is NOT allowed by Content-Security-Policy connect-src: requests will be blocked in the browser. ` +
+        "Either proxy it on the same origin (e.g. /api/telemetry with public/_redirects) or add the host to connect-src in public/_headers",
+    });
+  }
+
+  return warnings;
 }
 
 /**
@@ -162,11 +239,21 @@ export function verify(env = process.env, { exit = true, log = console.error } =
     }
   }
 
+  // Ölçüm görünürlüğü uyarıları: her zaman loglanır, asla fatal değil.
+  let headersSource = "";
+  try {
+    headersSource = readFileSync(new URL("../public/_headers", import.meta.url), "utf8");
+  } catch {
+    // _headers yoksa CSP kontrolü atlanır (uyarı yine üretilmez, sessiz kalır).
+  }
+  const warnings = measurementWarnings(env, headersSource);
+  for (const warning of warnings) log(`ADVISORY (measurement): ${warning.message}`);
+
   if (failed && exit) {
     process.exit(1);
   }
 
-  return { enforced, mode, missing, violations, failed };
+  return { enforced, mode, missing, violations, warnings, failed };
 }
 
 // CLI olarak çalıştırıldığında

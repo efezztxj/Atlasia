@@ -15,6 +15,75 @@ import { hasCookieConsent, readCookieConsent, COOKIE_CONSENT_EVENT } from "./coo
 import { analytics, isStandaloneDisplay } from "./analytics";
 import { createTelemetry, installGlobalErrorHandlers, setTelemetry, type Telemetry } from "./telemetry";
 
+declare global {
+  interface Window {
+    /** Destek/hata ayıklama için: rıza, uç nokta ve bellek içi son kayıtlar. */
+    atlasiaErrorLog?: () => TelemetryDiagnostics;
+  }
+}
+
+/** Teşhis kaydı: PII temizliğinden geçmiş, yalnız bellekteki son kayıtlar. */
+export interface TelemetryDiagnosticRecord {
+  name: string;
+  level: string;
+  at: number;
+  props: Record<string, string | number | boolean>;
+}
+
+export interface TelemetryDiagnostics {
+  /**
+   * `ready` — rıza var, uç nokta tanımlı: kayıtlar toplayıcıya gidiyor.
+   * `consent-off` — uç nokta var ama kullanıcı analitik izni vermedi.
+   * `endpoint-missing` — toplayıcı adresi yok: **hiçbir şey cihazdan çıkmıyor**.
+   */
+  status: "ready" | "consent-off" | "endpoint-missing";
+  hint: string;
+  endpointConfigured: boolean;
+  consent: boolean;
+  sessionId: string;
+  records: TelemetryDiagnosticRecord[];
+}
+
+/**
+ * Kullanıcının tarayıcısında çalıştırılabilir teşhis.
+ *
+ * Neden gerekli: toplayıcı uç noktası tanımlı değilse `captureError` sessizce
+ * hiçbir şey göndermez. "Kullanıcı çöktü ama bize hiçbir şey gelmedi" durumunda
+ * tek kanıt bu pencere olur (`window.atlasiaErrorLog()`), tıpkı Clarity için
+ * `window.atlasiaClarityStatus()` gibi.
+ */
+export function telemetryDiagnostics(
+  telemetry: Telemetry,
+  endpoint: string | null,
+  consent: boolean = analyticsConsentGranted(),
+): TelemetryDiagnostics {
+  const endpointConfigured = Boolean(endpoint && endpoint.trim());
+  const status: TelemetryDiagnostics["status"] = !endpointConfigured
+    ? "endpoint-missing"
+    : consent
+      ? "ready"
+      : "consent-off";
+  const hint =
+    status === "ready"
+      ? "Kayıtlar toplayıcıya gönderiliyor."
+      : status === "consent-off"
+        ? "Analitik izni yok: kayıtlar yalnız bu sekmede tutuluyor, gönderilmiyor."
+        : "Toplayıcı adresi tanımlı değil (VITE_TELEMETRY_ENDPOINT): hiçbir kayıt cihazdan çıkmıyor.";
+  return {
+    status,
+    hint,
+    endpointConfigured,
+    consent,
+    sessionId: telemetry.sessionId,
+    records: telemetry.drainBuffer().slice(-20).map((entry) => ({
+      name: entry.name,
+      level: entry.level,
+      at: entry.at,
+      props: entry.props,
+    })),
+  };
+}
+
 export interface StartTelemetryOptions {
   /** Cloudflare ortamından gelen toplayıcı adresi. Boşsa ağ kapalı. */
   endpoint?: string | null;
@@ -25,6 +94,9 @@ export interface StartTelemetryOptions {
   /** Oturum açılışını say (test için kapatılabilir). */
   sendOpenEvents?: boolean;
 }
+
+/** Teşhis fonksiyonunu taşıyabilen pencere (test sahteleri dahil). */
+type DiagnosticHost = { atlasiaErrorLog?: () => TelemetryDiagnostics };
 
 export interface TelemetryHandle {
   telemetry: Telemetry;
@@ -50,6 +122,14 @@ export function startTelemetry(options: StartTelemetryOptions = {}): TelemetryHa
 
   const target = options.target === undefined ? (typeof window === "undefined" ? null : window) : options.target;
   const stopErrors = installGlobalErrorHandlers(telemetry, target);
+
+  // Teşhis penceresi: destek ekibi kullanıcının tarayıcısında tek satırla
+  // "kayıt gidiyor mu, nereye" sorusunu yanıtlayabilir.
+  const endpoint = options.endpoint ?? null;
+  const host = (options.target === undefined
+    ? (typeof window === "undefined" ? null : window)
+    : options.target) as DiagnosticHost | null;
+  if (host) host.atlasiaErrorLog = () => telemetryDiagnostics(telemetry, endpoint);
 
   if (options.sendOpenEvents !== false) {
     analytics.appOpen({ standalone: isStandaloneDisplay() });

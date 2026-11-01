@@ -229,3 +229,34 @@ npx vitest run src/lib/telemetry.test.ts src/lib/analytics.test.ts src/lib/telem
   `docs/gorevler/olcum-yigini-karari-2026-11-01.md` kararına bağlı; Clarity panelinde
   maskelemenin gerçekten çalıştığı (metin ve konum görünmüyor) henüz doğrulanmadı.
 - **Toplayıcı henüz deploy edilmedi.** Kaynak [`workers/telemetry/`](../workers/telemetry/) içinde; uç nokta operatör hesabında deploy edilip Pages `VITE_TELEMETRY_ENDPOINT` tanımlanana kadar ağ kapalıdır.
+
+## 7a. Uç nokta yokken ne olur, nasıl teşhis edilir
+
+Uç nokta tanımlı değilse modül **sessizdir**: ne hata kaydı ne huni olayı cihazdan
+çıkar. Bu, "kullanıcı çöktü ama elimizde hiçbir şey yok" durumunun en olası nedeni
+olduğu için görünür hâle getirildi:
+
+1. **Tarayıcıda tek satır teşhis:**
+   `window.atlasiaErrorLog()` → `{ status, hint, endpointConfigured, consent, sessionId, records }`
+   - `status: "endpoint-missing"` → toplayıcı adresi yok, hiçbir şey gönderilmiyor.
+   - `status: "consent-off"` → adres var, kullanıcı analitik izni vermedi.
+   - `status: "ready"` → kayıtlar gönderiliyor.
+   `records` son 20 kaydı (PII temizliğinden geçmiş) gösterir; kullanıcıya
+   "konsolu aç, bunu yaz, çıkanı bana gönder" denebilir.
+2. **Deploy günlüğünde uyarı:** Cloudflare Pages üretim derlemesinde uç nokta yoksa
+   `scripts/verify-env.mjs` şu satırı yazar (deploy'u **durdurmaz**):
+   `ADVISORY (measurement): Error monitoring is OFF: VITE_TELEMETRY_ENDPOINT is not set…`
+3. **CSP tuzağı — `workers.dev` engellenir.** `public/_headers` içindeki
+   `connect-src` listesinde `workers.dev` yok. Uç nokta
+   `https://<hesap>.workers.dev/...` olarak verilirse tarayıcı isteği bloklar ve
+   telemetri yine sessizce kaybolur. Build kapısı bunu da uyarı olarak yazar
+   (`telemetry_endpoint_blocked_by_csp`). İki temiz çözüm:
+   - **Aynı origin (önerilen):** `public/_redirects` içine
+     `/api/telemetry  https://<hesap>.workers.dev/api/telemetry  200` ekle ve
+     `VITE_TELEMETRY_ENDPOINT=/api/telemetry` ver. Tarayıcı kendi origin'ine
+     konuşur (`'self'` yeterli), CORS/çerez sorunu çıkmaz, kullanıcının IP'si
+     doğrudan üçüncü tarafa gitmez.
+   - **Host'u CSP'ye ekle:** `connect-src` listesine ilgili host yazılır.
+4. **Doğrulama:** uç nokta tanımlandıktan sonra tarayıcıda yukarıdaki komut
+   `status: "ready"` dönmeli; toplayıcıda oturum görünmelidir. Bu adım
+   `docs/gorevler/siradaki-isler-2026-11-01.md` içinde açık iş olarak duruyor.

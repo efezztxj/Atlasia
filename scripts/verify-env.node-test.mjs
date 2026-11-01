@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   declaredProductionProject,
+  measurementWarnings,
   missingVars,
   policyMode,
   policyViolations,
@@ -181,6 +182,9 @@ describe("verify-env (Cloudflare Pages üretim ve güvenlik kapısı)", () => {
       VITE_FIREBASE_AUTH_DOMAIN: "atlasia.firebaseapp.com",
       VITE_FIREBASE_PROJECT_ID: "atlasia-prod",
       ATLASIA_URETIM_PROJESI: "atlasia-prod",
+      // Temiz üretim tanımı ölçüm uç noktasını da içerir; aksi hâlde
+      // "hata izleme kapalı" uyarısı (bilerek) loglanır.
+      VITE_TELEMETRY_ENDPOINT: "/api/telemetry",
     });
     assert.equal(shouldEnforce(env), true);
     assert.deepEqual(missingVars(env), []);
@@ -274,13 +278,59 @@ describe("verify-env (kural şiddeti: warn / enforce)", () => {
     for (const mode of [undefined, "enforce"]) {
       const logs = [];
       const result = verify(
-        { ...prodEnv, VITE_PHONE_AUTH_ENABLED: "false", ATLASIA_PROD_ENV_POLICY: mode },
+        { ...prodEnv, VITE_PHONE_AUTH_ENABLED: "false", VITE_TELEMETRY_ENDPOINT: "/api/telemetry", ATLASIA_PROD_ENV_POLICY: mode },
         { exit: false, log: (m) => logs.push(m) },
       );
       assert.deepEqual(result.violations, []);
       assert.equal(result.failed, false);
       assert.equal(logs.length, 0);
     }
+  });
+});
+
+describe("verify-env (ölçüm görünürlüğü uyarıları)", () => {
+  const headers =
+    "Content-Security-Policy: default-src 'self'; connect-src 'self' https://api.open-meteo.com";
+  const production = { CF_PAGES: "1", CF_PAGES_BRANCH: "main", CF_PAGES_URL: "https://atlasia.pages.dev" };
+
+  it("üretimde uç nokta yoksa hata izlemenin KAPALI olduğunu söyler (fatal değil)", () => {
+    const warnings = measurementWarnings(production, headers);
+    assert.equal(warnings.length, 1);
+    assert.equal(warnings[0].code, "telemetry_endpoint_missing");
+    // Deploy'u kırmaz: yalnız uyarı.
+    assert.equal(shouldFail({ missing: [], violations: warnings, mode: "enforce" }), true);
+    assert.equal(measurementWarnings({ ...production, VITE_TELEMETRY_ENDPOINT: "https://atlasia.pages.dev/api/telemetry" }, headers).length, 0);
+  });
+
+  it("CSP'nin bloklayacağı uç noktayı yakalar (workers.dev örneği)", () => {
+    const warnings = measurementWarnings(
+      { ...production, VITE_TELEMETRY_ENDPOINT: "https://atlasia-telemetry.ornek.workers.dev/api/telemetry" },
+      headers,
+    );
+    assert.equal(warnings[0].code, "telemetry_endpoint_blocked_by_csp");
+    assert.match(warnings[0].message, /connect-src/);
+  });
+
+  it("aynı origin ve göreli uç nokta kabul edilir", () => {
+    assert.equal(measurementWarnings({ ...production, VITE_TELEMETRY_ENDPOINT: "/api/telemetry" }, headers).length, 0);
+    assert.equal(
+      measurementWarnings({ ...production, VITE_TELEMETRY_ENDPOINT: "https://atlasia.pages.dev/api/telemetry" }, headers).length,
+      0,
+    );
+  });
+
+  it("CSP'de açıkça izinli host kabul edilir, bozuk adres ayrı kodla bildirilir", () => {
+    assert.equal(
+      measurementWarnings({ ...production, VITE_TELEMETRY_ENDPOINT: "https://api.open-meteo.com/t" }, headers).length,
+      0,
+    );
+    const broken = measurementWarnings({ ...production, VITE_TELEMETRY_ENDPOINT: "atlasia-t.workers.dev/t" }, headers);
+    assert.equal(broken[0].code, "telemetry_endpoint_invalid");
+  });
+
+  it("üretim dışında (yerel/preview) susar", () => {
+    assert.equal(measurementWarnings({ CF_PAGES: "1", CF_PAGES_BRANCH: "preview" }, headers).length, 0);
+    assert.equal(measurementWarnings({}, headers).length, 0);
   });
 });
 
