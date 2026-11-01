@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  DEGRADE_PIXEL_RATIO,
   detectDeviceTier,
   measuredFps,
+  shouldDropToMinimum,
   recommendedHillshade,
   recommendedPixelRatio,
   recommendedTerrain,
@@ -10,6 +12,7 @@ import {
   FRAME_SAMPLE_MIN_MS,
   HIGH_TIER_MAX_PIXEL_RATIO,
   LOW_TIER_MAX_PIXEL_RATIO,
+  MIN_CRITICAL_FPS,
   MIN_SMOOTH_FPS,
   MIN_TERRAIN_FPS,
   TOUCH_MAX_PIXEL_RATIO,
@@ -62,12 +65,18 @@ describe("piksel oranı", () => {
     expect(recommendedPixelRatio(1.5, "high")).toBe(1.5);
   });
 
-  it("dokunmatik cihazda 1,5 tavanı uygulanır (DPR 2/3 olsa bile)", () => {
-    // Telefonda 2 ile 1,5 arasındaki fark gözle zor ayrılır, piksel %44 azalır.
-    expect(recommendedPixelRatio(3, "high", true)).toBe(TOUCH_MAX_PIXEL_RATIO);
-    expect(recommendedPixelRatio(2, "high", true)).toBe(TOUCH_MAX_PIXEL_RATIO);
+  it("dokunmatikte 2 (retina) korunur: DPR 3 telefonda 9 kat yerine 4 kat piksel", () => {
+    // Kalite önceliği: 1,5 ekranı yumuşak gösteriyordu.
+    expect(TOUCH_MAX_PIXEL_RATIO).toBe(2);
+    expect(recommendedPixelRatio(3, "high", true)).toBe(2);
+    expect(recommendedPixelRatio(2, "high", true)).toBe(2);
     expect(recommendedPixelRatio(1.25, "high", true)).toBe(1.25);
     expect(recommendedPixelRatio(2, "high", false)).toBe(HIGH_TIER_MAX_PIXEL_RATIO);
+  });
+
+  it("zayıf cihazda bile 1,5'in altına inilmez (yumuşak görüntü yok)", () => {
+    expect(recommendedPixelRatio(3, "low")).toBe(LOW_TIER_MAX_PIXEL_RATIO);
+    expect(LOW_TIER_MAX_PIXEL_RATIO).toBe(1.5);
   });
 
   it("geçersiz DPR'da 1 döner", () => {
@@ -92,10 +101,29 @@ describe("ağır arazi katmanı varsayılanı", () => {
 });
 
 describe("tepe gölgesi (hillshade) varsayılanı", () => {
-  it("dokunmatik cihazda kapalı, masaüstünde açık", () => {
-    // Hillshade ayrı bir tam ekran geçişi; 3B arazi hissi bundan bağımsız.
-    expect(recommendedHillshade(signals({ coarsePointer: true }))).toBe(false);
+  it("modern telefonda açık kalır (kalite önceliği)", () => {
+    // Hillshade ayrı bir tam ekran geçişi; yalnız gerçekten zayıf cihazda kapanır.
+    expect(recommendedHillshade(signals({ coarsePointer: true, hardwareConcurrency: 8 }))).toBe(true);
+    expect(recommendedHillshade(signals({ coarsePointer: true, hardwareConcurrency: 6 }))).toBe(true);
     expect(recommendedHillshade(signals({ coarsePointer: false }))).toBe(true);
+  });
+
+  it("yalnız gerçekten zayıf cihazda kapanır (araziyle aynı kapı)", () => {
+    expect(recommendedHillshade(signals({ coarsePointer: true, hardwareConcurrency: 4 }))).toBe(false);
+    expect(recommendedHillshade(signals({ deviceMemory: 3 }))).toBe(false);
+    expect(recommendedHillshade(signals({ saveData: true }))).toBe(false);
+    expect(recommendedHillshade(signals({ reducedMotion: true }))).toBe(false);
+  });
+});
+
+describe("kademeli düşürme: kalite korumalı sıra", () => {
+  it("eşikler kaliteyi koruyacak sırada: 40 → 1,5 · 28 → arazi · 22 → 1", () => {
+    expect(DEGRADE_PIXEL_RATIO).toBe(1.5);
+    expect(MIN_CRITICAL_FPS).toBeLessThan(MIN_TERRAIN_FPS);
+    expect(MIN_TERRAIN_FPS).toBeLessThan(MIN_SMOOTH_FPS);
+    expect(shouldDropToMinimum(MIN_CRITICAL_FPS - 1)).toBe(true);
+    expect(shouldDropToMinimum(MIN_CRITICAL_FPS)).toBe(false);
+    expect(shouldDropToMinimum(Number.NaN)).toBe(false);
   });
 });
 
