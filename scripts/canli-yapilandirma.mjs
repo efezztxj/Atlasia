@@ -237,6 +237,15 @@ export function mergeConfigs(configs) {
 /** Clarity proje kimliği; yükleyici adresi buradan üretilir. */
 export const CLARITY_TAG_URL = "https://www.clarity.ms/tag/z6hdmwcwe6";
 
+/**
+ * Kontrol ölçümü: aynı ağdan, var olmayan bir proje kimliği.
+ *
+ * Amaç: "204 döndü" tek başına iki şeyi ayırt etmiyor — (a) proje kimliği geçersiz,
+ * (b) Clarity bu ağa/isteğe hiç betik sunmuyor. Kontrol kimliği de 204 alıyorsa
+ * suçlu ağ/bot kapısıdır; kontrol 200 alıp bizim kimlik 204 alıyorsa suçlu kimliktir.
+ */
+export const CONTROL_TAG_URL = "https://www.clarity.ms/tag/zzzzzzz1";
+
 /** Bot koruması ihtimalini ayırt etmek için gerçek masaüstü Chrome kimliği. */
 export const CHROME_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36";
@@ -293,13 +302,35 @@ export async function inspectClarity({ base, fetchImpl = globalThis.fetch, stamp
       });
       tag.browserStatus = browserResponse.status;
       tag.browserContentType = browserResponse.headers?.get?.("content-type") ?? null;
+      // Kontrol: var olmayan kimlik aynı koşullarda ne dönüyor?
+      try {
+        const controlResponse = await fetchImpl(CONTROL_TAG_URL, {
+          headers: { "user-agent": CHROME_UA, referer: `${base}/`, accept: "*/*", "cache-control": "no-cache" },
+        });
+        tag.controlStatus = controlResponse.status;
+        if (tag.controlStatus === 200 && browserResponse.status === 204) {
+          notes.push(
+            "kontrol kimliği 200, bizim kimlik 204: fark ağ değil, proje kimliği — Clarity panelindeki Project ID bu değil",
+          );
+        } else if (tag.controlStatus === 204 && browserResponse.status === 204) {
+          // Ölçüldü (1 Kasım 2026): CI'dan rastgele kimlik de 204 alıyor. Bu, kimliğin
+          // yanlış olduğunu KANITLAMAZ; CI ağından Clarity tag'i sunulmuyor demektir.
+          // Bu yüzden uyarı üretilmez, yalnız not düşülür ve karar kullanıcıya bırakılır.
+          notes.push(
+            "kontrol kimliği de 204: CI ağından Clarity betiği sunulmuyor; tag/kimlik doğruluğu yalnız gerçek kullanıcı tarayıcısından teyit edilebilir",
+          );
+          warnings.length = 0;
+        }
+      } catch (controlError) {
+        notes.push(`kontrol ölçümü yapılamadı: ${String(controlError?.message ?? controlError)}`);
+      }
+
       if (browserResponse.status === 200) {
         notes.push("tarayıcı kimliğiyle tag 200 döndü: yükleyici gerçek kullanıcıya ulaşıyor");
       } else if (browserResponse.status === 204) {
-        // Dış servis davranışı: kapıyı kırmızıya düşürmek yerine yüksek sesle uyarır.
-        warnings.push(
-          "tarayıcı kimliğiyle de tag 204 (No Content): Microsoft bu proje kimliği için betik sunmuyor — Clarity panelinde Project ID ve alan adı doğrulanmalı",
-        );
+        // Dış servis davranışı: kapıyı kırmızıya düşürmek yerine not düşülür.
+        // Kontrol ölçümü 200 dönerse bu nota "kimlik" yorumu eklenir (aşağıda).
+        notes.push("tarayıcı kimliğiyle tag 204 (No Content) döndü");
       }
     } catch (probeError) {
       notes.push(`tarayıcı kimliği denemesi yapılamadı: ${String(probeError?.message ?? probeError)}`);
@@ -395,7 +426,7 @@ async function main() {
     const clarityFacts =
       `script-src clarity=${clarity.scriptSrc.includes("https://scripts.clarity.ms") ? "var" : "YOK"} | ` +
       `connect *.clarity=${clarity.connectSrc.includes("https://*.clarity.ms") ? "var" : "YOK"} | ` +
-      `tag=${clarity.tag?.status ?? "ulasilamadi"}/${clarity.tag?.browserStatus ?? "-"}`;
+      `tag=${clarity.tag?.status ?? "ulasilamadi"}/${clarity.tag?.browserStatus ?? "-"}/kontrol=${clarity.tag?.controlStatus ?? "-"}`;
     if (!clarity.ok) {
       annotation("error", "Canli Clarity", `${clarityFacts} | Sorunlar: ${clarity.problems.join(" ; ")}`);
     } else if ((clarity.warnings ?? []).length) {

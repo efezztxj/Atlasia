@@ -166,13 +166,18 @@ bile çalışma zamanı CSP tarafından engelleniyordu (PR #163 ile kapandı,
 | Yayındaki CSP (`script-src`) | ✅ `https://www.clarity.ms` ve `https://scripts.clarity.ms` izinli |
 | Yayındaki CSP (`connect-src`) | ✅ `https://*.clarity.ms` izinli |
 | Rıza akışı → `<script>` eklenmesi | ✅ gerçek Chromium'da eklendi (E2E) |
-| `https://www.clarity.ms/tag/z6hdmwcwe6` | ❌ **HTTP 204 (No Content)** — Node isteğinde de, masaüstü Chrome kimliğiyle de, referer'lı gerçek tarayıcıda da |
+| `https://www.clarity.ms/tag/z6hdmwcwe6` | ⚠️ **HTTP 204 (No Content)** — Node isteğinde, masaüstü Chrome kimliğiyle ve referer'lı gerçek tarayıcıda |
+| Kontrol: var olmayan kimlik (`zzzzzzz1`), aynı koşullar | ⚠️ **HTTP 204** — yani 204 tek başına "kimlik geçersiz" kanıtı **değil** |
 
-204, "sunucu bu proje kimliği için betik göndermiyor" demektir; tarayıcı bunu başarılı
-sayar ve **hiçbir şey çalışmaz**. Bu yüzden panel boş kalır. İki aday neden var:
-(1) Project ID yanlış/eski ya da proje aktif değil, (2) projeye bağlı alan adı
-(`atlasia.pages.dev`) tanımlı değil. Kod tarafı bunu **`empty`** durumu olarak
-gösterir; sessizce "yüklendi" demez.
+**Yorum:** 204 dönerse tarayıcı bunu başarılı sayar ama hiç JavaScript gelmez, dolayısıyla
+hiçbir kayıt oluşmaz. Ancak kontrol ölçümü de 204 aldığı için **CI ağında Clarity tag'i
+hiç sunulmuyor**; bu ölçüm proje kimliğinin doğruluğunu kanıtlamaz. Belirleyici test
+kullanıcının kendi tarayıcısıdır: (a) çerez panelindeki durum satırı `ready` mi `empty` mi,
+(b) `https://www.clarity.ms/tag/z6hdmwcwe6` adresi tarayıcıda JavaScript gösteriyor mu.
+
+Kod, kayıt gelmediğinde sessiz kalmaz: betik yüklendiği hâlde çalışma zamanı gelmezse
+durum **`empty`** olur ve panelde "Microsoft bu proje kimliği için betiği göndermedi;
+Project ID ve alan adı doğrulanmalı" yazar.
 
 **Panelde veri görünmüyorsa sıra (1 Kasım 2026):**
 
