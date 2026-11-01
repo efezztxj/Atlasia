@@ -37,6 +37,7 @@ operasyonu**. Ama iki tane *gerçek* kod/CI işi var: Clarity'nin CSP'de engelle
 | **S3** | **Gerçek sayfada `axe` kapısı** (P1-4'ün kalanı) | Bugün `axe-core` yalnız 5 bileşen testinde koşuyor (JSDOM); tanıtım, harita kabuğu, paneller gerçek tarayıcıda taranmıyor | `@axe-core/playwright` ile 4 akış × 2 tema × 390×844; kritik/ciddi ihlal 0; CI'da zorunlu adım | ~1,5 gün |
 | **S4** | **Lighthouse CI** (P1-2'nin kalanı) | Performans kapısı yalnız *paket bütçesi*; gerçek LCP/TBT ölçen kapı yok, G4 kabul listesi bunu istiyor | Mobil profilde tanıtım + uygulama kabuğu; perf ≥ 85, a11y ≥ 95; eşik PR'da zorunlu (ilk koşuda gerçek sayıya göre bağlanır) | ~1 gün |
 | **S5** | **`loadMorePosts/Stories` oturum koruması** (AY-02) | `useFirestoreAtlasData.ts:349-361`: `await listPostsPage` sonrası UID/generation denetimi yok. Sızıntı **kanıtlanmadı**, önce test yazılmalı | Kullanıcı değişimi + geç yanıt için regresyon testi; hata görünürse kuşak (generation) kapısı; cursor/sıralama bozulmaz | ~yarım gün |
+| **S8** ✅ | **`canli-dogrula` kapısını onar** (1 Kasım'da bulundu) | Yanlış kırmızı: backtick dizgiler + T11 sonrası tembel parça | Yeşil koşu `41313928887`; `parca=2`, `projectId=atlasia-dev` | ~2 saat |
 | **S6** 🟡 | **Dependabot trafiğini kapat** | #157 (maplibre 6.16) ve #156 (lucide 1.61) yeşil; **#162 kırmızı** çünkü `src/config/githubActions.test.ts` pin listesi eski SHA'yı bekliyor; #155 (dev tooling) 3 gün önceki koşuda kırmızı, nedeni log'lardan okunamadı | #162'de pin testi + `docs/github-actions-pins.md` güncellenir; #155 yeniden koşup nedeni yazılır; her biri **ayrı** PR, toplu merge yok | ~2-3 saat |
 | **S7** | **Durum defterlerini tazele** | `ana-yol-acik-kalanlar-2026-10-23.md` AY-01'i "hata, düzeltilmedi" diyor ama `FriendsTab.tsx:119-138` artık `searchSeqRef` ile sıra koruyor ve 16 testi var; #78/#79-83 satırları da kapalı | AY tablosuna "1 Kasım kesiti" kolonu; kapananlara kanıt satırı + `iyilestirme-plani-durum` tarih damgası | ~1-2 saat |
 
@@ -56,13 +57,17 @@ operasyonu**. Ama iki tane *gerçek* kod/CI işi var: Clarity'nin CSP'de engelle
   bağımlılığı + maskeleme), §7 iki yeni sınır satırı, `README.md` "Ölçüm, hata izleme ve
   gizlilik" bölümü, `CHANGELOG.md` 2026-11-01 kaydı, karar defteri
   `docs/gorevler/olcum-yigini-karari-2026-11-01.md` (A/B/C, öneri B).
-- **S8 ✅ (yeni, 1 Kasım'da bulundu)** Haftalık `canli-dogrula` işi kırmızıydı: betik
-  yalnız giriş paketini tarıyordu, T11'den sonra Firebase yapılandırması tembel
-  `firebaseConfig-*.js` parçasında olduğu için "yapılandırma eksik" diyordu. Parça
-  grafiği taraması eklendi (24 parça / 3 derinlik sınırı), `mergeConfigs` ile alanlar
-  birleştiriliyor, gerçek eksik yapılandırma hâlâ kırmızı. **Anlamı:** son 3 gündür
-  "canlı yapılandırma" kapısı ölçüm yapmıyordu; bu, P0-5'in otomatik kanıtını da
-  sessizce bozuyordu.
+- **S8 ✅ (yeni, 1 Kasım'da bulundu ve kapatıldı)** Haftalık `canli-dogrula` işi
+  kırmızıydı ve **iki kök nedeni** vardı:
+  1. Betik yalnız giriş paketini tarıyordu; T11'den sonra Firebase yapılandırması
+     tembel `firebaseConfig-*.js` parçasında.
+  2. **Asıl neden:** Vite 8 / Rolldown çıktıda dizgileri backtick ile yazıyor
+     (`projectId:\`atlasia-dev\``) ve betik yalnız `"`/`'` kabul ediyordu.
+  Düzeltme: backtick desteği, parça grafiği taraması (yapılandırma parçaları öncelikli,
+  tamamlanınca erken çıkış, 40 parça / 3 derinlik sınırı), `mergeConfigs`, düşen parçada
+  devam, hata hâlinde taranan yolları annotation'a yazma. Canlı koşu artık **yeşil**:
+  `projectId=atlasia-dev`, `parca=2`, apiKey var — yani üretim yapılandırması gerçekten
+  yerinde (P0-5'in otomatik kanıtı yeniden çalışıyor). Testler 12 → 22.
 - **S6 🟡** #163/#156 birleşti; #162 (`actions/checkout` v7.0.1) Dependabot dalına
   dokunmak yerine **bu dalda** uygulandı (4 workflow + pin testi + `docs/github-actions-pins.md`)
   ve #162 onun yerine kapatıldı. #157 (`maplibre-gl` 6.16) lockfile çakışması yüzünden
