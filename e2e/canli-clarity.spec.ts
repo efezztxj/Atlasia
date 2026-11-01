@@ -21,6 +21,10 @@ test("canlı site: CSP Clarity'ye izin veriyor, rıza sonrası betik 200 ile yü
     (response) => response.url().startsWith("https://www.clarity.ms/tag/"),
     { timeout: 30_000 },
   );
+  // Yükleyici JavaScript'i çalıştırdıysa çalışma zamanı scripts.clarity.ms'ten gelir.
+  const runtimeResponse = page
+    .waitForResponse((response) => response.url().startsWith("https://scripts.clarity.ms/"), { timeout: 30_000 })
+    .catch(() => null);
 
   const navigation = await page.goto("/", { waitUntil: "domcontentloaded" });
   expect(navigation, "canlı ana sayfa açılamadı").not.toBeNull();
@@ -38,7 +42,14 @@ test("canlı site: CSP Clarity'ye izin veriyor, rıza sonrası betik 200 ile yü
   await expect(page.locator('script[src^="https://www.clarity.ms/tag/"]')).toHaveCount(1);
 
   const response = await tagResponse;
-  expect(response.status(), `Clarity tag adresi ${response.status()} döndü`).toBe(200);
+  expect(
+    response.status(),
+    `Clarity yükleyicisi HTTP ${response.status()} döndü; 204 = Microsoft bu proje kimliği için betik sunmuyor (panelde proje kimliği/alan adı doğrulanmalı)`,
+  ).toBe(200);
+
+  const runtime = await runtimeResponse;
+  expect(runtime, "Clarity çalışma zamanı (scripts.clarity.ms) hiç istenmedi — yükleyici çalışmadı").not.toBeNull();
+  expect(runtime!.status(), "Clarity çalışma zamanı yüklenemedi").toBeLessThan(400);
 
   const snapshot = await page.evaluate(() => {
     const api = (window as unknown as { atlasiaClarityStatus?: () => Record<string, unknown> }).atlasiaClarityStatus;

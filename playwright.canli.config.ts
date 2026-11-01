@@ -22,6 +22,10 @@ export default defineConfig({
     baseURL: process.env.ATLASIA_CANLI_BASE || "https://atlasia.pages.dev",
     trace: "retain-on-failure",
     viewport: { width: 1280, height: 800 },
+    // Clarity'nin bot koruması headless kimliğini 204 ile boş bırakabiliyor;
+    // gerçek kullanıcıyı temsil eden masaüstü Chrome kimliği kullanılır.
+    userAgent:
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
     reducedMotion: "reduce",
   },
   projects: [

@@ -237,6 +237,10 @@ export function mergeConfigs(configs) {
 /** Clarity proje kimliği; yükleyici adresi buradan üretilir. */
 export const CLARITY_TAG_URL = "https://www.clarity.ms/tag/z6hdmwcwe6";
 
+/** Bot koruması ihtimalini ayırt etmek için gerçek masaüstü Chrome kimliği. */
+export const CHROME_UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36";
+
 /**
  * Ölçüm katmanının canlı kanıtı: yayındaki CSP başlığı Clarity'ye izin veriyor mu
  * ve Microsoft'un tag adresi gerçekten 200 dönüyor mu?
@@ -275,6 +279,29 @@ export async function inspectClarity({ base, fetchImpl = globalThis.fetch, stamp
       ok: response.status === 200,
       contentType: response.headers?.get?.("content-type") ?? null,
     };
+    // Aynı adresi bir de tarayıcı kimliğiyle sor: 204 yalnız bot korumasından mı
+    // geliyor, yoksa proje kimliği gerçekten geçersiz mi? Ayrımı bu ölçüm yapar.
+    try {
+      const browserResponse = await fetchImpl(CLARITY_TAG_URL, {
+        headers: {
+          "user-agent": CHROME_UA,
+          referer: `${base}/`,
+          accept: "*/*",
+          "cache-control": "no-cache",
+        },
+      });
+      tag.browserStatus = browserResponse.status;
+      tag.browserContentType = browserResponse.headers?.get?.("content-type") ?? null;
+      if (browserResponse.status === 200) {
+        notes.push("tarayıcı kimliğiyle tag 200 döndü: yükleyici gerçek kullanıcıya ulaşıyor");
+      } else if (browserResponse.status === 204) {
+        problems.push(
+          "tarayıcı kimliğiyle de tag 204 (No Content) döndü: Microsoft bu proje kimliği için betik sunmuyor — Clarity panelinde proje kimliğini/alan adını doğrula",
+        );
+      }
+    } catch (probeError) {
+      notes.push(`tarayıcı kimliği denemesi yapılamadı: ${String(probeError?.message ?? probeError)}`);
+    }
     if (response.status === 200) {
       // Beklenen: JavaScript gövdesi.
     } else if (response.status >= 400) {
@@ -365,7 +392,7 @@ async function main() {
     const clarityFacts =
       `script-src clarity=${clarity.scriptSrc.includes("https://scripts.clarity.ms") ? "var" : "YOK"} | ` +
       `connect *.clarity=${clarity.connectSrc.includes("https://*.clarity.ms") ? "var" : "YOK"} | ` +
-      `tag=${clarity.tag?.status ?? "ulasilamadi"}`;
+      `tag=${clarity.tag?.status ?? "ulasilamadi"}/${clarity.tag?.browserStatus ?? "-"}`;
     if (clarity.ok) {
       annotation("notice", "Canli Clarity", `${clarityFacts} | ${clarity.notes?.join(" ; ") || "saglikli"}`);
     } else {
