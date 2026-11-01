@@ -10,11 +10,7 @@ import type { FeedPost } from "../types";
  * metin, metin olmayan değer) `toggleLikedBy` ile aynı kural ile elenir —
  * sayım yolu yazma yolundan daha gevşek olamaz.
  */
-export function totalLikes(post: Pick<FeedPost, "likes" | "likedBy" | "likeCount">): number {
-  // F2-1: sayaç varsa tek doğru kaynak odur (alt koleksiyon + batch ±1).
-  if (typeof post.likeCount === "number" && Number.isFinite(post.likeCount)) {
-    return Math.max(0, Math.floor(post.likeCount));
-  }
+export function totalLikes(post: Pick<FeedPost, "likes" | "likedBy">): number {
   const seedLikes = Number.isFinite(post.likes) ? Math.max(0, Math.floor(post.likes)) : 0;
   const members = (post.likedBy ?? []).filter((item) => typeof item === "string" && item.trim() !== "");
   return seedLikes + new Set(members).size;
@@ -27,23 +23,6 @@ export function totalLikes(post: Pick<FeedPost, "likes" | "likedBy" | "likeCount
  * sayıdır, gerçek kullanıcı üyelikleri `likedBy`'dan gelir ve toplam
  * `totalLikes` ile türetilir. Böylece sayaç iki kez sayılmaz.
  */
-/**
- * F2-1: sayaç ve üyelik ayrı yerlerde tutulur. `liked` = "benim belgem var mı".
- * Dönen nesne yerel görünümü sunucudaki batch sonucuyla aynı yere getirir.
- */
-export function likedByWith(
-  likedBy: readonly string[] | undefined,
-  uid: string,
-  liked: boolean,
-): string[] {
-  const clean = uid.trim();
-  const base = Array.from(
-    new Set((likedBy ?? []).filter((item) => typeof item === "string" && item.trim() !== "" && item !== clean)),
-  );
-  if (!clean) return base;
-  return liked ? [...base, clean] : base;
-}
-
 export function toggleLikedBy(likedBy: readonly string[] | undefined, uid: string): string[] {
   const clean = uid.trim();
   const unique = Array.from(new Set((likedBy ?? []).filter((item) => typeof item === "string" && item.trim() !== "")));

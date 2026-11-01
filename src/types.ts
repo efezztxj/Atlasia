@@ -77,13 +77,8 @@ export interface FeedPost {
   createdAt: number;
   /** Şema uyumluluğu için sabit başlangıç sayısı; kullanıcı gönderileri 0 ile başlar. */
   likes: number;
-  /** Beğenen istemcilerin kimlikleri (F2-1 öncesi şema; yeni yazımda kullanılmaz). */
+  /** Beğenen istemcilerin kimlikleri */
   likedBy?: string[];
-  /**
-   * F2-1: tek doğru beğeni sayacı. Beğeni belgesi (`posts/{id}/likes/{uid}`) ile
-   * aynı batch'te ±1 güncellenir; yoksa eski şema okunur (`likes` + `likedBy`).
-   */
-  likeCount?: number;
   /** Gönderi bir noktaya bağlıysa */
   placeLabel?: string;
   lng?: number;

@@ -16,12 +16,12 @@
  * yoktur. Puan yerine tazelik doğrulaması güven sinyalidir (bkz. utils/freshness).
  */
 import {
+  arrayRemove,
+  arrayUnion,
   collection,
-  collectionGroup,
   deleteDoc,
   doc,
   documentId,
-  increment,
   getDoc,
   getDocs,
   limit,
@@ -32,6 +32,7 @@ import {
   setDoc,
   startAfter,
   Timestamp,
+  updateDoc,
   where,
   writeBatch,
   type DocumentData,
@@ -44,18 +45,13 @@ import { db, firebaseConfigured } from "./firebase";
 import { withoutSeedPosts, withoutSeedStories } from "./contentIntegrity";
 import { compressImageWithinLimit } from "../utils/image";
 import type { FeedPost, FeedReply, Place, Story, StoryAccent, UploadPhotoKind } from "../types";
-import { MY_LIKES_PAGE } from "../config/firestoreLimits";
-import { likedByWith } from "../utils/likes";
 
 const COL_PLACES = "places";
 const COL_POSTS = "posts";
 const COL_STORIES = "stories";
 
 export const FIRESTORE_LIMITS = {
-  /** Eski şema (`likedBy` dizisi) üst sınırı; yalnız okuma uyumluluğu için durur. */
   likesPerPost: 500,
-  /** F2-1: oturumdaki kullanıcının beğeni belgeleri; tek koleksiyon-grubu sorgusu. */
-  myLikes: 500,
   postRepliesPage: 100,
 } as const;
 
@@ -217,8 +213,6 @@ function normalizePost(id: string, raw: DocumentData): FeedPost {
     createdAt: toMillis(raw.createdAt),
     likes: typeof raw.likes === "number" ? raw.likes : 0,
     likedBy: Array.isArray(raw.likedBy) ? (raw.likedBy as string[]) : [],
-    // F2-1: sayaç varsa tek doğru kaynak; yoksa eski şema okunur.
-    likeCount: typeof raw.likeCount === "number" ? raw.likeCount : undefined,
     placeLabel: raw.placeLabel,
     lng: typeof raw.lng === "number" ? raw.lng : undefined,
     lat: typeof raw.lat === "number" ? raw.lat : undefined,
@@ -313,19 +307,6 @@ export function nextLikedBy(rawLikedBy: unknown, uid: string): string[] {
   return hasLiked
     ? likedBy.filter((value) => value !== cleanUid)
     : [...likedBy, cleanUid];
-}
-
-/** F2-1: yerel görünümü sunucu sonucuyla eşitler (üyelik + sayaç tek adımda). */
-export function applyPostLikeState(
-  posts: FeedPost[],
-  postId: string,
-  uid: string,
-  result: PostLikeResult,
-): FeedPost[] {
-  if (!posts.some((post) => post.id === postId)) return posts;
-  return posts.map((post) => (post.id === postId
-    ? { ...post, likeCount: result.likeCount, likedBy: likedByWith(post.likedBy, uid, result.liked) }
-    : post));
 }
 
 /** Tek bir gönderinin beğeni listesini yerel listede günceller; eşleşme yoksa aynı diziyi döndürür. */
@@ -654,79 +635,33 @@ export async function removePost(id: string): Promise<void> {
   await removePostInFirestore(db, id);
 }
 
-/**
- * F2-1 — beğeni artık alt koleksiyonda, sayaç gönderide.
- *
- * NEDEN: `likedBy` dizisi gönderi dokümanının içindeydi; 500 uid ≈ 14 KB demek ve
- * her akış okuması bu baytı taşıyordu (`docs/kapasite-modeli.md` §5). Yeni şema:
- * `posts/{postId}/likes/{uid}` = üyelik (sınırsız), `posts/{postId}.likeCount` =
- * sayaç. İkisi **tek batch**'te yazılır; kural iki tarafı `existsAfter` ile eşler
- * (`firestore.rules`), böylece istemci sayacı serbestçe değiştiremez.
- *
- * Üyelik yazılamazsa batch'in tamamı düşer: yarım beğeni kalmaz.
- */
-export interface PostLikeResult {
-  liked: boolean;
-  likeCount: number;
-}
-
 export async function togglePostLikeInFirestore(
   store: Firestore,
   postId: string,
   uid: string,
-): Promise<PostLikeResult> {
-  const cleanUid = uid.trim();
-  if (!cleanUid) throw dataError("auth/required", "Beğeni için geçerli hesap gerekli.");
+): Promise<string[]> {
+  if (!uid.trim()) throw dataError("auth/required", "Beğeni için geçerli hesap gerekli.");
 
-  const postRef = doc(store, COL_POSTS, postId);
-  const likeRef = doc(store, COL_POSTS, postId, "likes", cleanUid);
-  const snap = await getDoc(postRef);
+  const ref = doc(store, COL_POSTS, postId);
+  const snap = await getDoc(ref);
   if (!snap.exists()) throw dataError("post/not-found", "Gönderi bulunamadı.");
 
-  // Sunucudaki gerçek üyelik ekranın varsayımından üstündür (başka sekme, çift tık).
-  const liked = !(await getDoc(likeRef)).exists();
-  const currentCount = Math.max(0, Math.floor(Number(snap.data().likeCount ?? 0) || 0));
-
-  const batch = writeBatch(store);
-  if (liked) {
-    batch.set(likeRef, { uid: cleanUid, createdAt: serverTimestamp() });
-    batch.update(postRef, { likeCount: increment(1) });
-  } else {
-    batch.delete(likeRef);
-    // Sayaç 0'ın altına inmez (kural da reddeder).
-    batch.update(postRef, { likeCount: Math.max(0, currentCount - 1) });
-  }
-  await batch.commit();
-  return { liked, likeCount: liked ? currentCount + 1 : Math.max(0, currentCount - 1) };
-}
-
-/** Oturumdaki kullanıcının beğendiği gönderi kimlikleri (tek koleksiyon-grubu sorgusu). */
-export async function listMyLikedPostIdsInFirestore(
-  store: Firestore,
-  uid: string,
-): Promise<string[]> {
   const cleanUid = uid.trim();
-  if (!cleanUid) return [];
-  // Kural yalnız `uid == request.auth.uid` belgelerini okutur; koleksiyon grubu
-  // sorgusu bu yüzden zorunlu eşitlik filtresiyle gider.
-  const snap = await getDocs(query(
-    collectionGroup(store, "likes"),
-    where("uid", "==", cleanUid),
-    limit(MY_LIKES_PAGE),
-  ));
-  // Yol: posts/{postId}/likes/{uid} — gönderi kimliği ikinci parçadır (parent API'si
-  // emülatör/taklit katmanlarında her zaman aynı biçimde bulunmuyor).
-  return snap.docs.map((item) => item.ref.path.split("/")[1] ?? "").filter(Boolean);
+  const current = snap.data().likedBy;
+  const next = nextLikedBy(current, cleanUid);
+  const isRemoval = Array.isArray(current) && next.length < current.length;
+  await updateDoc(ref, {
+    // Array transformu farklı kullanıcıların eşzamanlı değişikliklerini birleştirir.
+    // `likes` şema uyumluluğu için 0 kalır; gerçek üyelik `likedBy` içindedir.
+    likedBy: isRemoval ? arrayRemove(cleanUid) : arrayUnion(cleanUid),
+  });
+  // Çağırana yazılan beğeni listesini döndürür; yerel görünüm bu değerle güncellenir.
+  return next;
 }
 
-export async function togglePostLike(postId: string, uid: string): Promise<PostLikeResult> {
+export async function togglePostLike(postId: string, uid: string): Promise<string[]> {
   if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
   return togglePostLikeInFirestore(db, postId, uid);
-}
-
-export async function listMyLikedPostIds(uid: string): Promise<string[]> {
-  if (!db) return [];
-  return listMyLikedPostIdsInFirestore(db, uid);
 }
 
 export async function addReplyInFirestore(

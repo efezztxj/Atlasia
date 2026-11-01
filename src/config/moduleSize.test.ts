@@ -33,14 +33,14 @@ const DEBT: Readonly<Record<string, number>> = Object.freeze({
   "src/components/Explorer.tsx": 642,
   "src/lib/moderation.ts": 1199,
   "src/components/SocialPanel.tsx": 936,
-  "src/lib/firestoreData.ts": 984,
+  "src/lib/firestoreData.ts": 919,
   "src/components/MapView.tsx": 812,
   "src/lib/groups.ts": 775,
   "src/utils/track.ts": 655,
   "src/components/ReportsPanel.tsx": 635,
   "src/components/GroupsPanel.tsx": 584,
   "src/utils/weather.ts": 570,
-  "src/hooks/useFirestoreAtlasData.ts": 599,
+  "src/hooks/useFirestoreAtlasData.ts": 569,
   "src/utils/mapWeather.ts": 530,
 });
 
