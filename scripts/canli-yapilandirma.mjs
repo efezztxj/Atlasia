@@ -313,9 +313,13 @@ export async function inspectClarity({ base, fetchImpl = globalThis.fetch, stamp
             "kontrol kimliği 200, bizim kimlik 204: fark ağ değil, proje kimliği — Clarity panelindeki Project ID bu değil",
           );
         } else if (tag.controlStatus === 204 && browserResponse.status === 204) {
+          // Ölçüldü (1 Kasım 2026): CI'dan rastgele kimlik de 204 alıyor. Bu, kimliğin
+          // yanlış olduğunu KANITLAMAZ; CI ağından Clarity tag'i sunulmuyor demektir.
+          // Bu yüzden uyarı üretilmez, yalnız not düşülür ve karar kullanıcıya bırakılır.
           notes.push(
-            "kontrol kimliği de 204: Clarity bu ağa/isteğe betik sunmuyor; kimliğin doğruluğu yalnız kullanıcı tarayıcısından teyit edilebilir",
+            "kontrol kimliği de 204: CI ağından Clarity betiği sunulmuyor; tag/kimlik doğruluğu yalnız gerçek kullanıcı tarayıcısından teyit edilebilir",
           );
+          warnings.length = 0;
         }
       } catch (controlError) {
         notes.push(`kontrol ölçümü yapılamadı: ${String(controlError?.message ?? controlError)}`);
@@ -324,10 +328,9 @@ export async function inspectClarity({ base, fetchImpl = globalThis.fetch, stamp
       if (browserResponse.status === 200) {
         notes.push("tarayıcı kimliğiyle tag 200 döndü: yükleyici gerçek kullanıcıya ulaşıyor");
       } else if (browserResponse.status === 204) {
-        // Dış servis davranışı: kapıyı kırmızıya düşürmek yerine yüksek sesle uyarır.
-        warnings.push(
-          "tarayıcı kimliğiyle de tag 204 (No Content): Microsoft bu proje kimliği için betik sunmuyor — Clarity panelinde Project ID ve alan adı doğrulanmalı",
-        );
+        // Dış servis davranışı: kapıyı kırmızıya düşürmek yerine not düşülür.
+        // Kontrol ölçümü 200 dönerse bu nota "kimlik" yorumu eklenir (aşağıda).
+        notes.push("tarayıcı kimliğiyle tag 204 (No Content) döndü");
       }
     } catch (probeError) {
       notes.push(`tarayıcı kimliği denemesi yapılamadı: ${String(probeError?.message ?? probeError)}`);
