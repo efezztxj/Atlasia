@@ -78,7 +78,7 @@ olarak kodlanmış ve gerçekten ihlal taraması yapıyor. Yaygın kullanılan b
 başlık yorumu var; bu, agent/insan devir tesliminde ölçülebilir bir kazanç.
 
 **Zayıf — en büyük tek teknik borç:** `src/components/Explorer.tsx` **1.796 satır**, tek
-bileşende **29 `useState` + 28 `useEffect` + 34 `useCallback`/`useMemo`** ve 1.691 dolu satır.
+bileşende **58 `useState` + 28 `useEffect` + 4 `useRef` + 34 `useCallback`/`useMemo`** ve 1.691 dolu satır.
 Bu dosya aynı anda harita yerleşimi, panel orkestrasyonu, moderasyon abonelikleri, bildirimler,
 misafir niyeti, rota önizleme, paylaşım linki ve toast yönetimini taşıyor. Yeni bir özellik
 eklemek fiilen bu dosyaya dokunmak demek; regresyon yüzeyi ve merge çakışması maliyeti yüksek.
@@ -228,7 +228,7 @@ yerel sezgisel planlayıcı var; arayüzde "Haritadaki bağlamı okuyorum…" gi
 
 | # | Bulgu | Ön. | Kanıt (bu kesitte ölçüldü) | Etki | Öneri |
 |---|---|---|---|---|---|
-| B-01 | `Explorer.tsx` tanrı-bileşen | **Y** | 1.796 satır, 29 `useState`, 28 `useEffect` | Her özellik aynı dosyaya dokunuyor; regresyon + çakışma | Panel orkestrasyonunu `useExplorer*` hook'larına, moderasyon/bildirim aboneliklerini kendi context'ine ayır |
+| B-01 | `Explorer.tsx` tanrı-bileşen | **Y** | 1.796 satır, **58** `useState`, 28 `useEffect`, 34 memo/callback | Her özellik aynı dosyaya dokunuyor; regresyon + çakışma | Panel orkestrasyonunu `useExplorer*` hook'larına, moderasyon/bildirim aboneliklerini kendi context'ine ayır |
 | B-02 | Fotoğraf = dokümanda base64 | **Y** | `image.ts` 180k/100k char, `firestore.rules:136` | 1 MiB sınırı, bant genişliği, CDN yok, ölçek duvarı | Obje depolamaya geç (URL tut), göç planı + okuma uyumluluğu |
 | B-03 | `likedBy` dizi tavanı 500 | **Y** | `firestore.rules:211-238` | Hot-post yazma çakışması, 500'de beğeni durur | Alt koleksiyon veya dağıtık sayaç; tavanı ürün kararı olarak belgele |
 | B-04 | Sunucusuz mimari: frekans sınırı/otomasyon yok | **O** | Cloud Functions yok; kuralda sayaç yok; story temizliği istemcide | Spam ve kota kötüye kullanımı; operasyonel işler istemciye bağlı | Worker cron (Cloudflare zaten var) + şüpheli yazma için kural penceresi |
