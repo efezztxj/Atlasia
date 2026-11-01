@@ -17,10 +17,12 @@ export default defineConfig({
     passWithNoTests: false,
     reporters: ["default"],
     /*
-     * F0-2 — kapsam kapısı. Eşikler işkembeden değil, bu ağaçtaki İLK ÖLÇÜMDEN
-     * gelir (2026-11-01: statements %61,21 · branches %53,68 · functions %56,88 ·
-     * lines %66,07; 176 dosya / 1.346 test). Amaç "yüksek eşik" değil,
-     * **düşememek**: her faz sonunda +3 puan yukarı çekilir (plan §F0-2).
+     * F0-2 — kapsam kapısı. Eşikler işkembeden değil, ÖLÇÜMDEN gelir. Amaç
+     * "yüksek eşik" değil, **düşememek**; her faz sonunda ölçülenin tam sayı
+     * tabanına çekilir (plan §F0-2).
+     *  · İlk ölçüm (F1-1 öncesi): 61,21 / 53,68 / 56,88 / 66,07
+     *  · F1-1 sonrası:             61,50 / 53,78 / 57,21 / 66,40
+     *  · F1-2…F1-5 sonrası:        62,93 / 54,41 / 58,57 / 67,73  ← buradaki taban
      * Eşiği düşürmek için önce buradaki gerekçe satırının değişmesi gerekir.
      */
     coverage: {
@@ -30,10 +32,10 @@ export default defineConfig({
       include: ["src/**/*.{ts,tsx}"],
       exclude: ["src/**/*.test.*"],
       thresholds: {
-        lines: 65,
-        statements: 60,
-        functions: 55,
-        branches: 52,
+        lines: 67,
+        statements: 62,
+        functions: 58,
+        branches: 54,
       },
     },
     env: {

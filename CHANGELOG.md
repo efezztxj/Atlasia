@@ -1,5 +1,28 @@
 # Atlasia Update
 
+## 2026-11-01 — F1-2…F1-5: Explorer'ın dört durum kümesi kancalara ayrıldı (42 `useState` → 0)
+
+Plan `docs/gorevler/10-10-yol-plani-2026-11-01.md` §F1-2…F1-5. Davranış **değişmedi**;
+yalnız sahiplik değişti ve her kümenin sözleşmesi testle kilitlendi.
+
+- **`usePanelStack`** (`src/hooks/usePanelStack.ts`) — 14 panel bayrağı + `discoverySpace`
+  ve iki davranış: `closeAllPanels()` (ürün kuralı: **alt keşif paneli kapanmaz**) ve
+  `handleDiscoverySpaceChange` (1 px altı titremeyi yutar). 3 test.
+- **`useModerationInbox` + `useModeratorAccess`** (`src/hooks/useModerationInbox.ts`) — 14
+  durum ve **8 abonelik** tek yerde. Abonelik koşulları birebir korundu: kuyruk yalnız
+  Yönetim Paneli + moderatör; cihaz hesabında hiçbir Firestore dinleyicisi yok (K-14). 8 test.
+- **`useDiscoveryFlow`** (`src/hooks/useDiscoveryFlow.ts`) — 8 durum (kategori, seçim, öne
+  çıkan, ekleme modu, taslak, toast, rota devamı, rota düzenleyici) + toast'ın 3.200 ms
+  ömrü + Esc kısayolu. 4 test.
+- **`useExplorerEnvironment`** (`src/hooks/useExplorerEnvironment.ts`) — 7 durum
+  (ekran 767 px, `prefers-reduced-motion`, bildirimler, karşılama, konum etiketi, veri
+  hatası şeridi) + medya sorgu dinleyicileri. `FIRST_ROUTE_KEY` tek kaynağa taşındı. 9 test.
+- **`Explorer.tsx` 1.764 → 1.568 satır**; `useState` sayısı 58 → 12 (plan hedefi: F1-6'da JSX
+  bölününce ≤ 400 satır). Modül boyutu defteri 1.568'e kısıldı (ratchet).
+- **Kapsam ratchet:** %62,93 / %54,41 / %58,57 / %67,73 ölçüldü → eşikler 62 / 54 / 58 / 67.
+- **Kaynak metin kapısı güncellendi:** `onboardingT8.test.ts` karşılama ifadesini artık
+  `useExplorerEnvironment.ts` içinde arıyor (ifade taşındı, söz aynı).
+
 ## 2026-11-01 — F1-1: Explorer'dan harita katmanı durumu ayrıldı (10 `useState` → `useMapLayerPrefs`)
 
 Plan `docs/gorevler/10-10-yol-plani-2026-11-01.md` §F1-1. Davranış **değişmedi**; yalnız

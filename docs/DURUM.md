@@ -10,10 +10,10 @@
 
 | Ölçüm | Değer |
 |---|---|
-| Kaynak dosya (test hariç) | **154** |
-| Test dosyası | **179** |
+| Kaynak dosya (test hariç) | **158** |
+| Test dosyası | **183** |
 | Bileşen (`src/components/*.tsx`) | 48 |
-| Hook (`src/hooks/*.ts`) | 16 |
+| Hook (`src/hooks/*.ts`) | 20 |
 | Kütüphane modülü (`src/lib/*.ts`) | 32 |
 | Doküman dosyası (`docs/**/*.md`) | 119 |
 

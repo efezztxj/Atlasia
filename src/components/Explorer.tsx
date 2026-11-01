@@ -36,6 +36,10 @@ import { useAtlasData } from "../hooks/useAtlasData";
 import { useFirestoreAtlasData } from "../hooks/useFirestoreAtlasData";
 import { useTheme } from "../hooks/useTheme";
 import { useMapLayerPrefs } from "../hooks/useMapLayerPrefs";
+import { useDiscoveryFlow } from "../hooks/useDiscoveryFlow";
+import { FIRST_ROUTE_KEY, useExplorerEnvironment } from "../hooks/useExplorerEnvironment";
+import { useModerationInbox, useModeratorAccess } from "../hooks/useModerationInbox";
+import { usePanelStack } from "../hooks/usePanelStack";
 import type { InstallAppController } from "../hooks/useInstallApp";
 // A3: SDK başlatan `lib/firebase` yerine SDK'sız kapı. Explorer zaten Firestore
 // kullanıyor ama bu import yüzünden SDK, yapılandırma okuması için de değil,
@@ -53,13 +57,12 @@ import { decodePolyline } from "../utils/polyline";
 import { routeDrawLegs } from "../utils/routeLegs";
 import { useBlocks } from "../hooks/useBlocks";
 import { useFreshness } from "../hooks/useFreshness";
-import { subscribeNotifications, markNotificationRead, markAllRead, type AppNotification } from "../lib/notifications";
+import { markNotificationRead, markAllRead } from "../lib/notifications";
 import {
   banUser,
   createAnnouncement,
   createAppeal,
   deleteAnnouncement,
-  fetchModeratorAccess,
   fetchTargetHistory,
   liftBan,
   logModAction,
@@ -67,26 +70,12 @@ import {
   notifyReportActioned,
   resolveAppeal,
   setReportStatus,
-  subscribeActiveBans,
-  subscribeAnnouncements,
-  subscribeAppeals,
-  subscribeModActions,
-  subscribeModerationQueue,
-  subscribeMyAppeals,
-  subscribeMyBan,
-  subscribeMyReports,
-  subscribeMyWarnings,
   takedownReportTarget,
   warnUser,
-  type Announcement,
-  type Appeal,
   type AppealStatus,
-  type Ban,
   type BanDuration,
-  type ModAction,
   type Report,
   type ReportStatus,
-  type Warning,
 } from "../lib/moderation";
 import NotificationsPanel from "./NotificationsPanel";
 import { takePendingInvite, type SocialTarget } from "../utils/inviteLink";
@@ -119,7 +108,6 @@ const AnnouncementBanner = lazy(() => import("./ModerationNotices").then((m) => 
 const PENDING_INTENT_KEY = "atlasia.pendingIntent.v1";
 type PendingIntent = "place" | "route" | "feed" | "none";
 /** Cihazda ilk rota oluşturuldu mu (T2 aktivasyon bayrağı). */
-const FIRST_ROUTE_KEY = "atlasia.metrics.firstRoute.v1";
 
 function MapLoadingSkeleton() {
   return (
@@ -170,44 +158,23 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
   // ayrı sayılır: "kayıt duvarı olmadan haritayı açtı" oranı buradan okunur.
   useEffect(() => { analytics.mapOpen({ guest }); }, [guest]);
 
-  /**
-   * T5 — kayıt duvarı sonrası ilk değer. Misafirken engellenen eylem
-   * hatırlanır ve hesap açılınca **aynı yere** dönülür: "kaydoldum, şimdi ne
-   * olacak?" sorusunun cevabı boş harita olmaz.
-   */
-  useEffect(() => {
-    if (guest) return;
-    const raw = storageGet(PENDING_INTENT_KEY);
-    if (!raw) return;
-    storageSet(PENDING_INTENT_KEY, "");
-    const [pending, stamp] = raw.split("|");
-    // 30 dakikadan eski niyet bayat sayılır: kullanıcı artık başka bir iş için
-    // giriş yapmış olabilir.
-    if (!stamp || Date.now() - Number(stamp) > 30 * 60 * 1000) return;
-    if (pending === "place") {
-      setToast("Hesabın hazır. Haritada bir noktaya dokunup ilk izini bırak.");
-      setAddMode(true);
-    } else if (pending === "feed") {
-      setToast("Hesabın hazır. Topluluk akışında ilk paylaşımını yapabilirsin.");
-      setFeedOpen(true);
-    } else if (pending === "route") {
-      // T8: rota niyeti yalnız sözle karşılanmaz — asistan açılır, kullanıcı
-      // ilk rotasını yazmaya hazır bulur (T5'in "aynı yere dön" sözü).
-      setToast("Hesabın hazır. Atlas AI'a nereye gitmek istediğini yaz, rotanı çizsin.");
-      setAtlasOpen(true);
-    }
-    // Yalnız oturum açılışında bir kez: `guest` false olduktan sonra tekrar çalışmaz.
-  }, [guest]);
   const { theme, setTheme } = useTheme();
 
   const [mapViewport, setMapViewport] = useState<PlaceViewport | null>(null);
-  const [moderator, setModerator] = useState(false);
 
   // Yerel veri yalnız yapılandırmasız mod ve ilk canlı liste görünümü için yedektir.
   const local = useAtlasData(user?.uid ?? "", { persist: Boolean(user) });
   // Cihaz hesabı Firestore'a giremez (Rules request.auth ister): okuma/yazma
   // ancak bulut hesabıyla uzaktan olur; cihaz hesabı baştan sona yerel çalışır.
   const cloudAccount = user ? isCloudAccount(user.backend) : false;
+  // Moderatör bayrağı veri kancasına parametre olduğu için en üstte gerekir.
+  const { moderator, setModerator } = useModeratorAccess(user?.uid, cloudAccount);
+  // F1-5: ortam durumu (ekran/motion, bildirimler, karşılama, konum etiketi).
+  const {
+    smallScreen, reducedMotion, notifications,
+    onboarding, dismissOnboarding, preciseLabel, setPreciseLabel,
+    locationLabel, setLocationLabel, dismissedDataError, setDismissedDataError,
+  } = useExplorerEnvironment({ uid: user?.uid, cloudEnabled: cloudAccount });
   const remote = useFirestoreAtlasData({
     uid: user?.uid ?? "",
     enabled: cloudAccount || guest,
@@ -238,12 +205,18 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
         loadMoreStories: async () => {},
       };
 
-  const [dismissedDataError, setDismissedDataError] = useState<Error | null>(null);
   const showDataErrorBanner = (cloudAccount || guest)
     && isCloudReady
     && remote.error !== null
     && remote.error !== dismissedDataError;
 
+  const {
+    category, setCategory, activeId, setActiveId, featuredIdx, setFeaturedIdx,
+    addMode, setAddMode, draft, setDraft, toast, setToast,
+    resumeRoute, setResumeRoute, routeEditorRoute, setRouteEditorRoute,
+  } = useDiscoveryFlow();
+  // NOT: `toast` 3.2 sn sonra kendiliğinden kapanır ve Esc ekleme modundan
+  // çıkar — ikisi de kancanın içinde (bkz. useDiscoveryFlow).
   // Kullanıcıya bulut bağlantısı durumunu bildir
   useEffect(() => {
     if (cloudAccount && !remote.ready && remote.error) {
@@ -252,7 +225,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
       setToast("Firebase yapılandırması eksik, yerel veri kullanılıyor.");
       console.warn("[Atlasia] Config özeti:", firebaseConfigSummary);
     }
-  }, [cloudAccount, remote.ready, remote.error]);
+  }, [cloudAccount, remote.ready, remote.error, setToast]);
   const { blockedSet, isBlocked } = useBlocks(user?.uid);
   // Tazelik okuması giriş şartlı (kural: signedIn); cihaz hesabında abone olunmaz.
   const freshness = useFreshness(freshnessReaderUid(user));
@@ -263,11 +236,6 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
   const filteredPosts = rawPosts.filter((po) => !isBlocked(po.authorUid));
   const filteredStories = rawStories.filter((st) => !isBlocked(st.authorUid));
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [category, setCategory] = useState<CategoryId | null>(null);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [featuredIdx, setFeaturedIdx] = useState(0);
-  const [addMode, setAddMode] = useState(false);
-  const [draft, setDraft] = useState<{ lng: number; lat: number } | null>(null);
   // F1-1: harita katmanı tercihleri (spin/heroCompact/labels/terrain/weather*/
   // layersOpen/baseMap) artık kendi kancasında; adlar aynı kaldığı için
   // aşağıdaki tüm çağrı yerleri değişmedi.
@@ -285,16 +253,53 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
     toggleWeather,
   } = useMapLayerPrefs();
   const [view, setView] = useState<ViewState>({ zoom: 2, lng: 30, lat: 30 });
-  const [panelOpen, setPanelOpen] = useState(() => window.innerWidth >= 768);
-  const [discoverySpace, setDiscoverySpace] = useState(0);
-  const handleDiscoverySpaceChange = useCallback((space: number) => {
-    setDiscoverySpace((current) => (Math.abs(current - space) < 1 ? current : space));
-  }, []);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [feedOpen, setFeedOpen] = useState(false);
-  const [atlasOpen, setAtlasOpen] = useState(false);
-  const [recordsOpen, setRecordsOpen] = useState(false);
-  const [trackRecorderOpen, setTrackRecorderOpen] = useState(false);
+  // F1-2: panel yığını (14 bayrak) kendi kancasında; adlar aynı kaldığı için
+  // aşağıdaki tüm çağrı yerleri ve LIFO sırası değişmedi.
+  const {
+    panelOpen, setPanelOpen,
+    discoverySpace, setDiscoverySpace, handleDiscoverySpaceChange,
+    drawerOpen, setDrawerOpen,
+    feedOpen, setFeedOpen,
+    atlasOpen, setAtlasOpen,
+    recordsOpen, setRecordsOpen,
+    trackRecorderOpen, setTrackRecorderOpen,
+    profileOpen, setProfileOpen,
+    myPlacesOpen, setMyPlacesOpen,
+    notificationsOpen, setNotificationsOpen,
+    reportsOpen, setReportsOpen,
+    adminOpen, setAdminOpen,
+    searchOpen, setSearchOpen,
+    closeAllPanels,
+  } = usePanelStack();
+
+  /**
+   * T5 — kayıt duvarı sonrası ilk değer. Misafirken engellenen eylem
+   * hatırlanır ve hesap açılınca **aynı yere** dönülür: "kaydoldum, şimdi ne
+   * olacak?" sorusunun cevabı boş harita olmaz.
+   */
+  useEffect(() => {
+    if (guest) return;
+    const raw = storageGet(PENDING_INTENT_KEY);
+    if (!raw) return;
+    storageSet(PENDING_INTENT_KEY, "");
+    const [pending, stamp] = raw.split("|");
+    // 30 dakikadan eski niyet bayat sayılır: kullanıcı artık başka bir iş için
+    // giriş yapmış olabilir.
+    if (!stamp || Date.now() - Number(stamp) > 30 * 60 * 1000) return;
+    if (pending === "place") {
+      setToast("Hesabın hazır. Haritada bir noktaya dokunup ilk izini bırak.");
+      setAddMode(true);
+    } else if (pending === "feed") {
+      setToast("Hesabın hazır. Topluluk akışında ilk paylaşımını yapabilirsin.");
+      setFeedOpen(true);
+    } else if (pending === "route") {
+      // T8: rota niyeti yalnız sözle karşılanmaz — asistan açılır, kullanıcı
+      // ilk rotasını yazmaya hazır bulur (T5'in "aynı yere dön" sözü).
+      setToast("Hesabın hazır. Atlas AI'a nereye gitmek istediğini yaz, rotanı çizsin.");
+      setAtlasOpen(true);
+    }
+    // Yalnız oturum açılışında bir kez: `guest` false olduktan sonra tekrar çalışmaz.
+  }, [guest, setAtlasOpen, setFeedOpen, setAddMode, setToast]);
   /**
    * İz kaydının haritaya çizdiği önizleme çizgisi açık mı? Boş önizleme veya
    * panel kapanışı bu çizgiyi kaldırmalı; aksi hâlde atılan taslak haritada
@@ -302,39 +307,18 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
    * önizlemeyi temizlemek için tutulur; Atlas rota çizimine dokunmaz.
    */
   const trackPreviewDrawn = useRef(false);
-  const [profileOpen, setProfileOpen] = useState(false);
-  const [myPlacesOpen, setMyPlacesOpen] = useState(false);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [reportsOpen, setReportsOpen] = useState(false);
-  const [adminOpen, setAdminOpen] = useState(false);
-  const [myReports, setMyReports] = useState<Report[]>([]);
-  const [myReportsError, setMyReportsError] = useState<string | null>(null);
-  const [queue, setQueue] = useState<Report[]>([]);
-  const [queueLoading, setQueueLoading] = useState(false);
-  const [queueError, setQueueError] = useState<string | null>(null);
-  const [bans, setBans] = useState<Ban[]>([]);
-  const [myBan, setMyBan] = useState<Ban | null>(null);
-  const [myWarnings, setMyWarnings] = useState<Warning[]>([]);
-  const [myAppeals, setMyAppeals] = useState<Appeal[]>([]);
-  const [appeals, setAppeals] = useState<Appeal[]>([]);
-  const [modActions, setModActions] = useState<ModAction[]>([]);
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [dismissedAnnouncement, setDismissedAnnouncement] = useState<string | null>(() => storageGet("atlasia.announcement.dismissed"));
-  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const {
+    myReports, myReportsError,
+    queue, queueLoading, queueError,
+    bans, myBan, myWarnings, myAppeals, appeals, modActions,
+    announcements, dismissedAnnouncement, setDismissedAnnouncement,
+  } = useModerationInbox({ uid: user?.uid, cloudEnabled: cloudAccount, reportsOpen, adminOpen, moderator, setModerator });
   const [socialTarget, setSocialTarget] = useState<SocialTarget | null>(null);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [resumeRoute, setResumeRoute] = useState<AtlasRoute | null>(null);
-  const [routeEditorRoute, setRouteEditorRoute] = useState<AtlasRoute | null>(null);
-  const [smallScreen, setSmallScreen] = useState(() => window.innerWidth < 768);
-  const [reducedMotion, setReducedMotion] = useState(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   const [storyPlace, setStoryPlace] = useState<Place | null>(null);
   const [streetPlace, setStreetPlace] = useState<Place | null>(null);
-  const [locationLabel, setLocationLabel] = useState("Dünya");
-  const [toast, setToast] = useState<string | null>(null);
 
   // --- Konum izni ---
   const geo = useGeolocation();
-  const [preciseLabel, setPreciseLabel] = useState<string | null>(null);
   const geocodedAt = useRef<{ lng: number; lat: number } | null>(null);
   const announced = useRef(false);
 
@@ -342,7 +326,9 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
   // Telefonda geri tuşu/kenar jesti uygulamadan çıkarmak yerine ekranda en
   // üstte duran katmanı kapatır. Sıra, katmanların görsel yığınıyla aynıdır:
   // önce tam ekran katmanlar, en sonda harita üstündeki keşif kartı.
-  const closeTopLayer = useCallback((): (() => void) | null => {
+  // NOT: `useCallback` DEĞİL — bağımlılıkların tamamı değer olduğu için kimlik
+  // zaten her render'da değişiyordu; düz fonksiyon aynı davranışı 34 satır daha kısa verir.
+  const closeTopLayer = (): (() => void) | null => {
     if (storyPlace) return () => setStoryPlace(null);
     if (streetPlace) return () => setStreetPlace(null);
     if (routeEditorRoute) return () => setRouteEditorRoute(null);
@@ -361,38 +347,10 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
     if (drawerOpen) return () => setDrawerOpen(false);
     if (panelOpen) return () => setPanelOpen(false);
     return null;
-  }, [
-    storyPlace,
-    streetPlace,
-    routeEditorRoute,
-    draft,
-    addMode,
-    searchOpen,
-    notificationsOpen,
-    trackRecorderOpen,
-    settingsOpen,
-    activeId,
-    feedOpen,
-    profileOpen,
-    recordsOpen,
-    myPlacesOpen,
-    atlasOpen,
-    drawerOpen,
-    panelOpen,
-  ]);
+  };
   // Yalnız telefonda: masaüstünde tarayıcı geçmişi kirletilmez.
   const backLayerClose = smallScreen ? closeTopLayer() : null;
   useMobileBackClose(!!backLayerClose, () => backLayerClose?.());
-
-  useEffect(() => {
-    const screen = window.matchMedia("(max-width: 767px)");
-    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const syncScreen = () => setSmallScreen(screen.matches);
-    const syncMotion = () => setReducedMotion(motion.matches);
-    screen.addEventListener("change", syncScreen);
-    motion.addEventListener("change", syncMotion);
-    return () => { screen.removeEventListener("change", syncScreen); motion.removeEventListener("change", syncMotion); };
-  }, []);
 
   useEffect(() => { if (user?.displayName) storageSet("atlasia.author", user.displayName); }, [user?.displayName]);
   // Arkadaş aramasında görünmek için profil dizine yazılır (ad değişmediyse yazım yok).
@@ -459,25 +417,16 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
       active = false;
       window.removeEventListener("hashchange", openFromLocation);
     };
-  }, []);
+  }, [setAtlasOpen, setResumeRoute, setToast]);
 
-  // F1-1 notu: `setLayersOpen` artık kancadan geliyor. Lint kuralı kanca
-  // dönüşünü "kararlı" varsayamadığı için bu liste gerekli; kancadaki
-  // `useState` setter'ları çalışma zamanında kararlıdır, yani kimlik değişmez
-  // ve bağımlı geri çağrılar her render'da yeniden kurulmaz.
+  // F1-2: panel bayraklarının kapanışı kancada (`closeAllPanels`); katman ve
+  // hikâye kapatmaları burada kalır çünkü onlar başka kümelere ait.
   const closePanels = useCallback(() => {
-    setDrawerOpen(false);
-    setFeedOpen(false);
-    setAtlasOpen(false);
-    setRecordsOpen(false);
-    setProfileOpen(false);
-    setMyPlacesOpen(false);
-    setSettingsOpen(false);
+    closeAllPanels();
+    setLayersOpen(false);
     setStoryPlace(null);
     setStreetPlace(null);
-    setNotificationsOpen(false);
-    setLayersOpen(false);
-  }, [setLayersOpen]);
+  }, [closeAllPanels, setLayersOpen, setStoryPlace, setStreetPlace]);
 
   const openRecords = () => { closePanels(); setRecordsOpen(true); };
   const openProfile = () => {
@@ -488,31 +437,16 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
   const openAtlas = () => { closePanels(); setResumeRoute(null); setSpin(false); setAtlasOpen(true); };
 
   const openSettings = useCallback(() => {
-    setDrawerOpen(false);
-    setFeedOpen(false);
-    setAtlasOpen(false);
-    setRecordsOpen(false);
-    setProfileOpen(false);
-    setMyPlacesOpen(false);
+    closeAllPanels();
+    setLayersOpen(false);
     setStoryPlace(null);
     setStreetPlace(null);
-    setNotificationsOpen(false);
-    setLayersOpen(false);
     setReportsOpen(false);
     setSettingsOpen(true);
-  }, [setLayersOpen]);
+  }, [closeAllPanels, setLayersOpen, setStoryPlace, setStreetPlace, setReportsOpen, setSettingsOpen]);
+
   const closeSettings = useCallback(() => setSettingsOpen(false), []);
 
-  useEffect(() => {
-    // Denetim K-14: cihaz hesabının uid'si Firebase Auth'ta yok; bu dinleyici
-    // her açılışta reddedilen bir okuma denemesi üretiyordu. Bulut kapısı
-    // useCollections ile aynı (isCloudAccount) ve hata artık loglanıyor.
-    if (!user?.uid || !cloudAccount) { setNotifications([]); return; }
-    const unsub = subscribeNotifications(user.uid, setNotifications, (error) => {
-      console.warn("[Atlasia] Bildirimler dinlenemedi:", error);
-    });
-    return () => unsub();
-  }, [user?.uid, cloudAccount]);
   /**
    * Raporlar / moderasyon (denetim K-07, AY-03).
    * - Raporlarım: kural gereği herkes yalnız kendi raporlarını okur.
@@ -520,111 +454,6 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
    *   yazılamaz (Console'da elle). Kural dağıtılmamışsa sorgu `false` döner ve
    *   sekme görünmez (fail-closed).
    */
-  // Moderatör müyüm? Ayarlar'daki Yönetim Paneli girişi buna bakar;
-  // panel açılmadan da bilinmeli (kural fail-closed: belge yoksa false).
-  useEffect(() => {
-    if (!cloudAccount || !user?.uid) { setModerator(false); return; }
-    let active = true;
-    void fetchModeratorAccess(user.uid).then((allowed) => {
-      if (active) setModerator(allowed);
-    });
-    return () => { active = false; };
-  }, [cloudAccount, user?.uid]);
-
-  useEffect(() => {
-    if ((!reportsOpen && !adminOpen) || !cloudAccount || !user?.uid) return;
-    let active = true;
-    setMyReportsError(null);
-    const unsub = subscribeMyReports(user.uid, (items) => {
-      if (active) setMyReports(items);
-    }, (error) => {
-      if (active) setMyReportsError(error.message);
-    });
-    void fetchModeratorAccess(user.uid).then((allowed) => {
-      if (active) setModerator(allowed);
-    });
-    return () => {
-      active = false;
-      unsub();
-    };
-  }, [reportsOpen, adminOpen, cloudAccount, user?.uid]);
-
-  // Kuyruk yalnız Yönetim Paneli açıkken dinlenir; çekmece ("Raporlarım")
-  // moderatör hesabında bile moderasyon verisi çekmez.
-  useEffect(() => {
-    if (!adminOpen || !moderator || !cloudAccount) return;
-    let active = true;
-    setQueueLoading(true);
-    setQueueError(null);
-    const unsub = subscribeModerationQueue((items) => {
-      if (!active) return;
-      setQueue(items);
-      setQueueLoading(false);
-    }, (error) => {
-      if (!active) return;
-      setQueueError(error.message);
-      setQueueLoading(false);
-    });
-    return () => {
-      active = false;
-      unsub();
-    };
-  }, [adminOpen, moderator, cloudAccount]);
-
-  // Etkin askıya almalar: yalnız moderatörde dinlenir (kural listeyi ona açar).
-  useEffect(() => {
-    if (!moderator || !cloudAccount) { setBans([]); return; }
-    const unsub = subscribeActiveBans(setBans, (error) => {
-      console.warn("[Atlasia] Askıya alma listesi okunamadı:", error);
-    });
-    return () => unsub();
-  }, [moderator, cloudAccount]);
-
-  /**
-   * Kendi askı durumum. Kural kullanıcıya yalnız kendi `bans/{uid}` belgesini
-   * açar; süresi dolan ban istemcide de etkisiz sayılır (sunucu da öyle).
-   */
-  useEffect(() => {
-    if (!user?.uid || !cloudAccount) { setMyBan(null); return; }
-    const unsub = subscribeMyBan(user.uid, setMyBan, (error) => {
-      console.warn("[Atlasia] Askı durumu okunamadı:", error);
-    });
-    return () => unsub();
-  }, [user?.uid, cloudAccount]);
-
-  // Kendi uyarılarım + itirazlarım (kademeli yaptırımın kullanıcı yüzü).
-  useEffect(() => {
-    if (!user?.uid || !cloudAccount) { setMyWarnings([]); setMyAppeals([]); return; }
-    const unsubWarnings = subscribeMyWarnings(user.uid, setMyWarnings, (error) => {
-      console.warn("[Atlasia] Uyarılar okunamadı:", error);
-    });
-    const unsubAppeals = subscribeMyAppeals(user.uid, setMyAppeals, (error) => {
-      console.warn("[Atlasia] İtirazlar okunamadı:", error);
-    });
-    return () => { unsubWarnings(); unsubAppeals(); };
-  }, [user?.uid, cloudAccount]);
-
-  // Moderatör akışları: itiraz kuyruğu + işlem kaydı.
-  useEffect(() => {
-    if (!moderator || !cloudAccount) { setAppeals([]); setModActions([]); return; }
-    const unsubAppeals = subscribeAppeals(setAppeals, (error) => {
-      console.warn("[Atlasia] İtiraz kuyruğu okunamadı:", error);
-    });
-    const unsubActions = subscribeModActions(setModActions, (error) => {
-      console.warn("[Atlasia] İşlem kaydı okunamadı:", error);
-    });
-    return () => { unsubAppeals(); unsubActions(); };
-  }, [moderator, cloudAccount]);
-
-  // Duyurular: giriş yapmış herkese açık okuma (kural da öyle).
-  useEffect(() => {
-    if (!user?.uid || !cloudAccount) { setAnnouncements([]); return; }
-    const unsub = subscribeAnnouncements(setAnnouncements, (error) => {
-      console.warn("[Atlasia] Duyurular okunamadı:", error);
-    });
-    return () => unsub();
-  }, [user?.uid, cloudAccount]);
-
   const handleReportStatus = useCallback(async (reportId: string, status: ReportStatus, note?: string) => {
     if (!user?.uid) throw new Error("Oturum bulunamadı.");
     await setReportStatus(reportId, status, user.uid, note);
@@ -714,7 +543,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
     closePanels();
     setFeedOpen(true);
     setSocialTarget(target);
-  }, [closePanels]);
+  }, [closePanels, setFeedOpen]);
   const openGroupFromNotification = useCallback((groupId: string) => openSocial({ kind: "group", groupId }), [openSocial]);
   const openFriendsFromNotification = useCallback(() => openSocial({ kind: "friends" }), [openSocial]);
   // Davet bağlantısı (main.tsx açılışta yakalar; giriş sonrası burada tüketilir).
@@ -755,7 +584,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
       setActiveId(null);
       setToast(`Konumun bulundu · ${formatAccuracy(fix.accuracy)}`);
     }
-  }, [geo.fix, setSpin]);
+  }, [geo.fix, setSpin, setActiveId, setToast, setPreciseLabel]);
 
   useEffect(() => {
     const fix = geo.fix;
@@ -771,7 +600,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
       setLocationLabel(name);
     });
     return () => ctrl.abort();
-  }, [geo.fix, setSpin]);
+  }, [geo.fix, setSpin, setLocationLabel, setPreciseLabel]);
 
   // Hata durumlarını kullanıcıya anlat
   useEffect(() => {
@@ -780,33 +609,8 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
     }
     if (geo.status === "timeout") setToast("Konum zaman aşımına uğradı, tekrar dene.");
     if (geo.status === "unavailable") setToast("Konum şu an alınamıyor.");
-  }, [geo.status]);
+  }, [geo.status, setToast]);
 
-  // Onboarding (T8): ilk girişte üç seçenekli sade karşılama. Cihazda bir rota
-  // oluşturulduysa karşılama bir daha gösterilmez — panel aktivasyona bağlı,
-  // yalnız "görüldü" bayrağına değil.
-  const [onboarding, setOnboarding] = useState(
-    () => !storageGet("atlasia.onboardingSeen") && !storageGet(FIRST_ROUTE_KEY),
-  );
-  const dismissOnboarding = useCallback(() => {
-    storageSet("atlasia.onboardingSeen", "1");
-    setOnboarding(false);
-  }, []);
-
-  // Toast otomatik kapansın
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 3200);
-    return () => clearTimeout(t);
-  }, [toast]);
-
-  // Esc ile ekleme modundan çık
-  useEffect(() => {
-    if (!addMode) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setAddMode(false);
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [addMode]);
 
   const allPlaces = useMemo(
     () => freshness.withFreshness([...discoveries, ...GUIDE_PLACES]),
@@ -844,7 +648,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
     setSpin(false);
     setLocationLabel(p.region);
     mapRef.current?.flyTo(p.lng, p.lat, zoom);
-  }, [setSpin]);
+  }, [setSpin, setActiveId, setLocationLabel]);
 
   const handleSelect = useCallback(
     (id: string) => {
@@ -859,7 +663,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
       setFeedOpen(false);
       setRecordsOpen(false);
     },
-    [allPlaces, focusPlace],
+    [allPlaces, focusPlace, setAtlasOpen, setDrawerOpen, setFeedOpen, setPanelOpen, setRecordsOpen],
   );
 
   const handleCategory = (c: CategoryId | null) => {
@@ -910,7 +714,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
   const handleAllowLocation = useCallback(() => {
     setToast("Konumun aranıyor…");
     geo.request();
-  }, [geo]);
+  }, [geo, setToast]);
 
   const handleShowLocation = () => {
     if (!geo.fix) return;
@@ -930,7 +734,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
     setLocationLabel("Dünya");
     mapRef.current?.clearMe();
     setToast("Konum işareti kaldırıldı.");
-  }, [geo]);
+  }, [geo, setToast, setLocationLabel, setPreciseLabel]);
 
   /**
    * Misafir bir yazma eylemine kalkarsa: kısa bilgi + giriş/kayıt ekranı.
@@ -943,7 +747,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
     // Zaman damgasıyla: günler sonra açılan oturumda beklenmedik eylem başlamasın.
     if (resume !== "none") storageSet(PENDING_INTENT_KEY, `${resume}|${Date.now()}`);
     requireAccount(intent);
-  }, [requireAccount]);
+  }, [requireAccount, setToast]);
 
   const startAdd = () => {
     if (guest) { askAccount("İz eklemek için bir hesap aç ya da giriş yap.", "place"); return; }
@@ -956,7 +760,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
   const handleMapClick = useCallback((lng: number, lat: number) => {
     setAddMode(false);
     setDraft({ lng, lat });
-  }, []);
+  }, [setAddMode, setDraft]);
 
   const handleSave = async (data: {
     title: string;
@@ -1034,7 +838,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
     setLocationLabel(label);
     mapRef.current?.flyTo(lng, lat, 9);
     if (window.innerWidth < 1024) setFeedOpen(false);
-  }, [setSpin]);
+  }, [setSpin, setFeedOpen, setActiveId, setLocationLabel]);
 
   const heroHidden = view.zoom > 3.4;
   // Keşif kartı yalnız ekranı bütünüyle kaplayan katmanlarda gizlenir.
@@ -1045,7 +849,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
   const dockVisible = !recordsOpen && !storyPlace && !settingsOpen && !drawerOpen;
   useEffect(() => {
     if (!dockVisible) setDiscoverySpace(0);
-  }, [dockVisible]);
+  }, [dockVisible, setDiscoverySpace]);
   const mobileExplore = () => { closePanels(); setHeroCompact(false); setPanelOpen(true); };
   const openMyPlaces = () => { closePanels(); setMyPlacesOpen(true); };
   // İŞ 5: manifest kısayolları (?tab=…). Yalnız var olan panelleri açar; panel
@@ -1071,7 +875,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
     if (action === "explore") setPanelOpen(true);
     else if (action === "add") { setSpin(false); setAddMode(true); }
     else setProfileOpen(true);
-  }, [setSpin]);
+  }, [setSpin, setAtlasOpen, setDrawerOpen, setFeedOpen, setMyPlacesOpen, setNotificationsOpen, setPanelOpen, setProfileOpen, setRecordsOpen, setAddMode]);
   const mobileTab = myPlacesOpen ? "İzlerim" : recordsOpen ? "Kaydet" : feedOpen ? "Topluluk" : profileOpen ? "Profil" : "Keşfet";
   const settingsContentProps: SettingsContentProps = {
     theme,
