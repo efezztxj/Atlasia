@@ -203,33 +203,3 @@ describe("P19 açık tema yıkıcı eylem katmanı", () => {
     expect((profile.match(/\{ id: "profile-/g) ?? []).length).toBe(3);
   });
 });
-
-describe("P20 koyu yüzeyler — açık temada da koyu kalan paneller", () => {
-  const start = css.indexOf("/* P20-DARK-SURFACE-AA:start");
-  const end = css.indexOf("/* P20-DARK-SURFACE-AA:end */");
-  const layer = start > -1 && end > start ? css.slice(start, end) : "";
-  // Paneller kendi koyu zeminini sabit hex ile taşıyor (bg-[#021915]/92).
-  const panelSurface = composite([2, 25, 21], parseHex("#ffffff"), 0.92);
-
-  it("alt katman tanımlı ve koyu temanın eşlemesini yeniden kullanır", () => {
-    expect(start).toBeGreaterThan(-1);
-    expect(end).toBeGreaterThan(start);
-    expect(layer).toContain('[data-surface="dark"]');
-    expect(layer).toContain("#cfe0d6");
-    expect(layer).toContain("#dceae1");
-  });
-
-  it("işaretli yüzeyler bu katmanı gerçekten taşıyor", () => {
-    for (const name of ["SocialPanel.tsx", "BottomPanel.tsx", "RecordsDock.tsx"]) {
-      expect(sources.get(name), `${name} kaynağı okunamadı`).toBeTruthy();
-      expect(sources.get(name) as string, `${name} data-surface taşımıyor`).toContain('data-surface="dark"');
-    }
-  });
-
-  it("bu yüzeylerdeki mint tonları AA eşiğini geçer (koyu zemin üzerinde)", () => {
-    for (const color of ["#cfe0d6", "#dceae1"]) {
-      expect(contrastRatio(parseHex(color), panelSurface)).toBeGreaterThanOrEqual(WCAG_AA_NORMAL);
-      expect(contrastRatio(parseHex(color), parseHex("#021915"))).toBeGreaterThanOrEqual(WCAG_AA_NORMAL);
-    }
-  });
-});

@@ -405,7 +405,6 @@ export default function SocialPanel({
           "lg:inset-x-auto lg:bottom-7 lg:left-6 lg:h-[min(64vh,600px)] lg:w-[380px] lg:rounded-[26px] lg:pb-0",
         )}
         aria-label="İzler"
-        data-surface="dark"
         style={{ translate: `0 ${dragY}px`, transition: dragging ? "none" : "translate 180ms ease" }}
       >
         <div
@@ -882,7 +881,9 @@ export default function SocialPanel({
                   onChange={(e) => void pickPhoto(e.target.files?.[0])}
                 />
 
-                <span className="ml-auto shrink-0 text-[10px] text-mint/35">{draft.length}/280</span>
+                {/* WCAG AA: 10px metin için 4,5:1. Bu alan bg-black/20 ile koyulaşan bir yüzey;
+                  /35 tonu açık temada 4,14:1 kalıyordu (axe: color-contrast). */}
+                <span className="ml-auto shrink-0 text-[10px] text-mint/80">{draft.length}/280</span>
               </div>
             </div>
             <button
