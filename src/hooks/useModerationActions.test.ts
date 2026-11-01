@@ -51,15 +51,15 @@ beforeEach(() => {
 describe("useModerationActions — oturum kapısı", () => {
   it("oturum yoksa rapor durumu hata atar, Firestore'a yazmaz", async () => {
     const result = setup(null);
-    await expect(result.current.handleReportStatus("r1", "dismissed")).rejects.toThrow("Oturum bulunamadı.");
+    await expect(result.current.handleReportStatus("r1", "reviewed")).rejects.toThrow("Oturum bulunamadı.");
     expect(lib.setReportStatus).not.toHaveBeenCalled();
   });
 
   it("oturum varsa durum yazılır ve denetim kaydı bırakılır", async () => {
     const result = setup("mod-1");
-    await result.current.handleReportStatus("r1", "reviewing", "inceliyorum");
-    expect(lib.setReportStatus).toHaveBeenCalledWith("r1", "reviewing", "mod-1", "inceliyorum");
-    expect(lib.logModAction).toHaveBeenCalledWith({ action: "report_status", reportId: "r1", detail: "reviewing" });
+    await result.current.handleReportStatus("r1", "reviewed", "inceliyorum");
+    expect(lib.setReportStatus).toHaveBeenCalledWith("r1", "reviewed", "mod-1", "inceliyorum");
+    expect(lib.logModAction).toHaveBeenCalledWith({ action: "report_status", reportId: "r1", detail: "reviewed" });
   });
 });
 
@@ -80,7 +80,7 @@ describe("useModerationActions — raporlayana bildirim", () => {
 
   it("actioned dışı durumda bildirim yok", async () => {
     const result = setup("mod-1", [report({ status: "open" })]);
-    await result.current.handleReportStatus("r1", "dismissed");
+    await result.current.handleReportStatus("r1", "open");
     expect(lib.notifyReportActioned).not.toHaveBeenCalled();
   });
 
@@ -105,7 +105,7 @@ describe("useModerationActions — ban / uyarı hedefi", () => {
 
   it("targetOwnerUid yoksa 'user' raporunda targetId'ye düşer", async () => {
     const result = setup();
-    await result.current.handleBan(report({ targetOwnerUid: undefined, targetType: "user", targetId: "u-9" }), 1, "hakaret");
+    await result.current.handleBan(report({ targetOwnerUid: undefined, targetType: "user", targetId: "u-9" }), 7, "hakaret");
     expect(lib.banUser).toHaveBeenCalledWith(expect.objectContaining({ uid: "u-9" }));
   });
 
