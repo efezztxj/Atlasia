@@ -1,5 +1,23 @@
 # Atlasia Update
 
+## 2026-11-01 — F2-1a: moderasyon eylemleri `useModerationActions` kancasında
+
+Plan §F2-1. `Explorer.tsx` içindeki on `useCallback` (rapor durumu, ban, ban kaldırma, uyarı,
+içerik kaldırma, itiraz kararı, duyuru oluştur/sil, itiraz gönder, hedef geçmişi) tek kancaya
+taşındı. **Yetki hâlâ istemcide değil**: kararı Firestore kuralları verir, kanca yalnız çağrı
+yapar ve denetim kaydı bırakır.
+
+- **Yeni kanca:** `src/hooks/useModerationActions.ts` — 10 eylem, iki parametre (`uid`, `queue`).
+- **Korunan davranış:** oturum yoksa `handleReportStatus` hata atar; raporlayana bildirim yalnız
+  **ilk** `actioned` geçişinde gider; ban/uyarı hedefi `targetOwnerUid → ("user" ise) targetId`
+  sırasıyla çözülür; `logModAction` yalnız durum/ban/kaldırma için yazılır.
+- **`Explorer.tsx` 1.254 → 1.190 satır** (başlangıç 1.796; toplam -606).
+- **13 yeni test** (`useModerationActions.test.ts`): oturum kapısı, tekrar bildirim yok,
+  hedef çözümü, içerik kaldırma sırası (önce hedef, sonra rapor), sarmalayıcı delegasyonu.
+- **Ölçüm:** kapsam %63,28 / %54,81 / %59,14 / %68,11 · JS **999.560 B gzip** (bütçe 1.003.000,
+  pay 3.440 B). Eşikler bilinçli olarak **artırılmadı**: CI'da ölçülen kapsam yereldekinden
+  sapabildiği için taban, iki tur üst üste yeşilden sonra yükseltilecek.
+
 ## 2026-11-01 — F1-6 (adım 2): panel orkestrasyonu `PanelStack`'e taşındı (228 satır)
 
 Plan §F1-6. Kayıtlar, rota düzenleyici, profil, izlerim, çekmece, raporlar, bildirimler,

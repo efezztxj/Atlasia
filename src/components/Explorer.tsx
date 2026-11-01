@@ -29,6 +29,7 @@ import { useFirestoreAtlasData } from "../hooks/useFirestoreAtlasData";
 import { useTheme } from "../hooks/useTheme";
 import { useMapLayerPrefs } from "../hooks/useMapLayerPrefs";
 import { useDiscoveryFlow } from "../hooks/useDiscoveryFlow";
+import { useModerationActions } from "../hooks/useModerationActions";
 import { useExplorerEnvironment } from "../hooks/useExplorerEnvironment";
 import { MapSurfaceHints } from "./explorer/MapCanvas";
 import { AddModeBanner, DataErrorBanner, MobileSearchSheet, ToastBanner } from "./explorer/OverlayPanels";
@@ -55,23 +56,7 @@ import { useBlocks } from "../hooks/useBlocks";
 import { useFreshness } from "../hooks/useFreshness";
 import { markNotificationRead, markAllRead } from "../lib/notifications";
 import {
-  banUser,
-  createAnnouncement,
-  createAppeal,
-  deleteAnnouncement,
-  fetchTargetHistory,
-  liftBan,
-  logModAction,
   markWarningRead,
-  notifyReportActioned,
-  resolveAppeal,
-  setReportStatus,
-  takedownReportTarget,
-  warnUser,
-  type AppealStatus,
-  type BanDuration,
-  type Report,
-  type ReportStatus,
 } from "../lib/moderation";
 import { takePendingInvite, type SocialTarget } from "../utils/inviteLink";
 import { useMobileBackClose } from "../hooks/useMobileBackClose";
@@ -443,61 +428,12 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
    *   yazılamaz (Console'da elle). Kural dağıtılmamışsa sorgu `false` döner ve
    *   sekme görünmez (fail-closed).
    */
-  const handleReportStatus = useCallback(async (reportId: string, status: ReportStatus, note?: string) => {
-    if (!user?.uid) throw new Error("Oturum bulunamadı.");
-    await setReportStatus(reportId, status, user.uid, note);
-    void logModAction({ action: "report_status", reportId, detail: status });
-    if (status === "actioned") {
-      const report = queue.find((item) => item.id === reportId);
-      if (report && report.status !== "actioned") {
-        void notifyReportActioned(report, user.uid).catch((error) => {
-          console.warn("[Atlasia] Rapor sonucu bildirimi gönderilemedi:", error);
-        });
-      }
-    }
-  }, [user?.uid, queue]);
-
-  const handleBan = useCallback(async (report: Report, days: BanDuration, reason: string) => {
-    const target = report.targetOwnerUid ?? (report.targetType === "user" ? report.targetId : undefined);
-    if (!target) throw new Error("Bu raporun sahibi belirlenemedi; ban atılamaz.");
-    await banUser({ uid: target, reason, reportId: report.id, days });
-    void logModAction({ action: "ban", targetType: report.targetType, targetId: report.targetId, targetOwnerUid: target, reportId: report.id, detail: reason });
-  }, []);
-
-  const handleLiftBan = useCallback(async (uid: string) => {
-    await liftBan(uid);
-    void logModAction({ action: "lift_ban", targetOwnerUid: uid });
-  }, []);
-
-  const handleWarn = useCallback(async (report: Report, reason: string) => {
-    const target = report.targetOwnerUid ?? (report.targetType === "user" ? report.targetId : undefined);
-    if (!target) throw new Error("Bu raporun sahibi belirlenemedi; uyarı gönderilemez.");
-    await warnUser({ uid: target, reason, reportId: report.id });
-  }, []);
-
-  const handleTakedown = useCallback(async (report: Report) => {
-    await takedownReportTarget(report);
-    // İçerik gittiyse rapor da kapanır: durum + raporlayana bildirim.
-    await handleReportStatus(report.id, "actioned", "İçerik kalıcı olarak kaldırıldı.");
-  }, [handleReportStatus]);
-
-  const handleResolveAppeal = useCallback(async (appealId: string, status: Exclude<AppealStatus, "open">) => {
-    await resolveAppeal(appealId, status);
-  }, []);
-
-  const handleCreateAnnouncement = useCallback(async (title: string, body: string) => {
-    await createAnnouncement(title, body);
-  }, []);
-
-  const handleDeleteAnnouncement = useCallback(async (announcementId: string) => {
-    await deleteAnnouncement(announcementId);
-  }, []);
-
-  const handleAppeal = useCallback(async (message: string) => {
-    await createAppeal(message);
-  }, []);
-
-  const handleFetchHistory = useCallback((targetUid: string) => fetchTargetHistory(targetUid), []);
+  // F2-1a: moderasyon eylemleri kancada (kural yetkisi sunucuda kalır).
+  const {
+    handleReportStatus, handleBan, handleLiftBan, handleWarn, handleTakedown,
+    handleResolveAppeal, handleCreateAnnouncement, handleDeleteAnnouncement,
+    handleAppeal, handleFetchHistory,
+  } = useModerationActions({ uid: user?.uid, queue });
 
   const activeWarning = myWarnings.find((warning) => !warning.read) ?? null;
   const myAppeal = myAppeals[0] ?? null;

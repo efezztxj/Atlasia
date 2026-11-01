@@ -102,3 +102,35 @@ Kaynak metin kapıları taşındı: `lazyLoading` (iki dosya birlikte; `./` ve `
 F2-1 ile birlikte yürütülmeli. JSX tarafında taşınacak son parçalar: `MapView` sahnesi,
 `Header` + `Hero` + `SearchBox` bloğu, `MapControls`, `BottomPanel`, `AtlasAssistant`,
 `SocialPanel`, `Drawer` çağrıları.
+
+---
+
+# Ek — F2-1a (moderasyon eylemleri kancası)
+
+**Dosya:** `src/hooks/useModerationActions.ts` (+ `.test.ts`, 13 test) · **Explorer:** 1.254 → **1.190**
+
+## Denetim (bu turda önce yapıldı)
+
+| Denetim | Sonuç |
+|---|---|
+| Çalışma ağacı | temiz; HEAD `35c6f49` CI **success** |
+| Taşınan JSX sadakati | `git show 33e3c05` bloğu ile `PanelStack` gövdesi arasında **yalnız 4 satır** fark var (`cloud.uploadPhoto`, `user!.uid`, `!!geo.fix`, `freshness.verify` → prop). Sessiz kayma yok. |
+| Panel envanteri | 16 panelin hepsi `PanelStack`'te **tam bir kez**; `Explorer`'da 0 kalıntı; `ToastBanner` + `ConfirmDialogHost` yerinde |
+| `Suspense` sarmalayıcı | 10 — orijinal blokla aynı (lazy paneller askıya alınabilir kalıyor) |
+| Bundle | ayrı ağ parçası doğmadı (54 lazy chunk); toplam 1.000.216 → **999.560 B gzip** |
+
+## Ne değişti
+
+10 moderasyon eylemi kancaya taşındı; davranış birebir (oturum kapısı, tek bildirim,
+hedef çözümü, `logModAction` kapsamı). `Explorer` yalnız kancayı çağırıyor.
+
+## Kapılar
+
+`typecheck` ✅ · `lint` ✅ · `test:cov` ✅ 185 dosya / 1.409 test · kapsam %63,28 / %54,81 / %59,14 / %68,11 ·
+`test:scripts` ✅ · `build` ✅ JS 999.560/1.003.000 gzip, CSS 35.629/35.700, SW 63/63 · `state:doc --check` ✅
+
+## Kalan
+
+`Explorer.tsx` 1.190 satır (hedef ≤ 400). Sonraki mantık kümeleri: yer/rota CRUD +
+`handleSelect`/`handleMapClick`, konum kümesi (`handleLocate`/`handleAllowLocation`/
+`handleClearLocation` + `precise` memo), sosyal hedef açıcıları, arşiv/feed gezinme.
