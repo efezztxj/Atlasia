@@ -26,6 +26,7 @@ const AddDiscoveryModal = lazy(() => import("./AddDiscoveryModal"));
 import RecordsDock from "./RecordsDock";
 import RouteEditor from "./RouteEditor";
 import ConfirmDialogHost, { requestConfirm } from "./ConfirmDialog";
+import MapPerfOverlay from "./MapPerfOverlay";
 import { useAuth } from "../contexts/AuthContext";
 import { analytics } from "../lib/analytics";
 import { CollectionsProvider, isCloudAccount } from "../hooks/useCollections";
@@ -332,6 +333,10 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
    */
   const trackPreviewDrawn = useRef(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  // Açık bir sayfa/panel varken haritanın kendi kendine dönmesi, panel
+  // kaydırmasıyla aynı ana iş parçacığını paylaşıp gecikme yaratıyordu.
+  const sheetOpen = feedOpen || atlasOpen || profileOpen || layersOpen || settingsOpen || drawerOpen;
+
   const [myPlacesOpen, setMyPlacesOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [reportsOpen, setReportsOpen] = useState(false);
@@ -1184,7 +1189,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
             onSlowDevice={handleSlowDevice}
             baseMap={baseMap}
             theme={theme}
-            spin={spin && !reducedMotion && !addMode && !draft}
+            spin={spin && !reducedMotion && !addMode && !draft && !sheetOpen}
             onUserInteract={() => { setSpin(false); setHeroCompact(true); }}
             onViewChange={setView}
             onViewportChange={setMapViewport}
@@ -1810,6 +1815,8 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
       )}
 
       <ConfirmDialogHost />
+      {/* Yalnız adreste `?perf` varken çizilir; aksi hâlde null. */}
+      <MapPerfOverlay search={window.location.search} />
     </div>
   );
 }

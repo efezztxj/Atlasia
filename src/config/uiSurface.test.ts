@@ -83,7 +83,10 @@ describe("tema başlangıcı ve yüzey güvenlik ağı", () => {
     expect(bootstrapTag).toBeGreaterThan(-1);
     expect(bootstrapTag).toBeLessThan(appModule);
     expect(indexHtml).not.toContain("defer");
-    expect(themeBoot).toContain('localStorage.getItem("atlasia.theme.v1")');
+    // Varsayılan koyu: önyükleme v2 anahtarını okur; v1 yalnız geçiş için.
+    expect(themeBoot).toContain('localStorage.getItem(STORAGE_KEY)');
+    expect(themeBoot).toContain('var LEGACY_STORAGE_KEY = "atlasia.theme.v1"');
+    expect(themeBoot).toContain('var DEFAULT_THEME = "dark"');
     expect(themeBoot).toContain("root.dataset.theme = theme");
     expect(themeBoot).toContain('root.style.colorScheme = theme === "light" ? "light" : "dark"');
     expect(indexHtml).not.toMatch(/<html[^>]*data-theme=/);

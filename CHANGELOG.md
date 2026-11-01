@@ -11,6 +11,33 @@
 - **Bütçe dürüstlüğü:** düzeltme entry'yi 16.656 → **16.823 B gzip** yaptı; entry eşiği ölçüme göre 16.700 → **17.000** (%1,05 pay) yeniden bağlandı, gerekçe `scripts/bundle-budget.mjs` başlığında tarihli not olarak duruyor. İlk boya JS/HTML, toplam JS ve appShell eşikleri **değişmedi**.
 - Ayrıntı: `docs/teslimatlar/teslimat-s4-lighthouse-2026-11-01.md`.
 
+## 2026-11-01 — Varsayılan görünüm artık koyu
+
+- **Atlasia her açılışta koyu temayla gelir.** Açık tema isteyen Ayarlar → Görünüm bölümünden seçebilir; o seçim kalıcıdır ve sonraki açılışta korunur.
+- **Dönüş yapan kullanıcılar için geçiş:** eski kayıt anahtarındaki (`atlasia.theme.v1`) `light` değeri kullanıcı tercihi değil, uygulamanın o zamanki varsayılanıydı — bu yüzden koyuya çevrilir. Bilinçli `midnight` (gece) seçimi olduğu gibi korunur.
+- **İlk karede doğru renk:** tema ilk boyamadan önce `public/theme-boot.js` ile uygulanır (CSP uyumlu, satır içi betik yok) ve `index.html` içindeki `theme-color` artık koyu (`#021512`) — açık renk sıçraması yok.
+- **Değişmeyenler:** `midnight` teması, tema seçici, harita/etiket renkleri ve `landing`/`auth` ekranlarının kendi sinematik paleti aynı.
+- **Doğrulama:** `tsc --noEmit`, `eslint --max-warnings=0`, `vitest run` (180 dosya / **1.407 test**), `vite build`, `bundle-budget` bütçe içinde (entry 16.700 / 17.000 · toplam JS 999.833 / 1.003.000 gzip).
+
+## 2026-11-01 — Kalite turu: yayın akıcı çıktı, görüntü keskinleştirildi
+
+- **Gözlem:** `atlasia.pages.dev` (production build) akıcı; buradaki önizleme `vite dev`. Fark yapısal: dev'de `StrictMode` **çift render** eder, kod minify değildir, HMR yükü vardır; production'da bunların hiçbiri yok. Yani "kasıyor" geri bildiriminin bir kısmı dev önizlemesine aitti ve tur 1-5 düzeltmeleri yayında çalışıyor.
+- **Dokunmatikte piksel tavanı 1,5 → 2:** 1,5 telefonda gözle görülür biçimde yumuşaktı. 2 = retina keskinliği; DPR 3 cihazda 9 kat yerine 4 kat piksel taranır, görüntü farkı pratikte ayırt edilmez.
+- **Düşük kademe tavanı 1,25 → 1,5:** zayıf cihazda bile yumuşak görüntü yok.
+- **Tepe gölgesi (hillshade) artık yalnız gerçekten zayıf cihazda kapalı:** araziyle aynı tek kapıya bağlandı (`isWeakDevice`: veri tasarrufu, azaltılmış hareket, `deviceMemory <= 3`, dokunmatik + en fazla 4 çekirdek). Modern telefon (6-8 çekirdek) gölgesini korur.
+- **Kademeli düşürme kalite korumalı 3 adıma çıktı:** <40 FPS → piksel 1,5 · <28 FPS → arazi kapalı · <22 FPS → piksel 1 (`MIN_CRITICAL_FPS`, `DEGRADE_PIXEL_RATIO`). Eskiden ilk adım doğrudan 1'e indiriyordu; artık görüntüyü bozmayan ara değerle başlıyor.
+- **Ayrıca (önceki tur):** `?perf` ekran üstü teşhis paneli (`MapPerfOverlay`) — parametre yoksa hiçbir şey çizmez, `perfEnabled` testle kilitli.
+- **Doğrulama:** `tsc --noEmit`, `eslint --max-warnings=0`, `vitest run` (180 dosya / **1.404 test**), `vite build`, `bundle-budget` bütçe içinde (JS 999.591 B / 1.003.000 gzip), `test:bundle-budget` 14 test.
+
+## 2026-11-01 — Kasma turu 5: kalan gecikme için ölçüm kancası + kademeli düşürme
+
+- **"Hâlâ bi tık gecikiyor" tahmine bırakılmadı:** `window.atlasiaMapPerf()` eklendi. Uygulanan ayarları ve **son ölçülen kare hızını** döndürür: `tier`, `coarsePointer`, `cores`, `memory`, `pixelRatio`, `devicePixelRatio`, `terrain`, `hillshade`, `markers`, `fps`, `degradeStep`. Böylece bildirim sayıya bağlanır; hangi ayarın düşürüldüğü cihazda görülür.
+- **Dokunmatikte piksel tavanı 2 → 1,5:** telefonda DPR 2 ile 1,5 arasındaki fark gözle zor ayrılır ama piksel sayısı **%44 azalır**. Sürüklemede hissedilen gecikmenin büyük kısmı buradan geliyor (`TOUCH_MAX_PIXEL_RATIO`).
+- **Tepe gölgesi (hillshade) dokunmatikte kapalı:** hillshade, DEM okuyan **ayrı bir tam ekran geçişi**. Dokunmatikte kapatıldı; arazinin 3B hissi (terrain + eğim) korunuyor, yalnızca dekoratif gölgeleme düşüyor (`recommendedHillshade`). Masaüstünde görünüm değişmedi.
+- **Kademeli düşürme 2 aşamaya çıktı:** <40 FPS → piksel oranı 1'e iner; <28 FPS → arazi kapatılır (`shouldDisableTerrain`, `MIN_TERRAIN_FPS`). Her adım bir kez uygulanır, ölçüm yalnız kullanıcı hareketinde sayılır. Arazi kararı hâlâ sahibine bırakılır — kullanıcı kendi seçimini yaptıysa ezilmez.
+- **Panel açıkken harita dönmüyor:** açık bir sayfa/panel varken otomatik dönüş durur (`sheetOpen`); 15 FPS'lik harita çizimi panel kaydırmasıyla aynı ana iş parçacığını paylaşıp gecikme yaratıyordu. Döngü kendini durdurduğu için `spin` yeniden `true` olduğunda `spinResumeRef` ile canlandırılıyor — bu olmadan otomatik dönüş bir daha başlamazdı.
+- **Doğrulama:** `tsc --noEmit`, `eslint --max-warnings=0`, `vitest run` (179 dosya / **1.398 test**), `vite build`, `bundle-budget` bütçe içinde (JS 999.147 B / 1.003.000 gzip), `audit:check`. Test dağılımı: `deviceTier.test.ts` 15, `mapRenderLoop.test.ts` 14.
+
 ## 2026-11-01 (gece) — Gerçek tarayıcıda axe kapısı (S3) + sayfalama kuşak koruması (S5)
 
 - **S3 / P1-4 — erişilebilirlik artık gerçek tarayıcıda kapı:** `@axe-core/playwright` eklendi ve `e2e/a11y.spec.ts` altı senaryoda **dokuz tarama** yapıyor (tanıtım masaüstü 1280×800 açık tema · tanıtım mobil 390×844 koyu tema · çerez paneli açık/kapalı · keşif kabuğu karşılama diyaloğu · harita yüzeyi · katmanlar paneli · İzler paneli · Kayıtlarım paneli). Kural seti `wcag2a/wcag2aa/wcag21a/wcag21aa`, eşik **critical + serious = 0**; `moderate/minor` ihlaller annotation'a yazılıyor. JSDOM'da ölçülemeyen kontrast ve odak hataları böylece PR kapısına girdi. Ek CI adımı gerekmedi: mevcut `test:e2e` adımı `e2e/` altındaki tüm spec'leri koşuyor. Ortak ağ sahtekârlığı `e2e/support/harness.ts` içine alındı.

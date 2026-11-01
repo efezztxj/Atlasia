@@ -138,8 +138,9 @@ test("4. Misafir kapısı (T8): İz bırakma isteği kayıt ekranını açar ve 
 test("5. Cihaz modu üyelik + kurtarma anahtarı + açık tema (/theme-boot.js) kalıcılığı", async ({
   page,
 }) => {
+  // Varsayılan koyu; açık tema ancak açıkça seçilirse (v2) korunur.
   await page.addInitScript(() => {
-    window.localStorage.setItem("atlasia.theme.v1", "light");
+    window.localStorage.setItem("atlasia.theme.v2", "light");
   });
 
   await page.goto("/");

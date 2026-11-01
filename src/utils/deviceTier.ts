@@ -19,10 +19,24 @@ export interface DeviceSignals {
   reducedMotion: boolean;
 }
 
-/** Düşük kademede tuvalin çizileceği en yüksek piksel oranı. */
-export const LOW_TIER_MAX_PIXEL_RATIO = 1.25;
+/**
+ * Düşük kademede tuvalin çizileceği en yüksek piksel oranı.
+ *
+ * Kalite önceliği: 1,25 telefonda gözle görülür biçimde yumuşak kalıyordu.
+ * 1,5 hem keskin duruyor hem zayıf cihazda hâlâ ölçülü bir yük bırakıyor.
+ */
+export const LOW_TIER_MAX_PIXEL_RATIO = 1.5;
 /** Yüksek kademede bile 2'nin üzeri pratikte görünür kazanç sağlamaz. */
 export const HIGH_TIER_MAX_PIXEL_RATIO = 2;
+/**
+ * Dokunmatik cihazlarda üst sınır.
+ *
+ * 2 = retina keskinliği; DPR 3 telefonlarda 9 kat yerine 4 kat piksel taranır,
+ * görüntü farkı pratikte ayırt edilmez ama GPU yükü yarıdan fazla azalır.
+ * Daha aşağısı (1,5) ekranı yumuşak gösterdiği için kalite önceliğinde
+ * kullanılmaz; gerçek yavaşlama ölçülürse kademeli düşürme devreye girer.
+ */
+export const TOUCH_MAX_PIXEL_RATIO = 2;
 /** Bu FPS'in altındaki hareket "akıcı değil" sayılır. */
 export const MIN_SMOOTH_FPS = 40;
 /** Ölçüm için en az bu kadar süre hareket gözlenmeli (ms). */
@@ -54,10 +68,43 @@ export function detectDeviceTier(signals: DeviceSignals): DeviceTier {
 }
 
 /** Cihaz kademesine göre güvenli piksel oranı (1'in altına inmez). */
-export function recommendedPixelRatio(devicePixelRatio: number, tier: DeviceTier): number {
+export function recommendedPixelRatio(
+  devicePixelRatio: number,
+  tier: DeviceTier,
+  coarsePointer = false,
+): number {
   const dpr = Number.isFinite(devicePixelRatio) && devicePixelRatio > 0 ? devicePixelRatio : 1;
-  const cap = tier === "low" ? LOW_TIER_MAX_PIXEL_RATIO : HIGH_TIER_MAX_PIXEL_RATIO;
+  const tierCap = tier === "low" ? LOW_TIER_MAX_PIXEL_RATIO : HIGH_TIER_MAX_PIXEL_RATIO;
+  const cap = coarsePointer ? Math.min(tierCap, TOUCH_MAX_PIXEL_RATIO) : tierCap;
   return Math.max(1, Math.min(dpr, cap));
+}
+
+/**
+ * Tepe gölgesi (hillshade) varsayılan açık mı?
+ *
+ * Hillshade, DEM verisini okuyan **ayrı bir tam ekran geçişidir**; bu yüzden
+ * yalnız gerçekten zayıf cihazda kapatılır — araziyle aynı kapı. Kalite
+ * önceliği: modern telefon (6-8 çekirdek) dokunmatik olsa da gölgesini korur;
+ * zorlanırsa kademeli düşürme zaten devreye girer.
+ */
+export function recommendedHillshade(signals: DeviceSignals): boolean {
+  return !isWeakDevice(signals);
+}
+
+/**
+ * Cihaz "gerçekten zayıf" mı?
+ *
+ * Ağır görsel katmanları (arazi, tepe gölgesi) varsayılan kapatma kararı bu
+ * tek kapıya bağlıdır: veri tasarrufu, azaltılmış hareket, çok az bellek veya
+ * dokunmatik + en fazla 4 çekirdek. Diğer herkes tam kaliteyle başlar.
+ */
+function isWeakDevice(signals: DeviceSignals): boolean {
+  if (signals.saveData || signals.reducedMotion) return true;
+  if (typeof signals.deviceMemory === "number" && signals.deviceMemory > 0 && signals.deviceMemory <= 3) {
+    return true;
+  }
+  const cores = signals.hardwareConcurrency;
+  return signals.coarsePointer && typeof cores === "number" && cores > 0 && cores <= 4;
 }
 
 /**
@@ -69,13 +116,7 @@ export function recommendedPixelRatio(devicePixelRatio: number, tier: DeviceTier
  * oranı sınırı ve ölçüme dayalı düşürme zaten karşılıyor.
  */
 export function recommendedTerrain(signals: DeviceSignals): boolean {
-  if (signals.saveData || signals.reducedMotion) return false;
-  if (typeof signals.deviceMemory === "number" && signals.deviceMemory > 0 && signals.deviceMemory <= 3) {
-    return false;
-  }
-  const cores = signals.hardwareConcurrency;
-  if (signals.coarsePointer && typeof cores === "number" && cores > 0 && cores <= 4) return false;
-  return true;
+  return !isWeakDevice(signals);
 }
 
 /**
@@ -89,6 +130,27 @@ export function shouldLowerMapQuality(fps: number, pixelRatio: number, alreadyLo
   if (!Number.isFinite(fps) || fps <= 0) return false;
   if (!Number.isFinite(pixelRatio) || pixelRatio <= 1) return false;
   return fps < MIN_SMOOTH_FPS;
+}
+
+/** Arazi katmanını kapatma eşiği: bunun altı gerçekten rahatsız edici. */
+export const MIN_TERRAIN_FPS = 28;
+
+/** Son çare piksel oranı düşürme eşiği: burada akıcılık kalitenin önüne geçer. */
+export const MIN_CRITICAL_FPS = 22;
+
+/** Kare hızı son çare piksel düşürmeyi gerektiriyor mu? */
+export function shouldDropToMinimum(fps: number): boolean {
+  if (!Number.isFinite(fps) || fps <= 0) return false;
+  return fps < MIN_CRITICAL_FPS;
+}
+
+/** Kademeli düşürmede ilk adımın piksel oranı (kaliteyi koruyan ara değer). */
+export const DEGRADE_PIXEL_RATIO = 1.5;
+
+/** Kare hızı arazi katmanını kapatmayı gerektiriyor mu? */
+export function shouldDisableTerrain(fps: number): boolean {
+  if (!Number.isFinite(fps) || fps <= 0) return false;
+  return fps < MIN_TERRAIN_FPS;
 }
 
 /** Hareket penceresindeki kare sayısından FPS; pencere çok kısaysa 0. */

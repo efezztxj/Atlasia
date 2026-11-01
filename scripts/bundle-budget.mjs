@@ -101,6 +101,24 @@ const DEFAULT_DIST = fileURLToPath(new URL("../dist", import.meta.url));
  *   appShell  585.711 -> 586.617  (+906)
  *   toplam JS 984.682 -> 996.818  (main bu turda 997.500'e çıkardı)
  *   entry eşiği 20.400 -> 21.200 (ölçüme %3,2 pay)
+ *
+ * 2026-11-01 (varsayılan koyu tema) — Atlasia artık her açılışta koyu
+ * geliyor. `useTheme` içine küçük bir geçiş katmanı girdi: yeni anahtar
+ * `atlasia.theme.v2`, eski `v1` kaydındaki "light" (o zamanki VARSAYILAN)
+ * koyuya çevrilir, bilinçli "midnight" korunur. Ölçüm (`npm ci` +
+ * `npm run build`): entry 16.690 -> **16.700 B gzip**; eşik 16.700'de
+ * sıfır pay kalınca 17.000'e alındı (%1,8 pay). Toplam JS değişmedi
+ * (999.8 KB / 1.003.000).
+ *
+ * 2026-11-01 (kasma turu 5) — `mapView` parçası ölçüm kancası ve kademeli
+ * düşürme ile büyüdü (yeni bağımlılık yok, yalnız bu parçaya giren kod):
+ *   + cihaz üstü teşhis `window.atlasiaMapPerf()` (8 alanlı anlık görüntü)
+ *   + kademeli düşürme: <40 FPS → piksel oranı 1, <28 FPS → arazi kapalı
+ * Ölçüm (`npm ci` + `npm run build`): mapView 9.100 → **9.316 B gzip**.
+ * Eşik 9.400'e çekildi (ölçüme 84 B / %0,9 pay). Gerekçe: bu 216 B,
+ * "harita hâlâ gecikiyor" bildirimini tahminden çıkarıp cihazda ölçülebilir
+ * hâle getiriyor; kullanıcıya görünen ilk boya ve toplam JS eşikleri
+ * değişmedi. Ayrıntı: teslimat-kasma-donma-2026-11-01.md (tur 5).
  */
 export const BUNDLE_BUDGET = Object.freeze({
   // 2026-10-28 (T4 misafir modu + T5 niyet hatırlama): misafir oturum bayrağı,
@@ -176,7 +194,7 @@ export const BUNDLE_BUDGET = Object.freeze({
     firebaseAuth: 46_200,
     mapVendor: 302_500,
     mapWorker: 152_000,
-    mapView: 9_100,
+    mapView: 9_400,
   }),
   // Bu parçalar ilk HTML ile preload edilirse lazy sınırı fiilen ortadan kalkar.
   deferredAssetPrefixes: Object.freeze([

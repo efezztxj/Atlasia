@@ -13,13 +13,42 @@ import type { PlaceViewport } from "../lib/firestoreData";
 import type { Place, RouteLeg, ViewState } from "../types";
 import { shouldAdvanceSpin, shouldCommitView, shouldReportView } from "../utils/mapLifecycle";
 import {
+  DEGRADE_PIXEL_RATIO,
   detectDeviceTier,
   measuredFps,
   readDeviceSignals,
+  recommendedHillshade,
   recommendedPixelRatio,
+  shouldDisableTerrain,
+  shouldDropToMinimum,
   shouldLowerMapQuality,
 } from "../utils/deviceTier";
 import type { WeatherLayerHandle, WeatherMode, WeatherStopMark } from "../utils/mapWeather";
+
+interface DeviceProfile {
+  signals: ReturnType<typeof readDeviceSignals>;
+  tier: "low" | "high";
+  hillshade: boolean;
+  pixelRatio: number;
+}
+
+/** Cihaz üstü harita performans teşhisi (destek için `window.atlasiaMapPerf()`). */
+export interface MapPerfSnapshot {
+  tier: "low" | "high";
+  dpr: number;
+  pixelRatio: number;
+  terrain: boolean;
+  hillshade: boolean;
+  markers: number;
+  fps: number;
+  step: number;
+}
+
+declare global {
+  interface Window {
+    atlasiaMapPerf?: () => MapPerfSnapshot;
+  }
+}
 import { attachMapResume } from "../lib/mapResume";
 
 maplibregl.setWorkerUrl(maplibreWorkerUrl);
@@ -195,6 +224,7 @@ function buildStyle(
   terrainEnabled: boolean,
   baseMap: BaseMapStyle,
   theme: MapLabelTheme,
+  hillshade = true,
 ): maplibregl.StyleSpecification {
   const atmosphere = MAP_ATMOSPHERE[theme];
   return {
@@ -269,6 +299,7 @@ function buildStyle(
         id: "terrain-relief",
         type: "hillshade",
         source: "terrain",
+        layout: { visibility: hillshade ? "visible" : "none" },
         paint: {
           "hillshade-illumination-direction": 328,
           "hillshade-illumination-anchor": "map",
@@ -357,11 +388,32 @@ export default function MapView({
   const meMarkerRef = useRef<maplibregl.Marker | null>(null);
   const pulseRef = useRef<maplibregl.Marker | null>(null);
   const [ready, setReady] = useState(false);
+  // Cihaz profili bir kez hesaplanır: kademe, tepe gölgesi ve piksel oranı.
+  // Ref'te tutulur ki kurulum efekti (tek sefer koşar) bağımlılık listesini
+  // şişirmesin; değerler zaten yalnız açılışta okunur.
+  const deviceProfileRef = useRef<DeviceProfile | null>(null);
+  if (!deviceProfileRef.current) {
+    const signals = readDeviceSignals();
+    const tier = detectDeviceTier(signals);
+    deviceProfileRef.current = {
+      signals,
+      tier,
+      hillshade: recommendedHillshade(signals),
+      pixelRatio: recommendedPixelRatio(
+        typeof window === "undefined" ? 1 : window.devicePixelRatio,
+        tier,
+        signals.coarsePointer,
+      ),
+    };
+  }
 
   // En güncel değerleri harita olaylarında kullanmak için
   const live = useRef({ onSelect, onMapClick, onUserInteract, onViewChange, onViewportChange, addMode, spin, onSlowDevice });
   live.current = { onSelect, onMapClick, onUserInteract, onViewChange, onViewportChange, addMode, spin, onSlowDevice };
   const internalMove = useRef(false);
+  // Otomatik dönüş döngüsü kendini durdurduğunda dışarıdan yeniden
+  // başlatabilmek için (ör. panel kapandı, `spin` yeniden true oldu).
+  const spinResumeRef = useRef<(() => void) | null>(null);
 
   useImperativeHandle(ref, () => ({
     flyTo(lng, lat, zoom = 6.5) {
@@ -581,8 +633,10 @@ export default function MapView({
 
     const initialStyle = initialStyleOptions.current;
     const markers = markersRef.current;
-    const deviceTier = detectDeviceTier(readDeviceSignals());
-    let appliedPixelRatio = recommendedPixelRatio(window.devicePixelRatio, deviceTier);
+    // Profil render sırasında dolduruldu; kurulumda her zaman hazırdır.
+    const profile = deviceProfileRef.current;
+    if (!profile) return;
+    let appliedPixelRatio = profile.pixelRatio;
     const map = new maplibregl.Map({
       container: el,
       style: buildStyle(
@@ -590,6 +644,7 @@ export default function MapView({
         initialStyle.terrainEnabled,
         initialStyle.baseMap,
         initialStyle.theme,
+        profile.hillshade,
       ),
       center: HOME_CENTER,
       zoom: baseZoom(el),
@@ -738,9 +793,10 @@ export default function MapView({
       raf = requestAnimationFrame(tick);
     };
     const ensureSpinLoop = () => {
-      if (raf) return;
+      if (raf || spinDisposed) return;
       raf = requestAnimationFrame(tick);
     };
+    spinResumeRef.current = ensureSpinLoop;
     ensureSpinLoop();
     // Panel açıp kapatmak, sekme değiştirmek gibi durumlarda döngü yeniden başlatılır.
     map.on("zoomstart", ensureSpinLoop);
@@ -755,7 +811,9 @@ export default function MapView({
     // Cihaz sinyalleri yanıltıcı olabildiği için gerçek ölçüm esas alınır.
     // NOT: `setCenter` (autospin) `jumpTo` kullanır ve bu da movestart/moveend
     // yayar; bu yüzden ölçüm yalnız kullanıcı hareketinde sayılır.
-    let qualityLowered = false;
+    // Kademeli düşürme: 1) piksel oranı, 2) arazi. Her adım bir kez uygulanır.
+    let degradeStep = 0;
+    let lastFps = 0;
     let sampleFrames = 0;
     let sampleStartAt = 0;
     const onSampleFrame = () => {
@@ -772,28 +830,62 @@ export default function MapView({
       const elapsed = performance.now() - sampleStartAt;
       sampleStartAt = 0;
       const fps = measuredFps(sampleFrames, elapsed);
-      if (!shouldLowerMapQuality(fps, appliedPixelRatio, qualityLowered)) return;
-      qualityLowered = true;
-      appliedPixelRatio = 1;
-      // `setPixelRatio` içinde `resize()` var; resize de movestart/moveend
-      // yayar. Olay dağıtımının içinden çağırmak yerine bir sonraki kareye
-      // bırakılır (yeniden giriş ve yarım kalan transform güncellemesi olmasın).
-      requestAnimationFrame(() => {
-        if (spinDisposed || !mapRef.current) return;
-        if (typeof map.setPixelRatio === "function") map.setPixelRatio(1);
-      });
-      // Ağır katmanları (arazi/tepe gölgesi) kapatma kararı sahibine bırakılır:
-      // kullanıcı kendi seçimini yaptıysa arayüz onu ezmez.
-      live.current.onSlowDevice?.();
+      if (!fps) return;
+      lastFps = fps;
+      // Kalite öncelikli kademeli düşürme: önce yumuşak bir ara değer (1,5),
+      // görüntüyü bozmadan. Ancak hâlâ zorlanıyorsa ağır katman kapanır, en
+      // son çare piksel oranı 1'e iner.
+      const setRatio = (ratio: number) => {
+        appliedPixelRatio = ratio;
+        // `setPixelRatio` içinde `resize()` var; resize de movestart/moveend
+        // yayar. Olay dağıtımının içinden çağırmak yerine bir sonraki kareye
+        // bırakılır (yeniden giriş ve yarım kalan transform güncellemesi olmasın).
+        requestAnimationFrame(() => {
+          if (spinDisposed || !mapRef.current) return;
+          if (typeof map.setPixelRatio === "function") map.setPixelRatio(ratio);
+        });
+      };
+      if (degradeStep === 0 && shouldLowerMapQuality(fps, appliedPixelRatio, false)) {
+        degradeStep = 1;
+        setRatio(Math.min(appliedPixelRatio, DEGRADE_PIXEL_RATIO));
+        return;
+      }
+      if (degradeStep === 1 && shouldDisableTerrain(fps)) {
+        degradeStep = 2;
+        // Ağır katman kararı sahibine bırakılır: kullanıcı kendi seçimini
+        // yaptıysa arayüz onu ezmez (Explorer `terrainTouched` ile korur).
+        live.current.onSlowDevice?.();
+        return;
+      }
+      if (degradeStep === 2 && shouldDropToMinimum(fps)) {
+        degradeStep = 3;
+        setRatio(1);
+      }
     };
     map.on("render", onSampleFrame);
     map.on("movestart", onSampleStart);
     map.on("moveend", onSampleEnd);
 
+    // Cihaz üstü teşhis: "hâlâ kasıyor" bildirimini tahmine değil sayıya
+    // bağlamak için uygulanan ayarlar ve son ölçülen kare hızı okunabilir.
+    const perfSnapshot = () => ({
+      tier: profile.tier,
+      dpr: window.devicePixelRatio,
+      pixelRatio: appliedPixelRatio,
+      terrain: Boolean(map.getTerrain()),
+      hillshade: profile.hillshade,
+      markers: markers.size,
+      fps: Math.round(lastFps),
+      step: degradeStep,
+    });
+    window.atlasiaMapPerf = perfSnapshot;
+
     report(true);
 
     return () => {
       spinDisposed = true;
+      spinResumeRef.current = null;
+      if (window.atlasiaMapPerf === perfSnapshot) delete window.atlasiaMapPerf;
       cancelAnimationFrame(raf);
       raf = 0;
       document.removeEventListener("visibilitychange", onVisibilityForSpin);
@@ -818,6 +910,13 @@ export default function MapView({
     const resume = attachMapResume({ map });
     return resume.dispose;
   }, []);
+
+  // `spin` yeniden açıldığında (ör. panel kapandı) döngüyü canlandır.
+  // Döngü koşul sağlanmadığında kendini durdurduğu için bu olmadan
+  // otomatik dönüş bir daha başlamazdı.
+  useEffect(() => {
+    if (spin) spinResumeRef.current?.();
+  }, [spin]);
 
   // Altlık ve etiketleri kaynakları yeniden yüklemeden değiştir; pin ve rota
   // katmanları korunur. Uydu üstündeki etiketler de anahtarsız OpenFreeMap
@@ -856,7 +955,10 @@ export default function MapView({
     const map = mapRef.current;
     if (!map || !ready) return;
     map.setTerrain(terrainEnabled ? { source: "terrain", exaggeration: 1.08 } : null);
-    map.setLayoutProperty("terrain-relief", "visibility", terrainEnabled ? "visible" : "none");
+    // Tepe gölgesi ayrı bir tam ekran geçişi: dokunmatik cihazda kapalı
+    // (arazinin 3B hissi korunur, dekoratif gölgeleme düşer).
+    const hillshade = deviceProfileRef.current?.hillshade ?? true;
+    map.setLayoutProperty("terrain-relief", "visibility", terrainEnabled && hillshade ? "visible" : "none");
     if (!terrainEnabled && map.getPitch() > 0) map.easeTo({ pitch: 0, duration: 450 });
   }, [terrainEnabled, ready]);
 
