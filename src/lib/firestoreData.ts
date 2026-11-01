@@ -40,6 +40,7 @@ import {
   type Query,
   type QueryDocumentSnapshot,
   type QuerySnapshot,
+  collectionGroup,
 } from "firebase/firestore";
 import { db, firebaseConfigured } from "./firebase";
 import { withoutSeedPosts, withoutSeedStories } from "./contentIntegrity";
@@ -662,6 +663,48 @@ export async function togglePostLikeInFirestore(
 export async function togglePostLike(postId: string, uid: string): Promise<string[]> {
   if (!db) throw dataError("data/unavailable", "Firestore hazır değil.");
   return togglePostLikeInFirestore(db, postId, uid);
+}
+
+/**
+ * F2-1 (sayısız beğeni): beğeni kişi başı belgedir, gönderide sayaç YOK.
+ * Kural (`posts/{id}/likes/{uid}`) yalnız kendi belgeni yazmana izin verir;
+ * bu yüzden istemci hiçbir aritmetik göndermez.
+ */
+function postLikeRef(store: Firestore, postId: string, uid: string) {
+  return doc(store, COL_POSTS, postId, "likes", uid);
+}
+
+export async function likePostDoc(store: Firestore, postId: string, uid: string): Promise<void> {
+  const cleanUid = uid.trim();
+  if (!cleanUid) throw dataError("auth/required", "Beğeni için geçerli hesap gerekli.");
+  await setDoc(postLikeRef(store, postId, cleanUid), { uid: cleanUid });
+}
+
+export async function unlikePostDoc(store: Firestore, postId: string, uid: string): Promise<void> {
+  const cleanUid = uid.trim();
+  if (!cleanUid) throw dataError("auth/required", "Beğeni için geçerli hesap gerekli.");
+  await deleteDoc(postLikeRef(store, postId, cleanUid));
+}
+
+/** Oturumda TEK sorgu: kullanıcının beğendiği gönderi kimlikleri. */
+export async function listMyLikedPostIds(
+  store: Firestore,
+  uid: string,
+): Promise<string[]> {
+  const cleanUid = uid.trim();
+  if (!cleanUid) return [];
+  const q = query(
+    collectionGroup(store, "likes"),
+    where("uid", "==", cleanUid),
+    limit(200),
+  );
+  const snap = await getDocs(q);
+  const ids: string[] = [];
+  for (const item of snap.docs) {
+    const parent = item.ref.parent.parent;
+    if (parent) ids.push(parent.id);
+  }
+  return ids;
 }
 
 export async function addReplyInFirestore(
