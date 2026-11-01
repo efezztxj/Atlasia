@@ -36,7 +36,7 @@ import { formatAccuracy, useGeolocation } from "../hooks/useGeolocation";
 import { useAtlasData } from "../hooks/useAtlasData";
 import { useFirestoreAtlasData } from "../hooks/useFirestoreAtlasData";
 import { useTheme } from "../hooks/useTheme";
-import { detectDeviceTier, readDeviceSignals, recommendedTerrain } from "../utils/deviceTier";
+import { readDeviceSignals, recommendedTerrain } from "../utils/deviceTier";
 import type { InstallAppController } from "../hooks/useInstallApp";
 // A3: SDK başlatan `lib/firebase` yerine SDK'sız kapı. Explorer zaten Firestore
 // kullanıyor ama bu import yüzünden SDK, yapılandırma okuması için de değil,
@@ -290,9 +290,20 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
   const [spin, setSpin] = useState(true);
   const [heroCompact, setHeroCompact] = useState(false);
   const [labels, setLabels] = useState(true);
-  // Ağır arazi katmanı yalnız güçlü cihazda açık başlar; zayıf cihazda
-  // kullanıcı isterse Katmanlar sayfasından yine açabilir.
-  const [terrain, setTerrain] = useState(() => recommendedTerrain(detectDeviceTier(readDeviceSignals())));
+  // Ağır arazi katmanı zayıf cihazda kapalı başlar (3B eğim de buna bağlı).
+  // Kullanıcı Katmanlar sayfasından her zaman açabilir; bu durumda otomatik
+  // düşürme devreye girmez.
+  const [terrain, setTerrain] = useState(() => recommendedTerrain(readDeviceSignals()));
+  const terrainTouched = useRef(false);
+  const toggleTerrain = useCallback(() => {
+    terrainTouched.current = true;
+    setTerrain((value) => !value);
+  }, []);
+  // Ölçülen kare hızı düşükse arayüz kendi kendine araziyi kapatır; kullanıcı
+  // kendi seçimini yaptıysa dokunulmaz.
+  const handleSlowDevice = useCallback(() => {
+    if (!terrainTouched.current) setTerrain(false);
+  }, []);
   // Hava katmanı tek kaynaktan yönetilir: Katmanlar sayfası + sağ ray düğmesi.
   const [weather, setWeather] = useState(false);
   const [weatherStatus, setWeatherStatus] = useState<WeatherStatus>("empty");
@@ -1170,6 +1181,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
             onMapClick={handleMapClick}
             showLabels={labels}
             terrainEnabled={terrain}
+            onSlowDevice={handleSlowDevice}
             baseMap={baseMap}
             theme={theme}
             spin={spin && !reducedMotion && !addMode && !draft}
@@ -1278,7 +1290,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
             labels={labels}
             onToggleLabels={() => setLabels((v) => !v)}
             terrain={terrain}
-            onToggleTerrain={() => setTerrain((v) => !v)}
+            onToggleTerrain={toggleTerrain}
             weather={weather}
             onToggleWeather={toggleWeather}
             weatherStatus={weatherStatus}
@@ -1583,7 +1595,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
         showLabels={labels}
         terrainEnabled={terrain}
         onToggleLabels={() => setLabels((value) => !value)}
-        onToggleTerrain={() => setTerrain((value) => !value)}
+        onToggleTerrain={toggleTerrain}
         onOpenLocation={() => { closePanels(); openSettings(); }}
         locationReady={!!geo.fix}
         places={visiblePlaces}

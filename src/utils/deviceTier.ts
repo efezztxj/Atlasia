@@ -35,13 +35,19 @@ export const FRAME_SAMPLE_MIN_MS = 250;
  * değer "yüksek" sayılır (yanlışlıkla kalite düşürmemek için).
  */
 export function detectDeviceTier(signals: DeviceSignals): DeviceTier {
+  // Erişilebilirlik ve veri tasarrufu tercihleri her cihazda geçerlidir.
   if (signals.reducedMotion || signals.saveData) return "low";
+  // `deviceMemory` yalnız Chromium tabanlı tarayıcılarda (ağırlıkla Android) var.
   if (typeof signals.deviceMemory === "number" && signals.deviceMemory > 0 && signals.deviceMemory <= 4) {
     return "low";
   }
-  if (typeof signals.hardwareConcurrency === "number" && signals.hardwareConcurrency > 0) {
-    if (signals.hardwareConcurrency <= 4) return "low";
-    if (signals.coarsePointer && signals.hardwareConcurrency <= 6) return "low";
+  const cores = signals.hardwareConcurrency;
+  if (typeof cores === "number" && cores > 0) {
+    // 2 çekirdek her yerde zayıftır.
+    if (cores <= 2) return "low";
+    // Dokunmatik + orta seviye CPU: telefonların çoğunluğu.
+    if (signals.coarsePointer && cores <= 6) return "low";
+    // Masaüstünde 4 çekirdek olağandır; arayüzü/görünümü boşuna sadeleştirme.
     return "high";
   }
   return signals.coarsePointer ? "low" : "high";
@@ -54,9 +60,22 @@ export function recommendedPixelRatio(devicePixelRatio: number, tier: DeviceTier
   return Math.max(1, Math.min(dpr, cap));
 }
 
-/** Ağır arazi (terrain + tepe gölgesi) yalnız güçlü cihazda varsayılan açık. */
-export function recommendedTerrain(tier: DeviceTier): boolean {
-  return tier === "high";
+/**
+ * Ağır arazi (DEM + tepe gölgesi) varsayılan açık kalsın mı?
+ *
+ * Arazi kapanınca `flyTo` eğimi de 0'a iner, yani küre/3B his kaybolur. Bu
+ * yüzden yalnız gerçekten zayıf cihazlarda kapatılır; modern telefonlar
+ * (6-8 çekirdek) dokunmatik olsa da araziyi korur — oradaki yükü piksel
+ * oranı sınırı ve ölçüme dayalı düşürme zaten karşılıyor.
+ */
+export function recommendedTerrain(signals: DeviceSignals): boolean {
+  if (signals.saveData || signals.reducedMotion) return false;
+  if (typeof signals.deviceMemory === "number" && signals.deviceMemory > 0 && signals.deviceMemory <= 3) {
+    return false;
+  }
+  const cores = signals.hardwareConcurrency;
+  if (signals.coarsePointer && typeof cores === "number" && cores > 0 && cores <= 4) return false;
+  return true;
 }
 
 /**

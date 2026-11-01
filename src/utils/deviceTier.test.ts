@@ -25,13 +25,19 @@ describe("cihaz kademesi", () => {
     expect(detectDeviceTier(signals())).toBe("high");
   });
 
-  it("az çekirdek, az bellek, veri tasarrufu veya azaltılmış hareketi düşük kademe sayar", () => {
-    expect(detectDeviceTier(signals({ hardwareConcurrency: 4 }))).toBe("low");
+  it("zayıf donanımı ve veri/erişilebilirlik tercihlerini düşük kademe sayar", () => {
+    expect(detectDeviceTier(signals({ hardwareConcurrency: 2 }))).toBe("low");
     expect(detectDeviceTier(signals({ deviceMemory: 4 }))).toBe("low");
     expect(detectDeviceTier(signals({ saveData: true }))).toBe("low");
     expect(detectDeviceTier(signals({ reducedMotion: true }))).toBe("low");
     // Dokunmatik + orta seviye CPU: telefonların çoğunluğu buraya düşer.
     expect(detectDeviceTier(signals({ coarsePointer: true, hardwareConcurrency: 6 }))).toBe("low");
+  });
+
+  it("olağan masaüstünü (4 çekirdek, ince işaretçi) sadeleştirmez", () => {
+    // Görünümü boşuna değiştirmemek için 4 çekirdekli masaüstü yüksek kalır.
+    expect(detectDeviceTier(signals({ hardwareConcurrency: 4, coarsePointer: false }))).toBe("high");
+    expect(detectDeviceTier(signals({ hardwareConcurrency: 8, coarsePointer: true }))).toBe("high");
   });
 
   it("bilinmeyen donanım bilgisinde yanlışlıkla kalite düşürmez", () => {
@@ -58,10 +64,18 @@ describe("piksel oranı", () => {
   });
 });
 
-describe("ağır arazi katmanı", () => {
-  it("yalnız yüksek kademede varsayılan açık", () => {
-    expect(recommendedTerrain("high")).toBe(true);
-    expect(recommendedTerrain("low")).toBe(false);
+describe("ağır arazi katmanı varsayılanı", () => {
+  it("modern telefonda (6+ çekirdek) açık kalır: 3B görünüm korunur", () => {
+    expect(recommendedTerrain(signals({ coarsePointer: true, hardwareConcurrency: 8 }))).toBe(true);
+    expect(recommendedTerrain(signals({ coarsePointer: true, hardwareConcurrency: 6 }))).toBe(true);
+    expect(recommendedTerrain(signals())).toBe(true);
+  });
+
+  it("gerçekten zayıf cihazda kapalı başlar", () => {
+    expect(recommendedTerrain(signals({ coarsePointer: true, hardwareConcurrency: 4 }))).toBe(false);
+    expect(recommendedTerrain(signals({ deviceMemory: 3 }))).toBe(false);
+    expect(recommendedTerrain(signals({ saveData: true }))).toBe(false);
+    expect(recommendedTerrain(signals({ reducedMotion: true }))).toBe(false);
   });
 });
 

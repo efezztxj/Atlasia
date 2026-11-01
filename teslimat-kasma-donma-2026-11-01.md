@@ -209,3 +209,74 @@ tepe gölgesi düşük donanımlı cihazlarda varsayılan açıktı.
 Gerçek tarayıcı bu ortamda çalıştırılamadı (Chromium yok, `libnspr4` yok,
 paket depoları kapalı). FPS kazanımı cihaz üstünde DevTools Performance ile
 doğrulanmalı; koddaki etki matematiksel (piksel sayısı) ve testlerle gösterildi.
+
+---
+
+# Tur 4 — kod denetimi (bağımsız gözden geçirme) ve düzeltmeler
+
+Kullanıcı isteği: "denetle, kodda sıkıntı olmazsa devam." Tüm diff baştan
+sona okundu; maplibre davranışı `node_modules/maplibre-gl/dist/maplibre-gl-dev.mjs`
+kaynağından doğrulandı. **Dört gerçek kusur bulundu ve kapatıldı.**
+
+## Bulunan kusurlar
+
+1. **`SocialPanel` rozeti bayat kalıyordu (gerçek hata).** Panel kapalıyken
+   "İzler" düğmesindeki sayı `posts.length` **ve** görülmemiş hikâye
+   sayısından (`stories`, satır 258/384) besleniyor. Tur 2'de yazdığım
+   karşılaştırıcı yalnız `posts`, `precise`, `hasMorePosts` bakıyordu; yeni
+   hikâye geldiğinde memo render'ı atlıyor, rozet güncellenmiyordu.
+   → `stories` karşılaştırmaya eklendi, `panelMemo.test.ts`'e kilit testi.
+2. **`setPixelRatio` olay dağıtımının içinden çağrılıyordu.** MapLibre
+   kaynağı: `setPixelRatio()` → `resize()` → `resize()` yeniden
+   `movestart`/`move`/`moveend` yayıyor. `moveend` dinleyicisinin içinden
+   çağrıldığında yeniden girişe ve yarım kalan transform güncellemesine yol
+   açabilirdi. → `requestAnimationFrame` ile bir sonraki kareye taşındı,
+   `spinDisposed` + `mapRef` + `typeof` korumaları eklendi
+   (`qualityLowered` zaten önce işaretlendiği için ikinci tur oluşmuyor).
+3. **Otomatik dönüş ölçümü kirletiyordu.** `map.setCenter()` → `jumpTo()`
+   ve `jumpTo` **movestart + moveend** yayıyor (kaynak: satır 56393). Yani
+   idle autospin her karede ölçüm penceresini sıfırlıyordu. 250 ms tabanı
+   sayesinde yanlış FPS üretilmiyordu ama gereksiz iş yapıyordu ve mantık
+   kırılgandı. → Ölçüm `internalMove.current` iken tamamen atlanıyor;
+   `render` sayacı da yalnız pencere açıkken artıyor.
+4. **Arazi kapatma kararı çok agresifti (ürün riski).** Tur 3'te arazi
+   `hardwareConcurrency <= 4` olan her cihazda kapanıyordu; bu 4 çekirdekli
+   **masaüstlerini** de kapsıyordu ve arazi kapanınca `flyTo` eğimi 0'a indiği
+   için (MapView satır 368/387) 3B/küre hissi kayboluyordu. →
+   (a) kademe eşiği daraltıldı: 4 çekirdekli masaüstü artık "yüksek",
+   (b) arazi yalnız **gerçekten zayıf** cihazda kapalı başlıyor
+   (veri tasarrufu, azaltılmış hareket, `deviceMemory <= 3`, dokunmatik ve
+   `cores <= 4`), (c) modern telefonlar (6-8 çekirdek) arazisini koruyor;
+   oradaki yük piksel oranı + ölçüme dayalı düşürmeyle karşılanıyor,
+   (d) ölçüm 40 FPS altını görürse arazi bir kez kapatılıyor — **ama yalnız
+   kullanıcı kendi seçimini yapmadıysa** (`terrainTouched` ref).
+
+## Doğrulanan ve sorunsuz bulunan noktalar
+
+- `jumpTo` içindeki `internalMove` koruması: autospin sırasında `report(true)`
+  çalışmıyor (mevcut davranış korundu).
+- Arazi kaynağı (`sources.terrain`) stile **her zaman** ekleniyor; yalnız
+  `terrain` etkinleştirmesi koşullu. Yani arazi kapalıyken sonradan açmak
+  kırılmıyor (tur 3'te varsayılanı değiştirmenin en büyük riski buydu).
+- `setPixelRatio` sonrası `_overridePixelRatio` kalıcı: sonraki `resize()`
+  çağrıları cihaz DPR'ına geri dönmüyor (kaynak: satır 59520/59531).
+- `cloud.places` / `remote.places` referansları memo bağımlılığı olarak
+  kararlı; `useMemo` filtreleri boşa çalışmıyor.
+- `readDeviceSignals` SSR/test ortamında güvenli (`navigator`/`matchMedia`
+  yoksa varsayılana düşüyor).
+- `memo` + `lazy` uyumu: modül varsayılan dışa aktarımı memo bileşeni,
+  `lazy(() => import(...))` bunu `default` üzerinden alıyor.
+- `preconnect`/`dns-prefetch` CSP ile çelişmiyor (kaynak zaten `img-src` ve
+  `connect-src` içinde), yeni dış servis yok.
+
+## Denetim sonrası kapı
+
+| Komut | Sonuç |
+|---|---|
+| `npx tsc --noEmit` | Geçti |
+| `npx eslint . --max-warnings=0` | Geçti |
+| `npx vitest run` | 179 dosya / **1.389 test** geçti |
+| `npx vite build` | Başarılı |
+| `node scripts/bundle-budget.mjs` | Bütçe içinde: toplam JS 998.756 B gzip (1.003.000) |
+| `npm run audit:check` | Üretim bağımlılıklarında açık yok |
+| Dev sunucu duman testi | `index` + değişen 4 modül HTTP 200 |

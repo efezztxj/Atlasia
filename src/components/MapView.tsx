@@ -57,6 +57,8 @@ interface Props {
   onUserInteract: () => void;
   onViewChange: (v: ViewState) => void;
   onViewportChange?: (viewport: PlaceViewport) => void;
+  /** Ölçülen kare hızı düşükse bir kez çağrılır (ağır katmanları kapatmak için). */
+  onSlowDevice?: () => void;
 }
 
 const HOME_CENTER: [number, number] = [30, 30];
@@ -346,6 +348,7 @@ export default function MapView({
   onUserInteract,
   onViewChange,
   onViewportChange,
+  onSlowDevice,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -356,8 +359,8 @@ export default function MapView({
   const [ready, setReady] = useState(false);
 
   // En güncel değerleri harita olaylarında kullanmak için
-  const live = useRef({ onSelect, onMapClick, onUserInteract, onViewChange, onViewportChange, addMode, spin });
-  live.current = { onSelect, onMapClick, onUserInteract, onViewChange, onViewportChange, addMode, spin };
+  const live = useRef({ onSelect, onMapClick, onUserInteract, onViewChange, onViewportChange, addMode, spin, onSlowDevice });
+  live.current = { onSelect, onMapClick, onUserInteract, onViewChange, onViewportChange, addMode, spin, onSlowDevice };
   const internalMove = useRef(false);
 
   useImperativeHandle(ref, () => ({
@@ -750,23 +753,38 @@ export default function MapView({
 
     // Ölçülen kare hızı akıcı değilse piksel oranı bir kez düşürülür.
     // Cihaz sinyalleri yanıltıcı olabildiği için gerçek ölçüm esas alınır.
+    // NOT: `setCenter` (autospin) `jumpTo` kullanır ve bu da movestart/moveend
+    // yayar; bu yüzden ölçüm yalnız kullanıcı hareketinde sayılır.
     let qualityLowered = false;
     let sampleFrames = 0;
     let sampleStartAt = 0;
-    const onSampleFrame = () => { sampleFrames += 1; };
+    const onSampleFrame = () => {
+      if (!sampleStartAt) return;
+      sampleFrames += 1;
+    };
     const onSampleStart = () => {
+      if (internalMove.current) return;
       sampleStartAt = performance.now();
       sampleFrames = 0;
     };
     const onSampleEnd = () => {
-      if (!sampleStartAt) return;
+      if (internalMove.current || !sampleStartAt) return;
       const elapsed = performance.now() - sampleStartAt;
       sampleStartAt = 0;
       const fps = measuredFps(sampleFrames, elapsed);
       if (!shouldLowerMapQuality(fps, appliedPixelRatio, qualityLowered)) return;
       qualityLowered = true;
       appliedPixelRatio = 1;
-      map.setPixelRatio(1);
+      // `setPixelRatio` içinde `resize()` var; resize de movestart/moveend
+      // yayar. Olay dağıtımının içinden çağırmak yerine bir sonraki kareye
+      // bırakılır (yeniden giriş ve yarım kalan transform güncellemesi olmasın).
+      requestAnimationFrame(() => {
+        if (spinDisposed || !mapRef.current) return;
+        if (typeof map.setPixelRatio === "function") map.setPixelRatio(1);
+      });
+      // Ağır katmanları (arazi/tepe gölgesi) kapatma kararı sahibine bırakılır:
+      // kullanıcı kendi seçimini yaptıysa arayüz onu ezmez.
+      live.current.onSlowDevice?.();
     };
     map.on("render", onSampleFrame);
     map.on("movestart", onSampleStart);

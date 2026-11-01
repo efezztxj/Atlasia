@@ -943,7 +943,13 @@ export function SocialPanel({
 export function areSocialPropsEqual(prev: Props, next: Props): boolean {
   if (prev.open !== next.open) return false;
   if (next.open) return false;
-  return prev.posts === next.posts && prev.precise === next.precise && prev.hasMorePosts === next.hasMorePosts;
+  // Kapalıyken görünen tek şey "İzler" başlatıcısıdır; üzerindeki sayaç
+  // gönderi sayısından ve görülmemiş *hikâye* sayısından beslenir. İkisi de
+  // karşılaştırılmazsa yeni hikâye geldiğinde rozet bayat kalır.
+  return prev.posts === next.posts
+    && prev.stories === next.stories
+    && prev.precise === next.precise
+    && prev.hasMorePosts === next.hasMorePosts;
 }
 
 export default memo(SocialPanel, areSocialPropsEqual);

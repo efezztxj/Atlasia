@@ -65,9 +65,16 @@ describe("harita çizim döngüsü ve görünüm bildirimi", () => {
     expect(mapView).toMatch(/map\.setPixelRatio\(1\)/);
   });
 
-  it("ağır arazi katmanı cihaz kademesine göre başlar", () => {
+  it("arazi varsayılanı cihaz sinyallerine bağlı, kullanıcı seçimi ezilmiyor", () => {
     const explorer = readFileSync("src/components/Explorer.tsx", "utf8");
-    expect(explorer).toContain("useState(() => recommendedTerrain(detectDeviceTier(readDeviceSignals())))");
+    expect(explorer).toContain("useState(() => recommendedTerrain(readDeviceSignals()))");
+    // Otomatik düşürme yalnız kullanıcı dokunmadıysa devreye girer.
+    expect(explorer).toContain("terrainTouched.current = true");
+    expect(explorer).toContain("if (!terrainTouched.current) setTerrain(false)");
+  });
+
+  it("ölçüm sonrası ağır katman kapatma isteği sahibine bildirilir", () => {
+    expect(mapView).toContain("live.current.onSlowDevice?.()");
   });
 
   it("pin etiketi bulanıklığı yalnız görünürken uygulanır", () => {

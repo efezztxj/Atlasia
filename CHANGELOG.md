@@ -1,5 +1,14 @@
 # Atlasia Update
 
+## 2026-11-01 — Kasma turu 4: kod denetimi ve dört düzeltme
+
+- **Rozet bayatlığı (gerçek hata):** `SocialPanel` kapalıyken "İzler" düğmesindeki sayı hem gönderi hem **görülmemiş hikâye** sayısından besleniyor. Tur 2'de eklenen memo karşılaştırıcısı `stories`'i atladığı için yeni hikâye geldiğinde rozet güncellenmiyordu. Karşılaştırmaya eklendi ve `panelMemo.test.ts` ile kilitlendi.
+- **`setPixelRatio` yeniden girişi:** MapLibre kaynağında `setPixelRatio()` → `resize()` → yeni `movestart`/`moveend` yayılıyor. Çağrı `moveend` dinleyicisinin içinden yapıldığında yeniden giriş riski vardı; `requestAnimationFrame` ile bir sonraki kareye taşındı ve `spinDisposed`/`mapRef`/`typeof` korumaları eklendi.
+- **Otomatik dönüş ölçümü kirletiyordu:** `setCenter()` → `jumpTo()` **movestart + moveend** yayıyor; idle autospin her karede ölçüm penceresini sıfırlıyordu. Ölçüm artık `internalMove` sırasında tamamen atlanıyor, `render` sayacı yalnız pencere açıkken artıyor.
+- **Arazi kararı çok agresifti:** 4 çekirdekli **masaüstleri** de "düşük" sayılıyor ve arazi kapanınca `flyTo` eğimi 0'a indiği için 3B/küre hissi kayboluyordu. Eşik daraltıldı (4 çekirdekli masaüstü = yüksek), arazi yalnız gerçekten zayıf cihazda kapalı başlıyor, modern telefonlar (6-8 çekirdek) arazisini koruyor. Ölçülen düşük kare hızında arazi bir kez kapatılıyor — **yalnız kullanıcı kendi seçimini yapmadıysa** (`terrainTouched`).
+- **Ayrıca doğrulandı:** arazi kaynağı stile her zaman ekli olduğu için araziyi sonradan açmak kırılmıyor; `setPixelRatio` sonrası override kalıcı (resize cihaz DPR'ına dönmüyor); `useMemo` bağımlılıkları kararlı; `readDeviceSignals` SSR/test güvenli; `memo` + `lazy` uyumlu; preconnect CSP ile çelişmiyor.
+- **Doğrulama:** `tsc --noEmit`, `eslint --max-warnings=0`, `vitest run` (179 dosya / **1.389 test**), `vite build`, `bundle-budget` bütçe içinde (JS 998.756 B / 1.003.000 gzip), `audit:check` temiz.
+
 ## 2026-11-01 — Kasma turu 3: uyarlanabilir harita kalitesi (piksel oranı + arazi) ve karo preconnect
 
 - **Telefonlarda 9 kat piksel sorunu kapatıldı:** MapLibre tuvali cihazın `devicePixelRatio` değeriyle çiziliyordu; telefonlarda bu 3'e kadar çıktığı için 1 px'lik görüntü adına 9 kat piksel taranıyor, sürükleme/yakınlaştırma GPU'ya takılıyordu. Yeni `src/utils/deviceTier.ts` cihazı `low`/`high` kademesine ayırıyor (`hardwareConcurrency`, `deviceMemory`, kaba işaretçi, veri tasarrufu, azaltılmış hareket) ve `MapView` tuvali `recommendedPixelRatio()` ile sınırlı oranda çiziyor (düşük kademe 1,25 · yüksek kademe 2 tavanı). Görünüm güçlü cihazlarda değişmiyor.
