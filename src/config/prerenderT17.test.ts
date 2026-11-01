@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   LANDING_STATIC,
+  SUPPORT_EMAIL,
   escapeHtml,
   renderLandingStaticHtml,
   renderLandingFaqJsonLd,
@@ -40,6 +41,12 @@ describe("T17 · statik içerik", () => {
       expect(html).toContain(faq.question);
       expect(html).toContain(faq.answer);
     }
+  });
+
+  it("destek adresi hem statik hem de etkileşimli içerikte bulunur", () => {
+    expect(html).toContain(`href="mailto:${SUPPORT_EMAIL}"`);
+    expect(landingFooter).toContain('href={`mailto:${SUPPORT_EMAIL}`}');
+    expect(landingFooter).toContain('{SUPPORT_EMAIL}');
   });
 
   it("FAQ şeması görünür sorular ve cevaplarla eşleşir", () => {

@@ -8,7 +8,7 @@
  * (`footerT18.test.ts` + `siteSurface.test.ts` bunu kilitler).
  */
 import type { LegalDocumentType } from "../content/legal";
-import { LANDING_STATIC, VERIFIED_CATALOG_COUNTS } from "../content/landingStatic";
+import { LANDING_STATIC, SUPPORT_EMAIL, VERIFIED_CATALOG_COUNTS } from "../content/landingStatic";
 import type { CtaPlacement } from "../lib/analytics";
 import { openCookiePreferences } from "../lib/cookieConsent";
 
@@ -90,6 +90,11 @@ export default function LandingFooter({ onLegal, onStart }: Props) {
               <p className="mt-2 max-w-[280px] leading-relaxed">Merak ettiğin her yer için sakin bir keşif defteri. Reklamsız, izinsiz konum okumaz.</p>
               {/* T18: tek dil — iddia ile <html lang> aynı olsun. */}
               <p className="mt-2 text-[11px] text-mint/35" lang="tr">Site dili: Türkçe (tr)</p>
+              <p className="mt-2 text-[12px] text-mint/70">İletişim ve destek: <a className="underline hover:text-sun" href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a></p>
+              <nav aria-label="Sosyal medya" className="mt-2 flex gap-4 text-[12px] text-mint/70">
+                <a href="https://www.instagram.com/atlasia.world0/" className="underline hover:text-sun">Instagram</a>
+                <a href="https://www.tiktok.com/@atlasia.w" className="underline hover:text-sun">TikTok</a>
+              </nav>
             </div>
             <nav aria-label="Yasal" className="flex flex-col gap-2">
               <span className="text-[10px] font-semibold tracking-[0.16em] text-mint/35 uppercase">Yasal</span>

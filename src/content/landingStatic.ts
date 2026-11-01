@@ -16,6 +16,8 @@
  *    metin görünür kalır. Statik başlangıç ile uygulama arasında geçiş olabilir.
  */
 
+export const SUPPORT_EMAIL = "atlasiaworld0@gmail.com";
+
 export interface LandingStaticStep {
   title: string;
   text: string;
@@ -149,6 +151,7 @@ export function renderLandingStaticHtml(): string {
     faqs,
     "        </dl>",
     `        <p><small>${escapeHtml(LANDING_STATIC.requirement)}</small></p>`,
+    `        <p>İletişim ve destek: <a href="mailto:${escapeHtml(SUPPORT_EMAIL)}">${escapeHtml(SUPPORT_EMAIL)}</a></p>`,
     "      </section>",
   ].join("\n");
 }
