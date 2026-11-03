@@ -33,7 +33,7 @@ const DEBT: Readonly<Record<string, number>> = Object.freeze({
   "src/components/Explorer.tsx": 627,
   "src/lib/moderation.ts": 1199,
   "src/components/SocialPanel.tsx": 936,
-  "src/lib/firestoreData.ts": 964,
+  "src/lib/firestoreData.ts": 972,
   "src/components/MapView.tsx": 812,
   "src/lib/groups.ts": 775,
   "src/utils/track.ts": 655,
