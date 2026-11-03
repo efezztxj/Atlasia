@@ -22,6 +22,9 @@ const renderSheet = (overrides: Partial<Parameters<typeof MapLayersSheet>[0]> = 
 
 
     onReset: vi.fn(),
+    onOpenLocation: vi.fn(),
+    onOpenAppearance: vi.fn(),
+    locationReady: false,
     ...overrides,
   };
   render(createElement(MapLayersSheet, props));
@@ -49,6 +52,9 @@ describe("MapLayersSheet", () => {
 
 
       onReset: () => {},
+      onOpenLocation: () => {},
+      onOpenAppearance: () => {},
+      locationReady: false,
     }));
     expect(screen.queryByRole("dialog")).toBeNull();
   });
@@ -57,6 +63,7 @@ describe("MapLayersSheet", () => {
     renderSheet({ baseMap: "satellite" });
     expect(screen.getByText("Harita altlığı")).toBeTruthy();
     expect(screen.getByText("Harita gösterimi")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Konum ayarları" })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Uydu/ }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("button", { name: /Sokak/ }).getAttribute("aria-pressed")).toBe("false");
     const switches = screen.getAllByRole("switch");
@@ -74,11 +81,15 @@ describe("MapLayersSheet", () => {
     fireEvent.click(switches[0]);
     fireEvent.click(switches[1]);
     fireEvent.click(screen.getByRole("button", { name: /Görünümü sıfırla/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Konum ayarları" }));
+    fireEvent.click(screen.getByRole("button", { name: "Görünüm ve tema ayarları" }));
     expect(props.onBaseMap).toHaveBeenCalledWith("street");
     expect(props.onBaseMap).toHaveBeenCalledWith("topographic");
     expect(props.onToggleLabels).toHaveBeenCalledTimes(1);
     expect(props.onToggleTerrain).toHaveBeenCalledTimes(1);
     expect(props.onReset).toHaveBeenCalledTimes(1);
+    expect(props.onOpenLocation).toHaveBeenCalledTimes(1);
+    expect(props.onOpenAppearance).toHaveBeenCalledTimes(1);
   });
 
 });

@@ -82,8 +82,8 @@ export default function Header({
       <nav aria-label="Ana menü" className="hidden items-center gap-1 md:flex md:gap-4">
         <button
           onClick={onOpenSettings}
-          aria-label="Konum ayarlarını aç"
-          title="Konum"
+          aria-label="Görünüm ve konum ayarlarını aç"
+          title="Görünüm ve konum ayarları"
           className={cn(
             "relative hidden min-h-11 items-center gap-2 rounded-full border p-2.5 text-[12px] transition md:flex sm:px-3 sm:py-2",
             locationReady
@@ -92,7 +92,7 @@ export default function Header({
           )}
         >
           <MapPin className="size-3.5" />
-          <span className="hidden md:inline">Konum</span>
+          <span className="hidden md:inline">Ayarlar</span>
           {locationReady && <span aria-hidden className="size-1.5 rounded-full bg-leaf" />}
         </button>
 

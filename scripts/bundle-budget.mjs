@@ -110,6 +110,14 @@ const DEFAULT_DIST = fileURLToPath(new URL("../dist", import.meta.url));
  * sıfır pay kalınca 17.000'e alındı (%1,8 pay). Toplam JS değişmedi
  * (999.8 KB / 1.003.000).
  *
+ * 2026-11-02 (sesli keşif, main eb317a6 ile entegrasyon) — aynı
+ * bağımlılıklar ve ortamda ana dal ölçümü toplam JS 991.074 B, CSS 35.646 B,
+ * MapView 8.993 B gzip; entegre özelliklerle 1.001.254 / 35.710 / 9.506 B.
+ * Artış sesli tur, kaynak metinleri, panel/işaretçiler ve harita hata
+ * yönetiminden gelir. Yeni ağır çalışma zamanı bağımlılığı eklenmedi.
+ * Toplam JS sınırı 1.003.000'de kalır, CSS 35.700 -> 35.800 ve MapView
+ * 9.400 -> 9.700 olur. İlk boya ve yolculuk sınırları değişmez.
+ *
  * 2026-11-01 (kasma turu 5) — `mapView` parçası ölçüm kancası ve kademeli
  * düşürme ile büyüdü (yeni bağımlılık yok, yalnız bu parçaya giren kod):
  *   + cihaz üstü teşhis `window.atlasiaMapPerf()` (8 alanlı anlık görüntü)
@@ -167,7 +175,7 @@ export const BUNDLE_BUDGET = Object.freeze({
   //   entry 16.180 (eşik 21.200 bayattı) -> 16.700 · iconsVendor 13.261 -> 13.700
   //   firebaseAuth 44.778 -> 46.200 · ilk boya CSS 25.372 -> 26.100
   totalJsGzipBytes: 1_003_000,
-  totalCssGzipBytes: 35_700,
+  totalCssGzipBytes: 35_800,
   initialGzipBytes: 129_400,
   // İlk HTML ile gelen gerçek ilk boya maliyeti (lazy chunk'lar hariç).
   initialCssGzipBytes: 26_100,
@@ -194,7 +202,7 @@ export const BUNDLE_BUDGET = Object.freeze({
     firebaseAuth: 46_200,
     mapVendor: 302_500,
     mapWorker: 152_000,
-    mapView: 9_400,
+    mapView: 9_700,
   }),
   // Bu parçalar ilk HTML ile preload edilirse lazy sınırı fiilen ortadan kalkar.
   deferredAssetPrefixes: Object.freeze([

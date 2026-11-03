@@ -38,6 +38,8 @@ export default function NearbyAudioGuide({ location, places, onOpenPlace }: Prop
   const [dismissed, setDismissed] = useState<string[]>(readDismissed);
   const [speaking, setSpeaking] = useState(false);
   const [paused, setPaused] = useState(false);
+  // İptal edilen önceki anlatımdan geç gelen olaylar yeni oynatmayı bozmasın.
+  const speechGeneration = useRef(0);
   const supported = typeof window !== "undefined" && "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
   // KARAR (e) BAĞLI: web/PWA kalır, ekran açık şartı kabul — arka plan konumu yok, rehber yalnızca sekme ön planda ve ekran açıkken tetiklenir.
   const guideStateRef = useRef<TourGuideState>(initialGuideState());
@@ -91,21 +93,25 @@ export default function NearbyAudioGuide({ location, places, onOpenPlace }: Prop
 
   useEffect(() => {
     return () => {
+      speechGeneration.current += 1;
       if (supported) window.speechSynthesis.cancel();
     };
   }, [supported]);
 
+  const nearbyPlaceId = nearby?.place.id;
   useEffect(() => {
-    if (!nearby && supported) {
-      window.speechSynthesis.cancel();
-      setSpeaking(false);
-      setPaused(false);
-    }
-  }, [nearby, supported]);
+    // Konum izni kalktığında veya başka bir yere geçildiğinde eski anlatım
+    // yeni yerin kartı altında çalmaya devam etmemeli.
+    speechGeneration.current += 1;
+    if (supported) window.speechSynthesis.cancel();
+    setSpeaking(false);
+    setPaused(false);
+  }, [nearbyPlaceId, supported]);
 
   if (!nearby) return null;
 
   const dismiss = () => {
+    speechGeneration.current += 1;
     if (supported) window.speechSynthesis.cancel();
     const next = [...new Set([...dismissed, nearby.place.id])].slice(-30);
     setDismissed(next);
@@ -120,6 +126,7 @@ export default function NearbyAudioGuide({ location, places, onOpenPlace }: Prop
 
   const speakFromStart = () => {
     if (!supported) return;
+    const generation = ++speechGeneration.current;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(guideText(nearby.place));
     utterance.lang = "tr-TR";
@@ -128,10 +135,12 @@ export default function NearbyAudioGuide({ location, places, onOpenPlace }: Prop
     const turkishVoice = window.speechSynthesis.getVoices().find((voice) => voice.lang.toLocaleLowerCase("tr").startsWith("tr"));
     if (turkishVoice) utterance.voice = turkishVoice;
     utterance.onend = () => {
+      if (generation !== speechGeneration.current) return;
       setSpeaking(false);
       setPaused(false);
     };
     utterance.onerror = () => {
+      if (generation !== speechGeneration.current) return;
       setSpeaking(false);
       setPaused(false);
     };

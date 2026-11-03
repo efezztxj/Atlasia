@@ -9,6 +9,7 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Activity, Compass, Crosshair, MapPin, MousePointerClick, Plus, UserRound, UsersRound, X } from "lucide-react";
 import type { BaseMapStyle, MapViewHandle } from "./MapView";
+import MapAttribution from "./MapAttribution";
 import Header from "./Header";
 import Hero from "./Hero";
 import SearchBox from "./SearchBox";
@@ -16,6 +17,8 @@ import MapControls from "./MapControls";
 import BottomPanel from "./BottomPanel";
 import SettingsPanel, { type SettingsContentProps } from "./SettingsPanel";
 import Onboarding from "./Onboarding";
+const AudioDiscoveryMap = lazy(() => import("./AudioDiscoveryMap"));
+const AudioDiscoverySheet = lazy(() => import("./AudioDiscoverySheet"));
 const NearbyAudioGuide = lazy(() => import("./NearbyAudioGuide"));
 const SocialPanel = lazy(() => import("./SocialPanel"));
 const MyPlacesPanel = lazy(() => import("./MyPlacesPanel"));
@@ -31,6 +34,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { analytics } from "../lib/analytics";
 import { CollectionsProvider, isCloudAccount } from "../hooks/useCollections";
 import { GUIDE_PLACES } from "../data/places";
+import { audioDiscoveryForPlace, type AudioDiscoveryTour } from "../data/audioDiscovery";
 import { parseShortcutTab, stripShortcutParam } from "../utils/appShortcut";
 import { formatAccuracy, useGeolocation } from "../hooks/useGeolocation";
 import { useAtlasData } from "../hooks/useAtlasData";
@@ -342,6 +346,14 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
   const [smallScreen, setSmallScreen] = useState(() => window.innerWidth < 768);
   const [reducedMotion, setReducedMotion] = useState(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   const [storyPlace, setStoryPlace] = useState<Place | null>(null);
+  const [audioTour, setAudioTour] = useState<AudioDiscoveryTour | null>(null);
+  const [audioStopIndex, setAudioStopIndex] = useState(0);
+  const selectAudioStop = useCallback((index: number) => {
+    const stop = audioTour?.stops[index];
+    if (!stop) return;
+    setAudioStopIndex(index);
+    mapRef.current?.getMap()?.flyTo({ center: [stop.lng, stop.lat], zoom: 17, pitch: 0, offset: [0, -110], duration: 1000 });
+  }, [audioTour]);
   const [streetPlace, setStreetPlace] = useState<Place | null>(null);
   const [locationLabel, setLocationLabel] = useState("Dünya");
   const [toast, setToast] = useState<string | null>(null);
@@ -357,6 +369,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
   // üstte duran katmanı kapatır. Sıra, katmanların görsel yığınıyla aynıdır:
   // önce tam ekran katmanlar, en sonda harita üstündeki keşif kartı.
   const closeTopLayer = useCallback((): (() => void) | null => {
+    if (audioTour) return () => setAudioTour(null);
     if (storyPlace) return () => setStoryPlace(null);
     if (streetPlace) return () => setStreetPlace(null);
     if (routeEditorRoute) return () => setRouteEditorRoute(null);
@@ -376,6 +389,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
     if (panelOpen) return () => setPanelOpen(false);
     return null;
   }, [
+    audioTour,
     storyPlace,
     streetPlace,
     routeEditorRoute,
@@ -478,6 +492,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
   }, []);
 
   const closePanels = () => {
+    setAudioTour(null);
     setDrawerOpen(false);
     setFeedOpen(false);
     setAtlasOpen(false);
@@ -499,7 +514,10 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
   };
   const openAtlas = () => { closePanels(); setResumeRoute(null); setSpin(false); setAtlasOpen(true); };
 
-  const openSettings = useCallback(() => {
+  const [settingsSection, setSettingsSection] = useState<"location" | "appearance">("appearance");
+  const openSettings = useCallback((section: "location" | "appearance" = "appearance") => {
+    setSettingsSection(section);
+    setAudioTour(null);
     setDrawerOpen(false);
     setFeedOpen(false);
     setAtlasOpen(false);
@@ -1060,7 +1078,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
   // (kullanıcı isteği 2026-10-25 ve 2026-10-27): panel kapanınca "kart nerede?"
   // boşluğu oluşmuyor, PC'de Atlas AI açıldığında alt keşif paneli kapanmıyor.
   // Masaüstünde sağdan açılan panel kartı örtmesin diye kart sola kaydırılır.
-  const dockVisible = !recordsOpen && !storyPlace && !settingsOpen && !drawerOpen;
+  const dockVisible = !recordsOpen && !storyPlace && !settingsOpen && !drawerOpen && !audioTour;
   useEffect(() => {
     if (!dockVisible) setDiscoverySpace(0);
   }, [dockVisible]);
@@ -1246,6 +1264,9 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
             terrain={terrain}
             onToggleTerrain={toggleTerrain}
             onReset={handleReset}
+            onOpenLocation={() => openSettings("location")}
+            onOpenAppearance={() => openSettings("appearance")}
+            locationReady={!!geo.fix}
           />
         </Suspense>
       )}
@@ -1287,7 +1308,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
         </Suspense>
       )}
 
-      <Suspense fallback={null}>
+      {!audioTour && <Suspense fallback={null}>
         <NearbyAudioGuide
           location={precise}
           places={GUIDE_PLACES}
@@ -1297,7 +1318,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
             setStoryPlace(place);
           }}
         />
-      </Suspense>
+      </Suspense>}
 
       {/* İpucu + atıf */}
       <div className="pointer-events-none absolute right-28 bottom-[30%] z-10 hidden flex-col items-end gap-2 text-right lg:flex">
@@ -1321,9 +1342,6 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
           </button>
         )}
       </div>
-      <p role="contentinfo" className="pointer-events-none absolute inset-x-0 bottom-[2px] z-20 hidden px-2 text-center text-[11px] leading-none text-mint/45 md:block">
-        Harita © Esri, OpenFreeMap, OpenMapTiles ve OpenStreetMap katkıcıları · Yükseklik verisi: AWS Terrain Tiles
-      </p>
 
       {/* M-18: Kalıcı canlı veri hata şeridi + Yeniden dene */}
       {showDataErrorBanner && (
@@ -1380,6 +1398,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
       )}
 
       {dockVisible && <BottomPanel
+        attribution={<MapAttribution baseMap={baseMap} showLabels={labels} terrainEnabled={terrain} />}
         open={panelOpen}
         onToggle={() => setPanelOpen((v) => !v)}
         category={category}
@@ -1481,7 +1500,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
       />
       </Suspense>
 
-      {recordsOpen && <RecordsDock onClose={() => setRecordsOpen(false)} onPlace={(place) => { closePanels(); focusPlace(place); setStoryPlace(place); }} onRoute={(route) => { closePanels(); setResumeRoute(route); setAtlasOpen(true); }} />}
+      {recordsOpen && <RecordsDock attribution={<MapAttribution baseMap={baseMap} showLabels={labels} terrainEnabled={terrain} />} onClose={() => setRecordsOpen(false)} onPlace={(place) => { closePanels(); focusPlace(place); setStoryPlace(place); }} onRoute={(route) => { closePanels(); setResumeRoute(route); setAtlasOpen(true); }} />}
       {routeEditorRoute && <RouteEditor
         route={routeEditorRoute}
         onClose={() => setRouteEditorRoute(null)}
@@ -1536,15 +1555,10 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
 
       <Suspense fallback={null}>
       <Drawer
+        attribution={<MapAttribution baseMap={baseMap} showLabels={labels} terrainEnabled={terrain} />}
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         onAdd={startAdd}
-        showLabels={labels}
-        terrainEnabled={terrain}
-        onToggleLabels={() => setLabels((value) => !value)}
-        onToggleTerrain={toggleTerrain}
-        onOpenLocation={() => { closePanels(); openSettings(); }}
-        locationReady={!!geo.fix}
         places={visiblePlaces}
         category={category}
         onCategory={handleCategory}
@@ -1600,7 +1614,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
       )}
 
       {settingsOpen && (
-        <SettingsPanel onClose={closeSettings} {...settingsContentProps} />
+        <SettingsPanel attribution={<MapAttribution baseMap={baseMap} showLabels={labels} terrainEnabled={terrain} />} onClose={closeSettings} initialSection={settingsSection} {...settingsContentProps} />
       )}
 
       {onboarding && (
@@ -1634,10 +1648,24 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
         />
       )}
 
+      {audioTour && <Suspense fallback={null}><AudioDiscoveryMap map={mapRef.current?.getMap() ?? null} stops={audioTour.stops} selected={audioStopIndex} onSelect={selectAudioStop} /><AudioDiscoverySheet attribution={<MapAttribution baseMap={baseMap} showLabels={labels} terrainEnabled={terrain} />} tour={audioTour} selectedIndex={audioStopIndex} onSelect={selectAudioStop} onClose={() => setAudioTour(null)} /></Suspense>}
+
       {liveStoryPlace && (
         <Suspense fallback={null}>
           <PlaceDetails
+            attribution={<MapAttribution baseMap={baseMap} showLabels={labels} terrainEnabled={terrain} />}
             place={liveStoryPlace}
+            onAudioDiscovery={audioDiscoveryForPlace(liveStoryPlace.id) ? () => {
+              const tour = audioDiscoveryForPlace(liveStoryPlace.id);
+              if (!tour?.stops.length) return;
+              closePanels();
+              setActiveId(null);
+              setSpin(false);
+              mapRef.current?.clearRoute();
+              setAudioStopIndex(0);
+              setAudioTour(tour);
+              mapRef.current?.getMap()?.flyTo({ center: [tour.stops[0].lng, tour.stops[0].lat], zoom: 17, pitch: 0, offset: [0, -110], duration: 1000 });
+            } : undefined}
             onClose={() => setStoryPlace(null)}
             onStreet={() => {
               const place = liveStoryPlace;

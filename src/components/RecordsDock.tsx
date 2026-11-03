@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ArrowRight, Bookmark, Compass, MapPin, Route, Trash2, X } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { isCloudAccount, useCollections } from "../hooks/useCollections";
@@ -17,10 +17,10 @@ import type { AtlasRoute, AtlasTrack, Place } from "../types";
 import PlaceImage from "./PlaceImage";
 import { friendlyDataError } from "../lib/firestoreValue";
 
-interface Props { onClose: () => void; onPlace: (place: Place) => void; onRoute: (route: AtlasRoute) => void; }
+interface Props { attribution?: ReactNode; onClose: () => void; onPlace: (place: Place) => void; onRoute: (route: AtlasRoute) => void; }
 type Tab = "places" | "routes" | "discover" | "tracks";
 
-export default function RecordsDock({ onClose, onPlace, onRoute }: Props) {
+export default function RecordsDock({ onClose, onPlace, onRoute, attribution }: Props) {
   const { user } = useAuth();
   const { savedPlaces, savedRoutes, savePlace, saveRoute, removeRoute, loading: savedLoading, error: savedError } = useCollections();
   const [tab, setTab] = useState<Tab>("places");
@@ -129,5 +129,6 @@ export default function RecordsDock({ onClose, onPlace, onRoute }: Props) {
       {tab === "discover" && visibleRoutes.map(({ route, saveCount }) => <article key={route.id} className="pressable flex min-h-[205px] w-[290px] shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025] transition hover:border-sun/45">{route.photo && <img src={route.photo} alt="" loading="lazy" decoding="async" className="h-24 w-full object-cover" />}<div className="flex flex-1 flex-col p-4"><div className="flex items-center justify-between gap-2"><span className="truncate text-[11px] text-mint/55">{route.region || "Bölgesi belirtilmedi"}</span><span className="shrink-0 text-[11px] text-sun">{saveCount} kayıt</span></div><h3 className="mt-2 line-clamp-2 text-[15px] font-semibold">{route.routeTitle}</h3><p className="mt-1 line-clamp-2 text-[12px] leading-relaxed text-mint/65">{route.vibe} · {route.totalDurationHours} saat · {route.totalDistanceKm} km</p><div className="mt-auto flex gap-2 pt-3"><button type="button" onClick={() => onRoute(route)} className="flex min-h-10 flex-1 items-center justify-center gap-1 rounded-full border border-white/15 text-[12px]">Aç <ArrowRight size={13} /></button><button type="button" onClick={() => saveRoute(route)} aria-label={`${route.routeTitle} rotasını kaydet`} className="grid size-10 shrink-0 place-items-center rounded-full border border-sun/30 text-sun"><Bookmark size={14} fill={savedRoutes.some((saved) => saved.id === route.id) ? "currentColor" : "none"} /></button></div></div></article>)}
       {tab === "tracks" && tracks.map((track) => <article key={track.id} className="flex min-h-[160px] w-[270px] shrink-0 flex-col rounded-2xl border border-leaf/20 bg-leaf/[0.04] p-4"><div className="flex items-center justify-between"><span className="rounded-full bg-leaf/10 px-2.5 py-1 text-[11px] text-leaf">Yalnız sen</span><button type="button" onClick={() => void deleteTrackRecord(track.id)} aria-label="Bu özel izi kalıcı olarak sil" className="grid size-9 place-items-center rounded-full text-mint/70 hover:bg-red-400/10 hover:text-red-200"><Trash2 size={14} /></button></div><h3 className="mt-3 text-[13px] font-semibold text-mint/80">Yürüyüş kaydı</h3><p className="font-display mt-1 text-[26px] leading-none font-bold text-white">{track.distanceKm.toFixed(2)} <span className="text-[13px] font-semibold text-sun">km</span></p><p className="mt-2 text-[12px] text-mint/70">{new Date(track.startedAt).toLocaleString("tr-TR", { dateStyle: "medium", timeStyle: "short" })}</p><p className="mt-2 flex flex-wrap gap-1.5"><span className="rounded-full bg-white/[0.05] px-2 py-0.5 text-[11px] text-mint/75 ring-1 ring-white/10">{track.stops.length} durak</span><span className="rounded-full bg-white/[0.05] px-2 py-0.5 text-[11px] text-mint/75 ring-1 ring-white/10">{track.accuracy.sampleCount} ölçüm</span></p></article>)}
     </div>}
+    {attribution && <div className="sticky bottom-0 mt-2 bg-[#031c16] py-2">{attribution}</div>}
   </aside>;
 }

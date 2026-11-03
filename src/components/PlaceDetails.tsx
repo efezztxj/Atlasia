@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import {
   Ban,
   Bookmark,
@@ -11,6 +11,7 @@ import {
   Map,
   MapPin,
   Navigation,
+  Play,
   Route,
   Share2,
   Trash2,
@@ -34,17 +35,19 @@ import { friendlyDataError } from "../lib/firestoreValue";
 const NearbyHistory = lazy(() => import("./NearbyHistory"));
 
 interface Props {
+  attribution?: ReactNode;
   place: Place;
   onClose: () => void;
   onStreet: () => void;
   onPlan: () => void;
+  onAudioDiscovery?: () => void;
   canDelete?: boolean;
   onDelete?: () => Promise<boolean>;
   /** Yakındaki tarihî yer listesinden bir yer açılınca. */
   onOpenPlace?: (place: Place) => void;
 }
 
-export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDelete = false, onDelete, onOpenPlace }: Props) {
+export default function PlaceDetails({ place, onClose, onStreet, onPlan, onAudioDiscovery, canDelete = false, onDelete, onOpenPlace, attribution }: Props) {
   const { photos: allPhotos, loading, error } = usePlaceGallery(place);
   const { savePlace, isSaved } = useCollections();
   const panelRef = usePanelAccess(true, onClose, true);
@@ -192,6 +195,7 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDele
           </div>
 
           {status && <p role="status" className="mt-2 text-[13px] text-sun">{status}</p>}
+          {onAudioDiscovery && <button type="button" onClick={onAudioDiscovery} className="mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-sun px-4 text-[14px] font-semibold text-ink"><Play size={16} />Sesli keşif turunu aç</button>}
           <p className="mt-5 text-[15px] leading-[1.8] text-mint/90">{story}</p>
           {place.historySource ? (
             <p className="mt-2 text-[11px] leading-relaxed text-mint/70" data-testid="place-attribution">
@@ -249,6 +253,7 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, canDele
           {error && <p className="mt-3 text-[13px] text-mint/75">Ek fotoğraf kaynağına ulaşılamadı; mevcut galeriyi kullanabilirsin.</p>}
           <p className="mt-5 border-l-2 border-sun/30 pl-3 text-[12px] leading-relaxed text-mint/75">Bu bir rehber özetidir. Saat, ücret ve erişim koşullarını gitmeden resmî kaynaktan doğrula.</p>
         </div>
+        {attribution && <div className="shrink-0 border-t border-white/10 bg-[#041c16] px-5 py-2">{attribution}</div>}
       </aside>
       {showReport && user && (
         <ReportDialog targetType="place" targetId={place.id} targetOwnerUid={place.authorUid} targetLabel={place.title} reporterUid={user.uid} onClose={() => setShowReport(false)} onReported={() => setStatus("Raporun alındı, inceleyeceğiz.")} />

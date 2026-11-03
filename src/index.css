@@ -580,13 +580,11 @@ html[data-theme="dark"] .text-leaf\/80 {
   /* Alt yığın sırası (kullanıcı isteği 2026-10-25): sekme çubuğu → keşif
      kartı → eylem çifti. Kart çubuğa, eylemler kartın üstüne yaslanır.
        58 px  sekme çubuğu
-       88 px  keşif kartı (çubuğun 30 px üstü; çubuktan taşan + dairesini
-              de hesaba katar, + üst kenarı 78 px'te biter)
-      168 px  eylem çifti (kartın 70 px yüksekliği + 10 px nefes)
-      222 px  Atlas AI paneli ve harita kontrolleri */
+      128 px  keşif kartının alt kenarı; altında harita kaynakları için alan
+      208 px  eylemler için başlangıç; kart büyürse ölçülen yüksekliğe göre kayar */
   :root {
     --mobile-card-bottom: calc(88px + env(safe-area-inset-bottom));
-    --mobile-fab-bottom: calc(168px + env(safe-area-inset-bottom));
+    --mobile-fab-bottom: calc(208px + env(safe-area-inset-bottom));
     --mobile-fab-gap: 12px;
   }
 
@@ -675,7 +673,7 @@ html[data-theme="dark"] .text-leaf\/80 {
   .mobile-walk-fab {
     position: fixed;
     left: var(--mobile-fab-gap);
-    bottom: var(--mobile-fab-bottom);
+    bottom: max(var(--mobile-fab-bottom), calc(var(--discovery-occupied-space, 0px) + 10px));
     z-index: 30;
     width: 46px;
     height: 46px;
@@ -687,7 +685,7 @@ html[data-theme="dark"] .text-leaf\/80 {
   .atlas-launcher {
     right: var(--mobile-fab-gap);
     left: auto;
-    bottom: var(--mobile-fab-bottom) !important;
+    bottom: max(var(--mobile-fab-bottom), calc(var(--discovery-occupied-space, 0px) + 10px)) !important;
     width: 46px;
     min-height: 46px;
     justify-content: center;
@@ -695,7 +693,7 @@ html[data-theme="dark"] .text-leaf\/80 {
   }
   .atlas-launcher svg { width: 19px; height: 19px; }
   .atlas-launcher-label { display: none; }
-  .atlas-launcher.atlas-dock-expanded { bottom: var(--mobile-fab-bottom) !important; }
+  .atlas-launcher.atlas-dock-expanded { bottom: max(var(--mobile-fab-bottom), calc(var(--discovery-occupied-space, 0px) + 10px)) !important; }
 
   /* Çubuğun ortasındaki tek birincil eylem: 54 px altın daire çubuğun üst
      kenarından 20 px taşar (Material 3 / Instagram deseni). Sekme sayısı
@@ -860,7 +858,7 @@ html[data-theme="dark"] .text-leaf\/80 {
   .atlas-launcher,
   .atlas-launcher.atlas-dock-expanded,
   .mobile-walk-fab {
-    bottom: var(--mobile-fab-bottom);
+    bottom: max(var(--mobile-fab-bottom), calc(var(--discovery-occupied-space, 0px) + 10px));
   }
 }
 
