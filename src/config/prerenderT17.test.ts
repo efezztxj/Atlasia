@@ -100,6 +100,8 @@ describe("T17 · statik içerik", () => {
   it("derleme hattı enjeksiyonu bağlı ve tek kaynak", () => {
     expect(viteConfig).toContain('from "./src/content/landingStatic"');
     expect(viteConfig).toContain("transformIndexHtml");
+    // JavaScript açıkken statik metin yükleme sırasında ekrana taşmamalı.
+    expect(viteConfig).toContain('<noscript>\\n${renderLandingStaticHtml()}\\n    </noscript>');
     // İşaret bulunamazsa derleme kırılmalı: sessizce metinsiz HTML yayına çıkmasın.
     expect(viteConfig).toContain('html.includes(marker)');
     expect(viteConfig).toContain("throw new Error");

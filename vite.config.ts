@@ -22,7 +22,7 @@ export default defineConfig(({ mode }) => {
       tailwindcss(),
       {
         name: "atlasia-static-landing",
-        // createRoot ilk renderda statik içeriği değiştirir; JS olmadan içerik kalır.
+        // Statik metin yalnızca JavaScript kapalıysa görünür; yükleme sırasında görünmez.
         transformIndexHtml: (html) => {
           const marker = '<div id="root"></div>';
           // Sessiz gerileme olmasın: kök işareti değişirse derleme kırılır,
@@ -31,7 +31,7 @@ export default defineConfig(({ mode }) => {
             throw new Error("atlasia-static-landing: index.html içinde #root bulunamadı");
           }
           return html
-            .replace(marker, `<div id="root">\n${renderLandingStaticHtml()}\n    </div>`)
+            .replace(marker, `<div id="root"><noscript>\n${renderLandingStaticHtml()}\n    </noscript></div>`)
             .replace("</head>", `<script type="application/ld+json">${renderLandingFaqJsonLd()}</script>\n  </head>`);
         },
       },

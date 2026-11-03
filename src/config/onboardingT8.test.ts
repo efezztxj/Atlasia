@@ -31,7 +31,7 @@ describe("T8 · misafir/üye ayrımı", () => {
     renderPanel(true);
     const note = screen.getByRole("note");
     expect(note.textContent).toContain("Misafir olarak geziyorsun");
-    expect(note.textContent).toContain("hesap açman istenecek");
+    expect(note.textContent).toContain("hesap açman ya da giriş yapman istenecek");
   });
 
   it("üyeye misafir uyarısını göstermez", () => {

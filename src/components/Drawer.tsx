@@ -1,11 +1,12 @@
-import { useEffect } from "react";
-import { Bookmark, Crosshair, Globe2, MapPin, Plus, Tags, X } from "lucide-react";
+import { useEffect, type ReactNode } from "react";
+import { Bookmark, MapPin, Plus, X } from "lucide-react";
 import { CATEGORIES, CATEGORY_MAP } from "../data/categories";
 import type { CategoryId, Place } from "../types";
 import { cn } from "../utils/cn";
 import { PlaceThumb } from "./BottomPanel";
 
 interface Props {
+  attribution?: ReactNode;
   open: boolean;
   onClose: () => void;
   places: Place[];
@@ -14,17 +15,11 @@ interface Props {
   onPick: (p: Place) => void;
   isMine: (p: Place) => boolean;
   onAdd: () => void;
-  showLabels: boolean;
-  terrainEnabled: boolean;
-   onToggleLabels: () => void;
-  onToggleTerrain: () => void;
-  onOpenLocation: () => void;
-  locationReady: boolean;
   /** Kayıtlar (yerler, rotalar, yürüyüşler): alt sekmeden buraya taşındı. */
   onRecords: () => void;
 }
 
-export default function Drawer({ open, onClose, places, category, onCategory, onPick, isMine, onAdd, showLabels, terrainEnabled, onToggleLabels, onToggleTerrain, onOpenLocation, locationReady, onRecords }: Props) {
+export default function Drawer({ open, onClose, places, category, onCategory, onPick, isMine, onAdd, onRecords, attribution }: Props) {
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -86,25 +81,6 @@ export default function Drawer({ open, onClose, places, category, onCategory, on
           <span className="text-[11px] font-normal text-mint/60">Yer · rota · yürüyüş</span>
         </button>
 
-        <button
-          type="button"
-          onClick={onOpenLocation}
-          className={cn(
-            "mx-6 mb-2 flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-full border px-3 text-[12px] md:hidden",
-            locationReady ? "border-leaf/60 bg-leaf/10 text-leaf" : "border-leaf/35 text-mint",
-          )}
-        >
-          <Crosshair className="size-4" />Konum{locationReady ? " hazır" : ""}
-        </button>
-
-        <div className="mx-6 mb-4 flex shrink-0 gap-2 md:hidden" aria-label="Görünüm seçenekleri">
-          <button type="button" onClick={onToggleLabels} aria-pressed={showLabels} className={cn("flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full border px-2 text-[12px]", showLabels ? "border-sun/55 bg-sun/10 text-sun" : "border-leaf/30 text-mint")}>
-            <Tags className="size-4" />Yer adları
-          </button>
-          <button type="button" onClick={onToggleTerrain} aria-pressed={terrainEnabled} className={cn("flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full border px-2 text-[12px]", terrainEnabled ? "border-sun/55 bg-sun/10 text-sun" : "border-leaf/30 text-mint")}>
-            <Globe2 className="size-4" />3B arazi
-          </button>
-        </div>
 
         <div className="no-scrollbar fade-x flex gap-1.5 overflow-x-auto px-6 pb-3">
           <button
@@ -164,6 +140,7 @@ export default function Drawer({ open, onClose, places, category, onCategory, on
             </li>
           ))}
         </ul>
+        {attribution && <div className="shrink-0 border-t border-white/10 bg-ink-2 px-6 py-2">{attribution}</div>}
       </aside>
     </>
   );

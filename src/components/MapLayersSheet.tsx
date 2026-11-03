@@ -1,4 +1,4 @@
-import { Globe2, Layers, Map, Moon, Mountain, RotateCcw, Tags, X } from "lucide-react";
+import { Crosshair, Globe2, Layers, Map, Moon, Mountain, Palette, RotateCcw, Tags, X } from "lucide-react";
 import { usePanelAccess } from "../hooks/usePanelAccess";
 import { cn } from "../utils/cn";
 import type { BaseMapStyle } from "./MapView";
@@ -27,6 +27,9 @@ interface Props {
   terrain: boolean;
   onToggleTerrain: () => void;
   onReset: () => void;
+  onOpenLocation: () => void;
+  onOpenAppearance: () => void;
+  locationReady: boolean;
 }
 
 function Row({
@@ -90,6 +93,9 @@ export default function MapLayersSheet({
   terrain,
   onToggleTerrain,
   onReset,
+  onOpenLocation,
+  onOpenAppearance,
+  locationReady,
 }: Props) {
   const panelRef = usePanelAccess(open, onClose, true);
   if (!open) return null;
@@ -142,6 +148,8 @@ export default function MapLayersSheet({
         <div className="border-t border-white/[0.07] pt-3">
           <p className="px-4 pb-1 text-[12px] font-semibold text-mint/70">Harita gösterimi</p>
           <div className="mt-1">
+            <button type="button" onClick={onOpenLocation} className="flex min-h-11 w-full items-center gap-3 px-4 py-3 text-left text-mint"><Crosshair className="size-4 text-sun" /><span>Konum ayarları{locationReady ? " · Konum hazır" : ""}</span></button>
+            <button type="button" onClick={onOpenAppearance} className="flex min-h-11 w-full items-center gap-3 px-4 py-3 text-left text-mint"><Palette className="size-4 text-sun" /><span>Görünüm ve tema ayarları</span></button>
             <Row
               icon={Tags}
               title="Yer adları"

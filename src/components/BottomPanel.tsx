@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef } from "react";
+import { useCallback, useLayoutEffect, useRef, type ReactNode } from "react";
 import {
   ArrowRight,
   Bookmark,
@@ -45,6 +45,7 @@ interface Props {
   locating: boolean;
   /** Mobilde panelin ekran altından kapladığı toplam alanı bildirir. */
   onOccupiedSpaceChange?: (space: number) => void;
+  attribution?: ReactNode;
 }
 
 export function PlaceThumb({ place, className }: { place: Place; className?: string }) {
@@ -72,6 +73,7 @@ export default function BottomPanel({
   accuracy,
   locating,
   onOccupiedSpaceChange,
+  attribution,
 }: Props) {
   const { savePlace, isSaved } = useCollections();
   const panelRef = useRef<HTMLElement | null>(null);
@@ -123,8 +125,8 @@ export default function BottomPanel({
           <section
             ref={(node) => { panelRef.current = node; }}
             aria-label="Daraltılmış keşif önerisi"
-            className="mobile-discovery-panel desktop-discovery-panel gold-frame pointer-events-auto rounded-[22px] bg-[#021915] p-2.5 max-md:fixed max-md:inset-x-3 max-md:bottom-[calc(88px+env(safe-area-inset-bottom))] max-md:z-20 md:rounded-[28px] md:p-4"
-           
+            className="mobile-discovery-panel desktop-discovery-panel gold-frame pointer-events-auto rounded-[22px] bg-[#021915] p-2.5 max-md:fixed max-md:inset-x-3 max-md:bottom-[calc(128px+env(safe-area-inset-bottom))] max-md:z-20 md:rounded-[28px] md:p-4"
+
           >
             {current ? (
               <div className="flex min-w-0 items-center gap-1.5 md:gap-3">
@@ -182,6 +184,7 @@ export default function BottomPanel({
               </button>
             )}
           </section>
+          <div className="pointer-events-auto max-md:fixed max-md:inset-x-3 max-md:bottom-[calc(88px+env(safe-area-inset-bottom))] max-md:z-20">{attribution}</div>
         </div>
       </div>
     );
@@ -196,7 +199,7 @@ export default function BottomPanel({
       )}
     >
       <div className="w-full max-w-[920px]">
-        <section ref={(node) => { panelRef.current = node; }} aria-label="Keşif önerileri" className="mobile-discovery-panel mobile-fullscreen gold-frame pointer-events-auto fixed inset-0 z-50 flex flex-col overflow-y-auto bg-[#021b16] px-4 md:hidden">
+        <section ref={(node) => { panelRef.current = node; }} aria-label="Keşif önerileri" className="mobile-discovery-panel gold-frame pointer-events-auto fixed inset-x-3 bottom-[calc(128px+env(safe-area-inset-bottom))] z-50 max-h-[65dvh] overflow-y-auto rounded-2xl bg-[#021b16] p-4 md:hidden">
           <div className="flex items-center justify-between gap-3">
             <p className="truncate text-[12px] text-mint/75">Yol üstündekilerden küçük ipuçları</p>
             <button type="button" onClick={onToggle} aria-expanded={open} className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border border-white/10 px-3 text-[12px] font-medium text-sun">
@@ -232,7 +235,7 @@ export default function BottomPanel({
                 })}
               </div>
               {current ? (
-                <div className="mt-4 flex flex-1 flex-col rounded-2xl border border-white/10 bg-white/[0.025] p-3.5">
+                <div className="mt-4 flex flex-col rounded-2xl border border-white/10 bg-white/[0.025] p-3.5">
                   <PlaceThumb place={current} className="h-40 w-full shrink-0 rounded-xl" />
                   <div className="mt-3 flex items-start gap-2.5">
                     <button type="button" onClick={() => onShow(current)} className="min-w-0 flex-1 text-left">
@@ -248,7 +251,9 @@ export default function BottomPanel({
                       <ChevronRight className="size-4" />
                     </button>
                   </div>
-                  <button type="button" onClick={() => onShow(current)} className="mt-auto flex min-h-12 w-full items-center justify-center gap-2 btn-gold rounded-full px-4 pt-0 text-[13.5px] font-bold text-[#10241A] transition">
+                  {current.id === "efes" && current.kind === "guide" && <div className="mt-3 text-[12px] leading-relaxed text-mint/85"><p>Efes, Helenistik ve Roma dönemlerinden izler taşıyan eski bir liman kentidir. Celsus Kütüphanesi ve Büyük Tiyatro, Roma döneminden günümüze ulaşan önemli yapılardandır.</p><p className="mt-2">Kaynaklar: <a href="https://whc.unesco.org/en/list/1018/" target="_blank" rel="noreferrer" className="underline">UNESCO</a> · <a href="https://www.ephesus.net/ancient-city/" target="_blank" rel="noreferrer" className="underline">Ephesus.net</a></p></div>}
+                  {current.id !== "efes" && current.story && <p className="mt-3 text-[12px] leading-relaxed text-mint/85">{current.story}</p>}
+                  <button type="button" onClick={() => onShow(current)} className="mt-4 flex min-h-12 w-full items-center justify-center gap-2 btn-gold rounded-full px-4 pt-0 text-[13.5px] font-bold text-[#10241A] transition">
                     <Map className="size-[17px]" strokeWidth={1.8} />Haritada gör <ArrowRight className="size-4" />
                   </button>
                 </div>
@@ -261,6 +266,7 @@ export default function BottomPanel({
             </>
           )}
         </section>
+        <div className="pointer-events-auto fixed inset-x-3 bottom-[calc(88px+env(safe-area-inset-bottom))] z-50 md:hidden">{attribution}</div>
 
         {/* Panel üstü şerit */}
         <div className="mb-3 hidden grid-cols-[1fr_auto_1fr] items-end gap-2 px-1 text-[12px] md:grid">
@@ -416,6 +422,7 @@ export default function BottomPanel({
             </>
           )}
         </section>
+        <div className="pointer-events-auto hidden md:block">{attribution}</div>
       </div>
     </div>
   );

@@ -143,7 +143,7 @@ describe("küçük ekran yerleşimi (≈360×640)", () => {
   // Kapsül artık sabit sayı yerine eylem çiftine bağlı:
   // bottom: calc(var(--mobile-fab-bottom, 168px) + 58px)
   const controlsOffset = px(css, /--mobile-fab-bottom, (\d+)px\) \+ 58px/);
-  const controlsBottom = controlsOffset + 58;
+  const controlsBottom = fabLine + 58;
 
   it("alt çubuk 58 px (kod ile aynı)", () => {
     expect(barHeight).toBe(58);
@@ -177,7 +177,14 @@ describe("küçük ekran yerleşimi (≈360×640)", () => {
     // Eylem çifti kartın üstünde: kart yüksekliği (~70 px) + 10 px nefes.
     expect(fabLine).toBeGreaterThanOrEqual(collapsedBottom + 70 + 10);
     // Harita kontrolleri eylem çiftinin de üstünde başlar.
+    expect(controlsOffset).toBe(168);
     expect(controlsBottom).toBeGreaterThanOrEqual(fabLine + 46);
+  });
+
+  it("iki yüzen eylem kartın gerçek yüksekliğini hesaba katar", () => {
+    const measuredOffset = "calc(var(--discovery-occupied-space, 0px) + 10px)";
+    expect(block(".mobile-walk-fab")).toContain(measuredOffset);
+    expect(css).toMatch(/\.atlas-launcher\s*\{[^}]*discovery-occupied-space/s);
   });
 
   it("harita düğmeleri daraltılmış kartın üstünde başlıyor", () => {

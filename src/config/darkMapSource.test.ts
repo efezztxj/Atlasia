@@ -54,7 +54,7 @@ describe("keyless dark map source", () => {
 
   it("shows the required attribution and narrows CSP to the new tile origin", () => {
     expect(mapSource).toContain("OpenFreeMap © OpenMapTiles · OpenStreetMap contributors");
-    expect(appSource).toContain("Harita © Esri, OpenFreeMap, OpenMapTiles ve OpenStreetMap katkıcıları");
+    expect(appSource).toContain("<MapAttribution baseMap={baseMap}");
     expect(appSource).not.toContain("Esri, CARTO");
     expect(headers).toContain("https://tiles.openfreemap.org");
     expect(headers).not.toContain("cartocdn.com");

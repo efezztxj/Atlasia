@@ -17,7 +17,6 @@ const read = (relative: string) =>
 const css = read("src/index.css");
 
 const FULLSCREEN_SURFACES: Array<[string, RegExp]> = [
-  ["BottomPanel.tsx", /aria-label="Keşif önerileri"[^>]*mobile-fullscreen\b/],
   ["SocialPanel.tsx", /social-panel\s+mobile-fullscreen-bleed\b/],
   ["ProfilePanel.tsx", /settings-sheet\b[^>]*fixed inset-0/],
   ["MyPlacesPanel.tsx", /atlas-sheet\s+mobile-fullscreen\b/],
@@ -60,17 +59,24 @@ describe("telefon tam ekran katman sözleşmesi (< 768 px)", () => {
     expect(searchBox).toContain('.closest(".mobile-search-sheet")');
   });
 
-  it("açılan her panel, çekmece, sayfa ve pencere mobil tam ekran sınıfını taşır", () => {
+  it("diğer belirlenen paneller mobil tam ekran sınıfını taşır", () => {
     for (const [file, pattern] of FULLSCREEN_SURFACES) {
       const source = read(`src/components/${file}`);
       expect(source, `${file} mobil tam ekran sınıfı taşımıyor`).toMatch(pattern);
     }
   });
 
+  it("açık keşif paneli haritanın bir bölümünü açık bırakır", () => {
+    const bottomPanel = read("src/components/BottomPanel.tsx");
+    const openSection = /aria-label="Keşif önerileri" className="([^"]+)"/.exec(bottomPanel)?.[1] ?? "";
+    expect(openSection).toContain("max-h-[65dvh]");
+    expect(openSection).not.toContain("mobile-fullscreen");
+  });
+
   it("daraltılmış keşif şeridi (!open) tam ekrana dönüşmez; harita üstünde kompakt kalır", () => {
     const bottomPanel = read("src/components/BottomPanel.tsx");
     const collapsedSection = /aria-label="Daraltılmış keşif önerisi"\s+className="([^"]+)"/.exec(bottomPanel)?.[1] ?? "";
-    expect(collapsedSection).toContain("max-md:bottom-[calc(88px+env(safe-area-inset-bottom))]");
+    expect(collapsedSection).toContain("max-md:bottom-[calc(128px+env(safe-area-inset-bottom))]");
     expect(collapsedSection).not.toContain("mobile-fullscreen");
   });
 });

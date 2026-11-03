@@ -10,7 +10,7 @@ import {
   saveEssentialCookieConsent,
 } from "../lib/cookieConsent";
 import { storageRemove } from "../utils/storage";
-import { SettingsContent, type SettingsContentProps } from "./SettingsPanel";
+import SettingsPanel, { SettingsContent, type SettingsContentProps } from "./SettingsPanel";
 
 function resetConsent() {
   expireCookie(COOKIE_CONSENT_NAME, false);
@@ -112,4 +112,19 @@ describe("SettingsContent", () => {
     expect(screen.getByText(/Yalnız zorunlu · Kaydedildi:/)).toBeTruthy();
     expect(screen.getByText(/2026/)).toBeTruthy();
   });
+});
+
+it("katmanlardan konum açıldığında ilgili bölüme odaklanır, izni kendiliğinden istemez", () => {
+  const props = makeProps();
+  render(createElement(SettingsPanel, { ...props, onClose: vi.fn(), initialSection: "location" }));
+  expect(document.activeElement?.id).toBe("location-settings");
+  expect(props.onAllowLocation).not.toHaveBeenCalled();
+});
+
+it("ayarlar penceresi açıkken harita kaynağı diyalog içinde erişilebilir kalır", () => {
+  render(createElement(SettingsPanel, {
+    ...makeProps(), onClose: vi.fn(),
+    attribution: createElement("a", { href: "https://www.openstreetmap.org/copyright" }, "Harita kaynakları"),
+  }));
+  expect(screen.getByRole("dialog").contains(screen.getByRole("link", { name: "Harita kaynakları" }))).toBe(true);
 });

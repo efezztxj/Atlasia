@@ -49,6 +49,7 @@ declare global {
   }
 }
 import { attachMapResume } from "../lib/mapResume";
+import { activeBaseSource, isActiveBaseSourceError } from "../utils/mapSourceStatus";
 
 maplibregl.setWorkerUrl(maplibreWorkerUrl);
 
@@ -56,6 +57,7 @@ export type BaseMapStyle = "satellite" | "dark" | "street" | "topographic";
 
 export interface MapViewHandle {
   flyTo: (lng: number, lat: number, zoom?: number) => void;
+  getMap: () => maplibregl.Map | null;
   fitBox: (box: [number, number, number, number]) => void;
   zoomIn: () => void;
   zoomOut: () => void;
@@ -405,6 +407,9 @@ export default function MapView({
       ),
     };
   }
+  const [baseMapError, setBaseMapError] = useState(false);
+  const baseMapRef = useRef(baseMap);
+  baseMapRef.current = baseMap;
 
   // En güncel değerleri harita olaylarında kullanmak için
   const live = useRef({ onSelect, onMapClick, onUserInteract, onViewChange, onViewportChange, addMode, spin, onSlowDevice });
@@ -425,6 +430,7 @@ export default function MapView({
         essential: true,
       });
     },
+    getMap: () => mapRef.current,
     fitBox([w, s, e, n]) {
       const map = mapRef.current;
       const el = containerRef.current;
@@ -665,8 +671,13 @@ export default function MapView({
     map.once("style.load", () => setReady(true));
     if (map.isStyleLoaded()) setReady(true);
 
-    // Son bildirilen görünüm: mikro hareketlerde React state'i hiç güncellenmez
-    // (state aynı nesne kalırsa React yeniden render etmez).
+    // Stil yüklense bile yalnız etkin altlık hatalarını kullanıcıya bildir.
+    const onBaseMapError = (event: unknown) => {
+      if (isActiveBaseSourceError(event, baseMapRef.current)) setBaseMapError(true);
+    };
+    map.on("error", onBaseMapError);
+
+    // Mikro hareketlerde gereksiz React güncellemesini engelle.
     let lastCommitted: ViewState | null = null;
     const report = (force = false) => {
       const c = map.getCenter();
@@ -847,6 +858,7 @@ export default function MapView({
       cancelAnimationFrame(raf);
       raf = 0;
       document.removeEventListener("visibilitychange", onVisibilityForSpin);
+      map.off("error", onBaseMapError);
       markers.forEach((value) => value.marker.remove());
       markers.clear();
       meMarkerRef.current?.remove();
@@ -855,6 +867,10 @@ export default function MapView({
       setReady(false);
     };
   }, []);
+
+  useEffect(() => {
+    setBaseMapError(false);
+  }, [baseMap]);
 
   // Aşama 4: arka plandan dönüşte yalnız resize + repaint (çizim mantığı değişmez).
   useEffect(() => {
@@ -963,5 +979,31 @@ export default function MapView({
     markersRef.current.forEach((v, id) => v.el.classList.toggle("is-active", id === activeId));
   }, [activeId, places, ready]);
 
-  return <div ref={containerRef} className="absolute inset-0 h-full w-full" />;
+  return (
+    <>
+      <div ref={containerRef} className="absolute inset-0 h-full w-full" />
+      {baseMapError && (
+        <div role="status" className="absolute inset-x-3 top-[220px] z-30 mx-auto flex max-w-[440px] flex-wrap items-center gap-2 rounded-xl border border-sun/40 bg-ink px-3 py-2 text-[12px] text-mint shadow-lg md:top-32">
+          <span className="min-w-0 flex-1">Haritanın bazı bölümleri yüklenemedi. Bağlantını kontrol et veya başka bir harita katmanı seç.</span>
+          <button
+            type="button"
+            className="min-h-11 rounded-lg border border-leaf/40 px-3 font-semibold text-leaf"
+            onClick={() => {
+              const map = mapRef.current;
+              if (!map) return;
+              try {
+                map.refreshTiles(activeBaseSource(baseMapRef.current));
+                setBaseMapError(false);
+              } catch {
+                // Kaynak henüz hazır değilse uyarıyı koru; kullanıcı başka katman seçebilir.
+              }
+            }}
+          >
+            Tekrar dene
+          </button>
+          <button type="button" className="size-11 rounded-lg text-mint" aria-label="Harita uyarısını kapat" onClick={() => setBaseMapError(false)}>×</button>
+        </div>
+      )}
+    </>
+  );
 }

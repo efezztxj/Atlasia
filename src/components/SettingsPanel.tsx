@@ -64,7 +64,9 @@ export interface SettingsContentProps {
 }
 
 interface Props extends SettingsContentProps {
+  attribution?: ReactNode;
   onClose: () => void;
+  initialSection?: "appearance" | "location";
 }
 
 function InfoRow({ icon: Icon, title, children }: { icon: LucideIcon; title: string; children: ReactNode }) {
@@ -328,7 +330,7 @@ export function SettingsContent({
       </section>
 
       <div className="my-6 h-px bg-leaf/15" />
-      <section id="location-settings" aria-labelledby="location-settings-title" className="scroll-mt-24">
+      <section id="location-settings" tabIndex={-1} aria-labelledby="location-settings-title" className="scroll-mt-24">
       <p id="location-settings-title" className="mb-3 text-[12px] font-bold tracking-[0.16em] text-mint/55 uppercase">Konum ve gizlilik</p>
       <div className="flex items-center gap-3 rounded-2xl border border-leaf/20 bg-white/[0.05] p-4">
         <span className={cn("grid size-11 shrink-0 place-items-center rounded-xl", geo.fix ? "bg-leaf/15 text-leaf" : "bg-sun/15 text-sun")}>
@@ -420,17 +422,21 @@ export function SettingsContent({
   );
 }
 
-export default function SettingsPanel({ onClose, ...contentProps }: Props) {
+export default function SettingsPanel({ onClose, initialSection = "appearance", attribution, ...contentProps }: Props) {
   const panelRef = useRef<HTMLElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
-    closeRef.current?.focus();
+    if (initialSection === "location") {
+      const target = panelRef.current?.querySelector<HTMLElement>("#location-settings");
+      target?.focus({ preventScroll: true });
+      target?.scrollIntoView?.({ block: "start" });
+    } else closeRef.current?.focus();
     return () => {
       if (previous?.isConnected) previous.focus();
     };
-  }, []);
+  }, [initialSection]);
 
   return (
     <div className="settings-overlay fixed inset-0 z-[80] flex justify-end">
@@ -488,6 +494,7 @@ export default function SettingsPanel({ onClose, ...contentProps }: Props) {
         <div className="thin-scroll min-h-0 flex-1 overflow-y-auto px-6 py-5 sm:px-7">
           <SettingsContent {...contentProps} />
         </div>
+        {attribution && <div className="shrink-0 border-t border-white/10 px-6 py-2">{attribution}</div>}
       </aside>
     </div>
   );

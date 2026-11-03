@@ -86,13 +86,16 @@ export default function SearchBox({ places, onPick, onOpenFilters, autoFocus = f
     const t = setTimeout(async () => {
       try {
         const r = await searchWorld(term, ctrl.signal);
+        // İptale rağmen tamamlanan eski bir istek yeni aramayı ezmesin.
+        if (ctrl.signal.aborted) return;
         setRemote(r);
         setLoading(false);
-      } catch (e) {
-        if ((e as Error).name !== "AbortError") {
-          setError(true);
-          setLoading(false);
-        }
+      } catch {
+        // Yalnız bu aramanın iptali yok sayılır. Servis zaman aşımı da
+        // AbortError olabilir; kullanıcıya hata gösterip yüklemeyi bitirmeli.
+        if (ctrl.signal.aborted) return;
+        setError(true);
+        setLoading(false);
       }
     }, 750);
     return () => {
