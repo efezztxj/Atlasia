@@ -21,7 +21,6 @@ import {
 } from "lucide-react";
 
 import { formatAccuracy } from "../hooks/useGeolocation";
-import { totalLikes } from "../utils/likes";
 import type { FeedPost, FeedReply, Story, StoryAccent, UploadPhotoKind, ViewState } from "../types";
 import { mediaUrl } from "../utils/api";
 import { cn } from "../utils/cn";
@@ -370,7 +369,6 @@ export default function SocialPanel({
   };
 
   const liked = (p: FeedPost) => (p.likedBy ?? []).includes(clientId);
-  const likeCount = (p: FeedPost) => totalLikes(p);
 
   if (!open) {
     return (
@@ -682,7 +680,6 @@ export default function SocialPanel({
                         )}
                       >
                         <Heart className={cn("size-3.5", liked(p) && "fill-sun")} />
-                        {likeCount(p)}
                       </button>
                       <button
                         onClick={() => {

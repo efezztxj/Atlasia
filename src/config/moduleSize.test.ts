@@ -32,7 +32,7 @@ const LIMIT = 500;
 const DEBT: Readonly<Record<string, number>> = Object.freeze({
   "src/components/Explorer.tsx": 627,
   "src/lib/moderation.ts": 1199,
-  "src/components/SocialPanel.tsx": 936,
+  "src/components/SocialPanel.tsx": 933,
   "src/lib/firestoreData.ts": 972,
   "src/components/MapView.tsx": 812,
   "src/lib/groups.ts": 775,
