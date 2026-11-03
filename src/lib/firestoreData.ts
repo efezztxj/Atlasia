@@ -656,6 +656,16 @@ export async function togglePostLikeInFirestore(
     // `likes` şema uyumluluğu için 0 kalır; gerçek üyelik `likedBy` içindedir.
     likedBy: isRemoval ? arrayRemove(cleanUid) : arrayUnion(cleanUid),
   });
+  // F2-1 geçiş (3b-1): yeni modelin beğeni belgesi de yazılır. Kurallar henüz
+  // dağıtılmadıysa yazma reddedilebilir; o durumda eski davranış bozulmasın diye
+  // hata yutulur. Kural dağıtıldıktan sonra bu blok zorunlu yol olacak.
+  try {
+    const likeRef = doc(store, COL_POSTS, postId, "likes", cleanUid);
+    if (isRemoval) await deleteDoc(likeRef);
+    else await setDoc(likeRef, { uid: cleanUid });
+  } catch {
+    /* kural henüz dağıtılmamış: likedBy yolu tek başına devam eder */
+  }
   // Çağırana yazılan beğeni listesini döndürür; yerel görünüm bu değerle güncellenir.
   return next;
 }
