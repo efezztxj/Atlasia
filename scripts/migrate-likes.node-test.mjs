@@ -9,11 +9,6 @@ import {
   validateMigrateOptions,
 } from "./migrate-likes.mjs";
 
-const postsUrl = (pageToken = "") =>
-  "https://firestore.googleapis.com/v1/projects/demo/databases/(default)/documents/posts" +
-  "?pageSize=100&mask.fieldPaths=likedBy" +
-  (pageToken ? `&pageToken=${pageToken}` : "");
-
 function fakeFetch({ documents = [], writeStatus = 200 } = {}) {
   const calls = [];
   const fetchImpl = async (url, init = {}) => {
