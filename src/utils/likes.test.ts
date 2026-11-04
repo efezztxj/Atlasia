@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { toggleLikedBy, totalLikes } from "./likes";
+import { mergeMyLikes, toggleLikedBy, totalLikes } from "./likes";
 
 describe("toplam beğeni sözleşmesi", () => {
   it("seed tabanına benzersiz kullanıcı üyeliklerini ekler", () => {
@@ -135,5 +135,27 @@ describe("Tur 4 · seed birleşimi + snapshot atama tekdüzeliği", () => {
       likedBy: ["u1", "", "   ", 42, null, "u1"] as unknown as string[],
     };
     expect(totalLikes(post)).toBe(1);
+  });
+});
+
+describe("mergeMyLikes — F2-1 üyelik birleştirme", () => {
+  const posts = [
+    { id: "p1", likedBy: ["old"] },
+    { id: "p2", likedBy: [] },
+    { id: "p3", likedBy: ["x", "y"] },
+  ];
+
+  it("beğenilen gönderide yalnız oturum sahibi kalır", () => {
+    const out = mergeMyLikes(posts, ["p1"], "me");
+    expect(out.map((p) => p.likedBy)).toEqual([["me"], [], []]);
+  });
+
+  it("boş kimlikte liste olduğu gibi döner", () => {
+    expect(mergeMyLikes(posts, ["p1"], "  ")).toBe(posts);
+  });
+
+  it("girdi dizisi değiştirilmez", () => {
+    mergeMyLikes(posts, ["p2"], "me");
+    expect(posts[0].likedBy).toEqual(["old"]);
   });
 });

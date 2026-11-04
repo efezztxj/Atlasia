@@ -29,3 +29,25 @@ export function toggleLikedBy(likedBy: readonly string[] | undefined, uid: strin
   if (!clean) return unique;
   return unique.includes(clean) ? unique.filter((item) => item !== clean) : [...unique, clean];
 }
+
+/**
+ * F2-1 (sayısız beğeni): oturumda tek `collectionGroup` sorgusundan gelen
+ * "beğendiğim gönderiler" kimliklerini akışa uygular.
+ *
+ * `likedBy` **türetilmiş** kalır: sunucudaki tek doğru kaynak
+ * `posts/{id}/likes/{uid}` belgeleridir. Bu yüzden birleştirme yalnız kimlik
+ * kümesini değiştirir; sayı hiçbir yerde tutulmaz. Liste dışındaki gönderiler
+ * `likedBy`'ı boşaltılmış olarak döner (kullanıcı onları beğenmemiş demektir).
+ */
+export function mergeMyLikes<T extends { id: string; likedBy?: string[] }>(
+  posts: T[],
+  myPostIds: readonly string[],
+  uid: string,
+): T[] {
+  const who = uid.trim();
+  if (!who) return posts;
+  const liked = new Set(myPostIds);
+  return posts.map((post) =>
+    liked.has(post.id) ? { ...post, likedBy: [who] } : { ...post, likedBy: [] },
+  );
+}
