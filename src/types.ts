@@ -34,6 +34,16 @@ export interface HistoricVerification {
   sources: HistoricSourceReference[];
 }
 
+/** Lisanslı görselin künye bilgisi; düz dizgi görüntüler galeri/Pexels URL'i sayılır. */
+export interface PlaceImage {
+  url: string;
+  alt: string;
+  source: string;
+  author: string;
+  license: string;
+  licenseUrl: string;
+}
+
 export interface Place {
   id: string;
   title: string;
@@ -42,7 +52,7 @@ export interface Place {
   lng: number;
   lat: number;
   note: string;
-  image?: string;
+  image?: string | PlaceImage;
   /** Kullanıcı keşiflerine eklenen fotoğraf */
   photo?: string;
   /** 5–10 gerçek fotoğraf */

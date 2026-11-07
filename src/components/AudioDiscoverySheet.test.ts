@@ -14,11 +14,25 @@ describe("sesli keşif", () => {
     render(createElement(AudioDiscoverySheet, { tour: AUDIO_DISCOVERY_TOURS[0], selectedIndex: 0, onSelect: select, onClose: vi.fn() }));
     expect(screen.getByRole("img", { name: "Efes Prytaneion kalıntıları" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "CC BY-SA 3.0" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "1. Prytaneion" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Tur durakları/ }));
     expect(screen.getByRole("button", { name: "1. Prytaneion" }).getAttribute("aria-current")).toBe("step");
     fireEvent.click(screen.getByRole("button", { name: "Kaynakları gör" }));
     expect(screen.getByRole("link", { name: "Konum kaynağı" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "2. Devlet Agorası" }));
     expect(select).toHaveBeenCalledWith(1);
+  });
+  it("durak listesi varsayılan kapalıdır, açılır kapanır", () => {
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+    render(createElement(AudioDiscoverySheet, { tour: AUDIO_DISCOVERY_TOURS[0], selectedIndex: 2, onSelect: vi.fn(), onClose: vi.fn() }));
+    const toggle = screen.getByRole("button", { name: /Tur durakları/ });
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByRole("button", { name: "3. Bazilika Stoası" })).toBeNull();
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByRole("button", { name: "3. Bazilika Stoası" }).getAttribute("aria-current")).toBe("step");
+    fireEvent.click(toggle);
+    expect(screen.queryByRole("button", { name: "3. Bazilika Stoası" })).toBeNull();
   });
   it("kaydı çalar, durak değişiminde ve kapanışta durdurur", async () => {
     const play = vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();

@@ -29,11 +29,12 @@ güncel saat, ücret ve erişim bilgisini resmî kaynaktan doğrulamaya yönlend
 
 ## Kapsam
 
-Rehberdeki **28 yerin tamamı** aşağıdadır. `namedPlace` alias tablosunda daha
+Rehberdeki **37 yerin tamamı** aşağıdadır. `namedPlace` alias tablosunda daha
 önce 19 yer vardı; eksik kalan 9 yer (`kaputas`, `gaziantep`, `kackar`,
 `navagio`, `camino`, `aral`, `buyuk-han`, `salamis`, `positano`) aynı kuralla
 eklendi. Yerler tek tip işlendi; hiçbir yer için ayrı bölüm ya da ayrı kural
-yoktur.
+yoktur. Dokuz Kalkidikum durağı (`kalkidikum-*`) Efes alt durağı olarak kullanıcı
+isteğiyle eklendi.
 
 | id | Yer | Vikipedi | Wikidata | Doğrulanan bilgiler |
 | --- | --- | --- | --- | --- |
@@ -65,6 +66,20 @@ yoktur.
 | `chefchaouen` | Chefchaouen | [Şafşavan](https://tr.wikipedia.org/wiki/%C5%9Eaf%C5%9Favan) | [Q676778](https://www.wikidata.org/wiki/Q676778) | Fas'ın kuzeybatısında küçük şehir; mavi boyalı evleri ve sokaklarıyla tanınır |
 | `banff` | Moraine Gölü | [Moraine Lake](https://en.wikipedia.org/wiki/Moraine_Lake) | [Q1072342](https://www.wikidata.org/wiki/Q1072342) | Banff Millî Parkı'nda, Lake Louise'in 14 km dışında; On Zirve Vadisi'nde; yaklaşık 1.884 m yükseltide; 50 hektar yüzey |
 | `positano` | Positano | [Positano](https://tr.wikipedia.org/wiki/Positano) | [Q81345](https://www.wikidata.org/wiki/Q81345) | Amalfi Kıyısı'nda, Salerno iline bağlı komün; Sirenuse Adaları'na bakan dik yamaçlara yayılmış |
+| `kalkidikum-hydreion` | Hydreion (Çeşme Yapısı) | [Ephesus](https://en.wikipedia.org/wiki/Ephesus) | [Q47611](https://www.wikidata.org/wiki/Q47611) | Memmius Anıtı'nın batı yüzüne MS 200 civarında eklenmiş çeşme; dört kaide Tetrarşi heykellerini taşıyordu |
+| `kalkidikum-triodos-meydani` | Triodos Meydanı | [Ephesus](https://en.wikipedia.org/wiki/Ephesus) | [Q47611](https://www.wikidata.org/wiki/Q47611) | Kuretler'in alt ucunda üç yolun buluştuğu kavşak; geç antik dönemde kavşak düzeni değişti |
+| `kalkidikum-heksagon` | Heksagon (Altıgen Yapı) | [Ephesus](https://en.wikipedia.org/wiki/Ephesus) | [Q47611](https://www.wikidata.org/wiki/Q47611) | Triodos yakınındaki altıgen temel kalıntısı; işlevi kaynaklarda kesinleşmiyor |
+| `kalkidikum-verulanus-meydani-salonu` | Verulanus Meydanı ve Salonu | [Ephesus](https://en.wikipedia.org/wiki/Ephesus) | [Q104641912](https://www.wikidata.org/wiki/Q104641912) | Liman Gymnasionu yanındaki geniş spor avlusu ve salonları |
+| `kalkidikum-antik-liman-kanali` | Antik Liman ve Liman Kanalı | [Ephesus](https://en.wikipedia.org/wiki/Ephesus) | [Q104641890](https://www.wikidata.org/wiki/Q104641890) | Alüvyonla dolan liman havzası ve kanal hattı; bugün sulak alan, erişime açık değil |
+| `kalkidikum-meryem-kilisesi-vaftizhanesi` | Meryem Kilisesi Vaftizhanesi | [Ephesus](https://en.wikipedia.org/wiki/Ephesus) | [Q2450228](https://www.wikidata.org/wiki/Q2450228) | Kilise avlusunun kuzeyindeki sekizgen vaftizhane; 431 konsili bu kilisede toplandı |
+| `kalkidikum-bizans-hamamlari` | Bizans Hamamları | [Ephesus](https://en.wikipedia.org/wiki/Ephesus) | [Q47611](https://www.wikidata.org/wiki/Q47611) | Kent çekirdeğinin doğu yamacındaki Bizans dönemi hamam kalıntıları |
+| `kalkidikum-vedius-gymnasionu` | Vedius Gymnasionu | [Ephesus](https://en.wikipedia.org/wiki/Ephesus) | [Q2511690](https://www.wikidata.org/wiki/Q2511690) | Kuzey yamaçta MS 147-149 civarına tarihlenen kompleks; yaklaşık 13.000 m² |
+| `kalkidikum-kent-surlari` | Helenistik ve Bizans Kent Surları | [Ephesus](https://en.wikipedia.org/wiki/Ephesus) | [Q47611](https://www.wikidata.org/wiki/Q47611) | Kenti çevreleyen sur hatları; Helenistik ve Bizans dönemlerinden farklı bölümler |
+
+Kalkidikum alt duraklarında bu yapılar için özgün Vikipedi/Wikidata kaydı
+bulunmadığından kent düzeyindeki kayıtlar (Ephesus / Q47611) kullanıldı; yapı
+düzeyi akademik kaynaklar `docs/gorevler/efes-tekil-dogrulama-calismasi-2026-11-04.md`
+belgesindedir.
 
 ## Doğrulanmayan alanlar
 

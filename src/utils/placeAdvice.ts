@@ -321,6 +321,80 @@ export const PLACE_ADVICE: Record<string, PlaceAdvice> = {
     timing: UNVERIFIED,
     cost: UNVERIFIED,
   },
+  // Kalkidikum durakları: alt yapı ölçeğinde erişim notları; saat ve ücret alanları
+  // ören yeri işletmesine bağlı olduğunca doğrulanmadı olarak bırakıldı.
+  "kalkidikum-hydreion": {
+    access:
+      "Domitian Meydanı ile Kuretler Caddesi'nin üst ucunun birleştiği kavşakta, ana yürüyüş hattının hemen kenarındadır.",
+    caution:
+      "Kaide ve niş kalıntılarının çevresinde korkuluk yoktur; zemin taşları yağmur sonrasında kayganlaşır.",
+    timing: UNVERIFIED,
+    cost: UNVERIFIED,
+  },
+  "kalkidikum-triodos-meydani": {
+    access:
+      "Kuretler, Mermer Cadde ve limana inen yolun kesiştiği üç yol ağzı açık alandır; patika boyunca tabelalar kavşağı işaret eder.",
+    caution:
+      "Kavşaktaki temel kalıntıları zeminle aynı hizada değildir; basamak ve kot farklarına dikkat ederek yürüyün.",
+    timing: UNVERIFIED,
+    cost: UNVERIFIED,
+  },
+  "kalkidikum-heksagon": {
+    access:
+      "Kuretler Caddesi'nin alt ucunda, üç yol ağzına birkaç adım mesafedeki altıgen temel açık havada izlenir.",
+    caution:
+      "Altıgen yapının yalnızca temel hatları seçilir; çukur kenarlarında zemin gevşek taş dolguludur.",
+    timing: UNVERIFIED,
+    cost: UNVERIFIED,
+  },
+  "kalkidikum-verulanus-meydani-salonu": {
+    access:
+      "Liman Hamamları kompleksinin güney kanadındaki geniş avluya hamam kalıntıları arasındaki patikadan ulaşılır.",
+    caution:
+      "Salon duvarları kısmen ayaktadır; taş düşmesi riski nedeniyle duvar dibinde durmayın, kalıntılara yaslanmayın.",
+    timing: UNVERIFIED,
+    cost: UNVERIFIED,
+  },
+  "kalkidikum-antik-liman-kanali": {
+    access:
+      "Liman Caddesi'nin batı ucundaki seyir noktasından bataklık hâline gelen liman havzası ve kanal hattı izlenir.",
+    caution:
+      "Havza bugün sulak alandır; kıyıya inmek yerine işaretli seyir noktasında kalın, yazın sivrisineğe önlem alın.",
+    timing: UNVERIFIED,
+    cost: UNVERIFIED,
+  },
+  "kalkidikum-meryem-kilisesi-vaftizhanesi": {
+    access:
+      "Meryem Kilisesi avlusunun kuzeyindeki sekizgen vaftizhane, kilise kalıntıları arasındaki ziyaret patikası üzerindedir.",
+    caution:
+      "Vaftiz havuzu çukuru açıktır; çocuklu ziyaretçiler havuz kenarında mesafe bırakmalıdır, zemin yer yer çakıllıdır.",
+    timing: UNVERIFIED,
+    cost: UNVERIFIED,
+  },
+  "kalkidikum-bizans-hamamlari": {
+    access:
+      "Kent çekirdeğinin doğu yamacındaki hamam kalıntılarına ana patikadan ayrılan kısa toprak yol yaklaşır.",
+    caution:
+      "Duvar ve tonoz parçaları yer yer eğiktir; içeride dar geçişler olduğundan kalıntıları tek sıra hâlinde geçin.",
+    timing: UNVERIFIED,
+    cost: UNVERIFIED,
+  },
+  "kalkidikum-vedius-gymnasionu": {
+    access:
+      "Selçuk ovasına bakan kuzey yamaçtaki kompleks stadyumun ilerisindeki tepe patikasıyla gezilir; çıkış yukarı doğru dikleşir.",
+    caution:
+      "Geniş terasların kenarları işaretsizdir; özellikle ıslak zeminde teras duvarlarına yaklaşmayın.",
+    timing: UNVERIFIED,
+    cost: UNVERIFIED,
+  },
+  "kalkidikum-kent-surlari": {
+    access:
+      "Helenistik ve Bizans surlarının seçilebilir bölümleri Bülbül Dağı yamaç patikaları üzerinden uzaktan izlenir.",
+    caution:
+      "Sur hatları araziye dağılır ve patikalar dikleşir; uygun ayakkabı olmadan yamaç bölümüne çıkmayın.",
+    timing: UNVERIFIED,
+    cost: UNVERIFIED,
+  },
 };
 
 /**
@@ -461,6 +535,45 @@ export const PLACE_SOURCES: Record<string, PlaceSource[]> = {
   positano: [
     wikipedia("tr", "Positano", "https://tr.wikipedia.org/wiki/Positano"),
     wikidata("Q81345"),
+  ],
+  // Kalkidikum alt durakları: yapı düzeyinde özgün Vikipedi/Wikidata kaydı
+  // bulunmayanlarda kent düzeyindeki kayıtlar (Ephesus / Q47611) kullanıldı;
+  // yapı düzeyi akademik kaynaklar efes-tekil-dogrulama belgesinde kayıtlı.
+  "kalkidikum-hydreion": [
+    wikipedia("en", "Ephesus", "https://en.wikipedia.org/wiki/Ephesus"),
+    wikidata("Q47611"),
+  ],
+  "kalkidikum-triodos-meydani": [
+    wikipedia("en", "Ephesus", "https://en.wikipedia.org/wiki/Ephesus"),
+    wikidata("Q47611"),
+  ],
+  "kalkidikum-heksagon": [
+    wikipedia("en", "Ephesus", "https://en.wikipedia.org/wiki/Ephesus"),
+    wikidata("Q47611"),
+  ],
+  "kalkidikum-verulanus-meydani-salonu": [
+    wikipedia("en", "Ephesus", "https://en.wikipedia.org/wiki/Ephesus"),
+    wikidata("Q104641912"),
+  ],
+  "kalkidikum-antik-liman-kanali": [
+    wikipedia("en", "Ephesus", "https://en.wikipedia.org/wiki/Ephesus"),
+    wikidata("Q104641890"),
+  ],
+  "kalkidikum-meryem-kilisesi-vaftizhanesi": [
+    wikipedia("en", "Ephesus", "https://en.wikipedia.org/wiki/Ephesus"),
+    wikidata("Q2450228"),
+  ],
+  "kalkidikum-bizans-hamamlari": [
+    wikipedia("en", "Ephesus", "https://en.wikipedia.org/wiki/Ephesus"),
+    wikidata("Q47611"),
+  ],
+  "kalkidikum-vedius-gymnasionu": [
+    wikipedia("en", "Ephesus", "https://en.wikipedia.org/wiki/Ephesus"),
+    wikidata("Q2511690"),
+  ],
+  "kalkidikum-kent-surlari": [
+    wikipedia("en", "Ephesus", "https://en.wikipedia.org/wiki/Ephesus"),
+    wikidata("Q47611"),
   ],
 };
 

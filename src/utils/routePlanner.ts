@@ -123,7 +123,7 @@ export function planRoute(places: Place[], origin: { lat: number; lng: number },
         isCommunityPin: place.kind === "user",
         pinId: place.id,
         category: place.category,
-        imageUrl: place.photo ?? place.image ?? null,
+        imageUrl: place.photo ?? (typeof place.image === "object" ? place.image.url : place.image) ?? null,
         source,
       });
       clock += stay;
