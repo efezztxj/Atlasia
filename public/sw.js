@@ -1,4 +1,4 @@
-const CACHE = "atlasia-shell-v9";
+const CACHE = "atlasia-shell-v10";
 const TILE_CACHE = "atlasia-tiles-v1";
 const TILE_META_CACHE = "atlasia-tile-meta-v1";
 const CACHE_PREFIX = "atlasia-shell-";
@@ -109,6 +109,7 @@ function isSafeStaticResponse(path, response) {
     return ["text/javascript", "application/javascript", "application/x-javascript", "text/ecmascript", "application/ecmascript"].includes(mime);
   }
   if (requested.pathname.endsWith(".css")) return mime === "text/css";
+  if (requested.pathname.endsWith(".json")) return mime === "application/json";
   return true;
 }
 
@@ -126,7 +127,7 @@ function assetPathsFromText(text) {
   const paths = new Set();
   // Rolldown (Vite 8) varlık yollarını şablon dizgisiyle (backtick) de yazar;
   // keşif üç tırnak türünü de tanımalı, yoksa işçi parçası kabuğa giremez.
-  const references = text.matchAll(/["'`]((?:\/assets\/|assets\/|\.\/)[A-Za-z0-9_./-]+\.(?:js|css|png|jpe?g|svg|webp|woff2?))["'`]/g);
+  const references = text.matchAll(/["'`]((?:\/assets\/|assets\/|\.\/)[A-Za-z0-9_./-]+\.(?:js|css|json|png|jpe?g|svg|webp|woff2?))["'`]/g);
   for (const match of references) {
     const path = assetPath(match[1]);
     if (path) paths.add(path);
@@ -235,6 +236,19 @@ async function cachedAsset(request) {
   } catch {
     return new Response("", { status: 504, statusText: "Offline" });
   }
+}
+
+// Tur verisini çevrimiçiyken güncel tut; ağ yoksa önbelleğe dön.
+async function tourResponse(request) {
+  const cache = await caches.open(CACHE);
+  try {
+    const response = await fetch(request);
+    if (isSafeStaticResponse(request.url, response)) {
+      try { await cache.put(request, response.clone()); } catch { /* Depolama dolu olsa da yanıtı göster. */ }
+      return response;
+    }
+  } catch { /* Çevrimdışı kopyayı dene. */ }
+  return await cache.match(request) || new Response("", { status: 504, statusText: "Offline" });
 }
 
 function tileMetadata(response) {
@@ -379,5 +393,7 @@ self.addEventListener("fetch", (event) => {
   // veya API cevabı `request.destination` image/script diye önbelleğe girmesin.
   const cacheable = isAllowedStaticPath(parsed.pathname);
 
-  if (cacheable) event.respondWith(cachedAsset(request));
+  if (parsed.pathname === "/assets/efes-tour.json") {
+    event.respondWith(tourResponse(request));
+  } else if (cacheable) event.respondWith(cachedAsset(request));
 });

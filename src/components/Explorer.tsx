@@ -34,7 +34,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { analytics } from "../lib/analytics";
 import { CollectionsProvider, isCloudAccount } from "../hooks/useCollections";
 import { GUIDE_PLACES } from "../data/places";
-import { audioDiscoveryForPlace, type AudioDiscoveryTour } from "../data/audioDiscovery";
+import { loadAudioDiscoveryForPlace, supportsAudioDiscovery, type AudioDiscoveryTour } from "../data/audioDiscovery";
 import { parseShortcutTab, stripShortcutParam } from "../utils/appShortcut";
 import { formatAccuracy, useGeolocation } from "../hooks/useGeolocation";
 import { useAtlasData } from "../hooks/useAtlasData";
@@ -347,7 +347,10 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
   const [reducedMotion, setReducedMotion] = useState(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   const [storyPlace, setStoryPlace] = useState<Place | null>(null);
   const [audioTour, setAudioTour] = useState<AudioDiscoveryTour | null>(null);
+  const audioTourRequest = useRef(0);
+  useEffect(() => () => { audioTourRequest.current += 1; }, [storyPlace?.id]);
   const [audioStopIndex, setAudioStopIndex] = useState(0);
+  const [audioCategoriesInitiallyOpen, setAudioCategoriesInitiallyOpen] = useState(false);
   const selectAudioStop = useCallback((index: number) => {
     const stop = audioTour?.stops[index];
     if (!stop) return;
@@ -492,6 +495,7 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
   }, []);
 
   const closePanels = () => {
+    audioTourRequest.current += 1;
     setAudioTour(null);
     setDrawerOpen(false);
     setFeedOpen(false);
@@ -504,6 +508,24 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
     setStreetPlace(null);
     setNotificationsOpen(false);
     setLayersOpen(false);
+  };
+
+  const openAudioTour = async (placeId: string, categories: boolean) => {
+    const request = ++audioTourRequest.current;
+    try {
+      const tour = await loadAudioDiscoveryForPlace(placeId);
+      if (request !== audioTourRequest.current || !tour) return;
+      closePanels();
+      setActiveId(null);
+      setSpin(false);
+      mapRef.current?.clearRoute();
+      setAudioStopIndex(0);
+      setAudioCategoriesInitiallyOpen(categories);
+      setAudioTour(tour);
+      mapRef.current?.getMap()?.flyTo({ center: [tour.stops[0].lng, tour.stops[0].lat], zoom: 17, pitch: 0, offset: [0, -110], duration: 1000 });
+    } catch {
+      if (request === audioTourRequest.current) setToast("Sesli tur yüklenemedi. Bağlantını kontrol edip tekrar dene.");
+    }
   };
 
   const openRecords = () => { closePanels(); setRecordsOpen(true); };
@@ -1648,25 +1670,16 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
         />
       )}
 
-      {audioTour && <Suspense fallback={null}><AudioDiscoveryMap map={mapRef.current?.getMap() ?? null} stops={audioTour.stops} selected={audioStopIndex} onSelect={selectAudioStop} /><AudioDiscoverySheet attribution={<MapAttribution baseMap={baseMap} showLabels={labels} terrainEnabled={terrain} />} tour={audioTour} selectedIndex={audioStopIndex} onSelect={selectAudioStop} onClose={() => setAudioTour(null)} /></Suspense>}
+      {audioTour && <Suspense fallback={null}><AudioDiscoveryMap map={mapRef.current?.getMap() ?? null} stops={audioTour.stops} selected={audioStopIndex} onSelect={selectAudioStop} /><AudioDiscoverySheet initialCategoriesOpen={audioCategoriesInitiallyOpen} attribution={<MapAttribution baseMap={baseMap} showLabels={labels} terrainEnabled={terrain} />} tour={audioTour} selectedIndex={audioStopIndex} onSelect={selectAudioStop} onClose={() => setAudioTour(null)} /></Suspense>}
 
       {liveStoryPlace && (
         <Suspense fallback={null}>
           <PlaceDetails
             attribution={<MapAttribution baseMap={baseMap} showLabels={labels} terrainEnabled={terrain} />}
             place={liveStoryPlace}
-            onAudioDiscovery={audioDiscoveryForPlace(liveStoryPlace.id) ? () => {
-              const tour = audioDiscoveryForPlace(liveStoryPlace.id);
-              if (!tour?.stops.length) return;
-              closePanels();
-              setActiveId(null);
-              setSpin(false);
-              mapRef.current?.clearRoute();
-              setAudioStopIndex(0);
-              setAudioTour(tour);
-              mapRef.current?.getMap()?.flyTo({ center: [tour.stops[0].lng, tour.stops[0].lat], zoom: 17, pitch: 0, offset: [0, -110], duration: 1000 });
-            } : undefined}
-            onClose={() => setStoryPlace(null)}
+            onAudioDiscovery={supportsAudioDiscovery(liveStoryPlace.id) ? () => { void openAudioTour(liveStoryPlace.id, false); } : undefined}
+            onAudioCategories={supportsAudioDiscovery(liveStoryPlace.id) ? () => { void openAudioTour(liveStoryPlace.id, true); } : undefined}
+            onClose={() => { audioTourRequest.current += 1; setStoryPlace(null); }}
             onStreet={() => {
               const place = liveStoryPlace;
               if (!place) return;

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
-import { AUDIO_DISCOVERY_TOURS } from "../data/audioDiscovery";
+import { AUDIO_DISCOVERY_TOURS } from "../data/audioDiscoveryFixtures";
 
 const made = vi.hoisted(() => [] as { options: { element: HTMLElement; anchor: string }; point?: number[]; remove: () => void }[]);
 vi.mock("maplibre-gl", () => ({
@@ -36,6 +36,19 @@ describe("sesli keşif pinleri", () => {
     expect(made[1].options.element.getAttribute("aria-pressed")).toBe("true");
     expect(made[0].options.element.getAttribute("aria-pressed")).toBe("false");
     made[1].options.element.remove();
+    const outsideIndex = stops.findIndex((stop) => stop.id === "artemision");
+    const outside = made[outsideIndex];
+    expect(outside.options.anchor).toBe("center");
+    expect(outside.options.element.querySelector("text")?.textContent).toBe("◆");
+    expect(outside.options.element.querySelector("path")?.getAttribute("fill")).toBe("#704b87");
+    outside.options.element.click();
+    expect(onSelect).toHaveBeenCalledWith(outsideIndex);
+    markers.update(outsideIndex);
+    expect(outside.options.element.getAttribute("aria-pressed")).toBe("true");
+    expect(outside.options.element.querySelector("path")?.getAttribute("stroke")).toBe("#eab54f");
+    for (const id of ["meryem-kilisesi", "efes-stadyumu"]) {
+      expect(made[stops.findIndex((stop) => stop.id === id)].options.anchor).toBe("bottom");
+    }
     markers.remove();
     for (const marker of made) expect(marker.remove).toHaveBeenCalledOnce();
   });

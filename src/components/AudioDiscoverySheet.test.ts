@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { createElement } from "react";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import AudioDiscoverySheet from "./AudioDiscoverySheet";
-import { AUDIO_DISCOVERY_TOURS } from "../data/audioDiscovery";
+import { AUDIO_DISCOVERY_TOURS } from "../data/audioDiscoveryFixtures";
 
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
@@ -46,11 +46,121 @@ describe("sesli keşif", () => {
     fireEvent.click(screen.getByRole("button", { name: "Sesli turu genişlet" }));
     expect(screen.getByRole("img", { name: "Efes Prytaneion kalıntıları" })).toBeTruthy();
   });
+  it("küçük panelde duraklar arasında gezinir ve sınırları korur", () => {
+    const pause = vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+    const onSelect = vi.fn();
+    const tour = AUDIO_DISCOVERY_TOURS[0];
+    const props = { tour, selectedIndex: 0, onSelect, onClose: vi.fn() };
+    const view = render(createElement(AudioDiscoverySheet, props));
+    fireEvent.click(screen.getByRole("button", { name: "Sesli turu küçült" }));
+    expect((screen.getByRole("button", { name: "Önceki durak" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Sonraki durak" }));
+    expect(onSelect).toHaveBeenCalledWith(1);
+    expect(pause).toHaveBeenCalled();
+    view.rerender(createElement(AudioDiscoverySheet, { ...props, selectedIndex: 1 }));
+    expect(screen.getByText("Devlet Agorası")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Önceki durak" }));
+    expect(onSelect).toHaveBeenCalledWith(0);
+    view.rerender(createElement(AudioDiscoverySheet, { ...props, selectedIndex: tour.stops.length - 1 }));
+    expect((screen.getByRole("button", { name: "Sonraki durak" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByRole("button", { name: "Sesli turu genişlet" })).toBeTruthy();
+  });
   it("ses yüklenemezse metin alternatifi sunar", async () => {
     vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
     vi.spyOn(HTMLMediaElement.prototype, "play").mockRejectedValue(new Error("network"));
     render(createElement(AudioDiscoverySheet, { tour: AUDIO_DISCOVERY_TOURS[0], selectedIndex: 0, onSelect: vi.fn(), onClose: vi.fn() }));
     fireEvent.click(screen.getByRole("button", { name: "Dinle" }));
     await waitFor(() => expect(screen.getByRole("status").textContent).toContain("Ses kaydı açılamadı"));
+  });
+});
+
+describe("English audio tour", () => {
+  it("switches recordings, pauses playback and clearly marks unavailable audio", async () => {
+    const { readFileSync } = await import("node:fs");
+    const translations = JSON.parse(readFileSync("public/audio/efes-en.json", "utf8"));
+    // Exercise the missing-recording fallback even though all current stops have audio.
+    delete translations[AUDIO_DISCOVERY_TOURS[0].stops.at(-1)!.id].audio;
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => translations }));
+    const pause = vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+    vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
+    const tour = AUDIO_DISCOVERY_TOURS[0];
+    const props = { tour, selectedIndex: 0, onSelect: vi.fn(), onClose: vi.fn() };
+    const view = render(createElement(AudioDiscoverySheet, props));
+    fireEvent.click(screen.getByRole("button", { name: "Dinle" }));
+    const turkishAudio = document.querySelector("audio");
+    fireEvent.click(screen.getByRole("button", { name: "English" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Play" })).toBeTruthy());
+    expect(pause).toHaveBeenCalled();
+    expect(document.querySelector("audio")).not.toBe(turkishAudio);
+    expect(document.querySelector("audio")?.getAttribute("src")).toBe("/audio/en-efes-prytaneion.mp3");
+    expect(screen.getByText(/North of the State Agora stands/)).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Previous stop" }) as HTMLButtonElement).disabled).toBe(true);
+    view.rerender(createElement(AudioDiscoverySheet, { ...props, selectedIndex: tour.stops.length - 1 }));
+    expect((screen.getByRole("button", { name: "Next stop" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Play" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByRole("status").textContent).toContain("English audio is not available yet");
+    expect(document.querySelector("audio")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Türkçe" }));
+    expect(document.querySelector("audio")?.getAttribute("src")).toBe(tour.stops.at(-1)?.audio);
+    vi.unstubAllGlobals();
+  });
+  it("keeps Turkish available if the translations cannot be loaded", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+    render(createElement(AudioDiscoverySheet, { tour: AUDIO_DISCOVERY_TOURS[0], selectedIndex: 0, onSelect: vi.fn(), onClose: vi.fn() }));
+    fireEvent.click(screen.getByRole("button", { name: "English" }));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("English could not be loaded"));
+    expect(screen.getByRole("button", { name: "Dinle" })).toBeTruthy();
+    vi.unstubAllGlobals();
+  });
+  it("covers all tour stops and points only to existing recordings", async () => {
+    const { readFileSync, existsSync } = await import("node:fs");
+    const translations = JSON.parse(readFileSync("public/audio/efes-en.json", "utf8"));
+    const stops = AUDIO_DISCOVERY_TOURS[0].stops;
+    expect(Object.keys(translations).sort()).toEqual(stops.map((stop) => stop.id).sort());
+    for (const stop of stops) {
+      const english = translations[stop.id];
+      expect(english.title && english.description && english.imageAlt).toBeTruthy();
+      if (english.audio) expect(existsSync(`public${english.audio}`)).toBe(true);
+    }
+    expect(stops.filter((stop) => translations[stop.id].audio)).toHaveLength(stops.length);
+  });
+});
+
+describe("sesli anlatım kategorileri", () => {
+  it("çalınan yeri hem kategorisinde hem kartında işaretler ve sesi kesmeden geri döner", () => {
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+    const tour = AUDIO_DISCOVERY_TOURS[0];
+    const onSelect = vi.fn();
+    render(createElement(AudioDiscoverySheet, { tour, selectedIndex: 0, onSelect, onClose: vi.fn() }));
+    fireEvent.play(document.querySelector("audio")!);
+    fireEvent.click(screen.getByRole("button", { name: /Diğer yerler/ }));
+    expect(screen.getByRole("dialog", { name: "Sesli anlatım kategorileri" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Üst kent ve Devlet Agorası.*Şu an çalıyor/ }).className).toContain("border-sun");
+    fireEvent.click(screen.getByRole("button", { name: /Üst kent ve Devlet Agorası/ }));
+    const current = screen.getByRole("button", { name: /Prytaneion.*Şu an çalıyor/ });
+    expect(current.closest("li")?.className).toContain("border-sun");
+    fireEvent.click(current);
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByRole("button", { name: "Duraklat" })).toBeTruthy();
+  });
+  it("başlangıçta kategorileri açabilir ve başka yer seçildiğinde ilgili durağa gider", () => {
+    const pause = vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+    const onSelect = vi.fn();
+    render(createElement(AudioDiscoverySheet, { tour: AUDIO_DISCOVERY_TOURS[0], selectedIndex: 0, onSelect, onClose: vi.fn(), initialCategoriesOpen: true }));
+    fireEvent.click(screen.getByRole("button", { name: /Kütüphane, agora ve tiyatro/ }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: /^Celsus Kütüphanesi/ }));
+    expect(onSelect).toHaveBeenCalledWith(3);
+    expect(pause).toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+  it("Escape yalnızca kategori panelini kapatır", () => {
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+    const onClose = vi.fn();
+    render(createElement(AudioDiscoverySheet, { tour: AUDIO_DISCOVERY_TOURS[0], selectedIndex: 0, onSelect: vi.fn(), onClose, initialCategoriesOpen: true }));
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(onClose).not.toHaveBeenCalled();
   });
 });
