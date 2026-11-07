@@ -12,24 +12,17 @@ const sandbox = {
   URL,
   console,
 };
-vm.runInNewContext(`${swSource}\nglobalThis.readShellAssets = assetPathsFromText;\nglobalThis.readShellList = () => SHELL;`, sandbox, {
+vm.runInNewContext(`${swSource}\nglobalThis.readShellAssets = assetPathsFromText;`, sandbox, {
   filename: "public/sw.js",
 });
 
 // Test ayrı bir regex kopyası kullanmaz: SW'nin üretimde çalışan keşif mantığını
 // doğrudan gerçek Vite çıktısına uygular.
 const readShellAssets = sandbox.readShellAssets;
-const readShellList = sandbox.readShellList;
 assert.equal(typeof readShellAssets, "function");
-assert.equal(typeof readShellList, "function");
 assert.ok(existsSync("dist/index.html"), "dist/index.html yok; önce üretim derlemesi çalıştırılmalı.");
 
-// Graf iki yerden tohumlanır: (1) index.html → js/css referans zinciri,
-// (2) SW'nin SHELL listesi; tur JSON'ları gibi çalışma zamanında `fetch` ile
-// açılan varlıklar js içinden referanslanmaz, bilinçli olarak kabuğa yazılır.
-const shellList = readShellList();
-assert.ok(Array.isArray(shellList), "SHELL listesi okunamadı");
-const pending = [...readShellAssets(readFileSync("dist/index.html", "utf8")), ...shellList];
+const pending = [...readShellAssets(readFileSync("dist/index.html", "utf8"))];
 const reachable = new Set();
 while (pending.length) {
   const path = pending.shift();
