@@ -7,7 +7,8 @@ import CookieConsentBoundary from "./components/CookieConsentBoundary";
 // T7/T18: rıza paneli ilk karede gerekmiyor (overlay, kapanana kadar haritayı
 // engellemez). Tembel yüklenince `entry` küçülür; panel bir kare sonra gelir.
 const CookieConsent = lazy(() => import("./components/CookieConsent"));
-import NetworkStatus from "./components/NetworkStatus";
+// Ağ uyarısı başlangıç boyamasını engellemez; mevcut çevrimdışı durum açılır açılmaz okunur.
+const NetworkStatus = lazy(() => import("./components/NetworkStatus"));
 import UpdateNotice from "./components/UpdateNotice";
 import { captureInviteFromLocation } from "./utils/inviteLink";
 import { initAccessibilityPrefs } from "./hooks/useAccessibilityPrefs";
@@ -35,7 +36,7 @@ createRoot(document.getElementById("root")!).render(
           <CookieConsent />
         </Suspense>
       </CookieConsentBoundary>
-      <NetworkStatus />
+      <Suspense fallback={null}><NetworkStatus /></Suspense>
       {/* Çevrimdışı kabuk güncellemesi: sessizce zorlanmaz, kullanıcıya sorulur. */}
       <UpdateNotice />
     </AppErrorBoundary>
