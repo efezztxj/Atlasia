@@ -64,9 +64,21 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
+      port: 5173,
       host: "0.0.0.0",
-      allowedHosts,
-      strictPort: true,
+      strictPort: false,
+      hmr: {
+        protocol: "wss",
+        host: "5173-itabg7qlleij6qs7zkmha.e2b.app",
+        port: 5173,
+      },
+      allowedHosts: [
+        "5173-itabg7qlleij6qs7zkmha.e2b.app",
+        "localhost",
+        "127.0.0.1",
+        "0.0.0.0",
+        ...(allowedHosts || []),
+      ],
     },
     preview: {
       host: "0.0.0.0",
