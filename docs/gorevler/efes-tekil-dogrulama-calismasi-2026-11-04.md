@@ -154,3 +154,26 @@ Ekrandaki Heroon fotoğraflarından ortadaki, [TAN Heroon sayfasındaki](https:/
 - **Antik liman:** [UNESCO/ICOMOS](https://whc.unesco.org/document/151544) liman havzası ve kanalı ile kıyı değişimini tanımlar; [TAN](https://turkisharchaeonews.net/object/harbour-ephesus) bugünkü bataklık alanının erişime açık olmadığını bildirir. Geniş ve dönemlere göre değişen bir alan olduğundan giriş değil yalnızca yaklaşık temsilî nokta kullanılabilir. TAN başlığındaki konumun fotoğraf çekim noktası olup olmadığı ve görselin havzayı gerçekten gösterip göstermediği incelenmeli.
 - **Triodos alternatifi:** [Cambridge, Antichthon](https://www.cambridge.org/core/journals/antichthon/article/out-of-the-temples-and-into-the-streets-reassembling-the-christianisation-of-roman-urban-space/54E46A3DD5047A7E9369B5C2641B940E) kavşağı dört yolun buluştuğu küçük alan olarak inceler; [TAN](https://turkisharchaeonews.net/object/triodos-square-and-its-main-monuments-ephesus) tarihî kavşak düzenindeki değişiklikleri anlatır. Hadrian Kapısı ve kütüphane işaretleriyle çakışma çözülmeden ayrı pin eklenmemeli.
 - Önceki ses dosyaları korunmuştur. Yeni duraklara aynı seslerle TR/EN kayıt üretilmeden ve ilgili görseller/konumlar kontrol edilmeden bu adaylar tamamlandı sayılmamıştır.
+
+### 7 Kasım — kalan 11 durağın sesli anlatım teyidi (36–46)
+
+Kullanıcıyla yürüyen teyit sırasına göre listede 35 durak kapatılmıştı; kalan 11 durak (36 Yamaç Ev 2 → 46 Laecanius Bassus Çeşmesi) için otomatik tutarlılık teyidi yapıldı. Bu kesit **dosya/bağlantı/metin tutarlılığıdır**; insan dinlemesi, saha girişi ve cihaz testi yerine geçmez.
+
+| # | Durak | TR ses (süre) | EN ses (süre) | Kaynak | Görsel + lisans |
+|---|---|---|---|---|---|
+| 36 | Yamaç Ev 2 | `efes-yamac-ev-2.mp3` (44,4 sn) | `en-efes-yamac-ev-2.mp3` (40,7 sn) | 3 | uzak · CC BY 4.0 |
+| 37 | Liman Hamamları ve Gymnasionu | `efes-liman-hamamlari.mp3` (40,1 sn) | `en-efes-liman-hamamlari.mp3` (38,7 sn) | 3 | uzak · CC BY-SA 4.0 |
+| 38 | Meryem Ana Evi | `efes-meryem-ana-evi.mp3` (43,9 sn) | `en-efes-meryem-ana-evi.mp3` (40,1 sn) | 4 | uzak · CC BY-SA 2.0 |
+| 39 | Devlet Agorası Tapınağı | `efes-agora-tapinagi.mp3` (27,5 sn) | `en-efes-agora-tapinagi.mp3` (27,1 sn) | 2 | yerel · CC BY-SA 4.0 |
+| 40 | Yamaç Ev 1 | `efes-yamac-ev-1.mp3` (27,0 sn) | `en-efes-yamac-ev-1.mp3` (25,5 sn) | 2 | yerel · CC BY-SA 3.0 |
+| 41 | Hadrian Kapısı | `efes-hadrian-kapisi.mp3` (29,9 sn) | `en-efes-hadrian-kapisi.mp3` (28,2 sn) | 2 | yerel · CC BY-SA 2.0 |
+| 42 | Alytarkhos Stoası | `efes-alytarkhos-stoasi.mp3` (30,8 sn) | `en-efes-alytarkhos-stoasi.mp3` (30,4 sn) | 4 | uzak · CC BY-SA 4.0 |
+| 43 | Aşk Evi denen yapı | `efes-ask-evi.mp3` (32,2 sn) | `en-efes-ask-evi.mp3` (30,9 sn) | 2 | uzak · CC BY-SA 3.0 |
+| 44 | Tiyatro yakınındaki Helenistik Çeşme | `efes-tiyatro-cesmesi.mp3` (30,0 sn) | `en-efes-tiyatro-cesmesi.mp3` (27,6 sn) | 3 | uzak · CC BY-SA 4.0 |
+| 45 | Pollio Anıtı ve Domitian Çeşmesi | `efes-pollio-domitian-cesmesi.mp3` (33,4 sn) | `en-efes-pollio-domitian-cesmesi.mp3` (33,6 sn) | 2 | uzak · CC BY-SA 3.0 |
+| 46 | Laecanius Bassus Çeşmesi | `efes-laecanius-cesmesi.mp3` (37,2 sn) | `en-efes-laecanius-cesmesi.mp3` (32,1 sn) | 2 | uzak · CC BY-SA 4.0 |
+
+- **Dosya ve bağlantı:** 11 durağın TR yolu `public/assets/efes-tour.json`, EN yolu `public/audio/efes-en.json` içinde; 22 dosyanın tamamı diskte var, geçerli MP3 ve 21–46 sn bandında. İki dilde de başlık + anlatım metni dolu; kaynak ve konum kaynağı alanları eksiksiz.
+- **Repo kapıları:** `audioDiscovery.test.ts`, `AudioDiscoverySheet.test.ts`, `siteTours.test.ts` → 32/32 yeşil (tur JSON şeması, EN çeviri yüklemesi ve ses elementi bağlaması dahil).
+- **Tempo bulgusu (dinleme gerektirir):** TR anlatımlarında ima edilen okuma hızı duraklar arasında tutarsız: olağan bant ~13–15 krk/sn (38 durak), 33–38 ~9–11 krk/sn, 45–46 ~7–8 krk/sn. EN tarafında tüm 46 durak 14–17 krk/sn bandında ve güncel EN metniyle uyumlu. TR sapması ya farklı ses/tempo seçiminden ya da kaydın bugün görünen metinden **daha uzun bir taslaktan** okunmasından kaynaklanır; sandbox'ta dinleme yapılamadığı için ayrıştırılamadı. Kural geçerlidir: mevcut metinde olmayan cümle ses kaydında varsa kayıt yenilenmeden "teyitli" sayılmaz. Cihaz dinlemesinde ilk bakılacaklar: 45, 46, ardından 36–38.
+- **Açık kalanlar:** gerçek cihazda dinleme ve metin eşleştirme, görsellerin cihazda yüklenmesi, saha girişi/yürüyüş koşulları. Bu kesit bunları kapatmaz.

@@ -35,7 +35,6 @@ const EXPECTED_IDS = [
   "chefchaouen",
   "banff",
   "positano",
-  // Kalkidikum Durakları (9 durak) — kullanıcı isteğiyle eklendi.
   "kalkidikum-hydreion",
   "kalkidikum-triodos-meydani",
   "kalkidikum-heksagon",

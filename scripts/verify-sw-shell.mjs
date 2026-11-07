@@ -12,14 +12,16 @@ const sandbox = {
   URL,
   console,
 };
-vm.runInNewContext(`${swSource}\nglobalThis.readShellAssets = assetPathsFromText;\nglobalThis.SHELL_LIST = SHELL;`, sandbox, {
+vm.runInNewContext(`${swSource}\nglobalThis.readShellAssets = assetPathsFromText;\nglobalThis.readShellList = () => SHELL;`, sandbox, {
   filename: "public/sw.js",
 });
 
 // Test ayrı bir regex kopyası kullanmaz: SW'nin üretimde çalışan keşif mantığını
 // doğrudan gerçek Vite çıktısına uygular.
 const readShellAssets = sandbox.readShellAssets;
+const readShellList = sandbox.readShellList;
 assert.equal(typeof readShellAssets, "function");
+assert.equal(typeof readShellList, "function");
 assert.ok(existsSync("dist/index.html"), "dist/index.html yok; önce üretim derlemesi çalıştırılmalı.");
 
 /**
@@ -31,7 +33,7 @@ assert.ok(existsSync("dist/index.html"), "dist/index.html yok; önce üretim der
  * ne de kapsanıyor sayılıyordu (`unreached` yanlış pozitif). Artık SW'nin
  * gerçek listesi de kök kümedir; tek kaynak `public/sw.js`.
  */
-const shellList = sandbox.SHELL_LIST ?? [];
+const shellList = readShellList();
 assert.ok(Array.isArray(shellList) && shellList.length > 0, "public/sw.js içinde SHELL listesi bulunamadı.");
 
 const pending = [...new Set([...shellList, ...readShellAssets(readFileSync("dist/index.html", "utf8"))])];
