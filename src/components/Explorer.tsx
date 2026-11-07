@@ -522,7 +522,16 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
       setAudioStopIndex(0);
       setAudioCategoriesInitiallyOpen(categories);
       setAudioTour(tour);
-      mapRef.current?.getMap()?.flyTo({ center: [tour.stops[0].lng, tour.stops[0].lat], zoom: 17, pitch: 0, offset: [0, -110], duration: 1000 });
+      // Açılışta tüm duraklar kadrajda: uzak mor elmaslar ve çekirdek kümesi birlikte görünür.
+      const map = mapRef.current?.getMap();
+      if (map) {
+        const lngs = tour.stops.map((stop) => stop.lng);
+        const lats = tour.stops.map((stop) => stop.lat);
+        map.fitBounds(
+          [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+          { padding: { top: 80, bottom: 200, left: 60, right: 60 }, maxZoom: 16, pitch: 0, duration: 1000 },
+        );
+      }
     } catch {
       if (request === audioTourRequest.current) setToast("Sesli tur yüklenemedi. Bağlantını kontrol edip tekrar dene.");
     }
