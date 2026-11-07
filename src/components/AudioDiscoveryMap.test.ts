@@ -3,7 +3,7 @@ import { createElement } from "react";
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import type { Map } from "maplibre-gl";
-import { AUDIO_DISCOVERY_TOURS } from "../data/audioDiscovery";
+import { AUDIO_DISCOVERY_TOURS } from "../data/audioDiscoveryFixtures";
 
 const mocks = vi.hoisted(() => ({ add: vi.fn(), update: vi.fn(), remove: vi.fn() }));
 vi.mock("./audioStopMarkers", () => ({ addAudioStopMarkers: mocks.add }));

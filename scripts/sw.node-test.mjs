@@ -4,7 +4,7 @@ import test from "node:test";
 import vm from "node:vm";
 
 const ORIGIN = "https://atlasia.test";
-const SHELL_CACHE = "atlasia-shell-v9";
+const SHELL_CACHE = "atlasia-shell-v10";
 const TILE_CACHE = "atlasia-tiles-v1";
 const TILE_META_CACHE = "atlasia-tile-meta-v1";
 const PACK_CACHE = "atlasia-packs-v1";
@@ -111,7 +111,7 @@ function createHarness({ now = 1_700_000_000_000 } = {}) {
       });
     }
     if (url.origin === ORIGIN && url.pathname === "/assets/app.js") {
-      return typedResponse('import("./lazy.js"); const vendor = "assets/vendor.js";', {
+      return typedResponse('import("./lazy.js"); const vendor = "assets/vendor.js"; const tour = "/assets/efes-tour.json";', {
         status: 200,
         headers: { "Content-Type": "text/javascript" },
         url: url.href,
@@ -127,7 +127,7 @@ function createHarness({ now = 1_700_000_000_000 } = {}) {
     if (url.origin === ORIGIN) {
       return typedResponse(`shell:${url.pathname}`, {
         status: 200,
-        headers: { "Content-Type": url.pathname.endsWith(".js") ? "text/javascript" : url.pathname.endsWith(".css") ? "text/css" : "application/octet-stream" },
+        headers: { "Content-Type": url.pathname.endsWith(".js") ? "text/javascript" : url.pathname.endsWith(".css") ? "text/css" : url.pathname.endsWith(".json") ? "application/json" : "application/octet-stream" },
         url: url.href,
       });
     }
@@ -260,6 +260,7 @@ test("install: hash'li ve lazy uygulama parçalarıyla kabuğu saklar, skipWaiti
     "/assets/lazy.js",
     "/assets/nested.js",
     "/assets/vendor.js",
+    "/assets/efes-tour.json",
   ]) {
     assert.ok(await shell.match(path), `${path} ön önbellekte olmalı`);
   }
@@ -320,6 +321,18 @@ test("navigasyon ve lazy script ağ yokken aynı sürümün ön önbelleğinden 
   assert.equal(lazy.intercepted, true);
   assert.equal(lazy.response.status, 200);
   assert.match(await lazy.response.text(), /nested\.js/);
+});
+
+test("Efes tur verisi ağdan güncellenir, çevrimdışında saklanan kopyayı kullanır ve HTML fallback saklanmaz", async () => {
+  const harness = createHarness();
+  await harness.dispatch("install");
+  const url = `${ORIGIN}/assets/efes-tour.json`;
+  harness.routes.set(url, () => typedResponse('[{"id":"new"}]', { status: 200, headers: { "Content-Type": "application/json" }, url }));
+  assert.equal(await (await harness.fetchEvent(url)).response.text(), '[{"id":"new"}]');
+  harness.routes.set(url, () => typedResponse('<html>fallback</html>', { status: 200, headers: { "Content-Type": "text/html" }, url }));
+  assert.equal(await (await harness.fetchEvent(url)).response.text(), '[{"id":"new"}]');
+  harness.state.offline = true;
+  assert.equal(await (await harness.fetchEvent(url)).response.text(), '[{"id":"new"}]');
 });
 
 test("Firebase/Auth/Firestore, authorization, Esri ve genel dış API istekleri hiç yakalanmaz", async () => {

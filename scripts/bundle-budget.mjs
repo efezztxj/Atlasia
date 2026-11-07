@@ -174,8 +174,10 @@ export const BUNDLE_BUDGET = Object.freeze({
   // dağılımı kaydı (parça sınırları değişti), ~%3 payla yeniden bağlandı:
   //   entry 16.180 (eşik 21.200 bayattı) -> 16.700 · iconsVendor 13.261 -> 13.700
   //   firebaseAuth 44.778 -> 46.200 · ilk boya CSS 25.372 -> 26.100
-  totalJsGzipBytes: 1_003_000,
-  totalCssGzipBytes: 35_800,
+  // Bilingual tour and categorized place cards add a small lazy UI module.
+  // Four additional sourced stops add about 1 KB gzip; keep a narrow guard pending data extraction.
+  totalJsGzipBytes: 1_011_000,
+  totalCssGzipBytes: 35_900,
   initialGzipBytes: 129_400,
   // İlk HTML ile gelen gerçek ilk boya maliyeti (lazy chunk'lar hariç).
   initialCssGzipBytes: 26_100,

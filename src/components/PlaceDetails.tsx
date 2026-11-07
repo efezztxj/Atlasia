@@ -41,13 +41,14 @@ interface Props {
   onStreet: () => void;
   onPlan: () => void;
   onAudioDiscovery?: () => void;
+  onAudioCategories?: () => void;
   canDelete?: boolean;
   onDelete?: () => Promise<boolean>;
   /** Yakındaki tarihî yer listesinden bir yer açılınca. */
   onOpenPlace?: (place: Place) => void;
 }
 
-export default function PlaceDetails({ place, onClose, onStreet, onPlan, onAudioDiscovery, canDelete = false, onDelete, onOpenPlace, attribution }: Props) {
+export default function PlaceDetails({ place, onClose, onStreet, onPlan, onAudioDiscovery, onAudioCategories, canDelete = false, onDelete, onOpenPlace, attribution }: Props) {
   const { photos: allPhotos, loading, error } = usePlaceGallery(place);
   const { savePlace, isSaved } = useCollections();
   const panelRef = usePanelAccess(true, onClose, true);
@@ -196,6 +197,7 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, onAudio
 
           {status && <p role="status" className="mt-2 text-[13px] text-sun">{status}</p>}
           {onAudioDiscovery && <button type="button" onClick={onAudioDiscovery} className="mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-sun px-4 text-[14px] font-semibold text-ink"><Play size={16} />Sesli keşif turunu aç</button>}
+          {onAudioCategories && <button type="button" onClick={onAudioCategories} className="mt-2 flex min-h-12 w-full items-center justify-between rounded-xl border border-leaf/30 bg-leaf/[0.06] px-4 text-left text-[14px] font-semibold text-mint focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sun"><span>Sesli anlatım kategorileri</span><ChevronRight size={17} aria-hidden="true" /></button>}
           <p className="mt-5 text-[15px] leading-[1.8] text-mint/90">{story}</p>
           {place.historySource ? (
             <p className="mt-2 text-[11px] leading-relaxed text-mint/70" data-testid="place-attribution">
