@@ -41,7 +41,7 @@ export interface VerifiedCatalogCounts {
  * `SITE_TOURS` uzunluklarıyla birebir kilitler).
  */
 export const VERIFIED_CATALOG_COUNTS: VerifiedCatalogCounts = {
-  guidePlaces: 37,
+  guidePlaces: 28,
   siteTours: 4,
 };
 

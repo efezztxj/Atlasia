@@ -1,13 +1,5 @@
 # Atlasia Update
 
-## 2026-11-07 — Sesli tur: katlanabilir durak listesi + gömülmeyen pinler; Kalkidikum kartları tamamlandı
-
-- **Katlanabilir durak listesi:** `AudioDiscoverySheet` içindeki "Tur durakları" chip listesi varsayılan kapalı; başlıktaki düğme (`aria-expanded` + `aria-controls`) açıyor/kapatıyor. 46 duraklık liste artık paneli aşağı itmiyor.
-- **Pinler kalabalıkta gömülmüyor:** Düşük zoom'da tur pinleri aynı piksel yığınına düşüp birbirini tamamen örtüyordu (39/40/41/45 gibi duraklar "yok" sanılıyordu). `audioStopMarkers` artık `map.project` ile piksel çakışması hesaplıyor (`computeSpiderOffsets`, union-find) ve çakışan pinleri halkaya açıyor (`marker.setOffset`); halkalar `moveend`/`resize` ile yeniden kuruluyor, yakınlaştırınca kendiliğinden çözülüyor — gerçek koordinat hiç değişmiyor. Tur açılışında harita `fitBounds` ile tüm durakları (uzaktaki mor elmaslar dahil) kadraja alıyor; çip seçimi eskisi gibi zoom 17'ye uçuruyor. Seçili pin kısmi örtüşmede öne alınıyor.
-- **Kalkidikum kartları tamamlandı (CI borcu):** önceki turda eklenen 9 `kalkidikum-*` rehber durağı yarım kalmıştı: `Place.image` tip çelişkisi (dizgi vs künye nesnesi, `src="[object Object]"` riski), eksik tavsiye/kaynak tabloları, liste kilidi ve katalog sayaçları kırmızıydı; bu kırmızılık `main`'de üretim dağıtımını da engelliyordu. `Place.image` artık `string | PlaceImage`; tüketiciler (`placePhotos`, `routePlanner`) URL'de birleşti. Dokuz durağa erişim/dikkat metinleri, Vikipedi + Wikidata kaynakları (yapı düzeyinde kayıt yoksa kent düzeyi, notuyla), `yer-kaynaklari.md` satırları, `EXPECTED_IDS`, `VERIFIED_CATALOG_COUNTS` 28→37 ve `llms.txt` eklendi/güncellendi.
-- **Kapı onarımı:** `verify-sw-shell.mjs` grafiği çalışma zamanında `fetch` edilen varlıkları (tur JSON'ları) görmüyordu; grafik artık SW'nin `SHELL` listesiyle de tohumlanıyor — kapının niyeti (yayınlanan her varlık ön önbellek kapsamında) korunuyor.
-- **Doğrulama:** `tsc --noEmit`, `eslint --max-warnings=0`, vitest 195 dosya / 1.459 test yeşil; `npm run build` + paket bütçesi + SW kabuk doğrulaması yeşil.
-
 ## 2026-11-01 (P1-1 + P2-1) — Hata izleme görünür oldu, tanıtımın CLS kayması kaldırıldı
 
 - **Kör nokta:** uygulama çökse kimsenin haberi olmuyordu. `VITE_TELEMETRY_ENDPOINT` tanımlı değilse `telemetry` sessizce hiçbir şey göndermiyor; üstelik toplayıcı `*.workers.dev` adresinde olacakken CSP `connect-src` bu host'u engelliyordu.
