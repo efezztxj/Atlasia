@@ -14,7 +14,7 @@ export default function MapAttribution({ baseMap, showLabels, terrainEnabled }: 
     <div
       role="contentinfo"
       aria-label="Harita kaynakları"
-      className="text-[10px]"
+      className="map-attribution text-[10px]"
       style={{ color: "#e0ebe5", lineHeight: 1.3, textShadow: "0 0 3px #000, 0 0 4px #000" }}
     >
       {esri && <><a className="underline" href="https://www.esri.com/" target="_blank" rel="noreferrer">Esri</a>{baseMap === "satellite" && ", Maxar, Earthstar Geographics, USGS"}{openFreeMap && " · "}</>}
