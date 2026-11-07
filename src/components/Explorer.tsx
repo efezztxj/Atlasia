@@ -34,7 +34,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { analytics } from "../lib/analytics";
 import { CollectionsProvider, isCloudAccount } from "../hooks/useCollections";
 import { GUIDE_PLACES } from "../data/places";
-import { loadAudioDiscoveryForPlace, supportsAudioDiscovery, type AudioDiscoveryTour } from "../data/audioDiscovery";
+import { audioTourPlaceFor, loadAudioDiscoveryForPlace, type AudioDiscoveryTour } from "../data/audioDiscovery";
 import { parseShortcutTab, stripShortcutParam } from "../utils/appShortcut";
 import { formatAccuracy, useGeolocation } from "../hooks/useGeolocation";
 import { useAtlasData } from "../hooks/useAtlasData";
@@ -894,6 +894,8 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
   const liveStoryPlace = storyPlace
     ? allPlaces.find((item) => item.id === storyPlace.id) ?? storyPlace
     : null;
+  // Kalkidikum'un dokuz durağı ayrı pin: kartları bölgenin ortak sesli turunu açar.
+  const storyAudioTourId = liveStoryPlace ? audioTourPlaceFor(liveStoryPlace.id) : null;
   const current =
     activePlace ??
     (visiblePlaces.length ? visiblePlaces[featuredIdx % visiblePlaces.length] : undefined);
@@ -1696,8 +1698,8 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
           <PlaceDetails
             attribution={<MapAttribution baseMap={baseMap} showLabels={labels} terrainEnabled={terrain} />}
             place={liveStoryPlace}
-            onAudioDiscovery={supportsAudioDiscovery(liveStoryPlace.id) ? () => { void openAudioTour(liveStoryPlace.id, false); } : undefined}
-            onAudioCategories={supportsAudioDiscovery(liveStoryPlace.id) ? () => { void openAudioTour(liveStoryPlace.id, true); } : undefined}
+            onAudioDiscovery={storyAudioTourId ? () => { void openAudioTour(storyAudioTourId, false); } : undefined}
+            onAudioCategories={storyAudioTourId === "efes" ? () => { void openAudioTour("efes", true); } : undefined}
             onClose={() => { audioTourRequest.current += 1; setStoryPlace(null); }}
             onStreet={() => {
               const place = liveStoryPlace;

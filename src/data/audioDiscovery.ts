@@ -23,6 +23,21 @@ export function supportsAudioDiscovery(placeId: string): boolean {
   return placeId === "efes" || placeId === "kalkidikum";
 }
 
+/**
+ * Kartı açık yerin sesli turunu çözer: Kalkidikum'un dokuz durağı haritada ayrı
+ * rehber pini olduğu için tur kapısı her birinin kartından aynı tura açılır.
+ */
+export function audioTourPlaceFor(placeId: string): string | null {
+  if (supportsAudioDiscovery(placeId)) return placeId;
+  if (placeId.startsWith("kalkidikum-")) return "kalkidikum";
+  return null;
+}
+
+/** İngilizce anlatım kayıtları bugün yalnız Efes turu için var. */
+export function hasEnglishAudio(placeId: string): boolean {
+  return placeId === "efes";
+}
+
 export async function loadAudioDiscoveryForPlace(placeId: string): Promise<AudioDiscoveryTour | null> {
   if (!supportsAudioDiscovery(placeId)) return null;
   const response = await fetch(`/assets/${placeId}-tour.json`);

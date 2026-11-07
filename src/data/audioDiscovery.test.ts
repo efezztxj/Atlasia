@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { AUDIO_DISCOVERY_TOURS } from "./audioDiscoveryFixtures";
-import { loadAudioDiscoveryForPlace, supportsAudioDiscovery } from "./audioDiscovery";
+import { audioTourPlaceFor, hasEnglishAudio, loadAudioDiscoveryForPlace, supportsAudioDiscovery } from "./audioDiscovery";
 import { GUIDE_PLACES } from "./places";
 
 describe("sesli keşif içeriği yayın kontrolleri", () => {
@@ -73,5 +73,31 @@ describe("sesli keşif içeriği yayın kontrolleri", () => {
         throw new Error(`${stop.id}: görsel eksik`);
       }
     }
+  });
+});
+
+describe("tur kapısı çözümü", () => {
+  it("kalkidikum pinleri bölge turuna, efes kendi turuna bağlanır", () => {
+    expect(audioTourPlaceFor("efes")).toBe("efes");
+    expect(audioTourPlaceFor("kalkidikum")).toBe("kalkidikum");
+    expect(audioTourPlaceFor("kalkidikum-hydreion")).toBe("kalkidikum");
+    expect(audioTourPlaceFor("kalkidikum-kent-surlari")).toBe("kalkidikum");
+    expect(audioTourPlaceFor("kapadokya")).toBeNull();
+  });
+
+  it("İngilizce anlatım yalnız Efes turunda var", () => {
+    expect(hasEnglishAudio("efes")).toBe(true);
+    expect(hasEnglishAudio("kalkidikum")).toBe(false);
+  });
+
+  it("kalkidikum turu aynı kapıdan yüklenir", async () => {
+    const tours = JSON.parse(readFileSync(resolve("public/assets/kalkidikum-tour.json"), "utf8"));
+    const original = globalThis.fetch;
+    try {
+      globalThis.fetch = async () => new Response(JSON.stringify(tours), { status: 200 });
+      const tour = await loadAudioDiscoveryForPlace("kalkidikum");
+      expect(tour?.stops).toHaveLength(9);
+      expect(tour?.stops.every((stop) => stop.audio)).toBe(true);
+    } finally { globalThis.fetch = original; }
   });
 });

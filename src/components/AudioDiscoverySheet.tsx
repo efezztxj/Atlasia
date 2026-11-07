@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Pause, Play, Volume2, X } from "lucide-react";
-import type { AudioDiscoveryTour } from "../data/audioDiscovery";
+import { hasEnglishAudio, type AudioDiscoveryTour } from "../data/audioDiscovery";
 import type { EnglishAudioStop } from "../data/audioDiscoveryEnglish";
 import AudioDiscoveryCategories from "./AudioDiscoveryCategories";
 import { usePanelAccess } from "../hooks/usePanelAccess";
@@ -100,9 +100,9 @@ export default function AudioDiscoverySheet({ tour, selectedIndex, onSelect, onC
           <button type="button" onClick={onClose} aria-label={en ? "Close audio tour" : "Sesli turu kapat"} className="grid size-11 shrink-0 place-items-center rounded-full border border-leaf/30 text-mint transition hover:bg-leaf/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sun"><X size={18} /></button>
         </header>
 
-        <div role="group" aria-label={en ? "Narration language" : "Anlatım dili"} className="mt-3 flex w-fit gap-1 rounded-full border border-leaf/20 p-1">
+        {hasEnglishAudio(tour.placeId) && <div role="group" aria-label={en ? "Narration language" : "Anlatım dili"} className="mt-3 flex w-fit gap-1 rounded-full border border-leaf/20 p-1">
           {(["tr", "en"] as const).map((value) => <button key={value} type="button" lang={value} aria-pressed={language === value} onClick={() => void changeLanguage(value)} disabled={languageLoading} className={`min-h-9 rounded-full px-3 text-[12px] font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sun ${language === value ? "bg-sun text-ink" : "text-mint/75 hover:bg-leaf/10"}`}>{value === "tr" ? "Türkçe" : "English"}</button>)}
-        </div>
+        </div>}
         {languageLoading && <p role="status" className="mt-2 text-[12px] text-mint/75">Loading English…</p>}
         {languageError && <p role="alert" className="mt-2 text-[12px] text-mint/75">English could not be loaded. Please try again. / İngilizce yüklenemedi. Lütfen tekrar dene.</p>}
         {audio && <audio key={`${stop.id}-${language}`} ref={audioRef} src={audio} preload="none" onPlay={() => setSpeaking(true)} onPause={() => setSpeaking(false)} onEnded={() => setSpeaking(false)} onError={() => { setSpeaking(false); setError(en ? "Audio could not be loaded. You can read the text." : "Ses yüklenemedi. Metni okuyabilirsin."); }} />}

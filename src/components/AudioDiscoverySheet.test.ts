@@ -178,3 +178,30 @@ describe("sesli anlatım kategorileri", () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 });
+
+describe("kalkidikum turu", () => {
+  it("İngilizce kayıt yoksa dil düğmesi göstermez, Türkçe çalar", () => {
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+    const tour = {
+      id: "kalkidikum-tour",
+      placeId: "kalkidikum",
+      title: "Kalkidikum (Chalcidicum) ve Liman Bölgesi Keşfi",
+      stops: [
+        {
+          id: "hydreion-kalkidikum",
+          title: "Hydreion (Çeşme Yapısı)",
+          description: "Kalkidikum bölgesindeki çeşme yapısı.",
+          lat: 37.936724,
+          lng: 27.3434367,
+          sources: [{ title: "Ephesus", url: "https://en.wikipedia.org/wiki/Ephesus" }],
+          coordinateSource: "https://www.openstreetmap.org/way/244582459",
+          audio: "/audio/kalkidikum-hydreion.mp3",
+        },
+      ],
+    } as unknown as typeof AUDIO_DISCOVERY_TOURS[number];
+    render(createElement(AudioDiscoverySheet, { tour, selectedIndex: 0, onSelect: vi.fn(), onClose: vi.fn() }));
+    expect(screen.queryByRole("button", { name: "English" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Türkçe" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Dinle" })).toBeTruthy();
+  });
+});
