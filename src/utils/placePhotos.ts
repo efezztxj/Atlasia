@@ -1,6 +1,22 @@
 import type { Place } from "../types";
 import { GALLERIES } from "../data/galleries";
 
+/**
+ * `Place.image` iki biçimde gelebilir: düz URL ya da atıflı nesne
+ * ({ url, alt, author, license… }). Fotoğraf listesi yalnız URL taşır; atıf
+ * bilgisi gerektiğinde `placeImageCredit` ile ayrıca okunur.
+ */
+export function resolvePhoto(image: Place["image"]): string | undefined {
+  if (!image) return undefined;
+  return typeof image === "string" ? image : image.url;
+}
+
+/** Atıflı fotoğrafın künyesi; düz URL'de `null` döner. */
+export function placeImageCredit(image: Place["image"]) {
+  if (!image || typeof image === "string") return null;
+  return { alt: image.alt, author: image.author, license: image.license, licenseUrl: image.licenseUrl, source: image.source };
+}
+
 export function getPlacePhotos(place: Place) {
   const seen = new Set<string>();
   return [place.photo, ...(place.gallery ?? []), ...(GALLERIES[place.id] ?? []), place.image]

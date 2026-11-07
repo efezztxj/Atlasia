@@ -49,7 +49,11 @@ test("1. Tanıtım sayfası: doğrulanmış katalog kapsamı, çerez onayı ve a
   await page.goto("/");
 
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Dünyayı merakınla keşfet.");
-  await expect(page.getByLabel("Doğrulanmış içerik kapsamı")).toContainText("28");
+  // Katalog sayacı gerçek veriden gelir (GUIDE_PLACES). 2026-11-07: Kalkidikum
+  // durakları (9) rehbere eklendiği için 28 → 37. Sayı kaynağı
+  // `src/content/landingStatic.ts`; birim testi (`socialProofT20`) sayıyı
+  // veriyle kilitler, bu duman testi kullanıcıya görünen metni doğrular.
+  await expect(page.getByLabel("Doğrulanmış içerik kapsamı")).toContainText("37");
   await expect(page.getByLabel("Doğrulanmış içerik kapsamı")).toContainText("Antik kent sesli turu");
 
   const consentHeading = page.getByRole("heading", { name: "Çerez ve cihaz depolaması" });

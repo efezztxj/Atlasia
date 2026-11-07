@@ -35,6 +35,16 @@ const EXPECTED_IDS = [
   "chefchaouen",
   "banff",
   "positano",
+  // Kalkidikum Durakları (9 durak): places.ts'te veri var, kilit listesi de olmalı.
+  "kalkidikum-hydreion",
+  "kalkidikum-triodos-meydani",
+  "kalkidikum-heksagon",
+  "kalkidikum-verulanus-meydani-salonu",
+  "kalkidikum-antik-liman-kanali",
+  "kalkidikum-meryem-kilisesi-vaftizhanesi",
+  "kalkidikum-bizans-hamamlari",
+  "kalkidikum-vedius-gymnasionu",
+  "kalkidikum-kent-surlari",
 ];
 
 describe("GUIDE_PLACES — rehber kartları", () => {
