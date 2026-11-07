@@ -18,6 +18,8 @@ const SHELL = [
   "/icons/icon-192.png",
   "/icons/icon-512.png",
   "/images/atlasia-earth-hero.jpg",
+  "/assets/efes-tour.json",
+  "/assets/kalkidikum-tour.json",
 ];
 
 // Tam HTTPS host + path öneki eşleşmesi (substring değil) — lookalike URL reddi.
