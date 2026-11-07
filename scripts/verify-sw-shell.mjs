@@ -12,7 +12,7 @@ const sandbox = {
   URL,
   console,
 };
-vm.runInNewContext(`${swSource}\nglobalThis.readShellAssets = assetPathsFromText;`, sandbox, {
+vm.runInNewContext(`${swSource}\nglobalThis.readShellAssets = assetPathsFromText;\nglobalThis.SHELL_LIST = SHELL;`, sandbox, {
   filename: "public/sw.js",
 });
 
@@ -22,7 +22,19 @@ const readShellAssets = sandbox.readShellAssets;
 assert.equal(typeof readShellAssets, "function");
 assert.ok(existsSync("dist/index.html"), "dist/index.html yok; önce üretim derlemesi çalıştırılmalı.");
 
-const pending = [...readShellAssets(readFileSync("dist/index.html", "utf8"))];
+/**
+ * Başlangıç kümesi = SW'nin kendi `SHELL` listesi + index.html'den keşfedilenler.
+ *
+ * NEDEN: SW kurulumda `SHELL` içindeki yolları da ön önbelleğe alır ve kurulum
+ * tek bir 404'te tümden düşer. Bu dosya yalnız index.html grafiğini geziyordu,
+ * bu yüzden `public/assets/*.json` gibi statik kabuk varlıkları ne doğrulanıyor
+ * ne de kapsanıyor sayılıyordu (`unreached` yanlış pozitif). Artık SW'nin
+ * gerçek listesi de kök kümedir; tek kaynak `public/sw.js`.
+ */
+const shellList = sandbox.SHELL_LIST ?? [];
+assert.ok(Array.isArray(shellList) && shellList.length > 0, "public/sw.js içinde SHELL listesi bulunamadı.");
+
+const pending = [...new Set([...shellList, ...readShellAssets(readFileSync("dist/index.html", "utf8"))])];
 const reachable = new Set();
 while (pending.length) {
   const path = pending.shift();
@@ -42,4 +54,4 @@ const builtAssets = readdirSync("dist/assets", { withFileTypes: true })
   .map((entry) => `/assets/${entry.name}`);
 const unreached = builtAssets.filter((path) => !reachable.has(path));
 assert.deepEqual(unreached, [], `SW ön önbellek grafiğine girmeyen üretim varlıkları: ${unreached.join(", ")}`);
-console.log(`SW üretim kabuğu doğrulandı: ${reachable.size}/${builtAssets.length} varlık kapsanıyor.`);
+console.log(`SW üretim kabuğu doğrulandı: ${builtAssets.length} üretim varlığının tamamı kapsanıyor (${reachable.size} kabuk yolu doğrulandı).`);

@@ -34,6 +34,16 @@ export interface HistoricVerification {
   sources: HistoricSourceReference[];
 }
 
+/** Atıflı fotoğraf: kaynak, yazar ve lisans bilgisi görselin altında gösterilir. */
+export interface PlacePhoto {
+  url: string;
+  alt: string;
+  source: string;
+  author: string;
+  license: string;
+  licenseUrl: string;
+}
+
 export interface Place {
   id: string;
   title: string;
@@ -42,7 +52,12 @@ export interface Place {
   lng: number;
   lat: number;
   note: string;
-  image?: string;
+  /**
+   * Tek fotoğraf. Düz URL (Pexels/Wikimedia) ya da atıf bilgisi taşıyan nesne
+   * (Kalkidikum durakları, bkz. `audioDiscovery.ts`) olabilir. Tüketici tarafı
+   * her iki biçimi de çözer: `utils/placePhotos.resolvePhoto`.
+   */
+  image?: string | PlacePhoto;
   /** Kullanıcı keşiflerine eklenen fotoğraf */
   photo?: string;
   /** 5–10 gerçek fotoğraf */

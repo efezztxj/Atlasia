@@ -30,6 +30,15 @@ const ALIASES: Record<string, string[]> = {
   "buyuk-han": ["buyuk han"],
   salamis: ["salamis"],
   positano: ["positano"],
+  "kalkidikum-hydreion": ["hydreion", "kalkidikum cesme"],
+  "kalkidikum-triodos-meydani": ["triodos", "uc yol meydani"],
+  "kalkidikum-heksagon": ["heksagon"],
+  "kalkidikum-verulanus-meydani-salonu": ["verulanus"],
+  "kalkidikum-antik-liman-kanali": ["antik liman", "liman kanali", "arkadiane"],
+  "kalkidikum-meryem-kilisesi-vaftizhanesi": ["vaftizhane", "meryem kilisesi"],
+  "kalkidikum-bizans-hamamlari": ["bizans hamamlari"],
+  "kalkidikum-vedius-gymnasionu": ["vedius"],
+  "kalkidikum-kent-surlari": ["kent surlari", "justinianus surlari"],
 };
 
 export function namedPlace(query: string, places: Place[]) {
@@ -321,12 +330,98 @@ export const PLACE_ADVICE: Record<string, PlaceAdvice> = {
     timing: UNVERIFIED,
     cost: UNVERIFIED,
   },
+  // Kalkidikum Durakları: Efes'in kuzeybatısındaki bu dokuz durak aynı ören
+  // yeri içindedir. Erişim ve dikkat metinleri yerin konumuna göre yazıldı;
+  // bilet, saat ve sezon bilgisi kaynakta doğrulanmadığı için UNVERIFIED.
+  "kalkidikum-hydreion": {
+    access:
+      "Efes ören yerinin içinde, Bazilika Stoası'nın batısında; ziyaret ana girişten yürüyerek yapılır, güncel giriş kapısını resmî kaynaktan doğrula.",
+    caution:
+      "Kalıntılar açık alanda ve zemin yer yer bozuk; basamaklara ve kaidelere dokunmadan işaretli güzergâhta kal.",
+    timing: UNVERIFIED,
+    cost: UNVERIFIED,
+  },
+  "kalkidikum-triodos-meydani": {
+    access:
+      "Efes'in merkezinde, Mermer Cadde ile Kuretler Caddesi'nin kesiştiği noktada; ana güzergâh üzerinde yürüyerek ulaşılır.",
+    caution:
+      "Mermer zemin cilalı ve kaygan olabilir; kalabalık saatlerde dar geçişlerde adımını yavaşlat.",
+    timing: UNVERIFIED,
+    cost: UNVERIFIED,
+  },
+  "kalkidikum-heksagon": {
+    access:
+      "Bazilika Stoası'nın batı ucunda, Efes ören yeri içinde; ana girişten yürüyüşle ulaşılır, güncel kapı bilgisini doğrula.",
+    caution:
+      "Altıgen planlı yapının çevresi açık; taş bloklara tırmanma ve kapalı alanlara girme.",
+    timing: UNVERIFIED,
+    cost: UNVERIFIED,
+  },
+  "kalkidikum-verulanus-meydani-salonu": {
+    access:
+      "Efes'in liman bölgesinde, ana girişten ören yeri içinde yürüyerek ulaşılır; güncel ziyaret güzergâhını resmî kaynaktan doğrula.",
+    caution:
+      "Geniş bir alan; güneşe açık olduğu için su ve şapka al, mermer yüzeylerde kaymayan ayakkabı giy.",
+    timing: UNVERIFIED,
+    cost: UNVERIFIED,
+  },
+  "kalkidikum-antik-liman-kanali": {
+    access:
+      "Liman Caddesi (Arkadiane) boyunca, Efes ören yeri içinde yürüyerek ulaşılır; taşıt girişi bulunmaz.",
+    caution:
+      "Cadde taş döşeli ve uzun; öğle sıcağında gölge az, yanına su al ve yürüyüş süresini hesaba kat.",
+    timing: UNVERIFIED,
+    cost: UNVERIFIED,
+  },
+  "kalkidikum-meryem-kilisesi-vaftizhanesi": {
+    access:
+      "Meryem Kilisesi'nin kuzey atriumunda, Efes ören yeri içinde; ana girişten yürüyüşle ulaşılır.",
+    caution:
+      "Vaftiz havuzu çukur ve kenarları korumasız; fotoğraf çekerken geri adım atmadan önce etrafını kontrol et.",
+    timing: UNVERIFIED,
+    cost: UNVERIFIED,
+  },
+  "kalkidikum-bizans-hamamlari": {
+    access:
+      "Liman Hamamları'nın batısında, Efes ören yeri içinde; ana girişten yürüyerek ulaşılır, güncel güzergâhı doğrula.",
+    caution:
+      "Sıcak ve ılık bölümlerdeki geçişler dar; başını eğmen gerekebilir, mozaik ve taş yüzeylere basma.",
+    timing: UNVERIFIED,
+    cost: UNVERIFIED,
+  },
+  "kalkidikum-vedius-gymnasionu": {
+    access:
+      "Stadyumun kuzeyinde, Efes ören yeri içinde; ana girişten yürüyüşle ulaşılır ve yol eğimli olabilir.",
+    caution:
+      "Geniş bir yapı alanı; eğimli ve bozuk zeminde dikkatli yürü, kalıntı duvarlarına yaklaşma.",
+    timing: UNVERIFIED,
+    cost: UNVERIFIED,
+  },
+  "kalkidikum-kent-surlari": {
+    access:
+      "Efes'i çevreleyen surların kalıntıları ören yerinin çevresine yayılmış durumda; ana girişten yürüyerek ulaşılabilen bölümleri ziyaret et.",
+    caution:
+      "Surların bir bölümü dik yamaçta ve korumasız; işaretli alanın dışına çıkma, yüksek kenarlarda durma.",
+    timing: UNVERIFIED,
+    cost: UNVERIFIED,
+  },
 };
 
 /**
  * Yer başına kaynak listesi. Sıra: Vikipedi maddeleri, sonra Wikidata öğeleri.
  * Wikidata kimlikleri Vikipedi maddelerinin bağlı olduğu öğelerdir.
  */
+/**
+ * Kalkidikum duraklarının ortak kaynağı: dokuz durak da Efes ören yeri
+ * içindedir. Duraklar için ayrı Vikipedi maddesi yok; atıf aynı maddeyi
+ * gösterir ve bu, kaynak uydurmaktan dürüsttür.
+ */
+const EPHESUS_SOURCES: PlaceSource[] = [
+  wikipedia("tr", "Efes", "https://tr.wikipedia.org/wiki/Efes"),
+  wikipedia("en", "Ephesus", "https://en.wikipedia.org/wiki/Ephesus"),
+  wikidata("Q47611"),
+];
+
 export const PLACE_SOURCES: Record<string, PlaceSource[]> = {
   efes: [
     wikipedia("tr", "Efes", "https://tr.wikipedia.org/wiki/Efes"),
@@ -462,6 +557,17 @@ export const PLACE_SOURCES: Record<string, PlaceSource[]> = {
     wikipedia("tr", "Positano", "https://tr.wikipedia.org/wiki/Positano"),
     wikidata("Q81345"),
   ],
+  // Kalkidikum durakları: dokuzunun da ana maddesi aynı ören yeridir (Efes).
+  // Aynı yer için ayrı Vikipedi/Wikidata uydurulmadı; kaynak dürüstçe ortaktır.
+  "kalkidikum-hydreion": EPHESUS_SOURCES,
+  "kalkidikum-triodos-meydani": EPHESUS_SOURCES,
+  "kalkidikum-heksagon": EPHESUS_SOURCES,
+  "kalkidikum-verulanus-meydani-salonu": EPHESUS_SOURCES,
+  "kalkidikum-antik-liman-kanali": EPHESUS_SOURCES,
+  "kalkidikum-meryem-kilisesi-vaftizhanesi": EPHESUS_SOURCES,
+  "kalkidikum-bizans-hamamlari": EPHESUS_SOURCES,
+  "kalkidikum-vedius-gymnasionu": EPHESUS_SOURCES,
+  "kalkidikum-kent-surlari": EPHESUS_SOURCES,
 };
 
 /** Rehber yerine ait kaynaklar; bilinmeyen yerlerde boş liste. */

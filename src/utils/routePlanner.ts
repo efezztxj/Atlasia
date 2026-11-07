@@ -1,6 +1,7 @@
 import type { AtlasRoute, Place, RouteBrief, RouteDay, RouteStop, StopType, TransportMode } from "../types";
 import { haversineKm } from "./geo";
 import { encodePolyline } from "./polyline";
+import { resolvePhoto } from "./placePhotos";
 
 const CATEGORY_INTERESTS: Record<string, string[]> = { Doğa: ["nature", "camp"], Tarih: ["history"], Yemek: ["food"], Fotoğraf: ["photo", "cities"], Kamp: ["camp"], Plaj: ["beaches"], "Gizli Yerler": ["community", "nature"], Manzara: ["photo", "nature", "beaches"], Mimari: ["cities", "history"] };
 const TYPES: Record<Place["category"], StopType> = { cities: "city", beaches: "beach", history: "history", nature: "nature", camp: "camp", food: "food", photo: "photo", routes: "viewpoint", community: "hidden_gem", issues: "other", parking: "parking", trailhead: "trailhead", descent: "descent", water: "water" };
@@ -123,7 +124,7 @@ export function planRoute(places: Place[], origin: { lat: number; lng: number },
         isCommunityPin: place.kind === "user",
         pinId: place.id,
         category: place.category,
-        imageUrl: place.photo ?? place.image ?? null,
+        imageUrl: place.photo ?? resolvePhoto(place.image) ?? null,
         source,
       });
       clock += stay;
