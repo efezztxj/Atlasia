@@ -909,13 +909,19 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
       const p = allPlaces.find((x) => x.id === id);
       if (!p) return;
       setPanelOpen(true);
-      focusPlace(p);
-      setStoryPlace(p);
-      setStreetPlace(null);
-      setAtlasOpen(false);
-      setDrawerOpen(false);
-      setFeedOpen(false);
-      setRecordsOpen(false);
+      // Kanka, "efese basınca yeniden yükle" talebi için aktif ID'yi önce null yapıp sonra tekrar ata.
+      // React'in state değişimini algılaması için yeni bir obje referansı oluşturuyoruz.
+      setActiveId(null);
+      setTimeout(() => {
+        setActiveId(p.id);
+        focusPlace(p);
+        setStoryPlace(p);
+        setStreetPlace(null);
+        setAtlasOpen(false);
+        setDrawerOpen(false);
+        setFeedOpen(false);
+        setRecordsOpen(false);
+      }, 0); // "Adam gibi" çözüm: setTimeout ile ikinci bir render tetikleyerek modal/panelin tam yenilenmesini sağlıyoruz.
     },
     [allPlaces, focusPlace],
   );
@@ -1013,7 +1019,11 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
 
   const handleMapClick = useCallback((lng: number, lat: number) => {
     setAddMode(false);
+    // Kanka, "bastığında yeniden yüklenmesi" talebi için draft'ı her basışta yeniliyoruz.
+    // React'in state değişimi algılaması için yeni bir obje referansı oluşturuyoruz.
     setDraft({ lng, lat });
+    // "Adam gibi" çözüm: setTimeout ile ikinci bir render tetikleyerek modal/draft'ın tam yenilenmesini sağlıyoruz.
+    setTimeout(() => setDraft({ lng, lat }), 0);
   }, []);
 
   const handleSave = async (data: {

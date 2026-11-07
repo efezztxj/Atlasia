@@ -18,14 +18,14 @@ export interface AudioDiscoveryTour {
   stops: AudioDiscoveryStop[];
 }
 
-/** Efes turu açılmadan içerik yüklenmez; dosya servis çalışanının kabuğunda da saklanır. */
+/** Efes ve Kalkidikum turları açılmadan içerik yüklenmez; dosya servis çalışanının kabuğunda da saklanır. */
 export function supportsAudioDiscovery(placeId: string): boolean {
-  return placeId === "efes";
+  return placeId === "efes" || placeId === "kalkidikum";
 }
 
 export async function loadAudioDiscoveryForPlace(placeId: string): Promise<AudioDiscoveryTour | null> {
   if (!supportsAudioDiscovery(placeId)) return null;
-  const response = await fetch("/assets/efes-tour.json");
+  const response = await fetch(`/assets/${placeId}-tour.json`);
   if (!response.ok) throw new Error("Audio tour unavailable");
   const tours: unknown = await response.json();
   if (!Array.isArray(tours)) throw new Error("Invalid audio tour");

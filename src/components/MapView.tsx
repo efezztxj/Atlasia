@@ -228,6 +228,10 @@ function buildStyle(
   hillshade = true,
 ): maplibregl.StyleSpecification {
   const atmosphere = MAP_ATMOSPHERE[theme];
+  // Kanka, "efesin arkasındaki gölgelendirme" (siyahlık) için hillshade renklerini güncelledik.
+  // #00120f (siyah) yerine #0a3d33 (tema ile uyumlu koyu yeşil/mint) ve accent rengini açtık.
+  const hillshadeShadow = theme === "dark" ? "#0a3d33" : "#071827";
+  const hillshadeAccent = theme === "midnight" ? "#2f7ea6" : "#1e7d62"; // Daha açık mint/yeşil
   return {
     version: 8,
     projection: { type: "globe" },
@@ -305,9 +309,9 @@ function buildStyle(
           "hillshade-illumination-direction": 328,
           "hillshade-illumination-anchor": "map",
           "hillshade-exaggeration": 0.24,
-          "hillshade-shadow-color": "#00120f",
+          "hillshade-shadow-color": hillshadeShadow,
           "hillshade-highlight-color": "#e5d9b2",
-          "hillshade-accent-color": theme === "midnight" ? "#2f7ea6" : "#0a7b60",
+          "hillshade-accent-color": hillshadeAccent,
         },
       },
       ...openFreeMapLayers(labels, baseMap, theme),
