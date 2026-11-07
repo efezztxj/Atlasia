@@ -57,11 +57,6 @@ export interface Place {
    * (Kalkidikum durakları, bkz. `audioDiscovery.ts`) olabilir. Tüketici tarafı
    * her iki biçimi de çözer: `utils/placePhotos.resolvePhoto`.
    */
-  /**
-   * Tek fotoğraf. Düz URL (Pexels/Wikimedia) ya da atıf bilgisi taşıyan nesne
-   * (Kalkidikum durakları, bkz. `audioDiscovery.ts`) olabilir. Tüketici tarafı
-   * her iki biçimi de çözer: `utils/placePhotos.resolvePhoto`.
-   */
   image?: string | PlacePhoto;
   /** Kullanıcı keşiflerine eklenen fotoğraf */
   photo?: string;

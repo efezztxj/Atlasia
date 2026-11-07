@@ -19,7 +19,7 @@ export function placeImageCredit(image: Place["image"]) {
 
 export function getPlacePhotos(place: Place) {
   const seen = new Set<string>();
-  return [place.photo, ...(place.gallery ?? []), ...(GALLERIES[place.id] ?? []), typeof place.image === "string" ? place.image : place.image?.url]
+  return [place.photo, ...(place.gallery ?? []), ...(GALLERIES[place.id] ?? []), place.image]
     .filter((url): url is string => !!url)
     .filter((url) => {
       const photoId = url.match(/pexels\.com\/photos\/(\d+)/)?.[1];
