@@ -4,6 +4,13 @@ import { describe, expect, it } from "vitest";
 const read = (path: string) => readFileSync(path, "utf8");
 
 describe("ağır istemci modüllerinin tembel yüklenmesi", () => {
+  it("ağ durumu bildirimi ilk yük grafiğini büyütmeden açılır", () => {
+    const main = read("src/main.tsx");
+    expect(main).toContain('lazy(() => import("./components/NetworkStatus"))');
+    expect(main).toMatch(/<Suspense fallback=\{null\}>\s*<NetworkStatus/);
+    expect(main).not.toMatch(/^import NetworkStatus from/m);
+  });
+
   it("MapView bileşenini Suspense iskeleti arkasında dinamik yükler", () => {
     const explorer = read("src/components/Explorer.tsx");
     expect(explorer).toContain('lazy(() => import("./MapView"))');
