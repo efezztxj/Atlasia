@@ -1,6 +1,7 @@
 import type { ActionCodeSettings, Auth, User } from "firebase/auth";
 import { AccountError, normalizeEmail, type AtlasAccount, type SignupDetails } from "./accountTypes";
 import { isCloudReady } from "./firebaseConfig";
+import { APP_ORIGIN, mailRelayConfigured, postRelay, type RelayKind } from "./mailRelay";
 
 /**
  * Auth her zaman `lib/firebase.ts` içindeki tek Firebase uygulamasını kullanır,
@@ -12,8 +13,13 @@ import { isCloudReady } from "./firebaseConfig";
 export const authConfigured = isCloudReady;
 export const authBackend = authConfigured ? "firebase" : "device";
 
+/**
+ * Doğrulama/şifre yenileme bağlantılarının döneceği adres ve Resend hattı
+ * sözleşmesi `lib/mailRelay` içinde; burada yalnız kullanılıyor.
+ * `VITE_MAIL_ENDPOINT` tanımlı değilse davranış eskisi gibi kalır.
+ */
 const EMAIL_ACTION_SETTINGS: ActionCodeSettings = {
-  url: "https://atlasia.pages.dev/",
+  url: APP_ORIGIN,
   handleCodeInApp: false,
 };
 
@@ -31,9 +37,64 @@ export function getAtlasAuth(): Promise<Auth> {
   return authPromise;
 }
 
+export { mailRelayConfigured } from "./mailRelay";
+
+/**
+ * Resend hattından işlem e-postası ister.
+ *
+ * Sözleşme: uç nokta **alıcıyı istemciden almaz**. Yalnız Firebase ID token'ı
+ * gönderilir; adres ve bağlantı sunucuda (Worker) çözülür. Böylece tarayıcıdaki
+ * bir hata veya kötüye kullanım başkasına e-posta attıramaz.
+ *
+ * Dönüş: `true` = hat gönderdi, `false` = hat yok/başarısız (çağıran Firebase
+ * gönderimine düşer). İstisna fırlatmaz; e-posta hiçbir zaman girişi bloklamaz.
+ */
+export async function requestRelayEmail(kind: RelayKind): Promise<boolean> {
+  if (!mailRelayConfigured) return false;
+  try {
+    const [{ getIdToken }, auth] = await Promise.all([import("firebase/auth"), getAtlasAuth()]);
+    const current = auth.currentUser;
+    if (!current) return false;
+    const idToken = await getIdToken(current, false);
+    return await postRelay({ kind, idToken });
+  } catch {
+    return false;
+  }
+}
+
 export async function sendAtlasVerificationEmail(user: User) {
-  const { sendEmailVerification } = await import("firebase/auth");
-  return sendEmailVerification(user, EMAIL_ACTION_SETTINGS);
+  if (mailRelayConfigured) {
+    const delivered = await requestRelayEmail("verification");
+    if (delivered) return;
+  }
+  try {
+    const { sendEmailVerification } = await import("firebase/auth");
+    return await sendEmailVerification(user, EMAIL_ACTION_SETTINGS);
+  } catch (error) {
+    // Hat "zaten doğrulanmış" dediyse (409) yerel oturum hâlâ eskidir; sunucu
+    // kaydı doğrudur ama Firebase token'ı yenilenmeden `emailVerified` false
+    // görünür. Bu durumda hata gösterme: bir sonraki yenileme doğru durumu getirir.
+    if (await relayKnowsVerified()) return;
+    throw error;
+  }
+}
+
+/**
+ * Doğrulama hatasından sonra oturumu tazeler ve gerçek durumu döndürür.
+ * Amaç: Firebase e-postası gönderilemediyse bile kullanıcıya "gönderildi"
+ * yalanı söylememek. Sunucuda doğrulanmışsa `true` döner ve çağıran akış
+ * sessizce devam eder.
+ */
+async function relayKnowsVerified(): Promise<boolean> {
+  try {
+    const [{ reload }, auth] = await Promise.all([import("firebase/auth"), getAtlasAuth()]);
+    const current = auth.currentUser;
+    if (!current) return false;
+    await reload(current);
+    return current.emailVerified;
+  } catch {
+    return false;
+  }
 }
 
 export function isVerifiedMember(user: User | null): user is User {
@@ -82,7 +143,19 @@ export async function requestPasswordReset(email: string) {
     import("firebase/auth"),
     getAtlasAuth(),
   ]);
-  try { await sendPasswordResetEmail(auth, normalizeEmail(email), EMAIL_ACTION_SETTINGS); }
+  const target = normalizeEmail(email);
+
+  // Hat yalnız **kendi adresine** ve yalnız oturum açıkken kullanılır. Gerekçe:
+  // Worker, ID token olmadan kimin adresine gönderileceğini bilemez; oturumsuz
+  // bir "önce e-posta gönder sonra hesabı doğrula" akışı ise hesabın var olup
+  // olmadığını dışarı sızdırır (enumeration). Bu yüzden oturumsuz "şifremi
+  // unuttum" Firebase'in kendi gönderimini kullanmaya devam eder
+  // (bkz. docs/resend-eposta-hatti.md §5).
+  if (mailRelayConfigured && auth.currentUser && normalizeEmail(auth.currentUser.email ?? "") === target) {
+    const delivered = await requestRelayEmail("reset");
+    if (delivered) return;
+  }
+  try { await sendPasswordResetEmail(auth, target, EMAIL_ACTION_SETTINGS); }
   catch (error) { if ((error as { code?: string }).code !== "auth/user-not-found") throw error; }
 }
 

@@ -8,6 +8,8 @@ ui-debug.log
 # Local/build environment files (only the empty template is tracked)
 .env*
 !.env.example
+.dev.vars*
+.wrangler/
 
 # Build
 dist/

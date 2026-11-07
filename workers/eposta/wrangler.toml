@@ -1,0 +1,30 @@
+name = "atlasia-eposta"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+# CORS: yalnız üretim Pages origin'i. Preview gerekiyorsa virgülle ekle
+# (https://<hash>.atlasia.pages.dev). Joker (`*`) yazılmaz.
+[vars]
+ALLOWED_ORIGINS = "https://atlasia.pages.dev"
+APP_URL = "https://atlasia.pages.dev/"
+BRAND_NAME = "Atlasia"
+
+# Gizli değerler BURAYA YAZILMAZ. Deploy öncesi (operatör):
+#   npx wrangler secret put RESEND_API_KEY      --config workers/eposta/wrangler.toml
+#   npx wrangler secret put FIREBASE_API_KEY    --config workers/eposta/wrangler.toml
+#   npx wrangler secret put MAIL_FROM           --config workers/eposta/wrangler.toml
+#   npx wrangler secret put FEEDBACK_TO         --config workers/eposta/wrangler.toml
+#   npx wrangler secret put REPLY_TO            --config workers/eposta/wrangler.toml
+#
+# MAIL_FROM örneği: "Atlasia <no-reply@mail.atlasia.app>"
+#   → gönderen alan adı Resend'de doğrulanmış olmalı; `pages.dev` gönderen olamaz.
+
+# Hız sınırı sayacı. Binding yoksa Worker e-posta GÖNDERMEZ (503 hat/sinir-yok);
+# "sınırsız anonim gönderim" bilinçli olarak imkânsızdır.
+# Namespace'i operatör oluşturur:
+#   npx wrangler kv namespace create atlasia_eposta_sinir --config workers/eposta/wrangler.toml
+# Çıktıdaki id değerini aşağıya yaz.
+# [[kv_namespaces]]
+# binding = "RATE_LIMIT"
+# id = "<kv-namespace-id>"

@@ -23,6 +23,8 @@ export default defineConfig({
       VITE_APPLE_AUTH_ENABLED: "",
       VITE_PHONE_AUTH_ENABLED: "",
       VITE_TELEMETRY_ENDPOINT: "",
+      VITE_MAIL_ENDPOINT: "",
+      VITE_APP_ORIGIN: "",
     },
   },
 });

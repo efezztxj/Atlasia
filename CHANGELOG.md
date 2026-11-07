@@ -1,5 +1,16 @@
 # Atlasia Update
 
+## 2026-11-07 — Resend e-posta hattı: doğrulama maili artık markaya ait (opsiyonel)
+
+- **Sorun:** Firebase bu projede şablonu düzenletmiyor (`EMAIL_TEMPLATE_UPDATE_NOT_ALLOWED`) ve gönderen `*.firebaseapp.com`; kullanıcı doğrulama mailini tanımıyor, spam'e düşüyor.
+- **Çözüm:** `workers/eposta` — Cloudflare Worker + Resend. Firebase ID token'ı doğrulanır, doğrulama bağlantısı Firebase'in admin akışından (`accounts:sendOobCode`, `returnOobLink`) alınır ve **Atlasia'nın kendi Türkçe HTML şablonuyla** gönderilir.
+- **Alıcı istemciden alınmaz:** istekte `to` alanı yoktur; adres token sahibinindir. Böylece uç nokta spam rölesine dönüşemez. KV sayacı bağlı değilse Worker gönderim yapmaz (`503`).
+- **Geri dönüşü olmayan bağımlılık yok:** `VITE_MAIL_ENDPOINT` boşsa davranış birebir eskisi; hata/ağ kesintisinde istemci Firebase gönderimine düşer, kullanıcı e-postasız kalmaz.
+- **DNS kapısı:** `npm run resend:dns -- --domain mail.<alan>` — SPF/MX/DKIM/DMARC kayıtlarını yayından doğrular, paneli açmadan eksiği söyler (17 test).
+- **Bilinçli sınır:** oturumsuz "şifremi unuttum" Firebase'de kalır (enumeration koruması). Ayrıntı: `docs/resend-eposta-hatti.md` §5.
+- **Testler:** `workers/eposta` 16 Node testi, `scripts/resend-dns-denetimi` 17 test, `src/lib/mailRelay.test.ts` 8 test; hepsi ağa çıkmaz.
+- **Maliyet:** Resend Free $0 (3.000/ay, 100/gün) + alan adı ~$1/ay.
+
 ## 2026-11-01 (P1-1 + P2-1) — Hata izleme görünür oldu, tanıtımın CLS kayması kaldırıldı
 
 - **Kör nokta:** uygulama çökse kimsenin haberi olmuyordu. `VITE_TELEMETRY_ENDPOINT` tanımlı değilse `telemetry` sessizce hiçbir şey göndermiyor; üstelik toplayıcı `*.workers.dev` adresinde olacakken CSP `connect-src` bu host'u engelliyordu.

@@ -38,6 +38,7 @@ Bu ortamda Google/Apple sağlayıcıları ve SMS uçtan uca test edilemez.
 - Doğrulama ve şifre yenileme bağlantıları işlemden sonra `https://atlasia.pages.dev/` adresine geri döner.
 - Firebase bu projede şablon güncellemesini `EMAIL_TEMPLATE_UPDATE_NOT_ALLOWED` ile sunucu tarafında engelliyor. Görsel HTML şablonu için Firebase Support üzerinden şablon düzenleme yetkisinin açılması/uygulanması istenmelidir; istemci kodu bu kısıtı güvenli biçimde aşamaz.
 - Gmail'de gönderen alanını tamamen markalamak ve teslim edilebilirliği yükseltmek için Atlasia'nın sahip olduğu özel bir alan adı doğrulanıp Authentication > Templates > **customize domain** bölümünde DNS kayıtları eklenmelidir. `pages.dev` alt alanının DNS sahipliği kullanıcıda olmadığı için gönderen alanı olarak kullanılamaz.
+- **Alternatif (hazır):** Şablon kısıtını beklemeden markalı gönderim için Resend hattı kurulabilir. `VITE_MAIL_ENDPOINT` tanımlanınca doğrulama e-postası Cloudflare Worker (`workers/eposta`) üzerinden Resend ile, Atlasia'nın kendi Türkçe şablonuyla gider; bayrak boşsa davranış yukarıdaki gibidir. Kurulum, doğrulama ve geri alma: [`docs/resend-eposta-hatti.md`](docs/resend-eposta-hatti.md). Oturumsuz "şifremi unuttum" akışı bilinçli olarak Firebase'de kalır (enumeration koruması).
 
 ## App Check
 
