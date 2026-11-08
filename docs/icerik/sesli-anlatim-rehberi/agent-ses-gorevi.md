@@ -12,7 +12,7 @@ seslendiren için değil.
 
 ## 1. Görev
 
-`public/audio/efes-en.json` içinde `audio` alanı **boş** olan dokuz durak için
+`public/audio/efes-en.json` içinde `audio` alanı **boş** olan dokuz durak **+ turda henüz yer almayan iki yapı** için
 İngilizce MP3 üret. Metinleri **değiştirme**; dosyadaki `description` alanı
 ne ise o okunacak.
 
@@ -27,6 +27,8 @@ ne ise o okunacak.
 | 53 | `bizans-hamamlari` | aynı |
 | 54 | `vedius-gymnasionu` | aynı |
 | 55 | `kent-surlari` | aynı |
+| 56 | `chalcidicum` | `kalan-11-yer-ingilizce.md` §B (turda değil) |
+| 57 | `domitian-cesmesi` | `kalan-11-yer-ingilizce.md` §B (turda değil) |
 
 ---
 
@@ -112,6 +114,8 @@ en-kalkidikum-meryem-kilisesi-vaftizhanesi.mp3
 en-kalkidikum-bizans-hamamlari.mp3
 en-kalkidikum-vedius-gymnasionu.mp3
 en-kalkidikum-kent-surlari.mp3
+en-kalkidikum-chalcidicum.mp3
+en-kalkidikum-domitian-cesmesi.mp3
 ```
 
 ---

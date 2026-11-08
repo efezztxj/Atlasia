@@ -12,6 +12,7 @@ Yeni bir yer, yeni bir şehir veya yeni bir tur eklenecekse önce buradaki
 | `efes.md` | Efes turu: 55 durak, numara düzeni, `sharedWith`, borçlar |
 | `kapadokya.md` | Kapadokya turu iskeleti + durak kabul ölçütü |
 | `ingilizce-ses-kayit-metinleri.md` | Ses kaydı bekleyen 9 durak; okunacak metin + dosya adı + süre |
+| `kalan-11-yer-ingilizce.md` | **Kalan 11 yerin İngilizce metni** (9 turda + 2 turda değil) |
 | `agent-ses-gorevi.md` | **Agent'a verilecek görev**: teknik künye (24 kHz/112 kbps mono), telaffuz, kabul kontrolü |
 | `kayit-paketi/PROMPT.md` | **Agent'a yapıştırılacak hazır prompt** + metinlerin okunacağı yollar |
 | `kayit-paketi/metinler/` | Dokuz metin: `TUMU.txt` (hepsi) + durak başına `.txt` |
