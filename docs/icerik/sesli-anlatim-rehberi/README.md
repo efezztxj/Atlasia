@@ -93,7 +93,7 @@ Böylece her şehir kendi dosyasında, ana kural ise burada tek yerde durur.
 
 | Borç | Etki | Nerede izlenir |
 | --- | --- | --- |
-| İngilizce **sesi** olmayan 5 durak (45, 46, 47, 56, 57; metin tam) | İngilizce seçilince o duraklarda ses çalmaz, metin okunur | `src/data/audioDiscovery.test.ts` → `KALKIDIKUM_ENGLISH_AUDIO_PENDING` |
+| — (8 Kasım 2026 itibarıyla ses eksiği yok) | Tur 57/57 hem Türkçe hem İngilizce sesli | `src/data/audioDiscovery.test.ts` → `SES_BEKLEYEN` ve `KALKIDIKUM_ENGLISH_AUDIO_PENDING` boş liste olarak kilitli |
 | Kalkidikum ekinin iki durağı tek kaynaklı (`heksagon`, `verulanus-meydani-salonu`) | İkinci bağımsız kaynak gerekiyor | aynı dosya, kaynak kilidi |
 | Kalkidikum ekinin koordinatları temsilî; `vedius-gymnasionu` ve `kent-surlari` stadyum noktasını paylaşıyor | Sahada hassas ölçüm gerekir | `efes.md` §4 |
 | Efes turunda iki görselin lisansı doğrulanmadı (`heroon`, `magnesia-kapisi`) | Yayında gösteriliyor | `efes.md` §5 |

@@ -19,30 +19,23 @@ import { GUIDE_PLACES } from "./places";
 const FILE = resolve(`public${AUDIO_TOUR_FILE}`);
 
 /**
- * İngilizce SES KAYDI henüz üretilmemiş dokuz durak.
- *
- * 2026-11-07: metin çevirisi tamamlandı (57/57 durak). Ses kaydı gerçek
- * anlatım gerektirdiği için uydurulamaz; bu duraklarda `audio` alanı yoktur ve
- * arayüz "English audio is not available yet. You can read the text." der.
- * Kayıt eklendikçe bu dizi küçülür, boşaldığında kilit kalkar.
- */
-/**
  * Türkçe ses kaydı henüz üretilmemiş duraklar.
  *
- * 2026-11-08: Liste BOŞ. 45 Chalcidicum, 46 Pollio ve 47 Domitian Çeşmesi
- * için kayıt üretildi; turun 57 durağının tamamı Türkçe sesli.
+ * 2026-11-08: Liste BOŞ — turun 57 durağının tamamı Türkçe sesli.
  * Yeni durak eklenirse ve sesi yoksa buraya yazılır; test sessiz büyümeyi
  * engeller (kayıt yoksa durak bu listede olmak ZORUNDA).
  */
 const SES_BEKLEYEN: string[] = [];
 
-const KALKIDIKUM_ENGLISH_AUDIO_PENDING = [
-  "chalcidicum",
-  "domitian-cesmesi",
-  "pollio-domitian-cesmesi",
-  "vedius-gymnasionu",
-  "kent-surlari",
-];
+/**
+ * İngilizce SES KAYDI henüz üretilmemiş duraklar.
+ *
+ * 2026-11-08: Liste BOŞ — 57 durağın tamamı İngilizce sesli.
+ * Metin 2026-11-07'de, ses 8 Kasım'da tamamlandı. Kayıt eklendikçe küçülen
+ * kilit artık boş; yeni durak sessizce eklenemez (kayıt yoksa durak bu
+ * listede olmak ZORUNDA).
+ */
+const KALKIDIKUM_ENGLISH_AUDIO_PENDING: string[] = [];
 
 describe("sesli anlatım rehberi · tek dosya yapısı", () => {
   it("tek kaynak dosya var, eski tur dosyaları yok", () => {

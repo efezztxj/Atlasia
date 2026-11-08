@@ -71,15 +71,13 @@ uydurulmaz, `sharedWith` **karşılıklı** yazılır ve testte zorunlu tutulur.
 
 ## 4. Açık borçlar
 
-1. **İngilizce ses kaydı: 12 → 5 kaldı (8 Kasım 2026).** Turun 57 durağının
-   tamamının İngilizce metni var; ses kaydı 52 durakta hazır. Kaydedilenler:
-   Hydreion, Triodos, Heksagon, Verulanus, Antik Liman, Vaftizhane, Bizans
-   Hamamları (`/audio/en-efes-*.mp3`).
-   Kalan 5: **45 Chalcidicum, 46 Pollio, 47 Domitian Çeşmesi, 56 Vedius,
-   57 Kent Surları.** Bu duraklarda `audio` alanı yoktur ve arayüz
-   "English audio is not available yet. You can read the text." der.
-   Kilit: `src/data/audioDiscovery.test.ts` → `KALKIDIKUM_ENGLISH_AUDIO_PENDING`
-   (liste sessizce büyüyemez).
+1. ~~İngilizce ses kaydı eksiği.~~ **Kapatıldı (8 Kasım 2026).**
+   Turun 57 durağının tamamı hem Türkçe hem İngilizce sesli
+   (`/audio/efes-*.mp3`, `/audio/en-efes-*.mp3`). Son beş dosya: Chalcidicum,
+   Pollio, Domitian Çeşmesi, Vedius, Kent Surları.
+   `src/data/audioDiscovery.test.ts` içindeki iki borç listesi
+   (`SES_BEKLEYEN`, `KALKIDIKUM_ENGLISH_AUDIO_PENDING`) **boş** ve kilit
+   olarak duruyor: yeni durak sesi olmadan eklenemez.
 2. **Temsilî noktalar:** 51 (sıralamadan türetildi), 52 (avlu sınırları toprak
    altında), 53 (havza ortası, erişim yok), 57 (korunmuş bir kesit). Kaynaklar
    arasında 25–90 m fark süren duraklar var; sahada ölçüm yapılmadı.

@@ -266,7 +266,8 @@
   "pollio-domitian-cesmesi": {
     "title": "Pollio Monument",
     "imageAlt": "The Pollio Monument at the western edge of Domitian Square",
-    "description": "At the western edge of Domitian Square rises a memorial tomb built of ashlar blocks. It was erected in memory of Gaius Sextilius Pollio, a wealthy citizen of Ephesus, by his stepson. In this way the city honoured the man who had donated the Basilica on the State Agora and the aqueducts that brought water to the city. All that survives of the structure is its socle, eight by six and a half metres and some six and a half metres high. Together with the fountain later added beside it, it forms a single architectural screen facing the square."
+    "description": "At the western edge of Domitian Square rises a memorial tomb built of ashlar blocks. It was erected in memory of Gaius Sextilius Pollio, a wealthy citizen of Ephesus, by his stepson. In this way the city honoured the man who had donated the Basilica on the State Agora and the aqueducts that brought water to the city. All that survives of the structure is its socle, eight by six and a half metres and some six and a half metres high. Together with the fountain later added beside it, it forms a single architectural screen facing the square.",
+    "audio": "/audio/en-efes-pollio-domitian-cesmesi.mp3"
   },
   "laecanius-cesmesi": {
     "title": "Fountain of Laecanius Bassus",
@@ -319,21 +320,25 @@
   "vedius-gymnasionu": {
     "title": "Vedius Gymnasium",
     "imageAlt": "The colossal statue of the river god Kaystros from the frigidarium of the Vedius Gymnasium, Izmir Museum",
-    "description": "North of the stadium, just inside the city wall, stands the best-studied bath-gymnasium complex of Ephesus. Publius Vedius Antoninus and his wife Flavia Papiane had it built in 147–149, and its first phase covered an area of 135 by 85 metres. The colossal statue of Kaystros found in the frigidarium is now in the Izmir Museum; the photograph here shows that statue, not the building. The dedication is inconsistent in the sources: one record names Aphrodite, another Artemis together with Antoninus Pius. The site is closed to visitors, so the pin is representative, and the sources differ by about 90 metres."
+    "description": "North of the stadium, just inside the city wall, stands the best-studied bath-gymnasium complex of Ephesus. Publius Vedius Antoninus and his wife Flavia Papiane had it built in 147–149, and its first phase covered an area of 135 by 85 metres. The colossal statue of Kaystros found in the frigidarium is now in the Izmir Museum; the photograph here shows that statue, not the building. The dedication is inconsistent in the sources: one record names Aphrodite, another Artemis together with Antoninus Pius. The site is closed to visitors, so the pin is representative, and the sources differ by about 90 metres.",
+    "audio": "/audio/en-efes-vedius-gymnasionu.mp3"
   },
   "kent-surlari": {
     "title": "Hellenistic and Byzantine City Walls",
     "imageAlt": "A preserved stretch of the Hellenistic city wall on the slope of Bülbül Mountain",
-    "description": "When Lysimachos refounded Ephesus in the early third century BCE he enclosed the city with a wall more than nine kilometres long; over three kilometres of that line still stand. The wall followed the slopes of Panayır and Bülbül mountains, protecting the harbour and the upper city. In the sixth century the Byzantine emperor Justinian left traces of repair and rebuilding. The point marked here is not a gate or an entrance but a preserved stretch of wall on the hillside; the whole circuit cannot be walked as a single stop. The coordinate comes from the location recorded for the Commons photograph."
+    "description": "When Lysimachos refounded Ephesus in the early third century BCE he enclosed the city with a wall more than nine kilometres long; over three kilometres of that line still stand. The wall followed the slopes of Panayır and Bülbül mountains, protecting the harbour and the upper city. In the sixth century the Byzantine emperor Justinian left traces of repair and rebuilding. The point marked here is not a gate or an entrance but a preserved stretch of wall on the hillside; the whole circuit cannot be walked as a single stop. The coordinate comes from the location recorded for the Commons photograph.",
+    "audio": "/audio/en-efes-kent-surlari.mp3"
   },
   "chalcidicum": {
     "title": "Chalcidicum",
     "imageAlt": "The western end of the Basilica Stoa; the Chalcidicum is its substructure",
-    "description": "At the western edge of Domitian Square stands a massive substructure that carried the western end of the Basilica Stoa. Its name comes from the Latin chalcidicum, a porticoed hall added to a basilica. Built of large ashlar blocks, it was added in the reign of Nero to support the western end of the stoa. Its interior was divided into three chambers, entered through doorways opening directly onto the square. The structure projects fifteen point nine metres into the square, and its outer walls were built of stone brought from Mount Panayır. In late antiquity a small church was installed inside it. The mass itself survives; nothing of its upper decoration remains."
+    "description": "At the western edge of Domitian Square stands a massive substructure that carried the western end of the Basilica Stoa. Its name comes from the Latin chalcidicum, a porticoed hall added to a basilica. Built of large ashlar blocks, it was added in the reign of Nero to support the western end of the stoa. Its interior was divided into three chambers, entered through doorways opening directly onto the square. The structure projects fifteen point nine metres into the square, and its outer walls were built of stone brought from Mount Panayır. In late antiquity a small church was installed inside it. The mass itself survives; nothing of its upper decoration remains.",
+    "audio": "/audio/en-efes-chalcidicum.mp3"
   },
   "domitian-cesmesi": {
     "title": "Fountain of Domitian",
     "imageAlt": "The apse of the Fountain of Domitian and the Pollio Monument",
-    "description": "Just south of the Pollio Monument rises a fountain built in 92/93 CE, its great apse opening directly onto Domitian Square. Water carried by the arches on tendril-carved piers was distributed through a branching network of fired clay pipes. In the niche stood a sculptural group showing Odysseus blinding the one-eyed Polyphemus; the group was not made for this fountain but brought here from another building. The structure absorbed the older Pollio Monument, creating a single architectural screen. After the emperor's death his name was chiselled out of the inscription here as well."
+    "description": "Just south of the Pollio Monument rises a fountain built in 92/93 CE, its great apse opening directly onto Domitian Square. Water carried by the arches on tendril-carved piers was distributed through a branching network of fired clay pipes. In the niche stood a sculptural group showing Odysseus blinding the one-eyed Polyphemus; the group was not made for this fountain but brought here from another building. The structure absorbed the older Pollio Monument, creating a single architectural screen. After the emperor's death his name was chiselled out of the inscription here as well.",
+    "audio": "/audio/en-efes-domitian-cesmesi.mp3"
   }
 }
