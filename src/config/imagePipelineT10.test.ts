@@ -107,4 +107,25 @@ describe("T10 · teslim işaretleri", () => {
     // Ekran dışında başlayan yatay kaydırmadaki kart görselleri tembel olmalı.
     expect(dock).toContain('loading="lazy"');
   });
+
+  it("paneldeki ana durağın görseli eager, liste pulları lazy (mobil LCP)", () => {
+    // 2026-11-08: Lighthouse mobil profilde `?tab=kesfet` sayfasının LCP öğesi
+    // paneldeki `<img>` çıktı ve değer 11,5 sn'ye çıktı; sebep görselin
+    // `loading="lazy"` olmasıydı. Ana görsel artık `priority` ile eager
+    // yüklenir, çekmecedeki onlarca küçük pul lazy kalır.
+    const image = readFileSync("src/components/PlaceImage.tsx", "utf8");
+    expect(image).toContain('loading={priority ? "eager" : "lazy"}');
+    expect(image).toContain('fetchPriority={priority ? "high" : undefined}');
+
+    const panel = readFileSync("src/components/BottomPanel.tsx", "utf8");
+    expect(panel, "panel ana görseli priority almalı").toContain(
+      '<PlaceThumb place={current} priority className="h-40 w-full shrink-0 rounded-xl" />',
+    );
+    expect(panel, "priority PlaceThumb'tan PlaceImage'a geçmeli").toContain("priority={priority}");
+
+    // Çekmece pulları lazy kalmalı: onlarcası eager olursa istek sayısı şişer.
+    const drawer = readFileSync("src/components/Drawer.tsx", "utf8");
+    expect(drawer).toContain("<PlaceThumb place={p}");
+    expect(drawer).not.toContain("priority");
+  });
 });

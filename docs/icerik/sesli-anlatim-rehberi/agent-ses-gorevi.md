@@ -4,7 +4,7 @@
 > tamamı hem Türkçe hem İngilizce seslidir (`/audio/efes-*.mp3`,
 > `/audio/en-efes-*.mp3`); aşağıdaki "bekleyen / kalan" listeleri artık geçerli
 > değildir. Yakın pinlerin ayrılması ve `sharedWith` temizliği de yapıldı.
-> Güncel durum: [`efes.md`](./efes.md) §3–§4.
+> Güncel durum: [`efes.md`](./efes.md) §3–§5.
 
 
 7 Kasım 2026. Bu dosya **bir agent'a verilmek üzere** yazıldı. İnsan
@@ -36,7 +36,7 @@ ne ise o okunacak.
 | 55 | `kent-surlari` | aynı |
 | 45 | `chalcidicum` | `efes-en.json` (turda, sesi yok) |
 | 46 | `domitian-cesmesi` | `efes-en.json` (turda, sesi yok) |
-| 46b | `pollio-domitian-cesmesi` | metni değişti, sesi yeniden üretilecek |
+
 
 ---
 
@@ -54,9 +54,9 @@ ne ise o okunacak.
 | ID3 | ID3v2.4, tek etiket `TSSE = Lavf59.27.100` | ilk 45 bayt |
 | Örnekleme | **24 000 Hz** | MPEG çerçeve başlığı |
 | Kanal | **mono** | çerçeve başlığı |
-| Bit hızı | **32 kbps CBR** | çerçeve başlığı (MPEG-2 Layer III) |
+| Bit hızı | **32 kbps CBR** | çerçeve başlığı (MPEG-2 Layer III, sürekli çerçeveler) |
 | Saniyedeki bayt | **4 000 B/s** | 32 kbps ÷ 8 |
-| Süre | ~25–37 sn | metin uzunluğundan |
+| Süre | 24–51 sn | metin uzunluğundan (899 kelime ÷ 150 kelime/dk) |
 
 Doğrulama komutu (ffmpeg varsa):
 
@@ -138,9 +138,9 @@ en-kalkidikum-domitian-cesmesi.mp3
 
 Her dosya için:
 
-1. `ffprobe` → `24000,1,112000` ✅
-2. Süre 20–45 sn arasında ✅
-3. Dosya boyutu 60–200 KB arasında ✅
+1. `ffprobe` → `24000,1,64000` ✅
+2. Süre 10–55 sn arasında ✅
+3. Dosya boyutu 60–250 KB arasında ✅
 4. Metin `description` ile birebir kelime eşleşmesi (TTS'e verilen metin
    dosyadaki alanla **aynı** değilse reddet) ✅
 5. İlk 0,5 sn ve son 0,5 sn sessizlik ✅

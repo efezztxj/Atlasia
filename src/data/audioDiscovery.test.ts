@@ -340,3 +340,108 @@ describe("sesli anlatım rehberi · durak içeriği", () => {
     check(rates.en, 13, 18.5, "EN");
   });
 });
+
+/**
+ * Kayıt paketi (`docs/icerik/sesli-anlatim-rehberi/kayit-paketi/`) insan
+ * seslendiren için hazırlanır: dikte metni, CSV ve talimat aynı metni taşımak
+ * zorunda. 2026-11-08'de paket ile JSON ayrışmıştı (metinler kısalmış, ses
+ * eskiyi okuyordu; CSV'de artık var olmayan dosya yolları vardı). Bu kilitler
+ * paketin **kayıtlı metinden türetildiğini** zorunlu kılar.
+ *
+ * Paket kapsamı sabittir: sesi 8 Kasım 2026'da üretilen/yenilenen duraklar.
+ * Yeni durak eklenirse bu listeye eklenir — paket sessizce geride kalamaz.
+ */
+const PAKET_DIZINI = "docs/icerik/sesli-anlatim-rehberi/kayit-paketi";
+const INGILIZCE_PAKET = [45, 47, 49, 50, 51, 52, 53, 54, 55, 56, 57];
+const TURKCE_PAKET = [33, 34, 35, 36, 37, 38, 45, 47, 48, 51];
+
+function paketDuraklari() {
+  const tur = JSON.parse(readFileSync(resolve("public/assets/sesli-turlar.json"), "utf8")) as {
+    tours: { stops: { id: string; no: number; title: string; description: string; audio: string }[] }[];
+  };
+  const ingilizce = JSON.parse(readFileSync(resolve("public/audio/efes-en.json"), "utf8")) as Record<
+    string,
+    { title: string; audio: string; description: string }
+  >;
+  return { tur, ingilizce };
+}
+
+function dikteBolumleri(dosya: string) {
+  const dikte = readFileSync(resolve(PAKET_DIZINI, dosya), "utf8");
+  const parts = dikte.split(/\*\*\[(\d+)\] ([\w-]+)\*\*\n\n/).slice(1);
+  const bolumler = new Map<number, { id: string; metin: string }>();
+  for (let index = 0; index < parts.length; index += 3) {
+    bolumler.set(Number(parts[index]), {
+      id: parts[index + 1],
+      metin: parts[index + 2].replace(/\n---\s*$/, "").trim(),
+    });
+  }
+  return bolumler;
+}
+
+function csvSatirlari(dosya: string) {
+  return readFileSync(resolve(PAKET_DIZINI, dosya), "utf8")
+    .split(/\r?\n/)
+    .slice(1)
+    .filter(Boolean)
+    .map((line) => line.match(/^"([^"]*)","([^"]*)","([^"]*)"/))
+    .filter((match): match is RegExpMatchArray => Boolean(match));
+}
+
+describe("kayıt paketi · JSON ile tutarlılık", () => {
+  it("İngilizce dikte metni paket kapsamını ve güncel metni taşır", () => {
+    const { tur, ingilizce } = paketDuraklari();
+    const bolumler = dikteBolumleri("dikte-metni.md");
+    expect([...bolumler.keys()].sort((a, b) => a - b)).toEqual(INGILIZCE_PAKET);
+    for (const no of INGILIZCE_PAKET) {
+      const durak = tur.tours[0].stops.find((stop) => stop.no === no)!;
+      const kayit = ingilizce[durak.id];
+      const bolum = bolumler.get(no)!;
+      expect(bolum.id, `${no}: dikte metni kimliği`).toBe(durak.id);
+      expect(bolum.metin, `${no}: dikte metni kayıtlı metinden farklı`).toBe(kayit.description.trim());
+    }
+  });
+
+  it("İngilizce kayıt listesi CSV'si gerçek dosya yollarını ve metni taşır", () => {
+    const { tur, ingilizce } = paketDuraklari();
+    const rows = csvSatirlari("kayit-listesi.csv");
+    expect(rows.map((match) => Number(match[1]))).toEqual(INGILIZCE_PAKET);
+    for (const match of rows) {
+      const no = Number(match[1]);
+      const durak = tur.tours[0].stops.find((stop) => stop.no === no)!;
+      const kayit = ingilizce[match[2]];
+      expect(match[2], `${no}: CSV kimliği`).toBe(durak.id);
+      expect(match[3], `${no}: CSV dosya adı`).toBe(kayit.audio.split("/").pop());
+      expect(existsSync(resolve("public", kayit.audio.slice(1))), `${no}: ses dosyası yok`).toBe(true);
+    }
+  });
+
+  it("Türkçe dikte metni ve CSV'si güncel metni taşır", () => {
+    const { tur } = paketDuraklari();
+    const bolumler = dikteBolumleri("dikte-metni-tr.md");
+    expect([...bolumler.keys()].sort((a, b) => a - b)).toEqual(TURKCE_PAKET);
+    const rows = csvSatirlari("kayit-listesi-tr.csv");
+    expect(rows.map((match) => Number(match[1]))).toEqual(TURKCE_PAKET);
+    for (const no of TURKCE_PAKET) {
+      const durak = tur.tours[0].stops.find((stop) => stop.no === no)!;
+      expect(bolumler.get(no)!.metin, `${no}: Türkçe dikte metni JSON'dan farklı`).toBe(durak.description.trim());
+    }
+    for (const match of rows) {
+      const durak = tur.tours[0].stops.find((stop) => stop.no === Number(match[1]))!;
+      expect(match[2], `${match[1]}: CSV kimliği`).toBe(durak.id);
+      expect(match[3], `${match[1]}: CSV dosya adı`).toBe(durak.audio.split("/").pop());
+      expect(existsSync(resolve("public", durak.audio.slice(1))), `${match[1]}: ses dosyası yok`).toBe(true);
+    }
+  });
+
+  it("teknik künye ölçülen değerle aynı (32 kbps) ve eski yanlış yazım yok", () => {
+    for (const dosya of ["PROMPT.md", "KAYIT-TALIMATI.md"]) {
+      const metin = readFileSync(resolve(PAKET_DIZINI, dosya), "utf8");
+      expect(metin, `${dosya}: 32 kbps yazmıyor`).toContain("32 kbps");
+      expect(metin, `${dosya}: kaldırılmış 112 kbps geri gelmiş`).not.toContain("112 kbps");
+    }
+    const gorev = readFileSync("docs/icerik/sesli-anlatim-rehberi/agent-ses-gorevi.md", "utf8");
+    expect(gorev).toContain("32 kbps CBR");
+    expect(gorev).toContain("24000,1,32000");
+  });
+});
