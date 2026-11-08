@@ -78,12 +78,13 @@ describe("English audio tour", () => {
   it("switches recordings, pauses playback and clearly marks unavailable audio", async () => {
     const { readFileSync } = await import("node:fs");
     const translations = JSON.parse(readFileSync("public/audio/efes-en.json", "utf8"));
-    // Exercise the missing-recording fallback even though all current stops have audio.
-    // Turun son durakları Kalkidikum eki; İngilizce metni ve sesi henüz yok
-    // (açık borç). Bu doğal olarak "kayıt yok" durumunu üretir — testte ayrıca
-    // silme gerekmez; ölçülen davranış gerçek verinin davranışıdır.
+    // "Kayıt yok" senaryosu: Kalkidikum ekinin METNİ çevrildi ama SESİ henüz
+    // üretilmedi (açık borç, bkz. audioDiscovery.test.ts →
+    // KALKIDIKUM_ENGLISH_AUDIO_PENDING). Test bu gerçek durumu ölçer; ayrıca
+    // veri silinmez.
     const lastStop = AUDIO_DISCOVERY_TOURS[0].stops.at(-1)!;
-    expect(translations[lastStop.id]).toBeUndefined();
+    expect(translations[lastStop.id]?.description).toBeTruthy();
+    expect(translations[lastStop.id]?.audio).toBeUndefined();
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => translations }));
     const pause = vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
     vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
@@ -121,32 +122,30 @@ describe("English audio tour", () => {
     const { readFileSync, existsSync } = await import("node:fs");
     const translations = JSON.parse(readFileSync("public/audio/efes-en.json", "utf8"));
     const stops = AUDIO_DISCOVERY_TOURS[0].stops;
-    // Kalkidikum ekinin İngilizce metni ve sesi henüz yazılmadı (açık borç,
-    // bkz. src/data/audioDiscovery.test.ts → KALKIDIKUM_ENGLISH_PENDING).
-    // Bu yüzden çeviri kümesi ile durak kümesi birebir eşit DEĞİL: fark yalnız
-    // o dokuz durak olabilir, başka hiçbir durak çevirisiz kalamaz.
+    // 2026-11-07: Kalkidikum ekinin METNİ çevrildi → küme birebir eşit.
+    // Ses kaydı gerçek anlatım gerektirdiği için henüz üretilmedi; o dokuz
+    // durakta `audio` alanı YOKTUR ve arayüz "English audio is not available
+    // yet" der (bkz. audioDiscovery.test.ts → KALKIDIKUM_ENGLISH_AUDIO_PENDING).
     const translated = Object.keys(translations).sort();
-    const pending = stops.filter((stop) => !translations[stop.id]).map((stop) => stop.id);
-    expect(pending).toHaveLength(9);
-    expect(translated).toEqual(stops.filter((stop) => translations[stop.id]).map((stop) => stop.id).sort());
+    expect(translated).toEqual(stops.map((stop) => stop.id).sort());
     for (const id of translated) {
       const english = translations[id];
       expect(english.title && english.description && english.imageAlt).toBeTruthy();
+      // Ses alanı varsa dosya gerçekten package'da olmalı (404 kovalanmaz).
       if (english.audio) expect(existsSync(`public${english.audio}`)).toBe(true);
     }
-    expect(translated.filter((id) => translations[id].audio)).toHaveLength(translated.length);
   });
 });
 
-describe("çevirisi olmayan durakta dil düğmesi", () => {
-  it("Kalkidikum durağı seçiliyken English düğmesi yok (yanlış dosya istenmez)", () => {
+describe("metni çevrilmiş ama sesi olmayan durak", () => {
+  it("Kalkidikum durağında English düğmesi görünür (metin var, ses yok)", () => {
     const tour = AUDIO_DISCOVERY_TOURS[0];
     const kalkidikumIndex = tour.stops.findIndex((stop) => stop.id === "hydreion-kalkidikum");
     expect(kalkidikumIndex).toBeGreaterThan(-1);
     render(createElement(AudioDiscoverySheet, { tour, selectedIndex: kalkidikumIndex, onSelect: vi.fn(), onClose: vi.fn() }));
-    // Tur düzeyinde çeviri dosyası tanımlı olduğu için düğme görünür; ama
-    // Kalkidikum duraklarının çevirisi olmadığı için "English"e basıldığında
-    // eksik çeviri net bir durum mesajıyla bildirilir, sessizce boş ekran açılmaz.
+    // 2026-11-07: Metin çevirisi tamamlandığı için düğme artık görünür.
+    // Durakta yalnız ses kaydı eksik; o durum AudioDiscoverySheet içinde
+    // "English audio is not available yet" ile bildirilir (yukarıdaki test).
     expect(screen.getByRole("button", { name: "English" })).toBeTruthy();
   });
 });
