@@ -1,5 +1,16 @@
 # Atlasia Update
 
+## 2026-11-08 — Efes turu 57 durak, iki dilde tam sesli
+
+- **Kapsam:** Efes sesli turu **57 durak**; her durak **Türkçe 57/57** ve **İngilizce 57/57** sesli. Dokuz Kalkidikum yapısı ana haritadan çıkarılıp turun numaralı duraklarına taşındı; numaralar artık veriden okunuyor (16/17/18/24/25/26/27/29/38 boşlukları bu yüzdendi).
+- **Sessiz hata bulundu — metin kısalmış, ses eskide kalmış:** 33–38 ve 48. durakların metni bir noktada kısaltılmış, ses kayıtları eski uzun metni okumaya devam etmişti (metin/süre oranı 7,7–10,8 kr/sn; tur medyanı 14,6). Yedisi güncel metinden yeniden üretildi (yeni oranlar 13,2–15,2). Heksagon'un (51) yanlış metni okuyan Türkçe kaydı da yenilendi.
+- **"Aynı anlatıcı mı?" ölçüldü:** aynı metinle üretilen örneklerin eski kayıtlara uzaklığı TR 3.34 / EN 3.60; korpusta farklı metinlerin tipik uzaklığı TR 4.61 / EN 4.39. Yeni kayıtlar aynı ses ailesinde, eski dosyanın kopyası değil.
+- **Regresyon kilidi:** `src/data/audioDiscovery.test.ts` metin/süre oranını kilitliyor (süre = MP3 boyutu / 4 000 bayt, 32 kbps CBR). Metin düzenlenip ses eskide kalırsa test düşer.
+- **Künye düzeltmesi:** belgelerde bit hızı "112 kbps" ve bir ara "64 kbps" yazıyordu. 114 dosya `miniaudio` ile çözüldü: 24 000 Hz, mono, **32 kbps CBR**. 64 kbps yanılgısı, ilk çerçevenin (Xing bilgi çerçevesi) başlığından okumaktan geliyor.
+- **Kayıt paketi JSON'dan türetildi:** `kayit-listesi.csv` / `dikte-metni.md` (45, 47, 49–57) ve `kayit-listesi-tr.csv` / `dikte-metni-tr.md` (33–38, 45, 47, 48, 51) artık kayıtlı metinle birebir; eski `en-kalkidikum-*` yolları tarihsel not olarak işaretlendi.
+- **Doğrulama:** `tsc`, `eslint --max-warnings=0`, **195 dosya / 1 482 test**, `test:scripts`, `vite build` + bundle bütçesi + SW kabuğu, `audit:check`.
+- Ayrıntı: `docs/icerik/sesli-anlatim-rehberi/efes.md` §2, `ses-tinisi-denetimi-2026-11-08.md`.
+
 ## 2026-11-01 (P1-1 + P2-1) — Hata izleme görünür oldu, tanıtımın CLS kayması kaldırıldı
 
 - **Kör nokta:** uygulama çökse kimsenin haberi olmuyordu. `VITE_TELEMETRY_ENDPOINT` tanımlı değilse `telemetry` sessizce hiçbir şey göndermiyor; üstelik toplayıcı `*.workers.dev` adresinde olacakken CSP `connect-src` bu host'u engelliyordu.
