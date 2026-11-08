@@ -61,10 +61,17 @@ küçük görsel adı `960px-thumbnail.jpg` biçimindedir.
 
 ## Açık borçlar
 
-1. **Türkçe ses kayıtları yer tutucu.** 49–57 durakları eski
-   `kalkidikum-*.mp3` dosyalarını kullanıyor; bu kayıtlar düzeltme öncesi
-   metinlerle üretildi, yani anlatılan yapı ile ses arasında uyuşmazlık olabilir.
-   Aynı ses tonuyla yeniden kayıt gerekiyor.
+1. ~~Türkçe ses kayıtları yer tutucu.~~ **Kapatıldı (8 Kasım 2026).**
+   Dokuz durak yeniden kaydedildi: `public/audio/efes-hydreion.mp3`,
+   `efes-triodos-meydani.mp3`, `efes-heksagon.mp3`, `efes-verulanus-salonu.mp3`,
+   `efes-antik-liman.mp3`, `efes-meryem-vaftizhanesi.mp3`,
+   `efes-bizans-hamamlari.mp3`, `efes-vedius-gymnasionu.mp3`,
+   `efes-kent-surlari.mp3`. Eski `kalkidikum-*.mp3` dosyaları silindi, tur
+   JSON'undaki ses yolları yeni adlara çevrildi.
+   Süreler 38–50 sn; metin uzunluğuna oranı (≈14 karakter/sn) turdaki diğer
+   kayıtlarla aynı. Teknik künye mevcut dosyalarla birebir: 24 000 Hz, mono,
+   32 kbps CBR, `TSSE = Lavf59.27.100`.
+   Okunan metin: `docs/icerik/sesli-anlatim-rehberi/kayit-paketi/turkce-dikte-49-57.json`.
 2. **İngilizce ses kaydı yok.** Metinler tam (57/57). Kayıt paketi
    `docs/icerik/sesli-anlatim-rehberi/kayit-paketi/` altında 49–57 için
    güncellendi.

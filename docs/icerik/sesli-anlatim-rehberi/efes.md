@@ -73,9 +73,16 @@ tutulur.
    durakta `audio` alanı yoktur ve arayüz "English audio is not available yet.
    You can read the text." der. Kilit: `src/data/audioDiscovery.test.ts` →
    `KALKIDIKUM_ENGLISH_AUDIO_PENDING` (liste sessizce büyüyemez).
-2. **Türkçe ses kayıtları yer tutucu.** 49–57 eski `kalkidikum-*.mp3`
-   dosyalarını çalıyor; bu kayıtlar düzeltme öncesi metinlerle üretildi.
-   Aynı ses tonuyla yeniden kayıt gerekiyor.
+2. ~~Türkçe ses kayıtları yer tutucu.~~ **Kapatıldı (8 Kasım 2026).**
+   Dokuz durak `kalkidikum-*.mp3` yerine `efes-*.mp3` adlarıyla yeniden
+   kaydedildi; tur JSON'undaki ses yolları güncellendi, eski dosyalar silindi.
+   Künye mevcut tur dosyalarıyla birebir: MP3, 24 000 Hz, mono, 32 kbps CBR,
+   `TSSE = Lavf59.27.100` (ilk çerçeve 64 kbps Xing başlığı). Süreler
+   38–50 sn, ≈14 karakter/sn — diğer 48 Türkçe kayıtla aynı okuma hızı.
+   Okunan metnin birebir kaydı:
+   `kayit-paketi/turkce-dikte-49-57.json`.
+   Açık kalan tek soru **tını**: ses seçimi bu oturumda yapıldı, turdaki
+   diğer kayıtlarla kulakla karşılaştırma henüz yapılmadı.
 3. **Temsilî noktalar:** 51 (sıralamadan türetildi), 52 (avlu sınırları toprak
    altında), 53 (havza ortası, erişim yok), 57 (korunmuş bir kesit). Kaynaklar
    arasında 25–90 m fark süren duraklar var; sahada ölçüm yapılmadı.

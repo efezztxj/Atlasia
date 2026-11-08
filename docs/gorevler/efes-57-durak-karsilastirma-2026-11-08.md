@@ -85,7 +85,7 @@ Değişen tek durak **57 Kent Surları**: Bülbül Dağı yamacındaki korunmuş
 
 ## 6. İki sürümde de açık olan borçlar
 
-1. **49–57 Türkçe ses kayıtları yer tutucu.** İki sürüm de aynı dokuz `kalkidikum-*.mp3` dosyasını çalıyor; kayıtlar düzeltme öncesi metinlerle üretildi. Ses ~7–10 sn, metin 530–680 karakter: anlatı metnin tamamını okumuyor.
+1. ~~49–57 Türkçe ses kayıtları yer tutucu.~~ **Bu dalda kapatıldı** (8 Kasım 2026): dokuz durak `efes-*.mp3` adlarıyla yeniden kaydedildi. Yayındaki sürüm hâlâ düzeltme öncesi metinleri okuyan `kalkidikum-*.mp3` dosyalarını kullanıyor. Ölçüm düzeltmesi: bu dosyaların süresi 6,6–9,7 sn değil **26–50 sn**. Eski kayıtlar da kendi (daha kısa) metinlerini baştan sona okuyordu; yanlış süre, "112 kbps" varsayımıyla yapılan bayt hesabından geliyordu. Gerçek künye: 24 000 Hz, mono, **32 kbps** CBR.
 2. **İngilizce ses kaydı yok** (metin 57/57 tam). `KALKIDIKUM_ENGLISH_AUDIO_PENDING` kilidi sessiz büyümeyi engelliyor.
 3. **Temsilî noktalar:** 51 (sıralamadan türetildi), 52 (avlu sınırları toprak altında), 53 (havza ortası, erişim yok), 57 (bir kesit). Sahada ölçüm yapılmadı.
 4. Yayında ayrıca bilinen ve `efes.md` §4'te yazılı olan borç: "56 ve 57 hâlâ stadyum noktasını paylaşıyor; 55 ve 52 aynı hamam kompleksini paylaşıyor." Bu dal o dört maddeyi kapatıyor.
