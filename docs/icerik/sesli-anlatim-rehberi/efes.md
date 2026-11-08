@@ -57,17 +57,39 @@ Her biri 57 kayıtlık envanterdeki sıra numarasını `envanterNo` alanında ta
 Her durak iki–üç bağımsız kaynak taşır (`sources`). Ayrıntı ve konum
 tartışmaları: [dokuz durak düzeltmesi](../gorevler/efes-dokuz-durak-kimlik-duzeltmesi-2026-11-08.md).
 
+**27 Magnesia Kapısı konumu (8 Kasım 2026 doğrulaması):** duraktaki nokta
+`37.9345538, 27.3504954`, Pleiades 43374417 "Gate of Magnesia" temsilî
+noktasının birebir aynısı; Pleiades bunu OSM konumu olarak ±20 m hassasiyetle
+kaydediyor. TAN'ın "Magnesian Gate Area" sayfasının GPS'i
+(`37.934795, 27.346285`) kapının değil, alanın ilk anıtı olan Aziz Luka
+yapısının noktası — 26. durak zaten orada duruyor. İki kaynak çelişmiyor.
 
-## 3. Aynı noktayı paylaşan duraklar (`sharedWith`)
 
-8 Kasım 2026 itibarıyla turda **aynı koordinatı paylaşan durak kalmadı**;
-`sharedWith` hiçbir durakta yazılı değil. Daha önce altı grup zorunlu olarak tek
-noktaya oturtulmuştu (Bazilika/Heksagon, Meryem Kilisesi/vaftizhane,
-stadyum/Vedius/surlar, Liman Caddesi/antik liman, Liman Hamamları/Bizans
-Hamamları, Pollio/Hydreion). Her biri konum kaynağı yeniden belirlenerek ayrıldı.
+## 3. Yakın durakların haritada ayrılması (`sharedWith` → mesafe eşiği)
 
-Mekanizma yürürlükte: iki durak gerçekten aynı noktayı temsil ederse koordinat
-uydurulmaz, `sharedWith` **karşılıklı** yazılır ve testte zorunlu tutulur.
+8 Kasım 2026'da altı durakta duran `sharedWith` kayıtları **silindi**. Alanın
+tanımı "aynı fiziksel nokta"ydı; oysa koordinatlar aylar önce ayrılmıştı:
+
+| Kayıt | Ölçülen mesafe |
+| --- | --- |
+| 3 Bazilika Stoası ↔ 51 Heksagon | 324 m |
+| 14 Meryem Kilisesi ↔ 54 Vaftizhane | 65 m |
+| 15 Stadyum ↔ 56 Vedius / ↔ 57 Surlar | 157 m / 1 774 m |
+| 22 Liman Caddesi ↔ 53 Antik Liman | 701 m |
+| 37 Liman Hamamları ↔ 55 Bizans Hamamları | 345 m |
+| 46 Pollio ↔ 49 Hydreion | 66 m |
+
+Kayıtlar karşılıklı da değildi (3 → 51 yazıyordu, 51 → 3 yazmıyordu). Düzeltme
+veride: alan yalnız gerçekten aynı nokta temsil edilirse kullanılır ve
+`src/data/audioDiscovery.test.ts` artık **karşılıklılık + ≤30 m** koşulunu arar.
+Şu an hiçbir durakta yazılı değil.
+
+Bunun yerine harita, birbirine **20 m'den yakın** durakların pinlerini 16 m
+yarıçaplı bir yay üzerinde kaydırır (`src/components/audioStopMarkers.ts`).
+Koordinat verisi değişmez; yalnız pin görsel olarak ayrılır. Bu, 4–8 m aralıkla
+duran **45 Chalcidicum · 46 Pollio · 47 Domitian Çeşmesi** üçlüsünün (23 Domitian
+Meydanı ile birlikte) tek leke gibi görünmesini bitirdi. Eşik 20 m'nin altına
+inmez: daha büyük kaydırma pini komşu yapıya taşır.
 
 ## 4. Açık borçlar
 
@@ -78,20 +100,44 @@ uydurulmaz, `sharedWith` **karşılıklı** yazılır ve testte zorunlu tutulur.
    `src/data/audioDiscovery.test.ts` içindeki iki borç listesi
    (`SES_BEKLEYEN`, `KALKIDIKUM_ENGLISH_AUDIO_PENDING`) **boş** ve kilit
    olarak duruyor: yeni durak sesi olmadan eklenemez.
-2. **Temsilî noktalar:** 51 (sıralamadan türetildi), 52 (avlu sınırları toprak
-   altında), 53 (havza ortası, erişim yok), 57 (korunmuş bir kesit). Kaynaklar
-   arasında 25–90 m fark süren duraklar var; sahada ölçüm yapılmadı.
+2. **Temsilî noktalar — gizlenmiyor, ölçüm borcu sürüyor (8 Kasım 2026).**
+   51 (sıralamadan türetildi), 52 (avlu sınırları toprak altında), 53 (havza
+   ortası, erişim yok) ve 57 (korunmuş bir kesit) veride
+   `coordinateAccuracy: "approximate"` taşır. Durak kartında "≈ Yaklaşık konum ·
+   yapı geniş bir alana yayılıyor; pin merkezini gösterir" yazar; pinin ekran
+   okuyucu adı "(yaklaşık konum)" ile biter. İkisi de testte kilitli.
+   Koordinat **değiştirilmedi**: kaynaklar arasındaki 25–90 m farkı saha ölçümü
+   olmadan kapatmak uydurma olurdu. Kalan iş: bu dört noktayı yerinde ölçmek.
 3. ~~Tek kaynaklı iki durak~~ **Kapatıldı:** 51 ve 52 artık üç kaynak taşıyor.
-4. **İki görselin lisansı doğrulanmadı:** `heroon` (#20) ve `magnesia-kapisi`
-   (#27), kaynak Turkish Archaeological News. Yayında gösteriliyor; lisans
-   teyidi veya değişim gerekiyor.
+4. **İki görselin lisansı — karar verildi, beyan açık (8 Kasım 2026).**
+   `heroon` (#20) ve `magnesia-kapisi` (#27) Turkish Archaeological News
+   kaynaklı; sitede açık lisans beyanı yok. Karar: **kullanımda kalırlar**.
+   Gerekçe: (a) kullanıcı "lisans şart değil" dedi, (b) kimlik doğrulandı —
+   heroon fotoğrafındaki haç kabartmalı çevre panoları TAN metnindeki geç antik
+   "Byzantine Fountain" dönüşümüyle birebir örtüşüyor; magnesia-kapisi
+   fotoğrafı yol kenarında büyük bloklu bir kule ayağı gösteriyor ve kapının
+   iki kuleli Hellenistik düzeniyle uyumlu — ancak **kapının kendisi olduğu
+   bağımsız bir kaynakla doğrulanamadı**, bu yüzden risk kaydı açık kalıyor, (c) lisansı doğrulanmış Commons ikamesi **yok**:
+   `Category:Heroon of Ephesus` bulunmuyor, heroon çevresindeki 120 m'lik
+   geosearch yalnız Hadrian Kapısı/Teras Evler fotoğrafı veriyor, "Magnesian
+   Gate" aramaları yalnız "road from the Magnesian Gate" ve hamam kalıntıları
+   döndürüyor. Bu yüzden yanlış yapıyı gösteren lisanslı bir fotoğrafla
+   değiştirmek doğruluk kaybı olurdu. Arayüzde görselin altında "Kullanım izni
+   doğrulanmadı / Reuse permission not verified" ve kaynak bağlantısı görünür.
+   Kalan iş: lisansı doğrulanmış bir Efes fotoğrafı bulunursa değiştirmek.
 5. ~~Türkçe ses kaydı olmayan üç durak.~~ **Kapatıldı (8 Kasım 2026).**
    Chalcidicum (45), Pollio (46) ve Domitian Çeşmesi (47) kaydedildi
    (`/audio/efes-chalcidicum.mp3`, `efes-pollio-domitian-cesmesi.mp3`,
    `efes-domitian-cesmesi.mp3`). Böylece turun **57 durağının tamamı Türkçe
    sesli**; `SES_BEKLEYEN` listesi boş ve testte kilitli.
-6. **Ses tınısı denetlenmedi.** Yeni Türkçe kayıtlar 45–47 ve 49–57;
+6. **Ses tınısı denetlenmedi (açık).** Yeni Türkçe kayıtlar 45–47 ve 49–57;
    teknik künye mevcut dosyalarla birebir (24 000 Hz, mono, 32 kbps CBR,
    `TSSE = Lavf59.27.100`), ama turdaki eski kayıtlarla **kulakla**
    karşılaştırma yapılmadı. Tını ayrı düşerse ilgili dosyalar yeniden
    üretilmeli. İngilizce yeni kayıtlar da aynı künyede.
+
+7. ~~45/46/47 pinleri üst üste biniyor.~~ **Kapatıldı (8 Kasım 2026).**
+   Eski ofset yalnız birebir aynı koordinatı kaydırıyordu; üç durak 4–8 m
+   aralıkla durduğu için eşik tutmuyordu. Eşik 20 m'ye çıkarıldı ve kümeler
+   16 m yarıçaplı yaya yerleştirildi (bkz. §3). 45–47 için test var:
+   `src/components/audioStopMarkers.test.ts`.

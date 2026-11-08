@@ -1,5 +1,12 @@
 # Ses üretimi — agent için görev tanımı
 
+> **Kapanış notu (8 Kasım 2026).** Bu belge tarihsel kayıttır. Turun 57 durağının
+> tamamı hem Türkçe hem İngilizce seslidir (`/audio/efes-*.mp3`,
+> `/audio/en-efes-*.mp3`); aşağıdaki "bekleyen / kalan" listeleri artık geçerli
+> değildir. Yakın pinlerin ayrılması ve `sharedWith` temizliği de yapıldı.
+> Güncel durum: [`efes.md`](./efes.md) §3–§4.
+
+
 7 Kasım 2026. Bu dosya **bir agent'a verilmek üzere** yazıldı. İnsan
 seslendiren için değil.
 

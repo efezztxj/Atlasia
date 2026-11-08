@@ -20,6 +20,17 @@ describe("sesli keşif", () => {
     fireEvent.click(screen.getByRole("button", { name: "2. Devlet Agorası" }));
     expect(select).toHaveBeenCalledWith(1);
   });
+  it("yaklaşık konumlu durakta konum güvenilirliğini açıkça yazar", () => {
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+    const tour = AUDIO_DISCOVERY_TOURS[0];
+    const index = tour.stops.findIndex((stop) => stop.no === 51);
+    const props = { tour, selectedIndex: 0, onSelect: vi.fn(), onClose: vi.fn() };
+    const view = render(createElement(AudioDiscoverySheet, props));
+    // Prytaneion kesin nokta: uyarı yok.
+    expect(screen.queryByText(/Yaklaşık konum/)).toBeNull();
+    view.rerender(createElement(AudioDiscoverySheet, { ...props, selectedIndex: index }));
+    expect(screen.getByText(/Yaklaşık konum/)).toBeTruthy();
+  });
   it("kaydı çalar, durak değişiminde ve kapanışta durdurur", async () => {
     const play = vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
     const pause = vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});

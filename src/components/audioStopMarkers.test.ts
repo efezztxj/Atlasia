@@ -12,7 +12,7 @@ vi.mock("maplibre-gl", () => ({
     remove() { this.entry.remove(); }
   },
 }));
-import { addAudioStopMarkers } from "./audioStopMarkers";
+import { addAudioStopMarkers, groupOverlappingStops } from "./audioStopMarkers";
 import type { Map } from "maplibre-gl";
 
 describe("sesli keşif pinleri", () => {
@@ -57,36 +57,53 @@ describe("sesli keşif pinleri", () => {
     for (const marker of made) expect(marker.remove).toHaveBeenCalledOnce();
   });
 
-  it("aynı koordinatı paylaşan duraklar üst üste basmaz, veriyi değiştirmez", () => {
+  it("birbirine 20 m'den yakın duraklar (45–47) üst üste basmaz, veriyi değiştirmez", () => {
     made.length = 0;
     const stops = AUDIO_DISCOVERY_TOURS[0].stops;
     addAudioStopMarkers({} as Map, stops, 0, vi.fn());
-    // Veri değişmez: durak koordinatları olduğu gibi kalır.
-    const shared = stops.filter((stop) => stop.sharedWith?.length);
-    expect(shared.length).toBeGreaterThan(0);
-    for (const stop of shared) {
-      const index = stops.indexOf(stop);
-      const [lng, lat] = made[index].point!;
-      // Pin görsel olarak kaydırılır (birkaç metre) ama aynı yapıyı işaret eder.
-      const meters = Math.hypot((lat - stop.lat) * 111320, (lng - stop.lng) * 111320 * Math.cos((stop.lat * Math.PI) / 180));
-      expect(meters).toBeLessThan(40);
+    const meters = (a: number[], b: number[]) => Math.hypot((a[1] - b[1]) * 111320, (a[0] - b[0]) * 111320 * Math.cos((a[1] * Math.PI) / 180));
+
+    // 2026-11-08: 45 Chalcidicum, 46 Pollio ve 47 Domitian Çeşmesi 4–8 m
+    // aralıkla duruyor; eski kod yalnız BİREBİR aynı koordinatı kaydırdığı için
+    // üç pin tek bir leke gibi görünüyordu. Eşik artık 20 m.
+    const clusters = groupOverlappingStops(stops);
+    const near = clusters.find((members) => [45, 46, 47].every((no) => members.some((index) => stops[index].no === no)));
+    expect(near, "45–47 tek kümede olmalı").toBeTruthy();
+    const trio = [45, 46, 47].map((no) => made[stops.findIndex((stop) => stop.no === no)]);
+    for (let a = 0; a < trio.length; a += 1) {
+      for (let b = a + 1; b < trio.length; b += 1) {
+        // Pin görsel olarak ayrılır ama aynı yapıyı işaret eder (≤40 m sapma).
+        expect(meters(trio[a].point!, trio[b].point!)).toBeGreaterThan(14);
+      }
+      const stop = stops[stops.findIndex((item) => item.no === [45, 46, 47][a])];
+      expect(meters(trio[a].point!, [stop.lng, stop.lat])).toBeLessThanOrEqual(40);
     }
-    // Paylaşılan gruptaki pinler birbirinden ayrı konumda.
-    // Not: burada `Map` adı maplibre-gl'in Map tipiyle çakışıyor; düz nesne kullanılır.
-    const groups: Record<string, number[]> = {};
-    for (const stop of stops) {
-      const key = `${stop.lat},${stop.lng}`;
-      const index = stops.indexOf(stop);
-      groups[key] = [...(groups[key] ?? []), index];
-    }
-    for (const indexes of Object.values(groups)) {
-      if (indexes.length < 2) continue;
-      const points = indexes.map((index) => made[index].point!);
-      for (let a = 0; a < points.length; a += 1) {
-        for (let b = a + 1; b < points.length; b += 1) {
-          expect(points[a]).not.toEqual(points[b]);
-        }
+
+    // Küme dışındaki durakların pini koordinatın tam üstünde kalır (veri değişmez).
+    const lonely = stops.findIndex((stop) => stop.id === "meryem-kilisesi");
+    expect(clusters.find((members) => members.includes(lonely))).toHaveLength(1);
+    expect(made[lonely].point).toEqual([stops[lonely].lng, stops[lonely].lat]);
+
+    // Hiçbir iki pin aynı noktaya basmaz.
+    const points = made.map((marker) => marker.point!);
+    for (let a = 0; a < points.length; a += 1) {
+      for (let b = a + 1; b < points.length; b += 1) {
+        expect(points[a]).not.toEqual(points[b]);
       }
     }
+  });
+
+  it("yaklaşık konumlu durak ekran okuyucuya da yaklaşık olduğunu söyler", () => {
+    made.length = 0;
+    const stops = AUDIO_DISCOVERY_TOURS[0].stops;
+    addAudioStopMarkers({} as Map, stops, 0, vi.fn());
+    const approximate = stops.filter((stop) => stop.coordinateAccuracy === "approximate");
+    expect(approximate.map((stop) => stop.no)).toEqual([51, 52, 53, 57]);
+    for (const stop of approximate) {
+      const index = stops.indexOf(stop);
+      expect(made[index].options.element.getAttribute("aria-label")).toContain("yaklaşık konum");
+    }
+    const exact = stops.findIndex((stop) => stop.id === "meryem-kilisesi");
+    expect(made[exact].options.element.getAttribute("aria-label")).not.toContain("yaklaşık konum");
   });
 });

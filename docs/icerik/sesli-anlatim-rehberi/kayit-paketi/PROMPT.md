@@ -1,5 +1,12 @@
 # Ses agent'ına yapıştırılacak prompt
 
+> **Kapanış notu (8 Kasım 2026).** Bu belge tarihsel kayıttır. Turun 57 durağının
+> tamamı hem Türkçe hem İngilizce seslidir (`/audio/efes-*.mp3`,
+> `/audio/en-efes-*.mp3`); aşağıdaki "bekleyen / kalan" listeleri artık geçerli
+> değildir. Yakın pinlerin ayrılması ve `sharedWith` temizliği de yapıldı.
+> Güncel durum: [`efes.md`](../efes.md) §3–§4.
+
+
 Aşağıdaki bloğu **olduğu gibi** kopyala, agent'a ver. Tek bir şeyi
 doldurman gerekiyor: `<<SES>>` yerine kullanılacak sesin adı/kimliği.
 

@@ -1,5 +1,12 @@
 # Efes turu 49–57: kimlik, konum ve fotoğraf düzeltmesi
 
+> **Kapanış notu (8 Kasım 2026).** Bu belge tarihsel kayıttır. Turun 57 durağının
+> tamamı hem Türkçe hem İngilizce seslidir (`/audio/efes-*.mp3`,
+> `/audio/en-efes-*.mp3`); aşağıdaki "bekleyen / kalan" listeleri artık geçerli
+> değildir. Yakın pinlerin ayrılması ve `sharedWith` temizliği de yapıldı.
+> Güncel durum: [`efes.md`](../icerik/sesli-anlatim-rehberi/efes.md) §3–§4.
+
+
 8 Kasım 2026 · Tur: 57 durak · Kaynak dosya: `public/assets/sesli-turlar.json`
 
 ## Neden bu düzeltme gerekti

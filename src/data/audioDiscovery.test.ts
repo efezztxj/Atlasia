@@ -234,4 +234,38 @@ describe("sesli anlatım rehberi · durak içeriği", () => {
       }
     }
   });
+
+  it("sharedWith yalnız gerçekten aynı noktayı gösterir (karşılıklı ve ≤30 m)", () => {
+    // 2026-11-08: Altı durakta `sharedWith` kalmıştı ama koordinatlar aylar önce
+    // ayrılmıştı — 3↔51 arası 324 m, 15↔57 arası 1 774 m. Alan "aynı fiziksel
+    // nokta" demek olduğu için bu kayıtlar yanlıştı; temizlendi. Test, alanı
+    // yeniden yanlış kullanmaya karşı kilitler.
+    const meters = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) =>
+      Math.hypot((a.lat - b.lat) * 111320, (a.lng - b.lng) * 111320 * Math.cos((a.lat * Math.PI) / 180));
+    for (const tour of AUDIO_DISCOVERY_TOURS) {
+      for (const stop of tour.stops) {
+        for (const otherId of stop.sharedWith ?? []) {
+          const other = tour.stops.find((item) => item.id === otherId);
+          expect(other, `${stop.id}: sharedWith'te turda olmayan id var (${otherId})`).toBeTruthy();
+          expect(other!.sharedWith, `${stop.id}→${otherId} karşılıklı değil`).toContain(stop.id);
+          expect(meters(stop, other!), `${stop.id}→${otherId} aynı nokta değil`).toBeLessThan(30);
+        }
+      }
+    }
+  });
+
+  it("yaklaşık konumlu dört durak açıkça işaretli", () => {
+    // 51 Heksagon (sıralamadan türetilmiş nokta), 52 Verulanus (avlu toprak
+    // altında), 53 Antik Liman (havza ortası), 57 sur kesiti. Nokta silinmez;
+    // arayüzde "≈ yaklaşık konum" yazar ve pin erişilebilir adı bunu söyler.
+    const efes = AUDIO_DISCOVERY_TOURS.find((tour) => tour.placeId === "efes")!;
+    const approximate = efes.stops.filter((stop) => stop.coordinateAccuracy === "approximate");
+    expect(approximate.map((stop) => stop.no)).toEqual([51, 52, 53, 57]);
+    for (const stop of approximate) {
+      expect(new URL(stop.coordinateSource).protocol).toBe("https:");
+      expect(stop.sources.length).toBeGreaterThanOrEqual(2);
+    }
+    // Geri kalan 53 durak kesin nokta sayılır; sessizce "yaklaşık" işaretlenemez.
+    expect(efes.stops.length - approximate.length).toBe(53);
+  });
 });

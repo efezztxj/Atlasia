@@ -101,9 +101,6 @@
               "title": "Madain Project · Efes arkeolojik alanı",
               "url": "https://madainproject.com/archaeological_site_of_ephesus"
             }
-          ],
-          "sharedWith": [
-            "heksagon"
           ]
         },
         {
@@ -456,9 +453,6 @@
               "title": "Wikidata · karşılaştırma noktası",
               "url": "https://www.wikidata.org/wiki/Q2450228"
             }
-          ],
-          "sharedWith": [
-            "meryem-kilisesi-vaftizhanesi"
           ]
         },
         {
@@ -491,10 +485,6 @@
               "title": "Wikidata · karşılaştırma noktası",
               "url": "https://www.wikidata.org/wiki/Q97341090"
             }
-          ],
-          "sharedWith": [
-            "vedius-gymnasionu",
-            "kent-surlari"
           ]
         },
         {
@@ -706,9 +696,6 @@
               "title": "Ephesus.net · antik kent",
               "url": "https://www.ephesus.net/ancient-city/"
             }
-          ],
-          "sharedWith": [
-            "antik-liman-kanali"
           ]
         },
         {
@@ -1182,9 +1169,6 @@
               "title": "Perseus · liman bölgesi",
               "url": "https://www.perseus.tufts.edu/hopper/artifact?name=Ephesos&object=Site"
             }
-          ],
-          "sharedWith": [
-            "bizans-hamamlari"
           ]
         },
         {
@@ -1467,9 +1451,6 @@
               "url": "https://vici.org/vici/31375/"
             }
           ],
-          "sharedWith": [
-            "hydreion-kalkidikum"
-          ],
           "audio": "/audio/efes-pollio-domitian-cesmesi.mp3"
         },
         {
@@ -1616,6 +1597,7 @@
           "lng": 27.34162,
           "description": "Oktagon'un doğusunda, Alytarkhos Stoası'nın batısında, Kuretler Caddesi'nin basamaklarının hemen altında altıgen planlı küçük bir anıt yatar. 1994 kazısında açığa çıkarılan yapı, cadde kotu yükseltilirken neredeyse tümüyle gömülmüştür; bu yüzden ziyaretçi gözüyle seçilmesi zordur. İşlevi kesin değildir; çevresindeki Oktagon ve Heroon gibi üst kent anıtlarıyla birlikte değerlendirilir. Adı yalnızca planını anlatır, kimliğini değil. Konum, batıdan doğuya sıralanan Heroon–Oktagon–Heksagon dizisine göre yaklaşık olarak belirlenmiştir; sahada ölçülmüş bir nokta değildir. Fotoğraf anıtı değil, caddeyi gösterir.",
           "coordinateSource": "https://turkisharchaeonews.net/object/octagon-ephesus",
+          "coordinateAccuracy": "approximate",
           "sources": [
             {
               "title": "Turkish Archaeological News — Hellenistic Heroon",
@@ -1649,6 +1631,7 @@
           "lng": 27.33885,
           "description": "Liman bölgesinin en büyük spor alanı, yaklaşık 200 x 240 metrelik sütunlu bir avluydu. Adını, Hadrianus döneminde Asia başrahibi olan Verulanus'tan alır. Avlunun zemini on üç ayrı mermer tonuyla kaplanmıştı; çevresindeki revaklı yürüyüş yolu (xystos) atletlerin antrenman alanıydı. Doğusunda Liman Hamamları, batısında liman kilisesi olarak da anılan Meryem Kilisesi yer alır. Avlunun sınırları bugün toprak altında olduğu için pin temsilîdir: Meryem Kilisesi'nin yanındaki doğu köşesini işaretler. Kaynaklarda verilen nokta Liman Hamamları'yla çakıştığı için olduğu gibi kullanılmadı.",
           "coordinateSource": "https://turkisharchaeonews.net/object/hall-verulanus-and-harbour-baths-ephesus",
+          "coordinateAccuracy": "approximate",
           "sources": [
             {
               "title": "Turkish Archaeological News — Hall of Verulanus",
@@ -1682,6 +1665,7 @@
           "lng": 27.332599,
           "description": "Efes bir liman kentiydi; bugün antik liman denizden yaklaşık beş kilometre içeride, alüvyonla dolmuş düz bir arazide kalır. Kaystros'un taşıdığı çamur limanı kentten kopardıkça havza birkaç kez taşındı ve sonunda terk edildi. Liman Caddesi (Arkadiane) doğrudan limana uzanıyordu; kanal ise havzayı denizle birleştiriyordu. Bataklık ve drenaj sorunu yüzünden alan bugün güvenli bir yürüyüş güzergâhı değildir; pin havzanın ortasını gösterir, bir giriş kapısı değildir. Fotoğraf havzayı değil, Bülbül Dağı'ndan ovaya bakışı gösterir.",
           "coordinateSource": "https://www.ephesus.net/ephesus-map/",
+          "coordinateAccuracy": "approximate",
           "sources": [
             {
               "title": "UNESCO — Ephesus",
@@ -1814,6 +1798,7 @@
           "lng": 27.339579,
           "description": "Lysimakhos, MÖ 3. yüzyılın başında Efes'i yeniden kurarken kenti 9 kilometreyi aşan bir surla çevirdi; bu hattın 3 kilometreyi aşan bölümü bugün ayaktadır. Sur, Panayır ve Bülbül dağlarının yamaçlarını izleyerek limanı ve üst kenti koruma altına alıyordu. Bizans döneminde, 6. yüzyılda Justinianus surlarda onarım ve yeniden inşa izleri bıraktı. Burada işaretlenen nokta bir kapı ya da giriş değil, yamaçta korunmuş bir duvar kesitidir; hattın tamamı tek bir durak olarak yürünemez. Koordinat, Commons'taki fotoğrafın konumundan alınmıştır.",
           "coordinateSource": "https://commons.wikimedia.org/wiki/File:Ancient_city_wall_of_Ephesos._Near_Selçuk,_İzmir_Province,_Turkey_-_panoramio_(1).jpg",
+          "coordinateAccuracy": "approximate",
           "sources": [
             {
               "title": "Wikisource — 1911 Encyclopædia Britannica, Ephesus",

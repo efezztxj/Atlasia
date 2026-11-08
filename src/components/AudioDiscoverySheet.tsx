@@ -124,6 +124,7 @@ export default function AudioDiscoverySheet({ tour, selectedIndex, onSelect, onC
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-bold tracking-[0.12em] text-sun uppercase">{en ? `Stop ${selectedIndex + 1}` : `${selectedIndex + 1}. durak`}</p>
             <p className="mt-1 break-words text-[14px] leading-snug font-semibold">{title}</p>
+            {stop.coordinateAccuracy === "approximate" && <p className="mt-1 text-[11px] leading-snug text-sun">≈ {en ? "Approximate location" : "Yaklaşık konum"}<span className="text-mint/70"> · {en ? "the structure covers a wide area; the pin marks its centre" : "yapı geniş bir alana yayılıyor; pin merkezini gösterir"}</span></p>}
           </div>
           <nav aria-label={en ? "Audio and stop controls" : "Ses ve durak kontrolleri"} className="flex shrink-0 items-center gap-1.5">
             <button type="button" aria-label={en ? "Previous stop" : "Önceki durak"} disabled={selectedIndex === 0} onClick={() => select(selectedIndex - 1)} className="grid size-11 place-items-center rounded-full border border-leaf/30 transition hover:bg-leaf/10 disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sun"><ChevronLeft size={19} aria-hidden="true" /></button>

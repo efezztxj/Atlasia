@@ -1,5 +1,12 @@
 # Efes sesli turu: yayındaki 57 durak ↔ bu daldaki 57 durak
 
+> **Kapanış notu (8 Kasım 2026).** Bu belge tarihsel kayıttır. Turun 57 durağının
+> tamamı hem Türkçe hem İngilizce seslidir (`/audio/efes-*.mp3`,
+> `/audio/en-efes-*.mp3`); aşağıdaki "bekleyen / kalan" listeleri artık geçerli
+> değildir. Yakın pinlerin ayrılması ve `sharedWith` temizliği de yapıldı.
+> Güncel durum: [`efes.md`](../icerik/sesli-anlatim-rehberi/efes.md) §3–§4.
+
+
 8 Kasım 2026 · Karşılaştırılan iki dosya aynı: `public/assets/sesli-turlar.json`
 
 | | Sol sütun (yayın) | Sağ sütun (bu dal) |
