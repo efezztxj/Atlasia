@@ -139,8 +139,11 @@ inmez: daha büyük kaydırma pini komşu yapıya taşır.
    0–8.5 uzaklıkta (ort. 5.0), yeni 12 dosya 10.4–12.9 (ort. 11.5); grup
    mesafesi EN eski ↔ EN yeni 12.18'e karşı TR eski ↔ TR yeni 4.41. Fark
    kodlama kaynaklı değil (üst bant sınırı ikisinde de ≈8.3 kHz).
-   **Yapılacak:** 45, 46, 47 ve 49–57 İngilizce kayıtları eski anlatıcı sesiyle
-   yeniden üretmek; her dosyada referansa uzaklık < 8.5 doğrulanacak.
+   **Kapatıldı (8 Kasım 2026, aynı gün):** 12 İngilizce kayıt eski anlatıcı
+   sesiyle yeniden üretildi. Referansa uzaklık artık **2.57–8.26** (ort. 5.11);
+   eski 45 dosyanın aralığı 0.00–9.31 (ort. 5.09). Künye değişmedi
+   (24 000 Hz, mono, 32 kbps). Türkçe taraf zaten uyumluydu; tek izleme
+   kalemi #55 Türkçe (z ≈ +2.7, metni sayı ağırlıklı).
 7. ~~45/46/47 pinleri üst üste biniyor.~~ **Kapatıldı (8 Kasım 2026).**
    Eski ofset yalnız birebir aynı koordinatı kaydırıyordu; üç durak 4–8 m
    aralıkla durduğu için eşik tutmuyordu. Eşik 20 m'ye çıkarıldı ve kümeler

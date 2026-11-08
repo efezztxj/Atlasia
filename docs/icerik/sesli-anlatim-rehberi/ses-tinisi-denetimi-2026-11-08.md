@@ -99,6 +99,20 @@ Sekizinin tamamı eski aralıkta. Dosyalar 24 000 Hz, mono, 32 kbps — turdaki
 diğer kayıtlarla aynı künye; yeniden kodlama gerekmedi (servis çıktısı zaten bu
 biçimde).
 
-**Kalan:** 54, 55, 56, 57 İngilizce. Üretim turu başına 10 klip sınırına takıldı;
-sonraki turda üretilip aynı ölçütle doğrulanacak. Ayrıca #55 Türkçe kaydın
-kendi grubundan ayrışması (z ≈ +2.7) izleniyor.
+**Kalan dördü de tamam (aynı gün, ikinci tur).**
+
+| Durak | İlk ölçüm | Yeniden üretim | Not |
+| --- | --- | --- | --- |
+| 54 Vaftizhane | — | 3.68 | |
+| 55 Bizans Hamamları | — | 6.07 | |
+| 56 Vedius | — | 2.57 | |
+| 57 Kent Surları | 9.32 | 8.17 | ilk alım sınırın 0.01 üstündeydi, yenilendi |
+
+Böylece **12 İngilizce kaydın tamamı** eski aralıkta: 2.57–8.26, ortalama 5.11.
+Eski 45 dosyanın ortalaması 5.09 — grup düzeyinde fark kalmadı.
+
+**Açık kalan tek izleme:** #55 Türkçe kayıt kendi grubundan ayrışıyor (z ≈ +2.7).
+Metni sayı ağırlıklı ("yetmiş beş metreye elli metrelik", "bin dokuz yüz
+ellili"); fark büyük olasılıkla sözcük dağılımından. Türkçe anlatıcı sesi bu
+oturumda kayıtlı değil, yeniden üretim mevcut 8 dosyayı da bozar; bu yüzden
+dokunulmadı.
