@@ -336,3 +336,78 @@ girmeden önce eski dosyayı bir yıllık `immutable` olarak işaretledi. Bu yü
 ilk açılışta sayfayı **sert yenile** (masaüstü: Ctrl/Cmd + Shift + R; mobil:
 site verilerini temizle). Sonrasında dosya her ziyarette doğrulanır ve bu sorun
 tekrarlamaz.
+
+---
+
+## 8. Kayıt paketi denetimi (2026-11-08)
+
+Ses kaydı kullanıcıda, ama **paket yanlışsa kayıt da yanlış gelir**. Paketi
+JSON'a karşı denetledim; üç ayrı hata çıktı.
+
+### 8.1 — Eksik metin: 2 durak hiç kaydedilmeyecekti
+
+`dikte-metni.md` **9 bölüm** içeriyordu (47–55). Gerçek borç **11 duraktı**:
+45 `chalcidicum` ve 47 `domitian-cesmesi` metinleri paket dışında kalmıştı.
+Seslendiren bu iki durağı hiç okumayacak, sesleri hiç gelmeyecekti.
+
+Ayrıca paketin numaralandırması JSON'la kaymıştı: pakette `[47]` Hydreion'u
+gösteriyordu, JSON'da 47 = Domitian Çeşmesi, Hydreion = **49**.
+
+Düzeltme: `dikte-metni.md` ve `kayit-listesi.csv` sıfırdan, **JSON'dan
+türetilerek** yeniden üretildi. 11 bölüm, numaralar JSON ile birebir.
+
+### 8.2 — Teknik künye üç belgede yanlıştı
+
+Üç belge "24 kHz · mono · **112 kbps**" diyordu ve kabul kontrolü
+`ffprobe → 24000,1,112000` bekliyordu. 101 dosyanın **tamamını** MPEG çerçeve
+başlığından ölçtüm:
+
+| Alan | Belgelerde yazan | Ölçülen |
+| --- | --- | --- |
+| Örnekleme | 24 000 Hz | 24 000 Hz ✓ |
+| Kanal | mono | mono ✓ |
+| Bit hızı | 112 kbps | **64 kbps** ✗ |
+| Süre | 20–45 sn | **10,5–23 sn** ✗ |
+| ID3 | ID3v2.4 / TSSE | doğru ✓ |
+
+`112` değeri hiçbir dosyada yok; 101/101 dosya 64 kbps CBR. Seslendiren bu
+künyeye uysa dosyalar mevcut turun **iki katı** bit hızında gelir, duraklar
+arasında duyulabilir tını farkı olurdu.
+
+Düzeltme: `PROMPT.md`, `agent-ses-gorevi.md`, `KAYIT-TALIMATI.md`,
+`kalan-11-yer-ingilizce.md`, `README.md` → 64 kbps; `ffmpeg` komutu
+`-b:a 64k`; kabul kontrolü `24000,1,64000`, süre 10–55 sn.
+
+### 8.3 — Türkçe paket hiç yoktu
+
+Türkçe sesi eksik üç durağın (45, 47, 51) Türkçe metni yalnız JSON'da
+duruyordu; seslendirilebilir bir dosya yoktu. Oluşturuldu:
+
+- `kayit-paketi/dikte-metni-tr.md` — 3 bölüm, JSON metniyle birebir
+- `kayit-paketi/kayit-listesi-tr.csv` — dosya adı, süre, kelime
+- `KAYIT-TALIMATI.md` içine Türkçe bölüm + telaffuz notları
+
+Dosya adları: `chalcidicum.mp3`, `domitian-cesmesi.mp3`, `heksagon.mp3`
+(`kalkidikum-` öneki **yok**; 49–57'dekilerle karışmasın).
+
+### 8.4 — Kalan tek gerçek borç: ses kayıtları
+
+| Dil | Eksik | Süre | Durum |
+| --- | --- | --- | --- |
+| TR | 3 dosya (45, 47, 51) | ≈ 2 dk | metin + paket hazır |
+| EN | 11 dosya (45, 47, 49–57) | ≈ 6 dk | metin + paket hazır |
+
+Bunlar **uydurulamaz**: kullanıcı ses kaydını kendisi yaptırıyor. Paket artık
+doğru, sıra kayıtta.
+
+### Kilit
+
+`src/data/audioDiscovery.test.ts` → iki yeni blok (7 test):
+
+- *"kayıt paketi · JSON ile tutarlılık"* — dikte metni sesi eksik **tüm**
+  durakları içerir; her bölüm JSON açıklamasıyla birebir; CSV örtüşür; dosya
+  adı `en-kalkidikum-<id>.mp3`; belgelerde 64 kbps yazar ve 112 kbps **kalmaz**.
+- *"Türkçe kayıt paketi · JSON ile tutarlılık"* — aynısı TR için.
+
+Mutasyon testi: `dikte-metni.md`'den 45 chalcidicum bölümü çıkarıldığında
+**2 test düştü**; geri konunca yeşil.

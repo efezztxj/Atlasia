@@ -9,10 +9,11 @@ doldurman gerekiyor: `<<SES>>` yerine kullanılacak sesin adı/kimliği.
 Rol: Atlasia sesli anlatım rehberi için İngilizce ses dosyası üreticisisin.
 
 GÖREV
-12 metni İngilizce sese çevirip MP3 üret. Sonuçları depoya yaz.
-NOT: 12 metnin 9'u turda yayında (49-57), 2'si yeni eklendi (45 chalcidicum,
-46 domitian-cesmesi), 1'i Pollio Anıtı (metni değişti, sesi yeniden üretilecek).
-Hepsi turda görünür; yalnız sesi eksik.
+11 metni İngilizce sese çevirip MP3 üret. Sonuçları depoya yaz.
+NOT: 11 metnin 9'u turda yayında (49–57), 2'si yeni eklendi (45 chalcidicum,
+47 domitian-cesmesi). Hepsi turda görünür; yalnız İngilizce sesi eksik.
+(Pollio Anıtı'nın — 46 — İngilizce sesi 2026-11-08'de üretilip bağlandı,
+bu listeye dahil değil.)
 
 METİNLERİ BURADAN OKU (depo köküne göre)
 1. docs/icerik/sesli-anlatim-rehberi/kayit-paketi/metinler/TUMU.txt
@@ -74,23 +75,23 @@ en-kalkidikum-vedius-gymnasionu.mp3
 en-kalkidikum-kent-surlari.mp3
 en-kalkidikum-chalcidicum.mp3
 en-kalkidikum-domitian-cesmesi.mp3
-en-efes-pollio-domitian-cesmesi.mp3   <- Pollio metni degisti, yeniden uret
 
-TEKNİK KÜNYE (mevcut 46 dosyadan ÖLÇÜLDÜ — birebir uy)
+TEKNİK KÜNYE (101 dosyanın TAMAMI çerçeve başlığından ölçüldü — birebir uy)
 Örnekleme: 24 000 Hz
 Kanal: mono
-Bit hızı: 112 kbps CBR
+Bit hızı: 64 kbps CBR
 Konteyner: MP3
+ID3: ID3v2.4, tek etiket TSSE = Lavf59.27.100
 
-ffmpeg ile örnek dönüşüm:
-ffmpeg -i ham.wav -ar 24000 -ac 1 -b:a 112k -c:a libmp3lame \
+ffmpeg ile dönüşüm:
+ffmpeg -i ham.wav -ar 24000 -ac 1 -b:a 64k -c:a libmp3lame \
   public/audio/en-kalkidikum-heksagon.mp3
 
 KABUL KONTROLÜ (her dosya için kendin koş, geçmeyen varsa yeniden üret)
 1. ffprobe -v error -show_entries stream=sample_rate,channels,bit_rate \
-     -of csv=p=0 <dosya>   → çıktı tam olarak: 24000,1,112000
-2. Süre 20–45 sn arasında
-3. Dosya boyutu 60–200 KB arasında
+     -of csv=p=0 <dosya>   → çıktı tam olarak: 24000,1,64000
+2. Süre 10–55 sn arasında (mevcut kütüphane 10,5–23 sn; metinler 24–51 sn)
+3. Dosya boyutu 60–250 KB arasında
 4. TTS'e verilen metin, JSON'daki "description" ile kelime kelime aynı
 5. İlk ve son 0,5 sn sessizlik
 
@@ -102,7 +103,7 @@ YAPMA
 - Ses kimliğini değiştirme. Farklı bir ses gerekiyorsa ÖNCE SOR, uygulama.
 
 BİTİNCE
-Ürettiğin 12 dosyanın listesini + her biri için kabul kontrolü çıktısını ver.
+Ürettiğin 11 dosyanın listesini + her biri için kabul kontrolü çıktısını ver.
 Eksik kalan varsa hangisi ve neden.
 ```
 

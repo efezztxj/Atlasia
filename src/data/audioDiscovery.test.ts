@@ -281,3 +281,106 @@ describe("sesli anlatım rehberi · durak içeriği", () => {
     }
   });
 });
+
+describe("kayıt paketi · JSON ile tutarlılık", () => {
+  const DIR = "docs/icerik/sesli-anlatim-rehberi/kayit-paketi";
+  const englishFile = JSON.parse(readFileSync("public/audio/efes-en.json", "utf8")) as Record<
+    string, { title: string; audio?: string; description: string }
+  >;
+
+  /**
+   * NEDEN: 2026-11-08'e kadar kayıt talimatı "9 dosya, 47–55" diyordu ama
+   * gerçek borç 11 dosyaydı (45 chalcidicum ve 47 domitian-cesmesi eksikti).
+   * Seslendiren iki durağı hiç kaydetmeyecekti. Ayrıca üç ayrı belgede
+   * "112 kbps" yazıyordu; 101 dosyanın tamamı 64 kbps çıktı. Bu kilit
+   * paketin JSON'dan türetildiğini zorunlu kılar.
+   */
+  const pendingEnglish = () => Object.entries(englishFile)
+    .filter(([, record]) => !record.audio)
+    .map(([id]) => id)
+    .sort();
+
+  it("dikte metni İngilizce sesi eksik olan TÜM durakları içerir", () => {
+    const dikte = readFileSync(resolve(DIR, "dikte-metni.md"), "utf8");
+    for (const id of pendingEnglish()) {
+      expect(dikte, `${id} dikte metninde yok — seslendiren bu durağı atlar`).toContain(`] ${id}**`);
+    }
+  });
+
+  it("dikte metnindeki her bölüm JSON açıklamasıyla birebir aynı", () => {
+    const dikte = readFileSync(resolve(DIR, "dikte-metni.md"), "utf8");
+    const parts = dikte.split(/\*\*\[\d+\] ([\w-]+)\*\*\n\n/).slice(1);
+    const metinler: Record<string, string> = {};
+    for (let index = 0; index < parts.length; index += 2) {
+      metinler[parts[index]] = parts[index + 1].replace(/\n---\s*$/, "").trim();
+    }
+    expect(Object.keys(metinler).sort()).toEqual(pendingEnglish());
+    for (const [id, text] of Object.entries(metinler)) {
+      expect(text, `${id}: dikte metni JSON açıklamasından farklı`).toBe(englishFile[id].description.trim());
+    }
+  });
+
+  it("kayıt listesi CSV'si sesi eksik duraklarla birebir örtüşür", () => {
+    const rows = readFileSync(resolve(DIR, "kayit-listesi.csv"), "utf8")
+      .split(/\r?\n/)
+      .slice(1)
+      .filter(Boolean)
+      .map((line) => line.match(/^"([^"]*)","([^"]*)","([^"]*)"/))
+      .filter((match): match is RegExpMatchArray => Boolean(match));
+    expect(rows.map((match) => match[2]).sort()).toEqual(pendingEnglish());
+    for (const [, , id, dosya] of rows) {
+      expect(dosya).toBe(`en-kalkidikum-${id}.mp3`);
+    }
+  });
+
+  it("teknik künye belgelerde ölçülen değerle aynı (64 kbps) ve eski 112 kbps kalmamış", () => {
+    for (const file of ["PROMPT.md", "KAYIT-TALIMATI.md"]) {
+      const text = readFileSync(resolve(DIR, file), "utf8");
+      expect(text, `${file}: 64 kbps yazmıyor`).toContain("64 kbps");
+      expect(text, `${file}: kaldırılmış 112 kbps geri gelmiş`).not.toContain("112 kbps");
+    }
+    const gorev = readFileSync("docs/icerik/sesli-anlatim-rehberi/agent-ses-gorevi.md", "utf8");
+    expect(gorev).not.toContain("112 kbps");
+    expect(gorev).toContain("64 kbps CBR");
+  });
+});
+
+describe("Türkçe kayıt paketi · JSON ile tutarlılık", () => {
+  const DIR = "docs/icerik/sesli-anlatim-rehberi/kayit-paketi";
+  const tur = JSON.parse(readFileSync("public/assets/sesli-turlar.json", "utf8")) as {
+    tours: { stops: { id: string; no: number; title: string; description: string; audio?: string }[] }[];
+  };
+  const pendingTurkish = () => tur.tours[0].stops.filter((stop) => !stop.audio).sort((a, b) => a.no - b.no);
+
+  it("Türkçe dikte metni sesi eksik olan tüm durakları içerir", () => {
+    const dikte = readFileSync(resolve(DIR, "dikte-metni-tr.md"), "utf8");
+    for (const stop of pendingTurkish()) {
+      expect(dikte, `${stop.id} Türkçe dikte metninde yok`).toContain(`] ${stop.id}**`);
+    }
+  });
+
+  it("Türkçe dikte metni JSON açıklamasıyla birebir aynı", () => {
+    const dikte = readFileSync(resolve(DIR, "dikte-metni-tr.md"), "utf8");
+    const parts = dikte.split(/\*\*\[\d+\] ([\w-]+)\*\*\n\n/).slice(1);
+    const metinler: Record<string, string> = {};
+    for (let index = 0; index < parts.length; index += 2) {
+      metinler[parts[index]] = parts[index + 1].replace(/\n---\s*$/, "").trim();
+    }
+    expect(Object.keys(metinler).sort()).toEqual(pendingTurkish().map((stop) => stop.id).sort());
+    for (const stop of pendingTurkish()) {
+      expect(metinler[stop.id], `${stop.id}: Türkçe dikte metni JSON'dan farklı`)
+        .toBe(stop.description.trim());
+    }
+  });
+
+  it("Türkçe kayıt listesi CSV'si sesi eksik duraklarla örtüşür", () => {
+    const rows = readFileSync(resolve(DIR, "kayit-listesi-tr.csv"), "utf8")
+      .split(/\r?\n/)
+      .slice(1)
+      .filter(Boolean)
+      .map((line) => line.match(/^"([^"]*)","([^"]*)","([^"]*)"/))
+      .filter((match): match is RegExpMatchArray => Boolean(match));
+    expect(rows.map((match) => match[2]).sort()).toEqual(pendingTurkish().map((stop) => stop.id).sort());
+    for (const [, , id, dosya] of rows) expect(dosya).toBe(`${id}.mp3`);
+  });
+});
