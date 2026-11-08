@@ -12,6 +12,7 @@ Yeni bir yer, yeni bir şehir veya yeni bir tur eklenecekse önce buradaki
 | `efes.md` | Efes turu: 55 durak, numara düzeni, `sharedWith`, borçlar |
 | `kapadokya.md` | Kapadokya turu iskeleti + durak kabul ölçütü |
 | `ingilizce-ses-kayit-metinleri.md` | Ses kaydı bekleyen 9 durak; okunacak metin + dosya adı + süre |
+| `kayit-paketi/` | **Seslendiren kişiye verilecek paket**: dikte metni, telaffuz sözlüğü, CSV, talimat |
 
 ## 1. Yapı: tek dosya, içinde turlar
 
