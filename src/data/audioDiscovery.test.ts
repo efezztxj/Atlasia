@@ -32,8 +32,12 @@ const FILE = resolve(`public${AUDIO_TOUR_FILE}`);
  * 2026-11-07: Chalcidicum ve ayrı Domitian Çeşmesi tura eklendi; içerik ve
  * koordinat doğrulandı, ses kaydı henüz yok. Arayüz bu duraklarda
  * "Ses kaydı yok. Metni okuyabilirsin." der. Kayıt geldikçe liste küçülür.
+ *
+ * 2026-11-07: Heksagon'un konumu ve metni düzeltildi (Kalkidikum'da değil,
+ * Kuretler Caddesi güneyinde). Eski `kalkidikum-heksagon.mp3` yanlış metni
+ * okuyordu; bağlantı kaldırıldı, yeni kayıt gelene kadar metin gösterilir.
  */
-const SES_BEKLEYEN = ["chalcidicum", "domitian-cesmesi", "pollio-domitian-cesmesi"];
+const SES_BEKLEYEN = ["chalcidicum", "domitian-cesmesi", "pollio-domitian-cesmesi", "heksagon"];
 
 const KALKIDIKUM_ENGLISH_AUDIO_PENDING = [
   "chalcidicum",

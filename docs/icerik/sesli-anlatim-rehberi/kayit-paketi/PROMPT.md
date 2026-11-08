@@ -20,7 +20,7 @@ METİNLERİ BURADAN OKU (depo köküne göre)
    Bu dosyayı tek seferde oku, bölümleri id'ye göre ayır.
 
 Yedek (biri çalışmazsa):
-2. docs/icerik/sesli-anlatim-rehberi/kayit-paketi/metinler/49-heksagon.txt
+2. docs/icerik/sesli-anlatim-rehberi/kayit-paketi/metinler/51-heksagon.txt
    gibi tek tek dosyalar (dosya adı = durak no + id)
 3. public/audio/efes-en.json → "audio" alanı boş olan kayıtların
    "description" değeri. Asıl kaynak budur; 1 ve 2 bundan üretildi.
