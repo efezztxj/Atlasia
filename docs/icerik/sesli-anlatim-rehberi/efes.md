@@ -108,6 +108,12 @@ inmez: daha büyük kaydırma pini komşu yapıya taşır.
    okuyucu adı "(yaklaşık konum)" ile biter. İkisi de testte kilitli.
    Koordinat **değiştirilmedi**: kaynaklar arasındaki 25–90 m farkı saha ölçümü
    olmadan kapatmak uydurma olurdu. Kalan iş: bu dört noktayı yerinde ölçmek.
+   **52 için yeni kanıt:** Wikidata Q104641912 ("Halls of Verulanus") aynı yapıya
+   37.944090, 27.339919 veriyor — mevcut pinden **100 m** kuzeydoğu. Avlu
+   200 × 240 m olduğu için iki nokta da yapının içinde kalır; yeni nokta
+   Liman Hamamları'na 132 m, Meryem Kilisesi'ne 109 m uzakta. Pin değişmedi,
+   dördüncü kaynak olarak Wikidata eklendi ve fark durak kartında
+   (`coordinateNote`) yazılı.
 3. ~~Tek kaynaklı iki durak~~ **Kapatıldı:** 51 ve 52 artık üç kaynak taşıyor.
 4. **İki görselin lisansı — karar verildi, beyan açık (8 Kasım 2026).**
    `heroon` (#20) ve `magnesia-kapisi` (#27) Turkish Archaeological News

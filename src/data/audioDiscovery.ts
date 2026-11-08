@@ -34,6 +34,14 @@ export interface AudioDiscoveryStop {
    */
   coordinateAccuracy?: "approximate";
   /**
+   * Kaynaklar aynı noktada anlaşmıyorsa farkın kaydı.
+   *
+   * NEDEN: 52 Verulanus için Wikidata Q104641912 başka bir nokta veriyor ve
+   * ikisi arasında 100 m var. Hangi noktanın seçildiğini ve neden seçildiğini
+   * sessizce saklamak yerine durak kartında kaynak bölümünde gösterilir.
+   */
+  coordinateNote?: string;
+  /**
    * `"additional"` = ören yeri dışındaki yer (haritada numarasız ◆).
    * Alan yoksa durak ören yeri içindedir ve numaralı yeşil pin alır.
    */

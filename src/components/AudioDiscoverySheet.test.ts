@@ -31,6 +31,18 @@ describe("sesli keşif", () => {
     view.rerender(createElement(AudioDiscoverySheet, { ...props, selectedIndex: index }));
     expect(screen.getByText(/Yaklaşık konum/)).toBeTruthy();
   });
+  it("kaynaklarda konum anlaşmazlığını gizlemez", () => {
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+    const tour = AUDIO_DISCOVERY_TOURS[0];
+    const index = tour.stops.findIndex((stop) => stop.coordinateNote);
+    expect(index, "en az bir durak konum notu taşımalı").toBeGreaterThan(-1);
+    const props = { tour, selectedIndex: index, onSelect: vi.fn(), onClose: vi.fn() };
+    render(createElement(AudioDiscoverySheet, props));
+    fireEvent.click(screen.getByRole("button", { name: "Kaynakları gör" }));
+    expect(screen.getByText(tour.stops[index].coordinateNote!)).toBeTruthy();
+    // Not taşımayan durakta bu paragraf görünmez.
+    expect(screen.queryByText(/Wikidata Q104641912/)).toBeTruthy();
+  });
   it("kaydı çalar, durak değişiminde ve kapanışta durdurur", async () => {
     const play = vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
     const pause = vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});

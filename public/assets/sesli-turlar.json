@@ -1644,9 +1644,14 @@
             {
               "title": "Wikimedia Commons — Church of Mary file",
               "url": "https://commons.wikimedia.org/wiki/File:Ephesus_view_to_Church_of_Mary_in_2015_2782.jpg"
+            },
+            {
+              "title": "Wikidata — Halls of Verulanus (Q104641912)",
+              "url": "https://www.wikidata.org/wiki/Q104641912"
             }
           ],
-          "envanterNo": 40
+          "envanterNo": 40,
+          "coordinateNote": "Wikidata Q104641912 aynı yapı için 37.944090, 27.339919 verir; bu nokta mevcut pinden 100 m kuzeydoğudadır ve avlu 200 × 240 m olduğu için ikisi de yapının içinde kalır. Pin, Meryem Kilisesi'nin yanındaki köşeyi gösteren temsilî nokta olarak korundu."
         },
         {
           "id": "antik-liman-kanali",
