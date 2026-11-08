@@ -233,6 +233,31 @@ describe("sesli anlatım rehberi · durak içeriği", () => {
     }
   });
 
+  it("hiçbir görsel 'kullanım izni doğrulanmadı' durumunda yayına çıkmaz", () => {
+    // NEDEN: 2026-11-07'ye kadar `heroon` (#20) ve `magnesia-kapisi` (#27)
+    // Turkish Archaeological News'ten alınmış, telif durumu doğrulanmamış
+    // fotoğraflarla yayındaydı. Arayüz bunu "Kullanım izni doğrulanmadı" diye
+    // etiketliyordu ama engellemiyordu. Artık ikisi de özgür lisanslı
+    // (CC BY-SA 4.0, Dosseman) dosyalarla değiştirildi.
+    //
+    // Kural: bir durağın görseli ancak lisansı ADIYLA yazılmışsa yayına girer.
+    // Yeni bir yer eklerken telifi belirsiz fotoğraf kullanılacaksa bu test
+    // kırılır; görseli değiştir ya da yazılı izin al. Kural sessizce
+    // gevşetilmesin diye beyaz liste yok.
+    const BELIRSIZ = ["Kullanım izni doğrulanmadı", "doğrulanmadı", "unknown", "bilinmiyor", ""];
+    for (const tour of AUDIO_DISCOVERY_TOURS) {
+      for (const stop of tour.stops) {
+        const image = stop.image!;
+        expect(
+          BELIRSIZ.includes(image.license.trim()),
+          `${stop.id}: görsel lisansı doğrulanmamış ("${image.license}") — kaynak: ${image.source}`,
+        ).toBe(false);
+        // Lisans adı varsa bağlantısı da olmalı; atıf yapılabilir olmalı.
+        expect(new URL(image.licenseUrl).protocol, `${stop.id}: lisans bağlantısı geçersiz`).toBe("https:");
+      }
+    }
+  });
+
   it("aynı fiziksel noktayı paylaşan duraklar açıkça bildirilir", () => {
     for (const tour of AUDIO_DISCOVERY_TOURS) {
       const byCoord = new Map<string, string[]>();

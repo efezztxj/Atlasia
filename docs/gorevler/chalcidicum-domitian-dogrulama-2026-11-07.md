@@ -209,3 +209,62 @@ tanımlanıyordu (`37.936739, 27.344431`, `sharedWith: ["basilica-stoa"]`,
 **Aynı turda kapanan diğer borç:** 52 `verulanus-meydani-salonu` ikinci
 bağımsız kaynakla (ephesus.net kent haritası, 200 × 240 m) desteklendi.
 Turda artık tek kaynaklı durak yok.
+
+---
+
+## 6. Görsel süpürmesi (2026-11-07, ikinci tur)
+
+Tur 1'de 20 `heroon` ve 27 `magnesia-kapisi` görselleri kendi yapılarını
+göstermiyordu; lisansları da "kullanım izni doğrulanmadı" idi. Tur 2'de
+**57 durağın tamamı** gözden geçirildi.
+
+**Yöntem:** her görselin Commons künyesi `prop=imageinfo&iiprop=url|extmetadata`
+ile alındı; künye `thumburl` değeri **birebir** yazıldı. Thumb yolundaki
+`/x/xy/` öneki tahmin edilebilir değil — elle kurulan 8 yoldan 2'si yanlıştı
+(`Efes_Meryem_Kilisesi.jpg` gerçekte `/c/c4/`, `…2782.jpg` gerçekte `/6/60/`).
+
+**Değişen görseller (13 durak):**
+
+| # | Durak | Yeni dosya | Yazan / lisans |
+| --- | --- | --- | --- |
+| 3 | `basilica-stoa` | `Ephesus basilica2.jpg` | Rita1234 · CC BY-SA 3.0 |
+| 5 | `chalcidicum` | `Kuretenstraße, Ephesos.jpg` | CherryX · CC BY-SA 3.0 |
+| 9 | `mazaeus-mithridates` | `16.3 Mazeus-Mithridates Gate…JPG` | J. L. Bernardes Ribeiro · CC BY-SA 3.0 |
+| 14 | `efes-stadyumu` | `Ancient stadium … April 2024 (5).jpg` | Olos88 · **CC0** |
+| 16 | `kuretler-caddesi` | `Ephesus Curetes street.jpg` | Rita1234 · CC BY-SA 3.0 |
+| 19 | `oktagon` | `8.3 Ruins at Curetes Street…JPG` | J. L. Bernardes Ribeiro · CC BY-SA 3.0 |
+| 23 | `bizans-hamamlari` | `Harbor Baths (Ephesus) 10.jpg` | Satirdan kahraman · CC BY-SA 4.0 |
+| 27 | `magnesia-kapisi` | `…Road from the Magnesian Gate…3746.jpg` | Dosseman · CC BY-SA 4.0 |
+| 46 | `pollio-domitian-cesmesi` | `Ephesus Pollio Fountain in 2011 3740.jpg` | Dosseman · CC BY-SA 4.0 |
+| 47 | `domitian-cesmesi` | `Efes (Ephesos) - Domitian Çeşmesi - panoramio.jpg` | Yağmur Aydın · CC BY-SA 3.0 |
+| 51 | `heksagon` | `Ephesos Kuretenstraße.JPG` | Elelicht · CC BY-SA 3.0 |
+| 52 | `verulanus-meydani-salonu` | `Ephesus view to Church of Mary in 2015 2782.jpg` | Dosseman · CC BY-SA 4.0 |
+| 53 | `antik-liman-kanali` | `Ephesus Arcadiane (Harbour) Street in 2011 3615.jpg` | Dosseman · CC BY-SA 4.0 |
+| 56 | `meryem-kilisesi-vaftizhanesi` | `Efes Meryem Kilisesi.jpg` | Marmaracalypso · CC BY-SA 4.0 |
+| — | `vedius-gymnasionu` | `Turkey-2819 (2217175472) (2).jpg` | Dennis G. Jarvis · CC BY-SA 2.0 |
+
+Ayrıca 20 `heroon` → `…View to Curetes Street from Hadrian Gate…3725.jpg`
+(Dosseman, CC BY-SA 4.0).
+
+**Yerel dosyalar:** `heroon.jpg`, `magnesia-kapisi.jpg`, `kuretler-caddesi.jpg`,
+`oktagon.jpg` kaldırıldı. `oktagon.jpg` Kuretler Caddesi'ndeki **yazıt
+kaidelerini** gösteriyordu (Oktagon'u değil) ve atıfı Flickr'daki başka bir
+kareye aitti. Kalan 9 yerel görselin hepsi tek tek gözle doğrulandı.
+
+**Kapanan durum:**
+- 57/57 durağın görsel künyesi tam (`url`, `alt`, `source`, `author`, `license`,
+  `licenseUrl`) ve **hiçbiri** "doğrulanmadı" değil.
+- 57/57 görsel **benzersiz** — hiçbir durak başka bir durağın fotoğrafını
+  kullanmıyor.
+- Yerel dosya denetimi: 9 kullanılan / 9 mevcut / 0 eksik / 0 artık.
+
+**Yeni kilit (test):** `src/data/audioDiscovery.test.ts` içine eklenen kural
+"hiçbir görsel 'kullanım izni doğrulanmadı' durumunda yayına çıkmaz" —
+kara liste `doğrulanmadı|unknown|bilinmiyor`, boş lisans reddedilir,
+`licenseUrl` yalnız `https`. Hatalı dize geri konarak mutasyon testi yapıldı;
+test durağı adıyla yakaladı.
+
+**Kalan bilinen sınır:** görseller temsilîdir (stok/Commons), saha fotoğrafı
+değildir; 19 `oktagon` ve 51 `heksagon` için Commons'ta yapının **kendisini**
+gösteren özgür lisanslı bir kare bulunmadığından cadde görünümü kullanıldı,
+alt metinde bu açıkça belirtildi.
