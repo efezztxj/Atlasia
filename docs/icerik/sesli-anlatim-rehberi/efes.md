@@ -115,7 +115,9 @@ inmez: daha büyük kaydırma pini komşu yapıya taşır.
    kenarında, Oktogon ile Alytarkhos Stoası arasında altıgen monopteros).
    Eski kayıt yanlış metni okuyordu, bağlantı kaldırıldı. İngilizce kayıt yeni
    metinden üretildi (referansa uzaklık 6.18). Kilit: `SES_BEKLEYEN`.
-   Yeni Türkçe kayıt için Türkçe anlatıcı sesi gerekiyor.
+   Yeni Türkçe kayıt için Türkçe anlatıcı sesi gerekiyor. Eski
+   `efes-heksagon.mp3` yanlış metni okuduğu için depodan silindi (geçmişte
+   duruyor); durağın sesi gelince aynı adla yeniden üretilecek.
 3. **Temsilî noktalar — gizlenmiyor, ölçüm borcu sürüyor (8 Kasım 2026).**
    52 (avlu sınırları toprak altında), 53 (havza ortası, erişim yok) ve 57
    (korunmuş bir kesit) veride `coordinateAccuracy: "approximate"` taşır.
