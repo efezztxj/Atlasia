@@ -67,10 +67,12 @@ ediliyorsa ilişki `sharedWith` alanına karşılıklı yazıldı ve harita bu p
 
 ## 4. Açık borçlar
 
-1. **İngilizce anlatım yok (47–55).** `public/audio/efes-en.json` yalnız ilk
-   46 durağı kapsıyor. Bu duraklarda İngilizce seçilse bile Türkçe metin kalır;
-   ses kaydı yok. Kilit: `src/data/audioDiscovery.test.ts` →
-   `KALKIDIKUM_ENGLISH_PENDING`.
+1. **İngilizce ses kaydı yok (47–55).** 2026-11-07'de İngilizce **metinler**
+   yazıldı: `public/audio/efes-en.json` 46 → **55 kayıt**, turun tamamı
+   çevrili. Ses kaydı gerçek anlatım gerektirdiği için üretilmedi; o dokuz
+   durakta `audio` alanı yoktur ve arayüz "English audio is not available yet.
+   You can read the text." der. Kilit: `src/data/audioDiscovery.test.ts` →
+   `KALKIDIKUM_ENGLISH_AUDIO_PENDING` (liste sessizce büyüyemez).
 2. **Koordinatlar temsilî.** 54 ve 55 hâlâ stadyum noktasını paylaşıyor; sahada
    hassas ölçüm gerekiyor. 53 ve 50 de aynı hamam kompleksini paylaşıyor.
 3. **Tek kaynaklı iki durak:** 49 (Heksagon) ve 50 (Verulanus). İkinci bağımsız

@@ -18,14 +18,14 @@ import { GUIDE_PLACES } from "./places";
 const FILE = resolve(`public${AUDIO_TOUR_FILE}`);
 
 /**
- * İngilizce anlatımı henüz yazılmamış Kalkidikum durakları.
+ * İngilizce SES KAYDI henüz üretilmemiş dokuz durak.
  *
- * AÇIK BORÇ: dokuz durak için İngilizce metin ve ses kaydı yok. Ses dosyası
- * uydurulamaz; liste boşalana kadar `AudioDiscoverySheet` dil düğmesini
- * göstermez (çeviri eksikken İngilizce'ye geçmek yarım bir ekran üretirdi).
- * Çeviri yazıldıkça bu dizi küçülür; boşaldığında kilit de kalkar.
+ * 2026-11-07: metin çevirisi tamamlandı (55/55 durak). Ses kaydı gerçek
+ * anlatım gerektirdiği için uydurulamaz; bu duraklarda `audio` alanı yoktur ve
+ * arayüz "English audio is not available yet. You can read the text." der.
+ * Kayıt eklendikçe bu dizi küçülür, boşaldığında kilit kalkar.
  */
-const KALKIDIKUM_ENGLISH_PENDING = [
+const KALKIDIKUM_ENGLISH_AUDIO_PENDING = [
   "hydreion-kalkidikum",
   "triodos-meydani",
   "heksagon",
@@ -132,10 +132,13 @@ describe("sesli anlatım rehberi · çeviri kapsamı", () => {
       const file = resolve(`public${source}`);
       expect(existsSync(file), `${source} yok`).toBe(true);
       const translations = JSON.parse(readFileSync(file, "utf8")) as Record<string, { title: string; description: string; imageAlt: string; audio?: string }>;
-      // Çevirisi eksik durak bilinçli olarak listede tutulur: dil düğmesi yalnız
-      // TÜM duraklar çevriliyse gösterilir (bkz. aşağıdaki kilit).
+      // METİN çevirisi tam olmalı: hiçbir durak eksik kalamaz.
       const missing = tour!.stops.filter((stop) => !translations[stop.id]).map((stop) => stop.id);
-      expect(missing).toEqual(KALKIDIKUM_ENGLISH_PENDING);
+      expect(missing).toEqual([]);
+      // Ses kaydı ise henüz üretilmemiş olabilir; eksikler tam olarak
+      // bilinen borç listesi olmalı (sessizce büyüyemez).
+      const missingAudio = tour!.stops.filter((stop) => !translations[stop.id]?.audio).map((stop) => stop.id);
+      expect(missingAudio.sort()).toEqual([...KALKIDIKUM_ENGLISH_AUDIO_PENDING].sort());
       for (const stop of tour!.stops) {
         const translation = translations[stop.id];
         if (!translation) continue;
