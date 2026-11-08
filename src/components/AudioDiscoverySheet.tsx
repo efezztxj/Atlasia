@@ -92,7 +92,7 @@ export default function AudioDiscoverySheet({ tour, selectedIndex, onSelect, onC
     }
     setLanguage(value);
   };
-  const select = (index: number) => { audioRef.current?.pause(); onSelect(index); };
+  const select = (index: number) => { audioRef.current?.pause(); setError(null); onSelect(index); };
   return (
     <>
     <section
