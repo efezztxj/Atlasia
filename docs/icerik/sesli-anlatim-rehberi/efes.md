@@ -130,12 +130,17 @@ inmez: daha büyük kaydırma pini komşu yapıya taşır.
    (`/audio/efes-chalcidicum.mp3`, `efes-pollio-domitian-cesmesi.mp3`,
    `efes-domitian-cesmesi.mp3`). Böylece turun **57 durağının tamamı Türkçe
    sesli**; `SES_BEKLEYEN` listesi boş ve testte kilitli.
-6. **Ses tınısı denetlenmedi (açık).** Yeni Türkçe kayıtlar 45–47 ve 49–57;
-   teknik künye mevcut dosyalarla birebir (24 000 Hz, mono, 32 kbps CBR,
-   `TSSE = Lavf59.27.100`), ama turdaki eski kayıtlarla **kulakla**
-   karşılaştırma yapılmadı. Tını ayrı düşerse ilgili dosyalar yeniden
-   üretilmeli. İngilizce yeni kayıtlar da aynı künyede.
-
+6. **Ses tınısı — denetlendi, İngilizce 12 kayıt uyuşmuyor (8 Kasım 2026).**
+   Dinleme bu ortamda yapılamadığı için MFCC + bant enerjisi + f0 ile ölçüldü
+   ([denetim belgesi](./ses-tinisi-denetimi-2026-11-08.md)).
+   **Türkçe tutarlı:** 57 dosyanın grup ortalamaları 2.4–3.4 arası, perde
+   212–216 Hz; tek aykırı #55 (z ≈ +2.7).
+   **İngilizce tutarsız:** eski 45 dosya kullanıcının verdiği referans sese
+   0–8.5 uzaklıkta (ort. 5.0), yeni 12 dosya 10.4–12.9 (ort. 11.5); grup
+   mesafesi EN eski ↔ EN yeni 12.18'e karşı TR eski ↔ TR yeni 4.41. Fark
+   kodlama kaynaklı değil (üst bant sınırı ikisinde de ≈8.3 kHz).
+   **Yapılacak:** 45, 46, 47 ve 49–57 İngilizce kayıtları eski anlatıcı sesiyle
+   yeniden üretmek; her dosyada referansa uzaklık < 8.5 doğrulanacak.
 7. ~~45/46/47 pinleri üst üste biniyor.~~ **Kapatıldı (8 Kasım 2026).**
    Eski ofset yalnız birebir aynı koordinatı kaydırıyordu; üç durak 4–8 m
    aralıkla durduğu için eşik tutmuyordu. Eşik 20 m'ye çıkarıldı ve kümeler
