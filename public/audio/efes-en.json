@@ -13,7 +13,7 @@
   },
   "basilica-stoa": {
     "title": "Basilica Stoa",
-    "imageAlt": "Ruins of the Basilica Stoa at Ephesus",
+    "imageAlt": "The re-erected columns of the Basilica Stoa at Ephesus",
     "audio": "/audio/en-efes-basilica-stoa.mp3",
     "description": "This great colonnaded building ran along the northern side of the State Agora, framing the city's public space. In the year eleven CE, Gaius Sextilius Pollio and his family dedicated it to Artemis, the emperors and the city. Bull heads carved into the Ionic column capitals were among its striking details. The long hall offered shelter from rain and sun and was also associated with public affairs and meetings."
   },
@@ -85,7 +85,7 @@
   },
   "efes-stadyumu": {
     "title": "Stadium of Ephesus",
-    "imageAlt": "Stadium of Ephesus",
+    "imageAlt": "The seating rows of the ancient stadium of Ephesus",
     "audio": "/audio/en-efes-stadyum.mp3",
     "description": "The Stadium of Ephesus stretches across the northern part of the ancient city, near the slopes of Mount Panayır. This elongated space was used for various spectacles and competitions in the Roman period. Remains from different phases of its history can still be seen. The map marker represents the wider stadium area; it does not indicate a visitor entrance or walking route."
   },
@@ -110,13 +110,13 @@
   "oktagon": {
     "title": "Octagon",
     "description": "The Octagon is an eight-sided funerary monument on Curetes Street, near the Hellenistic Heroon. For many years it was associated with Arsinoe, the sister of Cleopatra. However, a scientific study published in 2025 found that the examined remains belonged to a young male and could not be Arsinoe's. This result does not, on its own, explain every phase of the monument's use and burials.",
-    "imageAlt": "Octagon",
+    "imageAlt": "Ruins in the upper part of Curetes Street; the Octagon stands within this row",
     "audio": "/audio/en-efes-oktagon.mp3"
   },
   "heroon": {
     "title": "Hellenistic Heroon",
     "description": "The Hellenistic Heroon is a monument near the Octagon, at the lower end of Curetes Street. The word heroon describes a monument associated with a hero cult. The structure is sometimes linked to Androclus, the legendary founder of Ephesus, but this identification is uncertain. The remains and proposed reconstructions help researchers explore the Hellenistic history of the city.",
-    "imageAlt": "Hellenistic Heroon",
+    "imageAlt": "View down Curetes Street from Hadrian's Gate; the Heroon stands at the western end of this row",
     "audio": "/audio/en-efes-heroon.mp3"
   },
   "latrina": {
@@ -157,7 +157,7 @@
   },
   "magnesia-kapisi": {
     "title": "Magnesian Gate",
-    "imageAlt": "The Magnesian Gate at Ephesus",
+    "imageAlt": "The road that runs from the Magnesian Gate, south of the State Agora",
     "audio": "/audio/en-efes-magnesia-kapisi.mp3",
     "description": "The Magnesian Gate is one of the ancient city gates southeast of Ephesus. It takes its name from the road leading towards Magnesia. The gate and fortifications changed over different periods, and sources disagree on the date of its first construction. This ancient gate is not the same as the modern visitor entrance. The map marker shows an approximate location of the remains; visitor access should be checked separately."
   },
@@ -263,11 +263,23 @@
     "audio": "/audio/en-efes-tiyatro-cesmesi.mp3",
     "description": "The Hellenistic fountain house near the stage building of the Great Theatre is an example of the water architecture of ancient Ephesus. Ionic columns at its front and carefully worked marble are among its distinctive features. The building was also altered in Roman times. It should not be confused with another Hellenistic fountain near the Terrace Houses. The map pin shows an approximate location. Sources differ on its position, and it is not a field survey."
   },
+  "chalcidicum": {
+    "title": "Chalcidicum",
+    "imageAlt": "Curetes Street; the Chalcidicum lies at its western end, facing the Basilica Stoa",
+    "description": "At the western edge of Domitian Square stands a massive substructure that carried the western end of the Basilica Stoa. Its name comes from the Latin chalcidicum, a porticoed hall added to a basilica. Built of large ashlar blocks, it was added in the reign of Nero to support the western end of the stoa. Its interior was divided into three chambers, entered through doorways opening directly onto the square. The structure projects fifteen point nine metres into the square, and its outer walls were built of stone brought from Mount Panayır. In late antiquity a small church was installed inside it. The mass itself survives; nothing of its upper decoration remains.",
+    "audio": "/audio/en-efes-chalcidicum.mp3"
+  },
   "pollio-domitian-cesmesi": {
     "title": "Pollio Monument",
     "imageAlt": "The Pollio Monument at the western edge of Domitian Square",
     "description": "At the western edge of Domitian Square rises a memorial tomb built of ashlar blocks. It was erected in memory of Gaius Sextilius Pollio, a wealthy citizen of Ephesus, by his stepson. In this way the city honoured the man who had donated the Basilica on the State Agora and the aqueducts that brought water to the city. All that survives of the structure is its socle, eight by six and a half metres and some six and a half metres high. Together with the fountain later added beside it, it forms a single architectural screen facing the square.",
     "audio": "/audio/en-efes-pollio-domitian-cesmesi.mp3"
+  },
+  "domitian-cesmesi": {
+    "title": "Fountain of Domitian",
+    "imageAlt": "The Fountain of Domitian at Ephesus",
+    "description": "Just south of the Pollio Monument rises a fountain built in 92/93 CE, its great apse opening directly onto Domitian Square. Water carried by the arches on tendril-carved piers was distributed through a branching network of fired clay pipes. In the niche stood a sculptural group showing Odysseus blinding the one-eyed Polyphemus; the group was not made for this fountain but brought here from another building. The structure absorbed the older Pollio Monument, creating a single architectural screen. After the emperor's death his name was chiselled out of the inscription here as well.",
+    "audio": "/audio/en-efes-domitian-cesmesi.mp3"
   },
   "laecanius-cesmesi": {
     "title": "Fountain of Laecanius Bassus",
@@ -288,14 +300,14 @@
     "audio": "/audio/en-efes-triodos-meydani.mp3"
   },
   "heksagon": {
-    "title": "Hexagon",
-    "imageAlt": "Curetes Street looking east; the Hexagon lies beneath the street steps",
-    "description": "East of the Octagon and west of the Stoa of Alytarches, beneath the steps of Curetes Street, lies a small monument with a hexagonal plan. Uncovered in the 1994 excavation, it was almost completely buried when the street level was raised, so it is hard to pick out as a visitor. Its function is not certain; it is read together with the neighbouring upper-city monuments, the Octagon and the Heroon. Its name describes only its plan, not its identity. The position is approximated from the west-to-east sequence Heroon–Octagon–Hexagon; it is not a point measured on site. The photograph shows the street, not the monument.",
+    "title": "Hexagon (Hexagonal Monument)",
+    "imageAlt": "The upper stretch of Curetes Street; the Hexagon stands in the row of monuments along its south side",
+    "description": "On the south side of Curetes Street, between the Octagon and the Stoa of Alytarches, stands a small monument on a hexagonal plan. It was brought to light in the 1994 excavations; in late antiquity another structure was built over it, and the paving of the street ran across it as well. The building had three parts: a marble three-stepped base about one and a half metres high, a colonnaded superstructure above it, and a conical roof. Its circumference was five point six metres and its height nine to ten metres. Inside stood the statue of the person honoured. Pottery found in the building dates it to around the late first century BC. Its position belongs to the row of burial and honorary monuments along the Embolos.",
     "audio": "/audio/en-efes-heksagon.mp3"
   },
   "verulanus-meydani-salonu": {
     "title": "Hall of Verulanus",
-    "imageAlt": "View towards the Church of Mary; the Hall of Verulanus lies beside it",
+    "imageAlt": "The eastern corner of the Square and Hall of Verulanus, looking toward the Church of Mary",
     "description": "The largest athletic area of the harbour district was a colonnaded court about 200 by 240 metres. It takes its name from Verulanus, high priest of Asia under Hadrian. Its floor was paved in thirteen different shades of marble, and the surrounding colonnaded walk (xystos) was where athletes trained. The Harbour Baths lie to its east, the Church of Mary — also called the harbour church — to its west. The court's edges are now under soil, so the pin is representative: it marks the eastern corner beside the Church of Mary. The point given in the sources overlaps the Harbour Baths, so it was not used as it stands.",
     "audio": "/audio/en-efes-verulanus-salonu.mp3"
   },
@@ -328,17 +340,5 @@
     "imageAlt": "A preserved stretch of the Hellenistic city wall on the slope of Bülbül Mountain",
     "description": "When Lysimachos refounded Ephesus in the early third century BCE he enclosed the city with a wall more than nine kilometres long; over three kilometres of that line still stand. The wall followed the slopes of Panayır and Bülbül mountains, protecting the harbour and the upper city. In the sixth century the Byzantine emperor Justinian left traces of repair and rebuilding. The point marked here is not a gate or an entrance but a preserved stretch of wall on the hillside; the whole circuit cannot be walked as a single stop. The coordinate comes from the location recorded for the Commons photograph.",
     "audio": "/audio/en-efes-kent-surlari.mp3"
-  },
-  "chalcidicum": {
-    "title": "Chalcidicum",
-    "imageAlt": "The western end of the Basilica Stoa; the Chalcidicum is its substructure",
-    "description": "At the western edge of Domitian Square stands a massive substructure that carried the western end of the Basilica Stoa. Its name comes from the Latin chalcidicum, a porticoed hall added to a basilica. Built of large ashlar blocks, it was added in the reign of Nero to support the western end of the stoa. Its interior was divided into three chambers, entered through doorways opening directly onto the square. The structure projects fifteen point nine metres into the square, and its outer walls were built of stone brought from Mount Panayır. In late antiquity a small church was installed inside it. The mass itself survives; nothing of its upper decoration remains.",
-    "audio": "/audio/en-efes-chalcidicum.mp3"
-  },
-  "domitian-cesmesi": {
-    "title": "Fountain of Domitian",
-    "imageAlt": "The apse of the Fountain of Domitian and the Pollio Monument",
-    "description": "Just south of the Pollio Monument rises a fountain built in 92/93 CE, its great apse opening directly onto Domitian Square. Water carried by the arches on tendril-carved piers was distributed through a branching network of fired clay pipes. In the niche stood a sculptural group showing Odysseus blinding the one-eyed Polyphemus; the group was not made for this fountain but brought here from another building. The structure absorbed the older Pollio Monument, creating a single architectural screen. After the emperor's death his name was chiselled out of the inscription here as well.",
-    "audio": "/audio/en-efes-domitian-cesmesi.mp3"
   }
 }

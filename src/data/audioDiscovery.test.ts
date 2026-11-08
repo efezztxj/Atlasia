@@ -21,20 +21,18 @@ const FILE = resolve(`public${AUDIO_TOUR_FILE}`);
 /**
  * Türkçe ses kaydı henüz üretilmemiş duraklar.
  *
- * 2026-11-08: Liste BOŞ — turun 57 durağının tamamı Türkçe sesli.
- * Yeni durak eklenirse ve sesi yoksa buraya yazılır; test sessiz büyümeyi
- * engeller (kayıt yoksa durak bu listede olmak ZORUNDA).
- */
-const SES_BEKLEYEN: string[] = [];
-
-/**
- * İngilizce SES KAYDI henüz üretilmemiş duraklar.
+ * 2026-11-08 (main birleşmesi): Heksagon'un metni ve konumu yeniden yazıldı
+ * (Kalkidikum parçası değil; Kuretler Caddesi güneyinde altıgen monopteros).
+ * Eski `efes-heksagon.mp3` yanlış metni okuyordu, bağlantı kaldırıldı; yeni
+ * Türkçe kayıt gelene kadar durak bu listede kalır. İngilizce kayıt yeni
+ * metinden üretildi ve bağlandı.
  *
- * 2026-11-08: Liste BOŞ — 57 durağın tamamı İngilizce sesli.
- * Metin 2026-11-07'de, ses 8 Kasım'da tamamlandı. Kayıt eklendikçe küçülen
- * kilit artık boş; yeni durak sessizce eklenemez (kayıt yoksa durak bu
- * listede olmak ZORUNDA).
+ * Diğer 56 durakta hem TR hem EN kayıt var; listeler bunun dışında BOŞ kalmalı
+ * ki sesi olmayan durak sessizce eklenemesin.
  */
+const SES_BEKLEYEN: string[] = ["heksagon"];
+
+/** İngilizce ses kaydı bekleyen durak kalmadı (57/57). */
 const KALKIDIKUM_ENGLISH_AUDIO_PENDING: string[] = [];
 
 describe("sesli anlatım rehberi · tek dosya yapısı", () => {
@@ -216,6 +214,31 @@ describe("sesli anlatım rehberi · durak içeriği", () => {
     }
   });
 
+  it("hiçbir görsel 'kullanım izni doğrulanmadı' durumunda yayına çıkmaz", () => {
+    // NEDEN: 2026-11-07'ye kadar `heroon` (#20) ve `magnesia-kapisi` (#27)
+    // Turkish Archaeological News'ten alınmış, telif durumu doğrulanmamış
+    // fotoğraflarla yayındaydı. Arayüz bunu "Kullanım izni doğrulanmadı" diye
+    // etiketliyordu ama engellemiyordu. Artık ikisi de özgür lisanslı
+    // (CC BY-SA 4.0, Dosseman) dosyalarla değiştirildi.
+    //
+    // Kural: bir durağın görseli ancak lisansı ADIYLA yazılmışsa yayına girer.
+    // Yeni bir yer eklerken telifi belirsiz fotoğraf kullanılacaksa bu test
+    // kırılır; görseli değiştir ya da yazılı izin al. Kural sessizce
+    // gevşetilmesin diye beyaz liste yok.
+    const BELIRSIZ = ["Kullanım izni doğrulanmadı", "doğrulanmadı", "unknown", "bilinmiyor", ""];
+    for (const tour of AUDIO_DISCOVERY_TOURS) {
+      for (const stop of tour.stops) {
+        const image = stop.image!;
+        expect(
+          BELIRSIZ.includes(image.license.trim()),
+          `${stop.id}: görsel lisansı doğrulanmamış ("${image.license}") — kaynak: ${image.source}`,
+        ).toBe(false);
+        // Lisans adı varsa bağlantısı da olmalı; atıf yapılabilir olmalı.
+        expect(new URL(image.licenseUrl).protocol, `${stop.id}: lisans bağlantısı geçersiz`).toBe("https:");
+      }
+    }
+  });
+
   it("aynı fiziksel noktayı paylaşan duraklar açıkça bildirilir", () => {
     for (const tour of AUDIO_DISCOVERY_TOURS) {
       const byCoord = new Map<string, string[]>();
@@ -254,18 +277,20 @@ describe("sesli anlatım rehberi · durak içeriği", () => {
     }
   });
 
-  it("yaklaşık konumlu dört durak açıkça işaretli", () => {
+  it("yaklaşık konumlu üç durak açıkça işaretli", () => {
     // 51 Heksagon (sıralamadan türetilmiş nokta), 52 Verulanus (avlu toprak
     // altında), 53 Antik Liman (havza ortası), 57 sur kesiti. Nokta silinmez;
     // arayüzde "≈ yaklaşık konum" yazar ve pin erişilebilir adı bunu söyler.
     const efes = AUDIO_DISCOVERY_TOURS.find((tour) => tour.placeId === "efes")!;
+    // 51 Heksagon main birleşmesinde ÖAW/Berns kaynaklı gerçek bir noktaya
+    // taşındığı için listeden çıktı; kalan üç durak temsilî.
     const approximate = efes.stops.filter((stop) => stop.coordinateAccuracy === "approximate");
-    expect(approximate.map((stop) => stop.no)).toEqual([51, 52, 53, 57]);
+    expect(approximate.map((stop) => stop.no)).toEqual([52, 53, 57]);
     for (const stop of approximate) {
       expect(new URL(stop.coordinateSource).protocol).toBe("https:");
       expect(stop.sources.length).toBeGreaterThanOrEqual(2);
     }
     // Geri kalan 53 durak kesin nokta sayılır; sessizce "yaklaşık" işaretlenemez.
-    expect(efes.stops.length - approximate.length).toBe(53);
+    expect(efes.stops.length - approximate.length).toBe(54);
   });
 });

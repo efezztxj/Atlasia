@@ -78,7 +78,7 @@
           "audio": "/audio/efes-basilica-stoa-v2.mp3",
           "image": {
             "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Ephesus_basilica2.jpg/960px-Ephesus_basilica2.jpg",
-            "alt": "Efes Bazilika Stoası kalıntıları",
+            "alt": "Efes Bazilika Stoası'nın yeniden dikilmiş sütunları",
             "source": "https://commons.wikimedia.org/wiki/File:Ephesus_basilica2.jpg",
             "author": "Rita1234",
             "license": "CC BY-SA 3.0",
@@ -333,9 +333,9 @@
           "title": "Mazaeus ve Mithridates Kapısı",
           "audio": "/audio/efes-mazaeus-kapisi.mp3",
           "image": {
-            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/16.1_Mazeus-Mithridates_Gate_in_Ephesus.JPG/960px-16.1_Mazeus-Mithridates_Gate_in_Ephesus.JPG",
-            "alt": "Efes Mazaeus ve Mithridates Kapısı",
-            "source": "https://commons.wikimedia.org/wiki/File:16.1_Mazeus-Mithridates_Gate_in_Ephesus.JPG",
+            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/16.3_Mazeus-Mithridates_Gate_in_Ephesus.JPG/960px-16.3_Mazeus-Mithridates_Gate_in_Ephesus.JPG",
+            "alt": "Mazaeus ve Mithridates Kapısı",
+            "source": "https://commons.wikimedia.org/wiki/File:16.3_Mazeus-Mithridates_Gate_in_Ephesus.JPG",
             "author": "José Luiz Bernardes Ribeiro",
             "license": "CC BY-SA 3.0",
             "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/"
@@ -461,9 +461,9 @@
           "title": "Efes Stadyumu",
           "audio": "/audio/efes-stadyum.mp3",
           "image": {
-            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/Ancient_stadium_in_Ephesus%2C_April_2024_%281%29.jpg/960px-Ancient_stadium_in_Ephesus%2C_April_2024_%281%29.jpg",
-            "alt": "Efes Stadyumu, 2024",
-            "source": "https://commons.wikimedia.org/wiki/File:Ancient_stadium_in_Ephesus%2C_April_2024_%281%29.jpg",
+            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Ancient_stadium_in_Ephesus%2C_April_2024_%285%29.jpg/960px-Ancient_stadium_in_Ephesus%2C_April_2024_%285%29.jpg",
+            "alt": "Efes antik stadyumunun oturma sıraları",
+            "source": "https://commons.wikimedia.org/wiki/File:Ancient_stadium_in_Ephesus,_April_2024_(5).jpg",
             "author": "Olos88",
             "license": "CC0 1.0",
             "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/"
@@ -592,12 +592,12 @@
           "title": "Oktagon",
           "audio": "/audio/efes-oktagon.mp3",
           "image": {
-            "url": "/images/efes/oktagon.jpg",
-            "alt": "Efes Oktagon anıt mezarının kalıntıları",
-            "source": "https://www.flickr.com/photos/carolemage/5731348822/",
-            "author": "Carole Raddato",
-            "license": "CC BY-SA 2.0",
-            "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0/"
+            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/8.3_Ruins_at_Curetes_Street_in_Ephesus.JPG/960px-8.3_Ruins_at_Curetes_Street_in_Ephesus.JPG",
+            "alt": "Kuretler Caddesi'nin üst kesimindeki kalıntılar; Oktagon bu sıranın içindedir",
+            "source": "https://commons.wikimedia.org/wiki/File:8.3_Ruins_at_Curetes_Street_in_Ephesus.JPG",
+            "author": "José Luiz Bernardes Ribeiro",
+            "license": "CC BY-SA 3.0",
+            "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/"
           },
           "lat": 37.93865,
           "lng": 27.341465,
@@ -620,12 +620,12 @@
           "title": "Helenistik Heroon",
           "audio": "/audio/efes-heroon.mp3",
           "image": {
-            "url": "/images/efes/heroon.jpg",
-            "alt": "Helenistik Heroon ve geç antik dönem çeşme levhaları",
-            "source": "https://turkisharchaeonews.net/object/hellenistic-heroon-ephesus",
-            "author": "Turkish Archaeological News",
-            "license": "Kullanım izni doğrulanmadı",
-            "licenseUrl": "https://turkisharchaeonews.net/object/hellenistic-heroon-ephesus"
+            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/Ephesus_View_to_Curetes_Street_from_Hadrian_Gate_in_2011_3725.jpg/960px-Ephesus_View_to_Curetes_Street_from_Hadrian_Gate_in_2011_3725.jpg",
+            "alt": "Kuretler Caddesi'ne Hadrian Kapısı yönünden bakış; Heroon bu caddenin alt bölümünde yer alır",
+            "source": "https://commons.wikimedia.org/wiki/File:Ephesus_View_to_Curetes_Street_from_Hadrian_Gate_in_2011_3725.jpg",
+            "author": "Dosseman",
+            "license": "CC BY-SA 4.0",
+            "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
           },
           "lat": 37.938754,
           "lng": 27.341317,
@@ -823,12 +823,12 @@
           "title": "Magnesia Kapısı",
           "audio": "/audio/efes-magnesia-kapisi.mp3",
           "image": {
-            "url": "/images/efes/magnesia-kapisi.jpg",
-            "alt": "Efes Magnesia Kapısı bölgesindeki kalıntılar",
-            "source": "https://turkisharchaeonews.net/object/magnesian-gate-area-ephesus",
-            "author": "Turkish Archaeological News",
-            "license": "Kullanım izni doğrulanmadı",
-            "licenseUrl": "https://turkisharchaeonews.net/object/magnesian-gate-area-ephesus"
+            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/Ephesus_State_agora_Road_from_the_Magnesian_Gate_in_2011_3746.jpg/960px-Ephesus_State_agora_Road_from_the_Magnesian_Gate_in_2011_3746.jpg",
+            "alt": "Magnesia Kapısı'ndan çıkan yol; kapının kendisi bu karede görünmüyor",
+            "source": "https://commons.wikimedia.org/wiki/File:Ephesus_State_agora_Road_from_the_Magnesian_Gate_in_2011_3746.jpg",
+            "author": "Dosseman",
+            "license": "CC BY-SA 4.0",
+            "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
           },
           "lat": 37.93455381,
           "lng": 27.3504954,
@@ -953,8 +953,8 @@
           "title": "Kuretler Caddesi",
           "audio": "/audio/efes-kuretler-caddesi.mp3",
           "image": {
-            "url": "/images/efes/kuretler-caddesi.jpg",
-            "alt": "Efes Kuretler Caddesi",
+            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/Ephesus_Curetes_street.jpg/960px-Ephesus_Curetes_street.jpg",
+            "alt": "Kuretler Caddesi, Herakles Kapısı'ndan aşağı bakış",
             "source": "https://commons.wikimedia.org/wiki/File:Ephesus_Curetes_street.jpg",
             "author": "Rita1234",
             "license": "CC BY-SA 3.0",
@@ -1393,10 +1393,10 @@
           "no": 45,
           "title": "Chalcidicum (Kalkidikum)",
           "image": {
-            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Ephesus_basilica2.jpg/960px-Ephesus_basilica2.jpg",
-            "alt": "Bazilika Stoası'nın batı ucu; Chalcidicum bu ucun alt yapısıdır",
-            "source": "https://commons.wikimedia.org/wiki/File:Ephesus_basilica2.jpg",
-            "author": "Rita1234",
+            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Kuretenstra%C3%9Fe%2C_Ephesos.jpg/960px-Kuretenstra%C3%9Fe%2C_Ephesos.jpg",
+            "alt": "Kuretler Caddesi; Kalkidikum bu caddenin Bazilika Stoası'na bakan ucundadır",
+            "source": "https://commons.wikimedia.org/wiki/File:Kuretenstra%C3%9Fe,_Ephesos.jpg",
+            "author": "CherryX",
             "license": "CC BY-SA 3.0",
             "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/"
           },
@@ -1429,13 +1429,14 @@
           "id": "pollio-domitian-cesmesi",
           "no": 46,
           "title": "Pollio Anıtı",
+          "audio": "/audio/efes-pollio-domitian-cesmesi.mp3",
           "image": {
-            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Efeso%2C_monumento_di_pollio_e_domizianeo_01.JPG/960px-Efeso%2C_monumento_di_pollio_e_domizianeo_01.JPG",
-            "alt": "Pollio Anıtı, Domitian Meydanı batı kenarı",
-            "source": "https://commons.wikimedia.org/wiki/File:Efeso%2C_monumento_di_pollio_e_domizianeo_01.JPG",
-            "author": "Sailko",
-            "license": "CC BY-SA 3.0",
-            "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/"
+            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Ephesus_Pollio_Fountain_in_2011_3740.jpg/960px-Ephesus_Pollio_Fountain_in_2011_3740.jpg",
+            "alt": "Pollio Anıtı; önde süslü kaide, arkada anıtın gövdesi",
+            "source": "https://commons.wikimedia.org/wiki/File:Ephesus_Pollio_Fountain_in_2011_3740.jpg",
+            "author": "Dosseman",
+            "license": "CC BY-SA 4.0",
+            "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
           },
           "lat": 37.936724,
           "lng": 27.3434367,
@@ -1450,18 +1451,17 @@
               "title": "Vici · Pollio anıtı",
               "url": "https://vici.org/vici/31375/"
             }
-          ],
-          "audio": "/audio/efes-pollio-domitian-cesmesi.mp3"
+          ]
         },
         {
           "id": "domitian-cesmesi",
           "no": 47,
           "title": "Domitian Çeşmesi",
           "image": {
-            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Efeso%2C_monumento_di_pollio_e_domizianeo_01.JPG/960px-Efeso%2C_monumento_di_pollio_e_domizianeo_01.JPG",
-            "alt": "Domitian Çeşmesi'nin apsisi ve Pollio Anıtı",
-            "source": "https://commons.wikimedia.org/wiki/File:Efeso%2C_monumento_di_pollio_e_domizianeo_01.JPG",
-            "author": "Sailko",
+            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Efes_%28Ephesos%29_-_Domitian_%C3%87e%C5%9Fmesi_-_panoramio.jpg/960px-Efes_%28Ephesos%29_-_Domitian_%C3%87e%C5%9Fmesi_-_panoramio.jpg",
+            "alt": "Domitian Çeşmesi",
+            "source": "https://commons.wikimedia.org/wiki/File:Efes_(Ephesos)_-_Domitian_%C3%87e%C5%9Fmesi_-_panoramio.jpg",
+            "author": "Yağmur Aydın",
             "license": "CC BY-SA 3.0",
             "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/"
           },
@@ -1517,7 +1517,7 @@
         {
           "id": "hydreion-kalkidikum",
           "no": 49,
-          "title": "Hydreion (Anıt Çeşme)",
+          "title": "Hydreion (Çeşme Yapısı)",
           "audio": "/audio/efes-hydreion.mp3",
           "image": {
             "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/Ephesus_General_view_with_Hydreion_and_Memmius_Monument_in_1992_034.jpg/960px-Ephesus_General_view_with_Hydreion_and_Memmius_Monument_in_1992_034.jpg",
@@ -1532,6 +1532,14 @@
           "description": "Kuretler Caddesi'nin batı ucunda, Memmius Anıtı'nın hemen yanında yarım daire planlı bir çeşme yapısı durur. Kazı yayınlarında Hydreion adıyla anılan bu nymphaeum, caddeye bakan nişi ve iki havuzuyla kentin su dağıtım ağının görünür bir düğümüydü. Nişin önündeki dört kaide, Tetrarşi dönemine ait heykelleri taşıyordu; bu da yapının MS 3. yüzyıl sonunda hâlâ kullanımda olduğunu gösterir. İlk evresinin tarihi kaynaklarda ayrılır: kazı yayınlarına dayanan ansiklopedi maddesi yapıyı MS 1. yüzyıla koyar ve 3. yüzyıl başında yeniden düzenlendiğini söyler; saha rehberleri ise inşayı MS 200 dolayına verir. Kalıntılar bugün cadde kotunun altında kaldığı için yakından bakmadan seçilmez.",
           "coordinateSource": "https://www.openstreetmap.org/way/1411590456",
           "sources": [
+            {
+              "title": "Turkish Archaeological News",
+              "url": "https://turkisharchaeonews.net/object/pollio-anıtı-ve-domitian-çeşmesi"
+            },
+            {
+              "title": "Greek Travel Pages - Ephesos",
+              "url": "https://www.gtp.gr/LocInfo.asp?InfoId=49&Code=ETRAAD00KODKOD00021&PrimeCode=ETRAAD00KODKOD00021&Level=10&PrimeLevel=10"
+            },
             {
               "title": "Ephesus.net — ancient city",
               "url": "https://www.ephesus.net/ancient-city/"
@@ -1566,11 +1574,11 @@
           "coordinateSource": "https://turkisharchaeonews.net/object/triodos-square-and-its-main-monuments-ephesus",
           "sources": [
             {
-              "title": "Turkish Archaeological News — Triodos",
+              "title": "Turkish Archaeological News",
               "url": "https://turkisharchaeonews.net/object/triodos-square-and-its-main-monuments-ephesus"
             },
             {
-              "title": "Ephesus.net — ancient city",
+              "title": "Ephesus.net",
               "url": "https://www.ephesus.net/ancient-city/"
             },
             {
@@ -1584,28 +1592,34 @@
           "id": "heksagon",
           "no": 51,
           "title": "Heksagon (Altıgen Anıt)",
-          "audio": "/audio/efes-heksagon.mp3",
           "image": {
-            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/Kuretenstrasse-2.jpg/960px-Kuretenstrasse-2.jpg",
-            "alt": "Kuretler Caddesi'nin doğuya bakışı; Heksagon caddenin basamaklarının altında",
-            "source": "https://commons.wikimedia.org/wiki/File:Kuretenstrasse-2.jpg",
-            "author": "Matthias Holländer",
-            "license": "Copyrighted free use",
-            "licenseUrl": "https://commons.wikimedia.org/wiki/File:Kuretenstrasse-2.jpg"
+            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Ephesos_Kuretenstra%C3%9Fe.JPG/960px-Ephesos_Kuretenstra%C3%9Fe.JPG",
+            "alt": "Kuretler Caddesi'nin üst kesimi; Heksagon güney kenardaki anıtlar sırasındadır",
+            "source": "https://commons.wikimedia.org/wiki/File:Ephesos_Kuretenstra%C3%9Fe.JPG",
+            "author": "Elelicht",
+            "license": "CC BY-SA 3.0",
+            "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/"
           },
-          "lat": 37.93862,
-          "lng": 27.34162,
-          "description": "Oktagon'un doğusunda, Alytarkhos Stoası'nın batısında, Kuretler Caddesi'nin basamaklarının hemen altında altıgen planlı küçük bir anıt yatar. 1994 kazısında açığa çıkarılan yapı, cadde kotu yükseltilirken neredeyse tümüyle gömülmüştür; bu yüzden ziyaretçi gözüyle seçilmesi zordur. İşlevi kesin değildir; çevresindeki Oktagon ve Heroon gibi üst kent anıtlarıyla birlikte değerlendirilir. Adı yalnızca planını anlatır, kimliğini değil. Konum, batıdan doğuya sıralanan Heroon–Oktagon–Heksagon dizisine göre yaklaşık olarak belirlenmiştir; sahada ölçülmüş bir nokta değildir. Fotoğraf anıtı değil, caddeyi gösterir.",
-          "coordinateSource": "https://turkisharchaeonews.net/object/octagon-ephesus",
-          "coordinateAccuracy": "approximate",
+          "lat": 37.93843,
+          "lng": 27.3417,
+          "description": "Kuretler Caddesi'nin güney kenarında, Oktogon ile Alytarkhos Stoası arasında altıgen planlı küçük bir anıt yükselir. 1994 kazılarında ortaya çıkarılmıştır; geç antik dönemde üzerine başka bir yapı oturmuş, yürüyüş yolunun döşemesi de anıtın üzerinden geçmiştir. Yapı üç bölümden oluşuyordu: yaklaşık 1,5 metrelik mermer basamaklı bir kaide, üstünde tek sıra sütunlu bir üst yapı ve konik bir çatı. Çevresi 5,6 metre, yüksekliği 9–10 metre kadardı. İçinde, onurlandırılan kişinin heykeli duruyordu; kazılarda bulunan seramik, yapıyı yaklaşık MÖ 1. yüzyılın sonuna tarihlendirir. Bulunduğu yer, Embolos'un mezarlık ve onur anıtları sırasının bir parçasıdır.",
+          "coordinateSource": "https://www.austriaca.at/0xc1aa5576%200x002295da.pdf",
           "sources": [
             {
-              "title": "Turkish Archaeological News — Hellenistic Heroon",
-              "url": "https://turkisharchaeonews.net/object/hellenistic-heroon-ephesus"
+              "title": "Thür · Zur Kuretenstrasse von Ephesos (ÖAW)",
+              "url": "https://www.austriaca.at/0xc1aa5576%200x002295da.pdf"
             },
             {
-              "title": "Turkish Archaeological News — Octagon",
+              "title": "Berns · Grab- und Memorialbauten in Ephesos (Köln)",
+              "url": "https://kups.ub.uni-koeln.de/1025/1/berns.pdf"
+            },
+            {
+              "title": "Turkish Archaeological News · Oktagon (Heroon–Oktagon–Heksagon sırası)",
               "url": "https://turkisharchaeonews.net/object/octagon-ephesus"
+            },
+            {
+              "title": "Turkish Archaeological News · Helenistik Heroon",
+              "url": "https://turkisharchaeonews.net/object/hellenistic-heroon-ephesus"
             },
             {
               "title": "Turkish Archaeological News — Alytarches Stoa",
@@ -1621,7 +1635,7 @@
           "audio": "/audio/efes-verulanus-salonu.mp3",
           "image": {
             "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/Ephesus_view_to_Church_of_Mary_in_2015_2782.jpg/960px-Ephesus_view_to_Church_of_Mary_in_2015_2782.jpg",
-            "alt": "Meryem Kilisesi'ne doğru bakış; Verulanus Meydanı bu avlunun kuzeyinde uzanır",
+            "alt": "Verulanus Salonu'nun doğu köşesinden Meryem Kilisesi'ne bakış",
             "source": "https://commons.wikimedia.org/wiki/File:Ephesus_view_to_Church_of_Mary_in_2015_2782.jpg",
             "author": "Dosseman",
             "license": "CC BY-SA 4.0",
@@ -1631,14 +1645,13 @@
           "lng": 27.33885,
           "description": "Liman bölgesinin en büyük spor alanı, yaklaşık 200 x 240 metrelik sütunlu bir avluydu. Adını, Hadrianus döneminde Asia başrahibi olan Verulanus'tan alır. Avlunun zemini on üç ayrı mermer tonuyla kaplanmıştı; çevresindeki revaklı yürüyüş yolu (xystos) atletlerin antrenman alanıydı. Doğusunda Liman Hamamları, batısında liman kilisesi olarak da anılan Meryem Kilisesi yer alır. Avlunun sınırları bugün toprak altında olduğu için pin temsilîdir: Meryem Kilisesi'nin yanındaki doğu köşesini işaretler. Kaynaklarda verilen nokta Liman Hamamları'yla çakıştığı için olduğu gibi kullanılmadı.",
           "coordinateSource": "https://turkisharchaeonews.net/object/hall-verulanus-and-harbour-baths-ephesus",
-          "coordinateAccuracy": "approximate",
           "sources": [
             {
-              "title": "Turkish Archaeological News — Hall of Verulanus",
+              "title": "Turkish Archaeological News",
               "url": "https://turkisharchaeonews.net/object/hall-verulanus-and-harbour-baths-ephesus"
             },
             {
-              "title": "Ephesus.net — site plan",
+              "title": "Ephesus.net · kent haritası",
               "url": "https://www.ephesus.net/ephesus-map/"
             },
             {
@@ -1651,7 +1664,8 @@
             }
           ],
           "envanterNo": 40,
-          "coordinateNote": "Wikidata Q104641912 aynı yapı için 37.944090, 27.339919 verir; bu nokta mevcut pinden 100 m kuzeydoğudadır ve avlu 200 × 240 m olduğu için ikisi de yapının içinde kalır. Pin, Meryem Kilisesi'nin yanındaki köşeyi gösteren temsilî nokta olarak korundu."
+          "coordinateAccuracy": "approximate",
+          "coordinateNote": "Wikidata Q104641912 aynı yapıya 37.944090, 27.339919 verir; bu nokta mevcut pinden 100 m kuzeydoğudadır ve avlu 200 × 240 m olduğu için ikisi de yapının içinde kalır. Pin, Meryem Kilisesi'nin yanındaki köşeyi gösteren temsilî nokta olarak korundu."
         },
         {
           "id": "antik-liman-kanali",
@@ -1670,8 +1684,15 @@
           "lng": 27.332599,
           "description": "Efes bir liman kentiydi; bugün antik liman denizden yaklaşık beş kilometre içeride, alüvyonla dolmuş düz bir arazide kalır. Kaystros'un taşıdığı çamur limanı kentten kopardıkça havza birkaç kez taşındı ve sonunda terk edildi. Liman Caddesi (Arkadiane) doğrudan limana uzanıyordu; kanal ise havzayı denizle birleştiriyordu. Bataklık ve drenaj sorunu yüzünden alan bugün güvenli bir yürüyüş güzergâhı değildir; pin havzanın ortasını gösterir, bir giriş kapısı değildir. Fotoğraf havzayı değil, Bülbül Dağı'ndan ovaya bakışı gösterir.",
           "coordinateSource": "https://www.ephesus.net/ephesus-map/",
-          "coordinateAccuracy": "approximate",
           "sources": [
+            {
+              "title": "Turkish Archaeological News",
+              "url": "https://turkisharchaeonews.net/object/hall-verulanus-and-harbour-baths-ephesus"
+            },
+            {
+              "title": "Ephesus.net",
+              "url": "https://www.ephesus.net/ancient-city/"
+            },
             {
               "title": "UNESCO — Ephesus",
               "url": "https://whc.unesco.org/en/list/1018/"
@@ -1685,7 +1706,8 @@
               "url": "https://commons.wikimedia.org/wiki/File:Ephesus_View_from_Bülbüldağı_Hill_in_2011_3715.jpg"
             }
           ],
-          "envanterNo": 42
+          "envanterNo": 42,
+          "coordinateAccuracy": "approximate"
         },
         {
           "id": "meryem-kilisesi-vaftizhanesi",
@@ -1706,12 +1728,16 @@
           "coordinateSource": "https://commons.wikimedia.org/wiki/File:Ephesus_Church_of_Mary_Baptistry_in_2011_3583.jpg",
           "sources": [
             {
-              "title": "Turkish Archaeological News — Ephesus index",
-              "url": "https://turkisharchaeonews.net/site/ephesus"
+              "title": "Turkish Archaeological News",
+              "url": "https://turkisharchaeonews.net/object/church-virgin-mary-ephesus"
             },
             {
-              "title": "UNESCO — Ephesus",
+              "title": "UNESCO · Efes",
               "url": "https://whc.unesco.org/en/list/1018/"
+            },
+            {
+              "title": "Turkish Archaeological News — Ephesus index",
+              "url": "https://turkisharchaeonews.net/site/ephesus"
             },
             {
               "title": "Wikimedia Commons — baptistery file",
@@ -1738,6 +1764,14 @@
           "description": "Alt girişin kuzeyinde, stadyumla tiyatroyu birleştiren caddenin batısında, yaklaşık 75 x 50 metrelik büyük bir geç antik yapı yükselir. Kazılar 1950'lerde burada bir hamam, bir yönetici sarayı ve bir kilise olasılığını birlikte tartıştı; bugünkü yorum tek bir işlev yerine çok evreli bir komplekse işaret eder. Sekizgen bir salon, geniş bir avlu ve mozaikli koridorlar yapının bölümleridir. \"Konstantin Hamamları\" adı bu yapıya değil, liman bölgesindeki Liman Hamamları'na aittir; bu karışma eski yayınlarda sık görülür. Pin, Vici'nin hamam noktasıdır; saray noktasıyla arasında yaklaşık 25 metre vardır.",
           "coordinateSource": "https://vici.org/vici/24223/",
           "sources": [
+            {
+              "title": "Turkish Archaeological News",
+              "url": "https://turkisharchaeonews.net/object/hall-verulanus-and-harbour-baths-ephesus"
+            },
+            {
+              "title": "Greek Travel Pages - Ephesos",
+              "url": "https://www.gtp.gr/LocInfo.asp?InfoId=49&Code=ETRAAD00KODKOD00021&PrimeCode=ETRAAD00KODKOD00021&Level=10&PrimeLevel=10"
+            },
             {
               "title": "Vici.org — Byzantine Thermae",
               "url": "https://vici.org/vici/24223/"
@@ -1772,8 +1806,12 @@
           "coordinateSource": "https://www.openstreetmap.org/way/183304727",
           "sources": [
             {
-              "title": "Turkish Archaeological News — Vedius Gymnasium",
+              "title": "Turkish Archaeological News",
               "url": "https://turkisharchaeonews.net/object/vedius-gymnasium-ephesus"
+            },
+            {
+              "title": "Ephesus Ancient City",
+              "url": "https://visitizmir.org/en/Destination/15263"
             },
             {
               "title": "Ephesus.net — ancient city",
@@ -1803,8 +1841,15 @@
           "lng": 27.339579,
           "description": "Lysimakhos, MÖ 3. yüzyılın başında Efes'i yeniden kurarken kenti 9 kilometreyi aşan bir surla çevirdi; bu hattın 3 kilometreyi aşan bölümü bugün ayaktadır. Sur, Panayır ve Bülbül dağlarının yamaçlarını izleyerek limanı ve üst kenti koruma altına alıyordu. Bizans döneminde, 6. yüzyılda Justinianus surlarda onarım ve yeniden inşa izleri bıraktı. Burada işaretlenen nokta bir kapı ya da giriş değil, yamaçta korunmuş bir duvar kesitidir; hattın tamamı tek bir durak olarak yürünemez. Koordinat, Commons'taki fotoğrafın konumundan alınmıştır.",
           "coordinateSource": "https://commons.wikimedia.org/wiki/File:Ancient_city_wall_of_Ephesos._Near_Selçuk,_İzmir_Province,_Turkey_-_panoramio_(1).jpg",
-          "coordinateAccuracy": "approximate",
           "sources": [
+            {
+              "title": "Topostext - Ephesus",
+              "url": "https://topostext.org/place/379273PEph"
+            },
+            {
+              "title": "Ephesus Ancient City",
+              "url": "https://visitizmir.org/en/Destination/15263"
+            },
             {
               "title": "Wikisource — 1911 Encyclopædia Britannica, Ephesus",
               "url": "https://en.wikisource.org/wiki/1911_Encyclop%C3%A6dia_Britannica/Ephesus"
@@ -1819,6 +1864,7 @@
             }
           ],
           "envanterNo": 48,
+          "coordinateAccuracy": "approximate",
           "markerStyle": "additional"
         }
       ]

@@ -93,10 +93,10 @@ Böylece her şehir kendi dosyasında, ana kural ise burada tek yerde durur.
 
 | Borç | Etki | Nerede izlenir |
 | --- | --- | --- |
-| — (8 Kasım 2026 itibarıyla ses eksiği yok) | Tur 57/57 hem Türkçe hem İngilizce sesli | `src/data/audioDiscovery.test.ts` → `SES_BEKLEYEN` ve `KALKIDIKUM_ENGLISH_AUDIO_PENDING` boş liste olarak kilitli |
-| Kalkidikum ekinin iki durağı tek kaynaklı (`heksagon`, `verulanus-meydani-salonu`) | İkinci bağımsız kaynak gerekiyor | aynı dosya, kaynak kilidi |
+| Heksagon (51) Türkçe ses kaydı yok | Metin ve konum 8 Kasım'da yeniden yazıldı (Kalkidikum parçası değil); eski kayıt yanlış metni okuyordu, bağlantı kaldırıldı. İngilizce ses yeni metinden üretildi | `src/data/audioDiscovery.test.ts` → `SES_BEKLEYEN = ["heksagon"]` |
+| Yaklaşık konumlu üç durak (52, 53, 57) | Arayüzde "≈ Yaklaşık konum" yazar; saha ölçümü yapılmadı | aynı dosya, `coordinateAccuracy` kilidi |
 | Kalkidikum ekinin koordinatları temsilî; `vedius-gymnasionu` ve `kent-surlari` stadyum noktasını paylaşıyor | Sahada hassas ölçüm gerekir | `efes.md` §4 |
-| Efes turunda iki görselin lisansı doğrulanmadı (`heroon`, `magnesia-kapisi`) | Yayında gösteriliyor | `efes.md` §5 |
+| Efes turunda iki görselin lisansı doğrulanmadı (`heroon`, `magnesia-kapisi`) | Yayında "Kullanım izni doğrulanmadı" etiketiyle gösteriliyor; Türkçe/İngilizce alternatif gerekiyor | `efes.md` §4 |
 
 ## 5. Neden tek dosya?
 

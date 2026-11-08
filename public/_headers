@@ -31,6 +31,16 @@
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
 
+# Tur verisi PARMAK İZİ TAŞIMAZ: içeriği her sürümde değişir, adı değişmez.
+# `/assets/*` kuralı bu dosyaya da uygulanır ve başlıklar BİRLEŞTİRİLİR
+# (Cloudflare Pages belgesi: "_headers" → "inherit all rules' headers"),
+# yani daha özel bir kural immutable'ı EZMEZ. Sonuç: kullanıcının tarayıcısı
+# eski rehberi bir yıl boyunca servis ediyordu. `!` ile genel kuraldan
+# kaldırıp kendi kısa ömrünü veriyoruz.
+/assets/sesli-turlar.json
+  ! Cache-Control
+  Cache-Control: no-cache, must-revalidate
+
 /icons/*
   Cache-Control: public, max-age=604800, stale-while-revalidate=86400
 

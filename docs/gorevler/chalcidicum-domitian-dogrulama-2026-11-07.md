@@ -160,3 +160,179 @@ Tek durakta birleşik tutulunca envanter 57, tur 55 kalıyordu. Bölündü:
 4. **Chalcidicum tek yapı kimliği tartışmalı.** Alzinger, yapının aslında
    Hellenistik agora için bir payanda olduğunu öne sürüyor; kesin plan
    bilinmiyor (birkaç kez yeniden yapıldı).
+
+---
+
+## 5. Ek bulgu: Heksagon (51) Kalkidikum'da değil
+
+**Tarih:** 2026-11-07 · **Durum:** düzeltildi (içerik, konum, kaynak, görsel, ses bağı)
+
+Turun 51. durağı `heksagon` gtp.gr'ye dayanan **tek ve yanlış** bir kayıtla
+girmişti: yapı Bazilika Stoası'nın batı ucunda, Kalkidikum'un bir parçası gibi
+tanımlanıyordu (`37.936739, 27.344431`, `sharedWith: ["basilica-stoa"]`,
+`audio: /audio/kalkidikum-heksagon.mp3`). Üçü de yanlış.
+
+**Doğru veriler (üç bağımsız kaynak):**
+
+| Kaynak | Katkı |
+| --- | --- |
+| Thür, *Zur Kuretenstrasse von Ephesos* (ÖAW) | Kuretler Caddesi güney sırası: Hadrian Kapısı → Oktogon → **Heroon** → doğuya "kleiner hexagonaler Zentralbau" |
+| Berns, *Grab- und Memorialbauten in Ephesos* (Köln) | "sog. Hexagon" Kuretenstraße'de; monopteros benzeri üst yapı |
+| Turkish Archaeological News · Oktagon / Heroon | Heroon → Oktogon → Heksagon sırası, batıdan doğuya; Oktogon GPS 37.938650, 27.341465 |
+
+- **Konum:** Kuretler Caddesi'nin (Embolos) **güney kenarı**, Oktogon'un doğusu,
+  Alytarkhos Stoası'nın batısı. 1994 kazısında açığa çıkarıldı; geç antik bir
+  yapı üzerine oturmuş, caddenin döşemesi anıtın üzerinden geçmiş.
+- **Kimlik:** altıgen planlı **monopteros onur anıtı**; içinde onurlandırılan
+  kişinin heykeli. Eski kazı raporlarındaki "nymphaeum" yorumu terk edildi.
+- **Ölçü:** kaide ~1,50 m (0,75 m üç kademeli krepidoma), çevre 5,60 m,
+  derinlik 4,80 m, yükseklik 9–10 m.
+- **Tarih:** seramiğe göre **MÖ 1. yy sonu** (Oktogon'dan sonra, ona bitişik).
+
+**Uygulanan düzeltmeler:**
+
+1. `title` → "Heksagon (Altıgen Anıt)"; TR ve EN metin baştan yazıldı
+   (`public/assets/sesli-turlar.json` + `public/audio/efes-en.json`).
+2. `lat/lng` → `37.938430, 27.341700` (Oktogon ile Alytarkhos arası);
+   `coordinateSource` Thür PDF'i; `sources` 4 kayıt / 3 bağımsız host.
+3. `sharedWith: ["basilica-stoa"]` kaldırıldı (artık aynı koordinatta değil).
+4. Görsel: yanlış yapıyı gösteren Bazilika Stoası fotoğrafı yerine Kuretler
+   Caddesi (Rita1234, CC BY-SA 3.0) — kaynak ve lisans alanları da düzeltildi.
+5. `audio` **kaldırıldı**: `kalkidikum-heksagon.mp3` eski (yanlış) metni okuyor.
+   `SES_BEKLEYEN` listesine `heksagon` eklendi.
+6. Kategori grubu: `kalkidikum` → **`curetes`** (Oktogon'un yanına).
+7. Kayıt paketi yeni metne hizalandı: `metinler/51-heksagon.txt`, `TUMU.txt`,
+   `dikte-metni.md`, `kayit-listesi.csv`, `ingilizce-ses-kayit-metinleri.md`,
+   `kalan-11-yer-ingilizce.md`. `PROMPT.md`'deki yanlış dosya yolu
+   (`49-heksagon.txt` → `51-heksagon.txt`) düzeltildi.
+
+**Aynı turda kapanan diğer borç:** 52 `verulanus-meydani-salonu` ikinci
+bağımsız kaynakla (ephesus.net kent haritası, 200 × 240 m) desteklendi.
+Turda artık tek kaynaklı durak yok.
+
+---
+
+## 6. Görsel süpürmesi (2026-11-07, ikinci tur)
+
+Tur 1'de 20 `heroon` ve 27 `magnesia-kapisi` görselleri kendi yapılarını
+göstermiyordu; lisansları da "kullanım izni doğrulanmadı" idi. Tur 2'de
+**57 durağın tamamı** gözden geçirildi.
+
+**Yöntem:** her görselin Commons künyesi `prop=imageinfo&iiprop=url|extmetadata`
+ile alındı; künye `thumburl` değeri **birebir** yazıldı. Thumb yolundaki
+`/x/xy/` öneki tahmin edilebilir değil — elle kurulan 8 yoldan 2'si yanlıştı
+(`Efes_Meryem_Kilisesi.jpg` gerçekte `/c/c4/`, `…2782.jpg` gerçekte `/6/60/`).
+
+**Değişen görseller (13 durak):**
+
+| # | Durak | Yeni dosya | Yazan / lisans |
+| --- | --- | --- | --- |
+| 3 | `basilica-stoa` | `Ephesus basilica2.jpg` | Rita1234 · CC BY-SA 3.0 |
+| 5 | `chalcidicum` | `Kuretenstraße, Ephesos.jpg` | CherryX · CC BY-SA 3.0 |
+| 9 | `mazaeus-mithridates` | `16.3 Mazeus-Mithridates Gate…JPG` | J. L. Bernardes Ribeiro · CC BY-SA 3.0 |
+| 14 | `efes-stadyumu` | `Ancient stadium … April 2024 (5).jpg` | Olos88 · **CC0** |
+| 16 | `kuretler-caddesi` | `Ephesus Curetes street.jpg` | Rita1234 · CC BY-SA 3.0 |
+| 19 | `oktagon` | `8.3 Ruins at Curetes Street…JPG` | J. L. Bernardes Ribeiro · CC BY-SA 3.0 |
+| 23 | `bizans-hamamlari` | `Harbor Baths (Ephesus) 10.jpg` | Satirdan kahraman · CC BY-SA 4.0 |
+| 27 | `magnesia-kapisi` | `…Road from the Magnesian Gate…3746.jpg` | Dosseman · CC BY-SA 4.0 |
+| 46 | `pollio-domitian-cesmesi` | `Ephesus Pollio Fountain in 2011 3740.jpg` | Dosseman · CC BY-SA 4.0 |
+| 47 | `domitian-cesmesi` | `Efes (Ephesos) - Domitian Çeşmesi - panoramio.jpg` | Yağmur Aydın · CC BY-SA 3.0 |
+| 51 | `heksagon` | `Ephesos Kuretenstraße.JPG` | Elelicht · CC BY-SA 3.0 |
+| 52 | `verulanus-meydani-salonu` | `Ephesus view to Church of Mary in 2015 2782.jpg` | Dosseman · CC BY-SA 4.0 |
+| 53 | `antik-liman-kanali` | `Ephesus Arcadiane (Harbour) Street in 2011 3615.jpg` | Dosseman · CC BY-SA 4.0 |
+| 56 | `meryem-kilisesi-vaftizhanesi` | `Efes Meryem Kilisesi.jpg` | Marmaracalypso · CC BY-SA 4.0 |
+| — | `vedius-gymnasionu` | `Turkey-2819 (2217175472) (2).jpg` | Dennis G. Jarvis · CC BY-SA 2.0 |
+
+Ayrıca 20 `heroon` → `…View to Curetes Street from Hadrian Gate…3725.jpg`
+(Dosseman, CC BY-SA 4.0).
+
+**Yerel dosyalar:** `heroon.jpg`, `magnesia-kapisi.jpg`, `kuretler-caddesi.jpg`,
+`oktagon.jpg` kaldırıldı. `oktagon.jpg` Kuretler Caddesi'ndeki **yazıt
+kaidelerini** gösteriyordu (Oktagon'u değil) ve atıfı Flickr'daki başka bir
+kareye aitti. Kalan 9 yerel görselin hepsi tek tek gözle doğrulandı.
+
+**Kapanan durum:**
+- 57/57 durağın görsel künyesi tam (`url`, `alt`, `source`, `author`, `license`,
+  `licenseUrl`) ve **hiçbiri** "doğrulanmadı" değil.
+- 57/57 görsel **benzersiz** — hiçbir durak başka bir durağın fotoğrafını
+  kullanmıyor.
+- Yerel dosya denetimi: 9 kullanılan / 9 mevcut / 0 eksik / 0 artık.
+
+**Yeni kilit (test):** `src/data/audioDiscovery.test.ts` içine eklenen kural
+"hiçbir görsel 'kullanım izni doğrulanmadı' durumunda yayına çıkmaz" —
+kara liste `doğrulanmadı|unknown|bilinmiyor`, boş lisans reddedilir,
+`licenseUrl` yalnız `https`. Hatalı dize geri konarak mutasyon testi yapıldı;
+test durağı adıyla yakaladı.
+
+**Kalan bilinen sınır:** görseller temsilîdir (stok/Commons), saha fotoğrafı
+değildir; 19 `oktagon` ve 51 `heksagon` için Commons'ta yapının **kendisini**
+gösteren özgür lisanslı bir kare bulunmadığından cadde görünümü kullanıldı,
+alt metinde bu açıkça belirtildi.
+
+---
+
+## 7. 46'nın sesi ve "canlı site değişmiyor" (2026-11-08)
+
+### 7.1 — 46'nın kaydı repoda duruyordu ama bağlanmamıştı
+
+`public/audio/efes-pollio-domitian-cesmesi.mp3` ve
+`public/audio/en-efes-pollio-domitian-cesmesi.mp3` dosyaları `e813c45`
+commitine girmişti, ancak `sesli-turlar.json` ve `efes-en.json` içinde 46'nın
+`audio` alanı **hiç yazılmamıştı**. Durak bu yüzden "Ses kaydı yok" diyordu.
+
+Kayıtların hangi metni okuduğu dinlenmeden, **boyut/karakter oranı** ile
+ölçüldü (53 TR ve 45 EN eşleşmiş dosyanın medyanı kalibrasyon):
+
+| Dosya | Boyut | Metin | Beklenen | Sapma | Sonuç |
+| --- | --- | --- | --- | --- | --- |
+| `efes-pollio-domitian-cesmesi.mp3` | 133.869 B | 498 krkt | 137.585 B | −%2,7 | güncel metni okuyor |
+| `en-efes-pollio-domitian-cesmesi.mp3` | 134.829 B | 543 krkt | 139.228 B | −%3,2 | güncel metni okuyor |
+| `kalkidikum-heksagon.mp3` | 102.861 B | 656 krkt | 180.961 B | −%43,2 | **eski metin — bağlanmadı** |
+
+46'nın iki kaydı da bağlandı, `SES_BEKLEYEN` ve
+`KALKIDIKUM_ENGLISH_AUDIO_PENDING` listelerinden düşürüldü. Kalan TR ses
+borcu 3: `chalcidicum`, `domitian-cesmesi`, `heksagon`.
+
+### 7.2 — Canlı site neden değişmiyordu: `_headers` başlıkları birleştiriyor
+
+`public/_headers` içinde şu iki kural vardı:
+
+```
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+```
+
+`sesli-turlar.json` bu desenin altında ve **adı parmak izi taşımıyor** —
+içeriği her sürümde değişiyor, dosya adı değişmiyor. Cloudflare Pages
+belgesi açık: eşleşen **tüm** kuralların başlıkları birleştirilir
+("An incoming request which matches multiple rules' URL patterns will inherit
+all rules' headers"); daha özel bir kural genel kuralı **ezmez**. Yani tur
+verisi tarayıcıda **bir yıl `immutable`** olarak önbelleğe alınıyordu.
+
+Kanıt: `https://atlasia.pages.dev/assets/sesli-turlar.json` sunucudan yeni
+içeriği veriyordu (46'nın yeni fotoğrafı oradaydı) ama kullanıcının tarayıcısı
+kendi disk önbelleğinden eski kopyayı okuyordu. Deploy değil, **başlık**
+hatasıydı.
+
+Düzeltme:
+
+```
+/assets/sesli-turlar.json
+  ! Cache-Control
+  Cache-Control: no-cache, must-revalidate
+```
+
+`! Cache-Control` genel kuralın başlığını kaldırır (Cloudflare "Detach a
+header"), sonra dosyaya kendi kısa ömrü verilir. Service worker zaten bu yol
+için ağ-öncelikli davranıyor; çevrimdışı yedeği korunuyor.
+
+**Kilit:** `src/config/cloudflareHeaders.test.ts` → "tur verisi parmak izi
+taşımadığı için uzun ömürlü önbelleğe alınmaz". Test ayrıştırıcısı `!` sözdizimini
+öğrenecek şekilde genişletildi. Kural silinerek mutasyon testi yapıldı; test
+yakaladı.
+
+**Kullanıcının yapması gereken (tek sefer):** Tarayıcı, düzeltme yayına
+girmeden önce eski dosyayı bir yıllık `immutable` olarak işaretledi. Bu yüzden
+ilk açılışta sayfayı **sert yenile** (masaüstü: Ctrl/Cmd + Shift + R; mobil:
+site verilerini temizle). Sonrasında dosya her ziyarette doğrulanır ve bu sorun
+tekrarlamaz.

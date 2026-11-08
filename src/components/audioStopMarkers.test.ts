@@ -98,7 +98,7 @@ describe("sesli keşif pinleri", () => {
     const stops = AUDIO_DISCOVERY_TOURS[0].stops;
     addAudioStopMarkers({} as Map, stops, 0, vi.fn());
     const approximate = stops.filter((stop) => stop.coordinateAccuracy === "approximate");
-    expect(approximate.map((stop) => stop.no)).toEqual([51, 52, 53, 57]);
+    expect(approximate.map((stop) => stop.no)).toEqual([52, 53, 57]);
     for (const stop of approximate) {
       const index = stops.indexOf(stop);
       expect(made[index].options.element.getAttribute("aria-label")).toContain("yaklaşık konum");

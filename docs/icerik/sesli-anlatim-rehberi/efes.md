@@ -37,10 +37,23 @@ Bu dokuz durak ayrı bir tur değil, Efes turunun devamıdır. Sekizi ören yeri
 çekirdeğinin içinde, 57 (korunmuş sur kesiti) sınırın dışında işaretlenir.
 Her biri 57 kayıtlık envanterdeki sıra numarasını `envanterNo` alanında taşır.
 
-**8 Kasım 2026:** Dokuz durağın Türkçe anlatımı yeniden kaydedildi
-(`/audio/efes-*.mp3`). Künye turdaki diğer kayıtlarla aynı — 24 000 Hz, mono,
-32 kbps CBR — süreler 38–50 sn. Okunan metin:
-`kayit-paketi/turkce-dikte-49-57.json`.
+> **8 Kasım 2026 — iki kaynak birleşti.** Aşağıdaki tablo `main`'in
+> kaynaklarını taşır; ses sütunu bu dalın katkısıdır. Tur 57/57 **İngilizce**,
+> 56/57 **Türkçe** sesli. Eksik olan tek kayıt Heksagon: metni ve konumu
+> 8 Kasım'da yeniden yazıldığı için eski Türkçe kayıt yanlış metni okuyordu.
+
+| # | Durak | Envanter no | Konum kaynağı | Fotoğraf | Ses |
+| --- | --- | --- | --- | --- | --- |
+| 49 | Hydreion (Çeşme Yapısı) | 14 | OSM yolu 1411590456 | Dosseman, Hydreion + Memmius · CC BY-SA 4.0 | TR + EN |
+| 50 | Triodos Meydanı | 16 | TAN Triodos | Sailko, Hadrian Kapısı + Kuretler Caddesi · CC BY-SA 3.0 | TR + EN |
+| 51 | Heksagon | 28 | Thür (ÖAW) + Berns | Elelicht, Kuretler Caddesi · CC BY-SA 3.0 | **TR yok**, EN var |
+| 52 | Verulanus Salonu | 40 | TAN — temsilî | Dosseman, Meryem Kilisesi'ne bakış · CC BY-SA 4.0 | TR + EN |
+| 53 | Antik Liman | 42 | Ephesus.net planı — havza ortası | Dosseman, Bülbül Dağı'ndan ovaya bakış · CC BY-SA 4.0 | TR + EN |
+| 54 | Meryem Kilisesi Vaftizhanesi | 44 | Commons dosya GPS'i | Dosseman, vaftiz havuzu · CC BY-SA 4.0 | TR + EN |
+| 55 | Bizans Hamamları | 45 | Vici 24223 | Jarvis, Bizans Sarayı · CC BY-SA 2.0 | TR + EN |
+| 56 | Vedius Gymnasionu | 47 | OSM yolu 183304727 | Raddato, Kaistros heykeli · CC BY-SA 2.0 | TR + EN |
+| 57 | Helenistik ve Bizans Kent Surları | 48 | Commons dosya GPS'i — kesit | Sepp, sur kesiti · CC BY-SA 3.0 | TR + EN |
+
 
 | # | Durak | Envanter no | Konum kaynağı | Fotoğraf |
 | --- | --- | --- | --- | --- |
@@ -81,8 +94,8 @@ tanımı "aynı fiziksel nokta"ydı; oysa koordinatlar aylar önce ayrılmışt�
 
 Kayıtlar karşılıklı da değildi (3 → 51 yazıyordu, 51 → 3 yazmıyordu). Düzeltme
 veride: alan yalnız gerçekten aynı nokta temsil edilirse kullanılır ve
-`src/data/audioDiscovery.test.ts` artık **karşılıklılık + ≤30 m** koşulunu arar.
-Şu an hiçbir durakta yazılı değil.
+`src/data/audioDiscovery.test.ts` **karşılıklılık + ≤30 m** koşulunu arar.
+Birleşme sonrası hiçbir durakta yazılı değil.
 
 Bunun yerine harita, birbirine **20 m'den yakın** durakların pinlerini 16 m
 yarıçaplı bir yay üzerinde kaydırır (`src/components/audioStopMarkers.ts`).
@@ -94,72 +107,57 @@ inmez: daha büyük kaydırma pini komşu yapıya taşır.
 ## 4. Açık borçlar
 
 1. ~~İngilizce ses kaydı eksiği.~~ **Kapatıldı (8 Kasım 2026).**
-   Turun 57 durağının tamamı hem Türkçe hem İngilizce sesli
-   (`/audio/efes-*.mp3`, `/audio/en-efes-*.mp3`). Son beş dosya: Chalcidicum,
-   Pollio, Domitian Çeşmesi, Vedius, Kent Surları.
-   `src/data/audioDiscovery.test.ts` içindeki iki borç listesi
-   (`SES_BEKLEYEN`, `KALKIDIKUM_ENGLISH_AUDIO_PENDING`) **boş** ve kilit
-   olarak duruyor: yeni durak sesi olmadan eklenemez.
-2. **Temsilî noktalar — gizlenmiyor, ölçüm borcu sürüyor (8 Kasım 2026).**
-   51 (sıralamadan türetildi), 52 (avlu sınırları toprak altında), 53 (havza
-   ortası, erişim yok) ve 57 (korunmuş bir kesit) veride
-   `coordinateAccuracy: "approximate"` taşır. Durak kartında "≈ Yaklaşık konum ·
-   yapı geniş bir alana yayılıyor; pin merkezini gösterir" yazar; pinin ekran
-   okuyucu adı "(yaklaşık konum)" ile biter. İkisi de testte kilitli.
-   Koordinat **değiştirilmedi**: kaynaklar arasındaki 25–90 m farkı saha ölçümü
-   olmadan kapatmak uydurma olurdu. Kalan iş: bu dört noktayı yerinde ölçmek.
-   **52 için yeni kanıt:** Wikidata Q104641912 ("Halls of Verulanus") aynı yapıya
-   37.944090, 27.339919 veriyor — mevcut pinden **100 m** kuzeydoğu. Avlu
-   200 × 240 m olduğu için iki nokta da yapının içinde kalır; yeni nokta
-   Liman Hamamları'na 132 m, Meryem Kilisesi'ne 109 m uzakta. Pin değişmedi,
-   dördüncü kaynak olarak Wikidata eklendi ve fark durak kartında
-   (`coordinateNote`) yazılı.
-3. ~~Tek kaynaklı iki durak~~ **Kapatıldı:** 51 ve 52 artık üç kaynak taşıyor.
-4. **İki görselin lisansı — karar verildi, beyan açık (8 Kasım 2026).**
-   `heroon` (#20) ve `magnesia-kapisi` (#27) Turkish Archaeological News
-   kaynaklı; sitede açık lisans beyanı yok. Karar: **kullanımda kalırlar**.
-   Gerekçe: (a) kullanıcı "lisans şart değil" dedi, (b) kimlik doğrulandı —
-   heroon fotoğrafındaki haç kabartmalı çevre panoları TAN metnindeki geç antik
-   "Byzantine Fountain" dönüşümüyle birebir örtüşüyor; magnesia-kapisi
-   fotoğrafı yol kenarında büyük bloklu bir kule ayağı gösteriyor ve kapının
-   iki kuleli Hellenistik düzeniyle uyumlu — ancak **kapının kendisi olduğu
-   bağımsız bir kaynakla doğrulanamadı**, bu yüzden risk kaydı açık kalıyor, (c) lisansı doğrulanmış Commons ikamesi **yok**:
-   `Category:Heroon of Ephesus` bulunmuyor, heroon çevresindeki 120 m'lik
-   geosearch yalnız Hadrian Kapısı/Teras Evler fotoğrafı veriyor, "Magnesian
-   Gate" aramaları yalnız "road from the Magnesian Gate" ve hamam kalıntıları
-   döndürüyor. Bu yüzden yanlış yapıyı gösteren lisanslı bir fotoğrafla
-   değiştirmek doğruluk kaybı olurdu. Arayüzde görselin altında "Kullanım izni
-   doğrulanmadı / Reuse permission not verified" ve kaynak bağlantısı görünür.
-   Kalan iş: lisansı doğrulanmış bir Efes fotoğrafı bulunursa değiştirmek.
+   57 durağın tamamı İngilizce sesli. 12 kayıt ilk üretimde eski anlatıcıdan
+   farklı bir sesle çıkmıştı; MFCC + bant enerjisiyle ölçülüp yeniden üretildi
+   ([tını denetimi](./ses-tinisi-denetimi-2026-11-08.md)).
+2. **Heksagon (51) Türkçe kaydı yok — açık.** Metin ve konum 8 Kasım'da
+   yeniden yazıldı (Kalkidikum parçası değil; Kuretler Caddesi'nin güney
+   kenarında, Oktogon ile Alytarkhos Stoası arasında altıgen monopteros).
+   Eski kayıt yanlış metni okuyordu, bağlantı kaldırıldı. İngilizce kayıt yeni
+   metinden üretildi (referansa uzaklık 6.18). Kilit: `SES_BEKLEYEN`.
+   Yeni Türkçe kayıt için Türkçe anlatıcı sesi gerekiyor.
+3. **Temsilî noktalar — gizlenmiyor, ölçüm borcu sürüyor (8 Kasım 2026).**
+   52 (avlu sınırları toprak altında), 53 (havza ortası, erişim yok) ve 57
+   (korunmuş bir kesit) veride `coordinateAccuracy: "approximate"` taşır.
+   Durak kartında "≈ Yaklaşık konum · yapı geniş bir alana yayılıyor; pin
+   merkezini gösterir" yazar; pinin ekran okuyucu adı "(yaklaşık konum)" ile
+   biter. İkisi de testte kilitli. Koordinat **uydurulmadı**: kaynaklar
+   arasındaki 25–90 m farkı saha ölçümü olmadan kapatmak yanlış olurdu.
+   **52 için ek kanıt:** Wikidata Q104641912 ("Halls of Verulanus") aynı yapıya
+   37.944090, 27.339919 veriyor — mevcut pinden 100 m kuzeydoğu; avlu
+   200 × 240 m olduğu için iki nokta da yapının içinde kalır. Fark durak
+   kartında (`coordinateNote`) yazılı. Kalan iş: üç noktayı yerinde ölçmek.
+4. **Görseller — lisans kapısı geçildi, konu eşleşmesi iki durakta zayıf.**
+   `main`'in 8 Kasım süpürmesi 57 görselin hepsini özgür lisanslı hâle getirdi
+   ve "kullanım izni doğrulanmadı" durumunu testle yayından men etti; yerel
+   `heroon`, `magnesia-kapisi`, `kuretler-caddesi`, `oktagon` dosyaları silindi.
+   Buna karşılık 20 Heroon ve 27 Magnesia Kapısı'nda seçilen kareler yapının
+   kendisini değil çevresini gösteriyor (Kuretler Caddesi'ne bakış / kapıdan
+   çıkan yol). Kareler lisanslı olduğu için korundu; alt metinler artık neyi
+   gösterdiklerini açıkça yazıyor. Ek olarak 49, 50, 53, 54, 55, 56, 57'de bu
+   dalın daha isabetli kareleri geri getirildi (Hydreion, Triodos, liman ovası,
+   vaftiz havuzu, Bizans Sarayı, Kaistros heykeli, sur kesiti) — hepsi zaten
+   Commons/CC lisanslı. Kalan iş: 20 ve 27 için yapının kendisini gösteren,
+   lisansı doğrulanmış bir kare bulmak.
 5. ~~Türkçe ses kaydı olmayan üç durak.~~ **Kapatıldı (8 Kasım 2026).**
-   Chalcidicum (45), Pollio (46) ve Domitian Çeşmesi (47) kaydedildi
-   (`/audio/efes-chalcidicum.mp3`, `efes-pollio-domitian-cesmesi.mp3`,
-   `efes-domitian-cesmesi.mp3`). Böylece turun **57 durağının tamamı Türkçe
-   sesli**; `SES_BEKLEYEN` listesi boş ve testte kilitli.
-6. **Ses tınısı — denetlendi, İngilizce 12 kayıt uyuşmuyor (8 Kasım 2026).**
-   Dinleme bu ortamda yapılamadığı için MFCC + bant enerjisi + f0 ile ölçüldü
-   ([denetim belgesi](./ses-tinisi-denetimi-2026-11-08.md)).
-   **Türkçe tutarlı:** 57 dosyanın grup ortalamaları 2.4–3.4 arası, perde
-   212–216 Hz; tek aykırı #55 (z ≈ +2.7).
-   **İngilizce tutarsız:** eski 45 dosya kullanıcının verdiği referans sese
-   0–8.5 uzaklıkta (ort. 5.0), yeni 12 dosya 10.4–12.9 (ort. 11.5); grup
-   mesafesi EN eski ↔ EN yeni 12.18'e karşı TR eski ↔ TR yeni 4.41. Fark
-   kodlama kaynaklı değil (üst bant sınırı ikisinde de ≈8.3 kHz).
-   **Kapatıldı (8 Kasım 2026, aynı gün):** 12 İngilizce kayıt eski anlatıcı
-   sesiyle yeniden üretildi. Referansa uzaklık artık **2.57–8.26** (ort. 5.11);
-   eski 45 dosyanın aralığı 0.00–9.31 (ort. 5.09). Künye değişmedi
-   (24 000 Hz, mono, 32 kbps). Türkçe taraf zaten uyumluydu; tek izleme
-   kalemi #55 Türkçe (z ≈ +2.7, metni sayı ağırlıklı).
+   Chalcidicum (45) ve Domitian Çeşmesi (47) kayıtları bağlandı;
+   `main`'de Pollio (46) da bağlanmıştı.
+6. **Ses tınısı — ölçüldü (8 Kasım 2026).** Türkçe 57 dosyanın grup
+   ortalamaları 2.4–3.4, perde 212–216 Hz. İngilizce 12 kayıt eski anlatıcıdan
+   ayrışıyordu (referansa uzaklık 10.4–12.9'a karşı eski dosyalarda 0.0–9.3);
+   12'si yeniden üretildi, yeni aralık 2.6–8.3. Tek izleme kalemi **#55
+   Türkçe** (z ≈ +2.7, metni sayı ağırlıklı).
 7. ~~45/46/47 pinleri üst üste biniyor.~~ **Kapatıldı (8 Kasım 2026).**
-   Eski ofset yalnız birebir aynı koordinatı kaydırıyordu; üç durak 4–8 m
-   aralıkla durduğu için eşik tutmuyordu. Eşik 20 m'ye çıkarıldı ve kümeler
-   16 m yarıçaplı yaya yerleştirildi (bkz. §3). 45–47 için test var:
-   `src/components/audioStopMarkers.test.ts`.
-
+   Eşik 20 m'ye çıkarıldı, kümeler 16 m yarıçaplı yaya yerleştirildi (§3).
 8. **45–47 Türkçe dikte dosyası yok (açık).** `kayit-paketi/turkce-dikte-49-57.json`
    yalnız 49–57'yi kapsıyor. 45 Chalcidicum, 46 Pollio ve 47 Domitian Çeşmesi
-   kayıtları üretildi (`/audio/efes-chalcidicum.mp3`,
-   `efes-pollio-domitian-cesmesi.mp3`, `efes-domitian-cesmesi.mp3`) ama okunan
-   Türkçe metin repoda yazılı değil; `kayit-paketi/metinler/45-*.txt` … `47-*.txt`
-   dosyaları **İngilizce**. Kayıtların sözlerini sonradan yazmak dinleyip çözümleme
-   gerektirdiği için yapılmadı — uydurma metin yazmak sesle uyuşmama riski taşır.
+   kayıtları var ama okunan Türkçe metin repoda yazılı değil; `metinler/45-*.txt`
+   … `47-*.txt` dosyaları **İngilizce**. Dinleyip çözümleme gerektirdiği için
+   uydurulmadı.
+9. **Birleşme notu (8 Kasım 2026).** `main` bu dal paralel çalışırken #196–#204
+   ile ilerledi; ikisi de aynı dokuz durağı tura taşıdı. Birleşmede `main`'in
+   araştırılmış metinleri (Heksagon) ve görselleri temel alındı, bu dalın
+   ayırdığı koordinatlar (49, 52–57) ve sesleri korundu. `main`'de 49, 53, 54,
+   55, 56, 57 aynı noktaya geri düşmüştü (Hydreion Pollio'da, vaftizhane Meryem
+   Kilisesi'nde, Bizans Hamamları Liman Hamamları'nda, Vedius ve surlar stadyumda,
+   antik liman Liman Caddesi'nde); bu dal o çakışmayı açıyor.

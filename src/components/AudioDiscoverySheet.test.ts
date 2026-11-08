@@ -23,7 +23,7 @@ describe("sesli keşif", () => {
   it("yaklaşık konumlu durakta konum güvenilirliğini açıkça yazar", () => {
     vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
     const tour = AUDIO_DISCOVERY_TOURS[0];
-    const index = tour.stops.findIndex((stop) => stop.no === 51);
+    const index = tour.stops.findIndex((stop) => stop.no === 52);
     const props = { tour, selectedIndex: 0, onSelect: vi.fn(), onClose: vi.fn() };
     const view = render(createElement(AudioDiscoverySheet, props));
     // Prytaneion kesin nokta: uyarı yok.
