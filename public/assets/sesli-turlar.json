@@ -78,7 +78,7 @@
           "audio": "/audio/efes-basilica-stoa-v2.mp3",
           "image": {
             "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Ephesus_basilica2.jpg/960px-Ephesus_basilica2.jpg",
-            "alt": "Efes Bazilika Stoası kalıntıları",
+            "alt": "Efes Bazilika Stoası'nın yeniden dikilmiş sütunları",
             "source": "https://commons.wikimedia.org/wiki/File:Ephesus_basilica2.jpg",
             "author": "Rita1234",
             "license": "CC BY-SA 3.0",
@@ -333,9 +333,9 @@
           "title": "Mazaeus ve Mithridates Kapısı",
           "audio": "/audio/efes-mazaeus-kapisi.mp3",
           "image": {
-            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/16.1_Mazeus-Mithridates_Gate_in_Ephesus.JPG/960px-16.1_Mazeus-Mithridates_Gate_in_Ephesus.JPG",
-            "alt": "Efes Mazaeus ve Mithridates Kapısı",
-            "source": "https://commons.wikimedia.org/wiki/File:16.1_Mazeus-Mithridates_Gate_in_Ephesus.JPG",
+            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/16.3_Mazeus-Mithridates_Gate_in_Ephesus.JPG/960px-16.3_Mazeus-Mithridates_Gate_in_Ephesus.JPG",
+            "alt": "Mazaeus ve Mithridates Kapısı",
+            "source": "https://commons.wikimedia.org/wiki/File:16.3_Mazeus-Mithridates_Gate_in_Ephesus.JPG",
             "author": "José Luiz Bernardes Ribeiro",
             "license": "CC BY-SA 3.0",
             "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/"
@@ -464,9 +464,9 @@
           "title": "Efes Stadyumu",
           "audio": "/audio/efes-stadyum.mp3",
           "image": {
-            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/Ancient_stadium_in_Ephesus%2C_April_2024_%281%29.jpg/960px-Ancient_stadium_in_Ephesus%2C_April_2024_%281%29.jpg",
-            "alt": "Efes Stadyumu, 2024",
-            "source": "https://commons.wikimedia.org/wiki/File:Ancient_stadium_in_Ephesus%2C_April_2024_%281%29.jpg",
+            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Ancient_stadium_in_Ephesus%2C_April_2024_%285%29.jpg/960px-Ancient_stadium_in_Ephesus%2C_April_2024_%285%29.jpg",
+            "alt": "Efes antik stadyumunun oturma sıraları",
+            "source": "https://commons.wikimedia.org/wiki/File:Ancient_stadium_in_Ephesus,_April_2024_(5).jpg",
             "author": "Olos88",
             "license": "CC0 1.0",
             "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/"
@@ -599,12 +599,12 @@
           "title": "Oktagon",
           "audio": "/audio/efes-oktagon.mp3",
           "image": {
-            "url": "/images/efes/oktagon.jpg",
-            "alt": "Efes Oktagon anıt mezarının kalıntıları",
-            "source": "https://www.flickr.com/photos/carolemage/5731348822/",
-            "author": "Carole Raddato",
-            "license": "CC BY-SA 2.0",
-            "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0/"
+            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/8.3_Ruins_at_Curetes_Street_in_Ephesus.JPG/960px-8.3_Ruins_at_Curetes_Street_in_Ephesus.JPG",
+            "alt": "Kuretler Caddesi'nin üst kesimindeki kalıntılar; Oktagon bu sıranın içindedir",
+            "source": "https://commons.wikimedia.org/wiki/File:8.3_Ruins_at_Curetes_Street_in_Ephesus.JPG",
+            "author": "José Luiz Bernardes Ribeiro",
+            "license": "CC BY-SA 3.0",
+            "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/"
           },
           "lat": 37.93865,
           "lng": 27.341465,
@@ -627,12 +627,12 @@
           "title": "Helenistik Heroon",
           "audio": "/audio/efes-heroon.mp3",
           "image": {
-            "url": "/images/efes/heroon.jpg",
-            "alt": "Helenistik Heroon ve geç antik dönem çeşme levhaları",
-            "source": "https://turkisharchaeonews.net/object/hellenistic-heroon-ephesus",
-            "author": "Turkish Archaeological News",
-            "license": "Kullanım izni doğrulanmadı",
-            "licenseUrl": "https://turkisharchaeonews.net/object/hellenistic-heroon-ephesus"
+            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/Ephesus_View_to_Curetes_Street_from_Hadrian_Gate_in_2011_3725.jpg/960px-Ephesus_View_to_Curetes_Street_from_Hadrian_Gate_in_2011_3725.jpg",
+            "alt": "Hadrian Kapısı'ndan Kuretler Caddesi'nin alt kesimine bakış; Heroon bu sıranın batı ucundadır",
+            "source": "https://commons.wikimedia.org/wiki/File:Ephesus_View_to_Curetes_Street_from_Hadrian_Gate_in_2011_3725.jpg",
+            "author": "Dosseman",
+            "license": "CC BY-SA 4.0",
+            "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
           },
           "lat": 37.938754,
           "lng": 27.341317,
@@ -833,12 +833,12 @@
           "title": "Magnesia Kapısı",
           "audio": "/audio/efes-magnesia-kapisi.mp3",
           "image": {
-            "url": "/images/efes/magnesia-kapisi.jpg",
-            "alt": "Efes Magnesia Kapısı bölgesindeki kalıntılar",
-            "source": "https://turkisharchaeonews.net/object/magnesian-gate-area-ephesus",
-            "author": "Turkish Archaeological News",
-            "license": "Kullanım izni doğrulanmadı",
-            "licenseUrl": "https://turkisharchaeonews.net/object/magnesian-gate-area-ephesus"
+            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/Ephesus_State_agora_Road_from_the_Magnesian_Gate_in_2011_3746.jpg/960px-Ephesus_State_agora_Road_from_the_Magnesian_Gate_in_2011_3746.jpg",
+            "alt": "Magnesia Kapısı'ndan geçen yol; Devlet Agorası'nın güneyinde, çeşmenin yanından geçer",
+            "source": "https://commons.wikimedia.org/wiki/File:Ephesus_State_agora_Road_from_the_Magnesian_Gate_in_2011_3746.jpg",
+            "author": "Dosseman",
+            "license": "CC BY-SA 4.0",
+            "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
           },
           "lat": 37.93455381,
           "lng": 27.3504954,
@@ -963,8 +963,8 @@
           "title": "Kuretler Caddesi",
           "audio": "/audio/efes-kuretler-caddesi.mp3",
           "image": {
-            "url": "/images/efes/kuretler-caddesi.jpg",
-            "alt": "Efes Kuretler Caddesi",
+            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/Ephesus_Curetes_street.jpg/960px-Ephesus_Curetes_street.jpg",
+            "alt": "Kuretler Caddesi, Herakles Kapısı'ndan aşağı bakış",
             "source": "https://commons.wikimedia.org/wiki/File:Ephesus_Curetes_street.jpg",
             "author": "Rita1234",
             "license": "CC BY-SA 3.0",
@@ -1406,10 +1406,10 @@
           "no": 45,
           "title": "Chalcidicum (Kalkidikum)",
           "image": {
-            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Ephesus_basilica2.jpg/960px-Ephesus_basilica2.jpg",
-            "alt": "Bazilika Stoası'nın batı ucu; Chalcidicum bu ucun alt yapısıdır",
-            "source": "https://commons.wikimedia.org/wiki/File:Ephesus_basilica2.jpg",
-            "author": "Rita1234",
+            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Kuretenstra%C3%9Fe%2C_Ephesos.jpg/960px-Kuretenstra%C3%9Fe%2C_Ephesos.jpg",
+            "alt": "Kuretler Caddesi; Kalkidikum bu caddenin Bazilika Stoası'na bakan ucundadır",
+            "source": "https://commons.wikimedia.org/wiki/File:Kuretenstra%C3%9Fe,_Ephesos.jpg",
+            "author": "CherryX",
             "license": "CC BY-SA 3.0",
             "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/"
           },
@@ -1442,12 +1442,12 @@
           "no": 46,
           "title": "Pollio Anıtı",
           "image": {
-            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Efeso%2C_monumento_di_pollio_e_domizianeo_01.JPG/960px-Efeso%2C_monumento_di_pollio_e_domizianeo_01.JPG",
-            "alt": "Pollio Anıtı, Domitian Meydanı batı kenarı",
-            "source": "https://commons.wikimedia.org/wiki/File:Efeso%2C_monumento_di_pollio_e_domizianeo_01.JPG",
-            "author": "Sailko",
-            "license": "CC BY-SA 3.0",
-            "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/"
+            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Ephesus_Pollio_Fountain_in_2011_3740.jpg/960px-Ephesus_Pollio_Fountain_in_2011_3740.jpg",
+            "alt": "Pollio Anıtı; önde süslü kaide, arkada anıtın gövdesi",
+            "source": "https://commons.wikimedia.org/wiki/File:Ephesus_Pollio_Fountain_in_2011_3740.jpg",
+            "author": "Dosseman",
+            "license": "CC BY-SA 4.0",
+            "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
           },
           "lat": 37.936724,
           "lng": 27.3434367,
@@ -1472,10 +1472,10 @@
           "no": 47,
           "title": "Domitian Çeşmesi",
           "image": {
-            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Efeso%2C_monumento_di_pollio_e_domizianeo_01.JPG/960px-Efeso%2C_monumento_di_pollio_e_domizianeo_01.JPG",
-            "alt": "Domitian Çeşmesi'nin apsisi ve Pollio Anıtı",
-            "source": "https://commons.wikimedia.org/wiki/File:Efeso%2C_monumento_di_pollio_e_domizianeo_01.JPG",
-            "author": "Sailko",
+            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Efes_%28Ephesos%29_-_Domitian_%C3%87e%C5%9Fmesi_-_panoramio.jpg/960px-Efes_%28Ephesos%29_-_Domitian_%C3%87e%C5%9Fmesi_-_panoramio.jpg",
+            "alt": "Domitian Çeşmesi",
+            "source": "https://commons.wikimedia.org/wiki/File:Efes_(Ephesos)_-_Domitian_%C3%87e%C5%9Fmesi_-_panoramio.jpg",
+            "author": "Yağmur Aydın",
             "license": "CC BY-SA 3.0",
             "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/"
           },
@@ -1593,10 +1593,10 @@
           "no": 51,
           "title": "Heksagon (Altıgen Anıt)",
           "image": {
-            "url": "/images/efes/kuretler-caddesi.jpg",
-            "alt": "Kuretler Caddesi; Heksagon bu caddenin güney kenarındaki anıtlar sırasındadır",
-            "source": "https://commons.wikimedia.org/wiki/File:Ephesus_Curetes_street.jpg",
-            "author": "Rita1234",
+            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Ephesos_Kuretenstra%C3%9Fe.JPG/960px-Ephesos_Kuretenstra%C3%9Fe.JPG",
+            "alt": "Kuretler Caddesi'nin üst kesimi; Heksagon güney kenardaki anıtlar sırasındadır",
+            "source": "https://commons.wikimedia.org/wiki/File:Ephesos_Kuretenstra%C3%9Fe.JPG",
+            "author": "Elelicht",
             "license": "CC BY-SA 3.0",
             "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/"
           },
@@ -1630,10 +1630,10 @@
           "title": "Verulanus Meydanı ve Salonu",
           "audio": "/audio/kalkidikum-verulanus-meydani-salonu.mp3",
           "image": {
-            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d2/Harbor_Baths_%28Ephesus%29_6.jpg/960px-Harbor_Baths_%28Ephesus%29_6.jpg",
-            "alt": "Verulanus Meydanı ve Salonu kalıntıları",
-            "source": "https://commons.wikimedia.org/wiki/File:Harbor_Baths_%28Ephesus%29_6.jpg",
-            "author": "Satirdan kahraman",
+            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/Ephesus_view_to_Church_of_Mary_in_2015_2782.jpg/960px-Ephesus_view_to_Church_of_Mary_in_2015_2782.jpg",
+            "alt": "Verulanus Salonu'nun doğu köşesinden Meryem Kilisesi'ne bakış",
+            "source": "https://commons.wikimedia.org/wiki/File:Ephesus_view_to_Church_of_Mary_in_2015_2782.jpg",
+            "author": "Dosseman",
             "license": "CC BY-SA 4.0",
             "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
           },
@@ -1659,9 +1659,9 @@
           "title": "Antik Liman ve Liman Kanalı",
           "audio": "/audio/kalkidikum-antik-liman-kanali.mp3",
           "image": {
-            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Ephesus_Arcadiane_%28Harbour%29_Street_in_2011_3567.jpg/960px-Ephesus_Arcadiane_%28Harbour%29_Street_in_2011_3567.jpg",
-            "alt": "Antik Liman ve Kanal kalıntıları",
-            "source": "https://commons.wikimedia.org/wiki/File:Ephesus_Arcadiane_%28Harbour%29_Street_in_2011_3567.jpg",
+            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/92/Ephesus_Arcadiane_%28Harbour%29_Street_in_2011_3615.jpg/960px-Ephesus_Arcadiane_%28Harbour%29_Street_in_2011_3615.jpg",
+            "alt": "Liman Caddesi'nden limana doğru bakış; antik liman kanalı bu hattın sonundaydı",
+            "source": "https://commons.wikimedia.org/wiki/File:Ephesus_Arcadiane_(Harbour)_Street_in_2011_3615.jpg",
             "author": "Dosseman",
             "license": "CC BY-SA 4.0",
             "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
@@ -1691,12 +1691,12 @@
           "title": "Meryem Kilisesi Vaftizhanesi",
           "audio": "/audio/kalkidikum-meryem-kilisesi-vaftizhanesi.mp3",
           "image": {
-            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/20180113_MariaHouse_6629_%2839433600884%29.jpg/960px-20180113_MariaHouse_6629_%2839433600884%29.jpg",
-            "alt": "Meryem Kilisesi Vaftizhanesi kalıntıları",
-            "source": "https://commons.wikimedia.org/wiki/File:20180113_MariaHouse_6629_%2839433600884%29.jpg",
-            "author": "Ray Swi-hymn",
-            "license": "CC BY-SA 2.0",
-            "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0/"
+            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c4/Efes_Meryem_Kilisesi.jpg/960px-Efes_Meryem_Kilisesi.jpg",
+            "alt": "Meryem Kilisesi; vaftizhane kuzey atriyumundadır",
+            "source": "https://commons.wikimedia.org/wiki/File:Efes_Meryem_Kilisesi.jpg",
+            "author": "Marmaracalypso",
+            "license": "CC BY-SA 4.0",
+            "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
           },
           "lat": 37.944983,
           "lng": 27.339413,
@@ -1723,10 +1723,10 @@
           "title": "Bizans Hamamları",
           "audio": "/audio/kalkidikum-bizans-hamamlari.mp3",
           "image": {
-            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/33/Ephesus_State_Agora_Baths_in_2011_3751.jpg/960px-Ephesus_State_Agora_Baths_in_2011_3751.jpg",
-            "alt": "Bizans Hamamları kalıntıları",
-            "source": "https://commons.wikimedia.org/wiki/File:Ephesus_State_Agora_Baths_in_2011_3751.jpg",
-            "author": "Dosseman",
+            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/64/Harbor_Baths_%28Ephesus%29_10.jpg/960px-Harbor_Baths_%28Ephesus%29_10.jpg",
+            "alt": "Liman Hamamları kompleksi; Bizans Hamamları bu yapıların üzerine kuruldu",
+            "source": "https://commons.wikimedia.org/wiki/File:Harbor_Baths_(Ephesus)_10.jpg",
+            "author": "Satirdan kahraman",
             "license": "CC BY-SA 4.0",
             "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
           },
@@ -1755,12 +1755,12 @@
           "title": "Vedius Gymnasionu",
           "audio": "/audio/kalkidikum-vedius-gymnasionu.mp3",
           "image": {
-            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/Ephesos_Theatergymnasion.JPG/960px-Ephesos_Theatergymnasion.JPG",
-            "alt": "Vedius Gymnasionu kalıntıları",
-            "source": "https://commons.wikimedia.org/wiki/File:Ephesos_Theatergymnasion.JPG",
-            "author": "Elelicht",
-            "license": "CC BY-SA 3.0",
-            "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/"
+            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/Turkey-2819_%282217175472%29_%282%29.jpg/960px-Turkey-2819_%282217175472%29_%282%29.jpg",
+            "alt": "Vedius Gymnasionu ve tiyatro hamamları alanı",
+            "source": "https://commons.wikimedia.org/wiki/File:Turkey-2819_(2217175472)_(2).jpg",
+            "author": "Dennis G. Jarvis",
+            "license": "CC BY-SA 2.0",
+            "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0/"
           },
           "lat": 37.946112,
           "lng": 27.345901,
