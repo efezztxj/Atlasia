@@ -9,7 +9,7 @@ Yeni bir yer, yeni bir şehir veya yeni bir tur eklenecekse önce buradaki
 | Dosya | İçerik |
 | --- | --- |
 | `README.md` | Bu dosya: yapılış tarzı, ekleme adımları, açık borçlar |
-| `efes.md` | Efes turu: 55 durak, numara düzeni, `sharedWith`, borçlar |
+| `efes.md` | Efes turu: **57 durak**, numara düzeni, `sharedWith`, borçlar |
 | `kapadokya.md` | Kapadokya turu iskeleti + durak kabul ölçütü |
 | `ingilizce-ses-kayit-metinleri.md` | Ses kaydı bekleyen 9 durak; okunacak metin + dosya adı + süre |
 | `kalan-11-yer-ingilizce.md` | **Kalan 11 yerin İngilizce metni** (9 turda + 2 turda değil) |

@@ -9,10 +9,10 @@ doldurman gerekiyor: `<<SES>>` yerine kullanılacak sesin adı/kimliği.
 Rol: Atlasia sesli anlatım rehberi için İngilizce ses dosyası üreticisisin.
 
 GÖREV
-11 metni İngilizce sese çevirip MP3 üret. Sonuçları depoya yaz.
-NOT: 11 metinden 9'u turda yayında (47-55), 2'si henüz turda değil
-(chalcidicum, domitian-cesmesi). İkisi de üretilecek; turda görünüp
-görünmemesi kod tarafında ayrıca kararlaştırılacak.
+12 metni İngilizce sese çevirip MP3 üret. Sonuçları depoya yaz.
+NOT: 12 metnin 9'u turda yayında (49-57), 2'si yeni eklendi (45 chalcidicum,
+46 domitian-cesmesi), 1'i Pollio Anıtı (metni değişti, sesi yeniden üretilecek).
+Hepsi turda görünür; yalnız sesi eksik.
 
 METİNLERİ BURADAN OKU (depo köküne göre)
 1. docs/icerik/sesli-anlatim-rehberi/kayit-paketi/metinler/TUMU.txt
@@ -74,6 +74,7 @@ en-kalkidikum-vedius-gymnasionu.mp3
 en-kalkidikum-kent-surlari.mp3
 en-kalkidikum-chalcidicum.mp3
 en-kalkidikum-domitian-cesmesi.mp3
+en-efes-pollio-domitian-cesmesi.mp3   <- Pollio metni degisti, yeniden uret
 
 TEKNİK KÜNYE (mevcut 46 dosyadan ÖLÇÜLDÜ — birebir uy)
 Örnekleme: 24 000 Hz
@@ -101,7 +102,7 @@ YAPMA
 - Ses kimliğini değiştirme. Farklı bir ses gerekiyorsa ÖNCE SOR, uygulama.
 
 BİTİNCE
-Ürettiğin 11 dosyanın listesini + her biri için kabul kontrolü çıktısını ver.
+Ürettiğin 12 dosyanın listesini + her biri için kabul kontrolü çıktısını ver.
 Eksik kalan varsa hangisi ve neden.
 ```
 

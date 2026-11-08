@@ -1405,13 +1405,49 @@
           ]
         },
         {
-          "id": "pollio-domitian-cesmesi",
+          "id": "chalcidicum",
           "no": 45,
-          "title": "Pollio Anıtı ve Domitian Çeşmesi",
+          "title": "Chalcidicum (Kalkidikum)",
+          "image": {
+            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Ephesus_basilica2.jpg/960px-Ephesus_basilica2.jpg",
+            "alt": "Bazilika Stoası'nın batı ucu; Chalcidicum bu ucun alt yapısıdır",
+            "source": "https://commons.wikimedia.org/wiki/File:Ephesus_basilica2.jpg",
+            "author": "Rita1234",
+            "license": "CC BY-SA 3.0",
+            "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/"
+          },
+          "lat": 37.93676,
+          "lng": 27.343363,
+          "description": "Domitian Meydanı’nın batı kenarında, Bazilika Stoası’nın batı ucunu taşıyan masif bir alt yapı yükselir. Adı Latince chalcidicum kelimesinden gelir; bazilikaya eklenen revaklı salon anlamına gelir. Büyük kesme taş bloklardan örülmüş bu kütle, stoanın batı ucunu desteklemek üzere Nero döneminde eklenmiştir. İçi üç odaya bölünmüştü ve bu odalar doğrudan meydana açılan kapılarla giriliyordu. Yapı, 15,9 metre boyunca meydana doğru taşar; çevre duvarları Panayırdağ’dan getirilen malzemeyle örülmüştür. Geç antik dönemde içine küçük bir kilise yerleştirilmiştir. Bugün kütlenin kendisi ayakta; üst kat süslemesinden geriye bir şey kalmamıştır.",
+          "coordinateSource": "https://www.researchgate.net/publication/228370491_Neue_Forschungen_zur_Stadtplanung_in_Ephesos",
+          "sources": [
+            {
+              "title": "Turkish Archaeological News · Domitian Meydanı",
+              "url": "https://turkisharchaeonews.net/object/domitian-square-ephesus"
+            },
+            {
+              "title": "Groh · Neue Forschungen zur Stadtplanung in Ephesos (ÖAI)",
+              "url": "https://www.ancientportsantiques.com/wp-content/uploads/Documents/PLACES/Turkey/Ephese-Groh2006.pdf"
+            },
+            {
+              "title": "ÖAI Bilimsel Yıllık Raporu 2014 · Batı Kalkidikum",
+              "url": "https://www.researchgate.net/publication/318271878_Wissenschaftlicher_Jahresbericht_des_Osterreichischen_Archaologischen_Instituts_2014_2014_5-60_Ephesos"
+            },
+            {
+              "title": "Encyclopaedia of the Hellenic World · State Agora",
+              "url": "https://constantinople.ehw.gr/forms/filePage.aspx?lemmaId=8213"
+            }
+          ],
+          "envanterNo": 12
+        },
+        {
+          "id": "pollio-domitian-cesmesi",
+          "no": 46,
+          "title": "Pollio Anıtı",
           "audio": "/audio/efes-pollio-domitian-cesmesi.mp3",
           "image": {
             "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Efeso%2C_monumento_di_pollio_e_domizianeo_01.JPG/960px-Efeso%2C_monumento_di_pollio_e_domizianeo_01.JPG",
-            "alt": "Pollio Anıtı ve Domitian Çeşmesi çevresi",
+            "alt": "Pollio Anıtı, Domitian Meydanı batı kenarı",
             "source": "https://commons.wikimedia.org/wiki/File:Efeso%2C_monumento_di_pollio_e_domizianeo_01.JPG",
             "author": "Sailko",
             "license": "CC BY-SA 3.0",
@@ -1419,7 +1455,7 @@
           },
           "lat": 37.936724,
           "lng": 27.3434367,
-          "description": "Pollio Anıtı ile Domitian Çeşmesi bitişiktir. Anıt mezar, daha sonra 92/93 yılında yapılan çeşmeye katıldı. Nişteki Odysseus ve Polyphemos heykelleri Efes Müzesi’ndedir. Tek işaret iki yapının yaklaşık ortak konumudur; giriş ya da rota değildir.",
+          "description": "Domitian Meydanı’nın batı kenarında, kesme taş bloklardan örülmüş bir anıt mezar yükselir. Efes’in zengin yurttaşlarından Gaius Sextilius Pollio’nun anısına, onun üvey oğlu tarafından yaptırılmıştır. Kent, Devlet Agorası’ndaki Bazilika’yı ve kente su getiren kemerleri bağışlayan bu kişiyi böyle onurlandırmıştı. Yapıdan geriye 8 × 6,5 metrelik kaide kalmıştır; yüksekliği yaklaşık 6,4 metredir. Anıt, daha sonra yanına eklenen çeşme yapısıyla birlikte meydana bakan tek bir mimari kulis oluşturur.",
           "coordinateSource": "https://www.openstreetmap.org/way/244582459",
           "sources": [
             {
@@ -1436,8 +1472,40 @@
           ]
         },
         {
+          "id": "domitian-cesmesi",
+          "no": 47,
+          "title": "Domitian Çeşmesi",
+          "image": {
+            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Efeso%2C_monumento_di_pollio_e_domizianeo_01.JPG/960px-Efeso%2C_monumento_di_pollio_e_domizianeo_01.JPG",
+            "alt": "Domitian Çeşmesi'nin apsisi ve Pollio Anıtı",
+            "source": "https://commons.wikimedia.org/wiki/File:Efeso%2C_monumento_di_pollio_e_domizianeo_01.JPG",
+            "author": "Sailko",
+            "license": "CC BY-SA 3.0",
+            "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/"
+          },
+          "lat": 37.936688,
+          "lng": 27.343388,
+          "description": "Pollio Anıtı’nın hemen güneyinde, MS 92/93 yıllarında inşa edilmiş bir çeşme yapısı yükselir. Büyük apsisi doğrudan Domitian Meydanı’na bakar. Sarmaşık motifli payelerin taşıdığı kemerlerden gelen su, pişmiş toprak borularla dallanan bir sistem üzerinden kente dağıtılıyordu. Nişin içinde, Odysseus’un tek gözlü Polyphemos’u kör etmesini anlatan heykel grubu duruyordu; bu grup çeşme için özel yapılmamış, başka bir yapıdan buraya getirilmişti. Yapı, daha eski olan Pollio Anıtı’nı içine alarak tek bir mimari kulis oluşturur. İmparatorun ölümünden sonra adı buradaki yazıttan da kazınmıştı.",
+          "coordinateSource": "https://www.wikidata.org/wiki/Q104641896",
+          "sources": [
+            {
+              "title": "Alan tabelası · Pollio Anıtı ve Domitian Çeşmesi",
+              "url": "https://www.hmdb.org/m.asp?m=84337"
+            },
+            {
+              "title": "Turkish Archaeological News · Domitian Meydanı",
+              "url": "https://turkisharchaeonews.net/object/domitian-square-ephesus"
+            },
+            {
+              "title": "Wikidata · Q104641896",
+              "url": "https://www.wikidata.org/wiki/Q104641896"
+            }
+          ],
+          "envanterNo": 11
+        },
+        {
           "id": "laecanius-cesmesi",
-          "no": 46,
+          "no": 48,
           "title": "Laecanius Bassus Çeşmesi",
           "audio": "/audio/efes-laecanius-cesmesi.mp3",
           "image": {
@@ -1465,7 +1533,7 @@
         },
         {
           "id": "hydreion-kalkidikum",
-          "no": 47,
+          "no": 49,
           "title": "Hydreion (Çeşme Yapısı)",
           "audio": "/audio/kalkidikum-hydreion.mp3",
           "image": {
@@ -1497,7 +1565,7 @@
         },
         {
           "id": "triodos-meydani",
-          "no": 48,
+          "no": 50,
           "title": "Triodos Meydanı",
           "audio": "/audio/kalkidikum-triodos-meydani.mp3",
           "image": {
@@ -1526,7 +1594,7 @@
         },
         {
           "id": "heksagon",
-          "no": 49,
+          "no": 51,
           "title": "Heksagon (Altıgen Yapı)",
           "audio": "/audio/kalkidikum-heksagon.mp3",
           "image": {
@@ -1554,7 +1622,7 @@
         },
         {
           "id": "verulanus-meydani-salonu",
-          "no": 50,
+          "no": 52,
           "title": "Verulanus Meydanı ve Salonu",
           "audio": "/audio/kalkidikum-verulanus-meydani-salonu.mp3",
           "image": {
@@ -1579,7 +1647,7 @@
         },
         {
           "id": "antik-liman-kanali",
-          "no": 51,
+          "no": 53,
           "title": "Antik Liman ve Liman Kanalı",
           "audio": "/audio/kalkidikum-antik-liman-kanali.mp3",
           "image": {
@@ -1611,7 +1679,7 @@
         },
         {
           "id": "meryem-kilisesi-vaftizhanesi",
-          "no": 52,
+          "no": 54,
           "title": "Meryem Kilisesi Vaftizhanesi",
           "audio": "/audio/kalkidikum-meryem-kilisesi-vaftizhanesi.mp3",
           "image": {
@@ -1643,7 +1711,7 @@
         },
         {
           "id": "bizans-hamamlari",
-          "no": 53,
+          "no": 55,
           "title": "Bizans Hamamları",
           "audio": "/audio/kalkidikum-bizans-hamamlari.mp3",
           "image": {
@@ -1675,7 +1743,7 @@
         },
         {
           "id": "vedius-gymnasionu",
-          "no": 54,
+          "no": 56,
           "title": "Vedius Gymnasionu",
           "audio": "/audio/kalkidikum-vedius-gymnasionu.mp3",
           "image": {
@@ -1708,7 +1776,7 @@
         },
         {
           "id": "kent-surlari",
-          "no": 55,
+          "no": 57,
           "title": "Helenistik ve Bizans Kent Surları",
           "audio": "/audio/kalkidikum-kent-surlari.mp3",
           "image": {

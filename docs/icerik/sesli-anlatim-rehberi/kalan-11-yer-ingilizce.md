@@ -1,4 +1,9 @@
-# Kalan 11 yerin İngilizcesi
+# Kalan 12 yerin İngilizcesi
+
+> **Güncelleme 2026-11-07:** Chalcidicum ve Domitian Çeşmesi tura eklendi
+> (durak 45 ve 46). Yeni sayı: **12** — 9 Kalkidikum eki + 2 yeni durak +
+> metni değişen Pollio Anıtı. Aşağıdaki 56/57 numaraları tarihsel kayıttır;
+> güncel numaralar `efes.md`'de.
 
 7 Kasım 2026. Efes turunda İngilizcesi eksik olan **11 yer**. Hepsi burada,
 kopyalanmaya hazır.

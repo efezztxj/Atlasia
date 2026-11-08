@@ -27,8 +27,9 @@ ne ise o okunacak.
 | 53 | `bizans-hamamlari` | aynı |
 | 54 | `vedius-gymnasionu` | aynı |
 | 55 | `kent-surlari` | aynı |
-| 56 | `chalcidicum` | `kalan-11-yer-ingilizce.md` §B (turda değil) |
-| 57 | `domitian-cesmesi` | `kalan-11-yer-ingilizce.md` §B (turda değil) |
+| 45 | `chalcidicum` | `efes-en.json` (turda, sesi yok) |
+| 46 | `domitian-cesmesi` | `efes-en.json` (turda, sesi yok) |
+| 46b | `pollio-domitian-cesmesi` | metni değişti, sesi yeniden üretilecek |
 
 ---
 

@@ -264,10 +264,9 @@
     "description": "The Hellenistic fountain house near the stage building of the Great Theatre is an example of the water architecture of ancient Ephesus. Ionic columns at its front and carefully worked marble are among its distinctive features. The building was also altered in Roman times. It should not be confused with another Hellenistic fountain near the Terrace Houses. The map pin shows an approximate location. Sources differ on its position, and it is not a field survey."
   },
   "pollio-domitian-cesmesi": {
-    "title": "Pollio Monument and Fountain of Domitian",
-    "imageAlt": "Pollio Monument and Fountain of Domitian area",
-    "audio": "/audio/en-efes-pollio-domitian-cesmesi.mp3",
-    "description": "On the eastern side of Domitian Square, the Pollio Monument and the Fountain of Domitian stand next to one another. The honorific tomb of Pollio was later incorporated into the fountain complex. According to the site information, the fountain was built in 92 or 93 CE. Its niche held sculptures showing the encounter between Odysseus and Polyphemus; surviving pieces are preserved in the Ephesus Museum. One map pin approximately represents the two closely adjoining structures, not an entrance or walking route."
+    "title": "Pollio Monument",
+    "imageAlt": "The Pollio Monument at the western edge of Domitian Square",
+    "description": "At the western edge of Domitian Square rises a memorial tomb built of ashlar blocks. It was erected in memory of Gaius Sextilius Pollio, a wealthy citizen of Ephesus, by his stepson. In this way the city honoured the man who had donated the Basilica on the State Agora and the aqueducts that brought water to the city. All that survives of the structure is its socle, eight by six and a half metres and some six and a half metres high. Together with the fountain later added beside it, it forms a single architectural screen facing the square."
   },
   "laecanius-cesmesi": {
     "title": "Fountain of Laecanius Bassus",
@@ -319,5 +318,15 @@
     "title": "Hellenistic and Byzantine City Walls",
     "imageAlt": "The remains of the Hellenistic and Byzantine city walls at Ephesus",
     "description": "The walls enclosing Ephesus ran for some eight kilometres. The remains surviving from the Hellenistic period, together with the Justinianic walls rebuilt in the sixth century, tell the story of the city's defences. The Gates of Magnesia and Koressos and the Harbour Gate formed its main entrances. Parts of the walls can still be seen today east of the stadium and towards the harbour."
+  },
+  "chalcidicum": {
+    "title": "Chalcidicum",
+    "imageAlt": "The western end of the Basilica Stoa; the Chalcidicum is its substructure",
+    "description": "At the western edge of Domitian Square stands a massive substructure that carried the western end of the Basilica Stoa. Its name comes from the Latin chalcidicum, a porticoed hall added to a basilica. Built of large ashlar blocks, it was added in the reign of Nero to support the western end of the stoa. Its interior was divided into three chambers, entered through doorways opening directly onto the square. The structure projects fifteen point nine metres into the square, and its outer walls were built of stone brought from Mount Panayır. In late antiquity a small church was installed inside it. The mass itself survives; nothing of its upper decoration remains."
+  },
+  "domitian-cesmesi": {
+    "title": "Fountain of Domitian",
+    "imageAlt": "The apse of the Fountain of Domitian and the Pollio Monument",
+    "description": "Just south of the Pollio Monument rises a fountain built in 92/93 CE, its great apse opening directly onto Domitian Square. Water carried by the arches on tendril-carved piers was distributed through a branching network of fired clay pipes. In the niche stood a sculptural group showing Odysseus blinding the one-eyed Polyphemus; the group was not made for this fountain but brought here from another building. The structure absorbed the older Pollio Monument, creating a single architectural screen. After the emperor's death his name was chiselled out of the inscription here as well."
   }
 }
