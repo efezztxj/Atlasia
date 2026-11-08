@@ -48,8 +48,8 @@ interface Props {
   attribution?: ReactNode;
 }
 
-export function PlaceThumb({ place, className }: { place: Place; className?: string }) {
-  return <PlaceImage place={place} className={className} compact />;
+export function PlaceThumb({ place, className, priority = false }: { place: Place; className?: string; priority?: boolean }) {
+  return <PlaceImage place={place} className={className} compact priority={priority} />;
 }
 
 export default function BottomPanel({
@@ -236,7 +236,7 @@ export default function BottomPanel({
               </div>
               {current ? (
                 <div className="mt-4 flex flex-col rounded-2xl border border-white/10 bg-white/[0.025] p-3.5">
-                  <PlaceThumb place={current} className="h-40 w-full shrink-0 rounded-xl" />
+                  <PlaceThumb place={current} priority className="h-40 w-full shrink-0 rounded-xl" />
                   <div className="mt-3 flex items-start gap-2.5">
                     <button type="button" onClick={() => onShow(current)} className="min-w-0 flex-1 text-left">
                       <span className="block text-[15px] font-semibold text-mint">{current.title} <span className="font-normal text-sun">· {current.kind === "user" ? current.author : "Atlasia rehberi"}</span></span>
