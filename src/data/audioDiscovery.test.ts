@@ -29,23 +29,17 @@ const FILE = resolve(`public${AUDIO_TOUR_FILE}`);
 /**
  * Türkçe ses kaydı henüz üretilmemiş duraklar.
  *
- * 2026-11-07: Chalcidicum ve ayrı Domitian Çeşmesi tura eklendi; içerik ve
- * koordinat doğrulandı, ses kaydı henüz yok. Arayüz bu duraklarda
- * "Ses kaydı yok. Metni okuyabilirsin." der. Kayıt geldikçe liste küçülür.
+ * 2026-11-08: Liste BOŞ. 45 Chalcidicum, 46 Pollio ve 47 Domitian Çeşmesi
+ * için kayıt üretildi; turun 57 durağının tamamı Türkçe sesli.
+ * Yeni durak eklenirse ve sesi yoksa buraya yazılır; test sessiz büyümeyi
+ * engeller (kayıt yoksa durak bu listede olmak ZORUNDA).
  */
-const SES_BEKLEYEN = ["chalcidicum", "domitian-cesmesi", "pollio-domitian-cesmesi"];
+const SES_BEKLEYEN: string[] = [];
 
 const KALKIDIKUM_ENGLISH_AUDIO_PENDING = [
   "chalcidicum",
   "domitian-cesmesi",
   "pollio-domitian-cesmesi",
-  "hydreion-kalkidikum",
-  "triodos-meydani",
-  "heksagon",
-  "verulanus-meydani-salonu",
-  "antik-liman-kanali",
-  "meryem-kilisesi-vaftizhanesi",
-  "bizans-hamamlari",
   "vedius-gymnasionu",
   "kent-surlari",
 ];

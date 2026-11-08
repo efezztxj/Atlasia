@@ -71,12 +71,15 @@ uydurulmaz, `sharedWith` **karşılıklı** yazılır ve testte zorunlu tutulur.
 
 ## 4. Açık borçlar
 
-1. **İngilizce ses kaydı yok (49–57).** 2026-11-07'de İngilizce **metinler**
-   yazıldı: `public/audio/efes-en.json` 46 → **57 kayıt**, turun tamamı
-   çevrili. Ses kaydı gerçek anlatım gerektirdiği için üretilmedi; o dokuz
-   durakta `audio` alanı yoktur ve arayüz "English audio is not available yet.
-   You can read the text." der. Kilit: `src/data/audioDiscovery.test.ts` →
-   `KALKIDIKUM_ENGLISH_AUDIO_PENDING` (liste sessizce büyüyemez).
+1. **İngilizce ses kaydı: 12 → 5 kaldı (8 Kasım 2026).** Turun 57 durağının
+   tamamının İngilizce metni var; ses kaydı 52 durakta hazır. Kaydedilenler:
+   Hydreion, Triodos, Heksagon, Verulanus, Antik Liman, Vaftizhane, Bizans
+   Hamamları (`/audio/en-efes-*.mp3`).
+   Kalan 5: **45 Chalcidicum, 46 Pollio, 47 Domitian Çeşmesi, 56 Vedius,
+   57 Kent Surları.** Bu duraklarda `audio` alanı yoktur ve arayüz
+   "English audio is not available yet. You can read the text." der.
+   Kilit: `src/data/audioDiscovery.test.ts` → `KALKIDIKUM_ENGLISH_AUDIO_PENDING`
+   (liste sessizce büyüyemez).
 2. **Temsilî noktalar:** 51 (sıralamadan türetildi), 52 (avlu sınırları toprak
    altında), 53 (havza ortası, erişim yok), 57 (korunmuş bir kesit). Kaynaklar
    arasında 25–90 m fark süren duraklar var; sahada ölçüm yapılmadı.
@@ -84,12 +87,13 @@ uydurulmaz, `sharedWith` **karşılıklı** yazılır ve testte zorunlu tutulur.
 4. **İki görselin lisansı doğrulanmadı:** `heroon` (#20) ve `magnesia-kapisi`
    (#27), kaynak Turkish Archaeological News. Yayında gösteriliyor; lisans
    teyidi veya değişim gerekiyor.
-5. **Türkçe ses kaydı olmayan üç durak.** Chalcidicum (45) ve Domitian
-   Çeşmesi (47) tura eklendi; içerik ve koordinat doğrulandı ama ses yok.
-   Pollio Anıtı'nın (46) metni bölündüğü için eski kayıt artık yanlış metni
-   okuyordu; ses alanı kaldırıldı. Üçünde de arayüz "Ses kaydı yok. Metni
-   okuyabilirsin." der. Kilit: `SES_BEKLEYEN`.
-6. **Ses tınısı denetlenmedi.** 49–57 kayıtları yenilendi ve teknik künye
-   mevcut dosyalarla aynı, ama turdaki 46 eski Türkçe kayıtla kulakla
-   karşılaştırma yapılmadı. Tını ayrı düşerse o dokuz dosya başka sesle
-   yeniden üretilmeli.
+5. ~~Türkçe ses kaydı olmayan üç durak.~~ **Kapatıldı (8 Kasım 2026).**
+   Chalcidicum (45), Pollio (46) ve Domitian Çeşmesi (47) kaydedildi
+   (`/audio/efes-chalcidicum.mp3`, `efes-pollio-domitian-cesmesi.mp3`,
+   `efes-domitian-cesmesi.mp3`). Böylece turun **57 durağının tamamı Türkçe
+   sesli**; `SES_BEKLEYEN` listesi boş ve testte kilitli.
+6. **Ses tınısı denetlenmedi.** Yeni Türkçe kayıtlar 45–47 ve 49–57;
+   teknik künye mevcut dosyalarla birebir (24 000 Hz, mono, 32 kbps CBR,
+   `TSSE = Lavf59.27.100`), ama turdaki eski kayıtlarla **kulakla**
+   karşılaştırma yapılmadı. Tını ayrı düşerse ilgili dosyalar yeniden
+   üretilmeli. İngilizce yeni kayıtlar da aynı künyede.

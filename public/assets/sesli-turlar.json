@@ -1438,7 +1438,8 @@
               "url": "https://constantinople.ehw.gr/forms/filePage.aspx?lemmaId=8213"
             }
           ],
-          "envanterNo": 12
+          "envanterNo": 12,
+          "audio": "/audio/efes-chalcidicum.mp3"
         },
         {
           "id": "pollio-domitian-cesmesi",
@@ -1468,7 +1469,8 @@
           ],
           "sharedWith": [
             "hydreion-kalkidikum"
-          ]
+          ],
+          "audio": "/audio/efes-pollio-domitian-cesmesi.mp3"
         },
         {
           "id": "domitian-cesmesi",
@@ -1500,7 +1502,8 @@
               "url": "https://www.wikidata.org/wiki/Q104641896"
             }
           ],
-          "envanterNo": 11
+          "envanterNo": 11,
+          "audio": "/audio/efes-domitian-cesmesi.mp3"
         },
         {
           "id": "laecanius-cesmesi",
