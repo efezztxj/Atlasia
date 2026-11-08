@@ -160,3 +160,52 @@ Tek durakta birleşik tutulunca envanter 57, tur 55 kalıyordu. Bölündü:
 4. **Chalcidicum tek yapı kimliği tartışmalı.** Alzinger, yapının aslında
    Hellenistik agora için bir payanda olduğunu öne sürüyor; kesin plan
    bilinmiyor (birkaç kez yeniden yapıldı).
+
+---
+
+## 5. Ek bulgu: Heksagon (51) Kalkidikum'da değil
+
+**Tarih:** 2026-11-07 · **Durum:** düzeltildi (içerik, konum, kaynak, görsel, ses bağı)
+
+Turun 51. durağı `heksagon` gtp.gr'ye dayanan **tek ve yanlış** bir kayıtla
+girmişti: yapı Bazilika Stoası'nın batı ucunda, Kalkidikum'un bir parçası gibi
+tanımlanıyordu (`37.936739, 27.344431`, `sharedWith: ["basilica-stoa"]`,
+`audio: /audio/kalkidikum-heksagon.mp3`). Üçü de yanlış.
+
+**Doğru veriler (üç bağımsız kaynak):**
+
+| Kaynak | Katkı |
+| --- | --- |
+| Thür, *Zur Kuretenstrasse von Ephesos* (ÖAW) | Kuretler Caddesi güney sırası: Hadrian Kapısı → Oktogon → **Heroon** → doğuya "kleiner hexagonaler Zentralbau" |
+| Berns, *Grab- und Memorialbauten in Ephesos* (Köln) | "sog. Hexagon" Kuretenstraße'de; monopteros benzeri üst yapı |
+| Turkish Archaeological News · Oktagon / Heroon | Heroon → Oktogon → Heksagon sırası, batıdan doğuya; Oktogon GPS 37.938650, 27.341465 |
+
+- **Konum:** Kuretler Caddesi'nin (Embolos) **güney kenarı**, Oktogon'un doğusu,
+  Alytarkhos Stoası'nın batısı. 1994 kazısında açığa çıkarıldı; geç antik bir
+  yapı üzerine oturmuş, caddenin döşemesi anıtın üzerinden geçmiş.
+- **Kimlik:** altıgen planlı **monopteros onur anıtı**; içinde onurlandırılan
+  kişinin heykeli. Eski kazı raporlarındaki "nymphaeum" yorumu terk edildi.
+- **Ölçü:** kaide ~1,50 m (0,75 m üç kademeli krepidoma), çevre 5,60 m,
+  derinlik 4,80 m, yükseklik 9–10 m.
+- **Tarih:** seramiğe göre **MÖ 1. yy sonu** (Oktogon'dan sonra, ona bitişik).
+
+**Uygulanan düzeltmeler:**
+
+1. `title` → "Heksagon (Altıgen Anıt)"; TR ve EN metin baştan yazıldı
+   (`public/assets/sesli-turlar.json` + `public/audio/efes-en.json`).
+2. `lat/lng` → `37.938430, 27.341700` (Oktogon ile Alytarkhos arası);
+   `coordinateSource` Thür PDF'i; `sources` 4 kayıt / 3 bağımsız host.
+3. `sharedWith: ["basilica-stoa"]` kaldırıldı (artık aynı koordinatta değil).
+4. Görsel: yanlış yapıyı gösteren Bazilika Stoası fotoğrafı yerine Kuretler
+   Caddesi (Rita1234, CC BY-SA 3.0) — kaynak ve lisans alanları da düzeltildi.
+5. `audio` **kaldırıldı**: `kalkidikum-heksagon.mp3` eski (yanlış) metni okuyor.
+   `SES_BEKLEYEN` listesine `heksagon` eklendi.
+6. Kategori grubu: `kalkidikum` → **`curetes`** (Oktogon'un yanına).
+7. Kayıt paketi yeni metne hizalandı: `metinler/51-heksagon.txt`, `TUMU.txt`,
+   `dikte-metni.md`, `kayit-listesi.csv`, `ingilizce-ses-kayit-metinleri.md`,
+   `kalan-11-yer-ingilizce.md`. `PROMPT.md`'deki yanlış dosya yolu
+   (`49-heksagon.txt` → `51-heksagon.txt`) düzeltildi.
+
+**Aynı turda kapanan diğer borç:** 52 `verulanus-meydani-salonu` ikinci
+bağımsız kaynakla (ephesus.net kent haritası, 200 × 240 m) desteklendi.
+Turda artık tek kaynaklı durak yok.

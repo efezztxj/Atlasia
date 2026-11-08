@@ -42,16 +42,16 @@ Triodos Square, whose name means "three roads", lies at the heart of Ephesus. Ma
 
 ---
 
-## 49. Hexagon
+## 49. Hexagon (Hexagonal Monument)
 
 - **id:** `heksagon`
 - **dosya:** `public/audio/en-kalkidikum-heksagon.mp3`
-- **uzunluk:** 406 karakter · ~70 kelime · ~28 sn
-- **görsel alt metni (yayında):** The remains of the Hexagon in the Chalcidicum quarter at Ephesus
+- **uzunluk:** 722 karakter · ~127 kelime · ~51 sn
+- **görsel alt metni (yayında):** Curetes Street; the Hexagon stands in the row of monuments along its south side
 
 ### Seslendirme metni
 
-Part of the Chalcidicum, the Hexagon is a six-sided structure of unusual plan at the western end of the Basilica Stoa. It is thought to have served public meetings and administrative functions in the Roman period. Its geometric layout reflects both the architectural variety of Ephesus and the precision of its urban planning. Today the remains are closely bound up with the colonnade of the Basilica Stoa.
+On the south side of Curetes Street, between the Octagon and the Stoa of Alytarches, stands a small monument on a hexagonal plan. It was brought to light in the 1994 excavations; in late antiquity another structure was built over it, and the paving of the street ran across it as well. The building had three parts: a marble three-stepped base about one and a half metres high, a colonnaded superstructure above it, and a conical roof. Its circumference was five point six metres and its height nine to ten metres. Inside stood the statue of the person honoured. Pottery found in the building dates it to around the late first century BC. Its position belongs to the row of burial and honorary monuments along the Embolos.
 
 ---
 
