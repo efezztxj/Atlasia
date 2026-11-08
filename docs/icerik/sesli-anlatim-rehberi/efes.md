@@ -141,3 +141,11 @@ inmez: daha büyük kaydırma pini komşu yapıya taşır.
    aralıkla durduğu için eşik tutmuyordu. Eşik 20 m'ye çıkarıldı ve kümeler
    16 m yarıçaplı yaya yerleştirildi (bkz. §3). 45–47 için test var:
    `src/components/audioStopMarkers.test.ts`.
+
+8. **45–47 Türkçe dikte dosyası yok (açık).** `kayit-paketi/turkce-dikte-49-57.json`
+   yalnız 49–57'yi kapsıyor. 45 Chalcidicum, 46 Pollio ve 47 Domitian Çeşmesi
+   kayıtları üretildi (`/audio/efes-chalcidicum.mp3`,
+   `efes-pollio-domitian-cesmesi.mp3`, `efes-domitian-cesmesi.mp3`) ama okunan
+   Türkçe metin repoda yazılı değil; `kayit-paketi/metinler/45-*.txt` … `47-*.txt`
+   dosyaları **İngilizce**. Kayıtların sözlerini sonradan yazmak dinleyip çözümleme
+   gerektirdiği için yapılmadı — uydurma metin yazmak sesle uyuşmama riski taşır.
