@@ -4,6 +4,20 @@ Bu klasör, Atlasia sesli anlatım rehberinin **tek yapılış kaynağıdır**.
 Yeni bir yer, yeni bir şehir veya yeni bir tur eklenecekse önce buradaki
 `README.md` okunur; sonra o yere ait dosya açılır.
 
+## Dosyalar
+
+| Dosya | İçerik |
+| --- | --- |
+| `README.md` | Bu dosya: yapılış tarzı, ekleme adımları, açık borçlar |
+| `efes.md` | Efes turu: **57 durak**, numara düzeni, `sharedWith`, borçlar |
+| `kapadokya.md` | Kapadokya turu iskeleti + durak kabul ölçütü |
+| `ingilizce-ses-kayit-metinleri.md` | Ses kaydı bekleyen 9 durak; okunacak metin + dosya adı + süre |
+| `kalan-11-yer-ingilizce.md` | **Kalan 11 yerin İngilizce metni** (9 turda + 2 turda değil) |
+| `agent-ses-gorevi.md` | **Agent'a verilecek görev**: teknik künye (24 kHz/112 kbps mono), telaffuz, kabul kontrolü |
+| `kayit-paketi/PROMPT.md` | **Agent'a yapıştırılacak hazır prompt** + metinlerin okunacağı yollar |
+| `kayit-paketi/metinler/` | Dokuz metin: `TUMU.txt` (hepsi) + durak başına `.txt` |
+| `kayit-paketi/` | **İnsan seslendiren** için paket: dikte metni, telaffuz sözlüğü, CSV, talimat |
+
 ## 1. Yapı: tek dosya, içinde turlar
 
 Sesli rehberin **verisi tek dosyadadır**:

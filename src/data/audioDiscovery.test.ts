@@ -20,12 +20,24 @@ const FILE = resolve(`public${AUDIO_TOUR_FILE}`);
 /**
  * İngilizce SES KAYDI henüz üretilmemiş dokuz durak.
  *
- * 2026-11-07: metin çevirisi tamamlandı (55/55 durak). Ses kaydı gerçek
+ * 2026-11-07: metin çevirisi tamamlandı (57/57 durak). Ses kaydı gerçek
  * anlatım gerektirdiği için uydurulamaz; bu duraklarda `audio` alanı yoktur ve
  * arayüz "English audio is not available yet. You can read the text." der.
  * Kayıt eklendikçe bu dizi küçülür, boşaldığında kilit kalkar.
  */
+/**
+ * Türkçe ses kaydı henüz üretilmemiş duraklar.
+ *
+ * 2026-11-07: Chalcidicum ve ayrı Domitian Çeşmesi tura eklendi; içerik ve
+ * koordinat doğrulandı, ses kaydı henüz yok. Arayüz bu duraklarda
+ * "Ses kaydı yok. Metni okuyabilirsin." der. Kayıt geldikçe liste küçülür.
+ */
+const SES_BEKLEYEN = ["chalcidicum", "domitian-cesmesi"];
+
 const KALKIDIKUM_ENGLISH_AUDIO_PENDING = [
+  "chalcidicum",
+  "domitian-cesmesi",
+  "pollio-domitian-cesmesi",
   "hydreion-kalkidikum",
   "triodos-meydani",
   "heksagon",
@@ -62,18 +74,19 @@ describe("sesli anlatım rehberi · tek dosya yapısı", () => {
     }
   });
 
-  it("Efes turu 55 durak taşır: 46 temel + 9 Kalkidikum eki", () => {
+  it("Efes turu 57 durak taşır: envanterdeki 57 kaydın tamamı", () => {
     const efes = AUDIO_DISCOVERY_TOURS.find((tour) => tour.placeId === "efes");
     expect(efes).toBeTruthy();
-    expect(efes!.stops).toHaveLength(55);
-    // Kalkidikum eki son 9 durak; 57 kayıtlık envanterdeki sıra numarasını taşır.
+    // 2026-11-07: Chalcidicum ve ayrı Domitian Çeşmesi eklendi → 55 → 57.
+    expect(efes!.stops).toHaveLength(57);
+    // Kalkidikum eki 49-57 (9 durak); 57 kayıtlık envanterdeki sıra numarasını taşır.
     const kalkidikum = efes!.stops.slice(-9);
     expect(kalkidikum.map((stop) => stop.envanterNo)).toEqual([14, 16, 28, 40, 42, 44, 45, 47, 48]);
     expect(kalkidikum.every((stop) => stop.id.startsWith("kalkidikum-") || stop.id === "hydreion-kalkidikum"
       || ["triodos-meydani", "heksagon", "verulanus-meydani-salonu", "antik-liman-kanali",
         "meryem-kilisesi-vaftizhanesi", "bizans-hamamlari", "vedius-gymnasionu", "kent-surlari"].includes(stop.id))).toBe(true);
-    // Numaralar 1..55; ören yeri dışı 9 durak ◆ biçiminde ama numarasını gösterir.
-    expect(Math.max(...efes!.stops.map((stop) => stop.no))).toBe(55);
+    // Numaralar 1..57; ören yeri dışı 9 durak ◆ biçiminde ama numarasını gösterir.
+    expect(Math.max(...efes!.stops.map((stop) => stop.no))).toBe(57);
     expect(efes!.stops.filter((stop) => stop.markerStyle === "additional")).toHaveLength(9);
   });
 
@@ -98,7 +111,7 @@ describe("sesli anlatım rehberi · yükleme", () => {
       globalThis.fetch = async () => new Response(readFileSync(FILE, "utf8"), { status: 200 });
       const tours = await loadAudioTours();
       expect(tours.map((tour) => tour.id)).toEqual(AUDIO_DISCOVERY_TOURS.map((tour) => tour.id));
-      expect((await loadAudioDiscoveryForPlace("efes"))?.stops).toHaveLength(55);
+      expect((await loadAudioDiscoveryForPlace("efes"))?.stops).toHaveLength(57);
       expect(await loadAudioDiscoveryForPlace("bilinmeyen-yer")).toBeNull();
     } finally {
       globalThis.fetch = original;
@@ -174,8 +187,15 @@ describe("sesli anlatım rehberi · durak içeriği", () => {
         expect(source.title.trim()).not.toBe("");
         expect(new URL(source.url).protocol).toBe("https:");
       }
-      expect(stop.audio).toMatch(/^\/audio\/[\w-]+\.mp3$/);
-      expect(existsSync(resolve("public", stop.audio!.slice(1)))).toBe(true);
+      // Ses kaydı henüz üretilmemiş durak olabilir; o zaman `audio` alanı yoktur
+      // ve arayüz metin alternatifi gösterir. Eksikler açık listede olmalı:
+      // sessizce çoğalamaz, üretim geldikçe listeden düşer.
+      if (stop.audio) {
+        expect(stop.audio).toMatch(/^\/audio\/[\w-]+\.mp3$/);
+        expect(existsSync(resolve("public", stop.audio.slice(1)))).toBe(true);
+      } else {
+        expect(SES_BEKLEYEN, `${stop.id} ses kaydı yok ama borç listesinde değil`).toContain(stop.id);
+      }
       expect(stop.image, `${stop.id}: görsel eksik`).toBeTruthy();
       expect(stop.image!.alt.trim()).toBeTruthy();
       expect(stop.image!.author.trim()).toBeTruthy();
