@@ -1,6 +1,6 @@
 # Ses tınısı denetimi — 8 Kasım 2026
 
-`efes.md` §4/6 borcu ("ses tınısı kulakla doğrulanmadı") kapatılamıyordu: bu
+`efes.md` §5 borcu ("ses tınısı kulakla doğrulanmadı") kapatılamıyordu: bu
 ortamda dinleme yapılamıyor. Bunun yerine **ölçülebilir bir vekil** kullanıldı
 ve sonuç bir sorunu ortaya çıkardı.
 
@@ -75,7 +75,7 @@ enerji taşıyor (centroid 794 Hz'e karşı 1 289 Hz); üst bant sınırı ikisi
    alanından alınır (kayıtla birebir eşleşen metin).
 3. Her dosya üretildikten sonra bu belgedeki ölçütle referansa uzaklık
    ölçülür; **< 8.5** (eski dosyaların üst sınırı) olana kadar aday değiştirilir.
-4. Dosyalar 24 000 Hz, mono, 32 kbps CBR olarak kodlanır; `efes.md` §4/6 ve bu
+4. Dosyalar 24 000 Hz, mono, 32 kbps CBR olarak kodlanır; `efes.md` §2/§5 ve bu
    belge güncellenir.
 
 ## Uygulama — 8/12 yeniden üretildi (8 Kasım 2026)
@@ -113,6 +113,33 @@ Eski 45 dosyanın ortalaması 5.09 — grup düzeyinde fark kalmadı.
 
 **Açık kalan tek izleme:** #55 Türkçe kayıt kendi grubundan ayrışıyor (z ≈ +2.7).
 Metni sayı ağırlıklı ("yetmiş beş metreye elli metrelik", "bin dokuz yüz
-ellili"); fark büyük olasılıkla sözcük dağılımından. Türkçe anlatıcı sesi bu
-oturumda kayıtlı değil, yeniden üretim mevcut 8 dosyayı da bozar; bu yüzden
-dokunulmadı.
+ellili"); fark büyük olasılıkla sözcük dağılımından. O tarihte Türkçe anlatıcı
+sesi kayıtlı olmadığı için dokunulmadı; 8 Kasım'ın üçüncü turunda Türkçe ses
+kaydedildi, yani bu madde artık **yapılabilir** bir borç (aşağıya bakın).
+
+## Türkçe taraf — 33–38, 48, 51 yenilendi (8 Kasım 2026, aynı gün üçüncü tur)
+
+Türkçe anlatıcı artık bu ortamda kayıtlı (`voice-03`, İngilizce'de referansa
+6.34 uzaklıkla seçilen ses). Bu yüzden #55 borcu artık "ses yok" değil, yalnız
+ölçüm borcu.
+
+**Yenilenen sekiz kayıt ve tını.** Aynı metinle üretilen iki örnek (TR
+Prytaneion, EN Prytaneion) eski kayıtlarla karşılaştırıldı: aynı metin eski↔yeni
+uzaklığı **TR 3.34 / EN 3.60**, korpusta *farklı* metinlerin tipik uzaklığı
+**TR 4.61 (1.64–10.35) / EN 4.39 (2.05–8.17)**. Yani yeni kayıtlar eski
+anlatıcıdan ayırt edilemiyor, ama eski dosyanın kopyası da değil.
+
+57 Türkçe dosyanın tümünde MFCC sapması: medyan 2.82, MAD 0.78. Yenilenen
+dosyaların z değerleri: 33 −0.4, 34 +0.4, 35 −0.4, 36 −1.0, 37 −0.4, 38 −0.8,
+48 +0.1, 51 +0.8 — hepsi ±1.0 içinde. En aykırı dosya hâlâ **#55 (7.15,
+z ≈ +3.7)**, sonra 14 (5.79), 17 (5.77), 16 (5.24), 32 (4.96).
+
+**Metin/ses oranı kilidi.** Aynı turda 33–38 ve 48'in sesi ekrandaki kısa
+metnin eski uzun hâlini okuduğu ortaya çıktı (7.7–10.8 kr/sn; tur medyanı 14.6).
+Sekizi de güncel metinden üretildi. Bir daha kaçmaması için
+`src/data/audioDiscovery.test.ts` süreyi MP3 boyutundan (32 kbps CBR → 4 000
+bayt/sn) hesaplayıp metin/süre oranını kilitliyor: TR 11.5–17.5, EN 13–18.5.
+Metin değişip ses eskide kalırsa test düşer.
+
+**Kalan izleme:** #55 Türkçe. Yeniden üretim artık mümkün; sıradaki turda
+aynı sesle üretilip ölçülecek.

@@ -124,6 +124,6 @@ en-kalkidikum-chalcidicum.mp3        ← turda değil
 en-kalkidikum-domitian-cesmesi.mp3   ← turda değil
 ```
 
-Teknik künye: **24 000 Hz · mono · 112 kbps CBR** (mevcut 46 dosyadan ölçüldü).
+Teknik künye: **24 000 Hz · mono · 32 kbps CBR** (114 dosyada doğrulandı; 8 Kasım 2026'da 112 kbps yazımı düzeltildi).
 Telaffuz kuralları: `kayit-paketi/agent-ses-gorevi.md` §4.
 Agent prompt'u: `kayit-paketi/PROMPT.md`.

@@ -31,22 +31,34 @@ numaralar veriden okunmaya başlandı. Sonuç:
          (45 Chalcidicum ve 47 Domitian Çeşmesi 2026-11-07'de araya girdi)
 ```
 
-## 2. Kalkidikum eki (49–57)
+## 2. Ses künyesi ve metin–ses kilidi
+
+Turdaki **114 kaydın** (57 TR + 57 EN) tamamı aynı künyede: **24 000 Hz, mono,
+MP3, 32 kbps CBR**. Bu künye, `src/data/audioDiscovery.test.ts` içindeki süre
+hesabının da temeli: CBR'de saniyede tam **4 000 bayt** düşer, yani süre =
+dosya boyutu / 4 000. Doğrulama (`miniaudio` çözümü): heksagon 48.3 s ↔
+boyut/4 000 = 48.4 s.
+
+Tur geneli (8 Kasım 2026): TR medyan **14,55** kr/sn (12,09–15,92), EN medyan
+**15,67** kr/sn (14,06–17,11). Test bu bantları kilitler (TR 11,5–17,5 ·
+EN 13–18,5); metin düzenlenip ses eskide kalırsa test düşer.
+
+## 3. Kalkidikum eki (49–57)
 
 Bu dokuz durak ayrı bir tur değil, Efes turunun devamıdır. Sekizi ören yeri
 çekirdeğinin içinde, 57 (korunmuş sur kesiti) sınırın dışında işaretlenir.
 Her biri 57 kayıtlık envanterdeki sıra numarasını `envanterNo` alanında taşır.
 
 > **8 Kasım 2026 — iki kaynak birleşti.** Aşağıdaki tablo `main`'in
-> kaynaklarını taşır; ses sütunu bu dalın katkısıdır. Tur 57/57 **İngilizce**,
-> 56/57 **Türkçe** sesli. Eksik olan tek kayıt Heksagon: metni ve konumu
-> 8 Kasım'da yeniden yazıldığı için eski Türkçe kayıt yanlış metni okuyordu.
+> kaynaklarını taşır; ses sütunu bu dalın katkısıdır. Tur **57/57 Türkçe ve
+> 57/57 İngilizce** sesli. Heksagon'un metni ve konumu yeniden yazıldığı için
+> eski Türkçe kayıt yanlış metni okuyordu; yeni metinden yeniden üretildi.
 
 | # | Durak | Envanter no | Konum kaynağı | Fotoğraf | Ses |
 | --- | --- | --- | --- | --- | --- |
 | 49 | Hydreion (Çeşme Yapısı) | 14 | OSM yolu 1411590456 | Dosseman, Hydreion + Memmius · CC BY-SA 4.0 | TR + EN |
 | 50 | Triodos Meydanı | 16 | TAN Triodos | Sailko, Hadrian Kapısı + Kuretler Caddesi · CC BY-SA 3.0 | TR + EN |
-| 51 | Heksagon | 28 | Thür (ÖAW) + Berns | Elelicht, Kuretler Caddesi · CC BY-SA 3.0 | **TR yok**, EN var |
+| 51 | Heksagon | 28 | Thür (ÖAW) + Berns | Elelicht, Kuretler Caddesi · CC BY-SA 3.0 | TR + EN |
 | 52 | Verulanus Salonu | 40 | TAN — temsilî | Dosseman, Meryem Kilisesi'ne bakış · CC BY-SA 4.0 | TR + EN |
 | 53 | Antik Liman | 42 | Ephesus.net planı — havza ortası | Dosseman, Bülbül Dağı'ndan ovaya bakış · CC BY-SA 4.0 | TR + EN |
 | 54 | Meryem Kilisesi Vaftizhanesi | 44 | Commons dosya GPS'i | Dosseman, vaftiz havuzu · CC BY-SA 4.0 | TR + EN |
@@ -78,7 +90,7 @@ kaydediyor. TAN'ın "Magnesian Gate Area" sayfasının GPS'i
 yapısının noktası — 26. durak zaten orada duruyor. İki kaynak çelişmiyor.
 
 
-## 3. Yakın durakların haritada ayrılması (`sharedWith` → mesafe eşiği)
+## 4. Yakın durakların haritada ayrılması (`sharedWith` → mesafe eşiği)
 
 8 Kasım 2026'da altı durakta duran `sharedWith` kayıtları **silindi**. Alanın
 tanımı "aynı fiziksel nokta"ydı; oysa koordinatlar aylar önce ayrılmıştı:
@@ -104,20 +116,30 @@ duran **45 Chalcidicum · 46 Pollio · 47 Domitian Çeşmesi** üçlüsünün (2
 Meydanı ile birlikte) tek leke gibi görünmesini bitirdi. Eşik 20 m'nin altına
 inmez: daha büyük kaydırma pini komşu yapıya taşır.
 
-## 4. Açık borçlar
+## 5. Açık borçlar
 
 1. ~~İngilizce ses kaydı eksiği.~~ **Kapatıldı (8 Kasım 2026).**
    57 durağın tamamı İngilizce sesli. 12 kayıt ilk üretimde eski anlatıcıdan
    farklı bir sesle çıkmıştı; MFCC + bant enerjisiyle ölçülüp yeniden üretildi
    ([tını denetimi](./ses-tinisi-denetimi-2026-11-08.md)).
-2. **Heksagon (51) Türkçe kaydı yok — açık.** Metin ve konum 8 Kasım'da
-   yeniden yazıldı (Kalkidikum parçası değil; Kuretler Caddesi'nin güney
-   kenarında, Oktogon ile Alytarkhos Stoası arasında altıgen monopteros).
-   Eski kayıt yanlış metni okuyordu, bağlantı kaldırıldı. İngilizce kayıt yeni
-   metinden üretildi (referansa uzaklık 6.18). Kilit: `SES_BEKLEYEN`.
-   Yeni Türkçe kayıt için Türkçe anlatıcı sesi gerekiyor. Eski
-   `efes-heksagon.mp3` yanlış metni okuduğu için depodan silindi (geçmişte
-   duruyor); durağın sesi gelince aynı adla yeniden üretilecek.
+2. ~~Heksagon (51) Türkçe kaydı yok.~~ **Kapatıldı (8 Kasım 2026).**
+   Metin ve konum 8 Kasım'da yeniden yazıldı (Kalkidikum parçası değil;
+   Kuretler Caddesi'nin güney kenarında, Oktogon ile Alytarkhos Stoası arasında
+   altıgen monopteros). Eski kayıt yanlış metni okuyordu, bağlantı kaldırıldı ve
+   dosya silindi; yeni metinden hem Türkçe (`/audio/efes-heksagon.mp3`) hem
+   İngilizce kayıt üretildi. Tını: TR z ≈ +0.8, EN referansa 6.18 — ikisi de
+   turun dağılımı içinde.
+2b. ~~33–38 ve 48'in sesi ekrandaki metinle uyuşmuyordu.~~ **Kapatıldı
+   (8 Kasım 2026).** Bu yedi durağın metni bir noktada kısaltılmış, ses
+   kayıtları ise eski uzun metni okumaya devam etmişti. Ölçüt: metin/süre
+   oranı. Tur medyanı 14,6 kr/sn iken bu duraklar 7,7–10,8 aralığındaydı
+   (ses, ekrandaki metinden %25–47 daha uzun konuşuyordu). Yedisi de güncel
+   metinden yeniden üretildi; yeni oranlar 13,2–15,2 kr/sn, yani tur dağılımının
+   (12,1–15,9) tam içinde. Heksagon da 13,5. Güncel tur medyanı **14,55**
+   (TR) ve **15,67** (EN). Bu sınıf hatayı bir daha kaçırmamak için
+   `src/data/audioDiscovery.test.ts` içine **metin/süre oranı kilidi** eklendi:
+   metin düzenlenip ses eskide kalırsa test düşer.
+   Okunan metinler: `kayit-paketi/turkce-dikte-33-38-48-51.json`.
 3. **Temsilî noktalar — gizlenmiyor, ölçüm borcu sürüyor (8 Kasım 2026).**
    52 (avlu sınırları toprak altında), 53 (havza ortası, erişim yok) ve 57
    (korunmuş bir kesit) veride `coordinateAccuracy: "approximate"` taşır.
@@ -151,11 +173,10 @@ inmez: daha büyük kaydırma pini komşu yapıya taşır.
    Türkçe** (z ≈ +2.7, metni sayı ağırlıklı).
 7. ~~45/46/47 pinleri üst üste biniyor.~~ **Kapatıldı (8 Kasım 2026).**
    Eşik 20 m'ye çıkarıldı, kümeler 16 m yarıçaplı yaya yerleştirildi (§3).
-8. **45–47 Türkçe dikte dosyası yok (açık).** `kayit-paketi/turkce-dikte-49-57.json`
-   yalnız 49–57'yi kapsıyor. 45 Chalcidicum, 46 Pollio ve 47 Domitian Çeşmesi
-   kayıtları var ama okunan Türkçe metin repoda yazılı değil; `metinler/45-*.txt`
-   … `47-*.txt` dosyaları **İngilizce**. Dinleyip çözümleme gerektirdiği için
-   uydurulmadı.
+8. ~~45–47 Türkçe dikte dosyası yok.~~ **Kapatıldı (8 Kasım 2026).**
+   `kayit-paketi/turkce-dikte-33-38-48-51.json` 33–38, 45, 47, 48 ve 51'in
+   okunan Türkçe metnini birebir taşıyor. Bu metinler dinleyip çözümlenerek
+   değil, **sesin üretildiği kaynaktan** alındı; bu yüzden uydurma riski yok.
 9. **Birleşme notu (8 Kasım 2026).** `main` bu dal paralel çalışırken #196–#204
    ile ilerledi; ikisi de aynı dokuz durağı tura taşıdı. Birleşmede `main`'in
    araştırılmış metinleri (Heksagon) ve görselleri temel alındı, bu dalın
@@ -163,3 +184,10 @@ inmez: daha büyük kaydırma pini komşu yapıya taşır.
    55, 56, 57 aynı noktaya geri düşmüştü (Hydreion Pollio'da, vaftizhane Meryem
    Kilisesi'nde, Bizans Hamamları Liman Hamamları'nda, Vedius ve surlar stadyumda,
    antik liman Liman Caddesi'nde); bu dal o çakışmayı açıyor.
+
+10. **#55 Türkçe kaydın tınısı — izleme (8 Kasım 2026).** 57 dosyalık Türkçe
+    korpusta en aykırı kayıt #55 Bizans Hamamları (sapma 7.15, z ≈ +3.7; tur
+    medyanı 2.82). Metni sayı ağırlıklı ("yetmiş beş metrekare", "bin dokuz yüz
+    ellili") ve bu MFCC sapmasının bir bölümünü açıklar; yine de diğer 56 dosya
+    1.6–5.8 aralığında kaldığı için kayıt yenilenmeye değer. Sıradaki turda
+    aynı sesle üretilip ölçülecek.

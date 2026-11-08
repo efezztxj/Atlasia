@@ -86,16 +86,16 @@ en-efes-pollio-domitian-cesmesi.mp3   <- Pollio metni degisti, yeniden uret
 TEKNİK KÜNYE (mevcut 46 dosyadan ÖLÇÜLDÜ — birebir uy)
 Örnekleme: 24 000 Hz
 Kanal: mono
-Bit hızı: 112 kbps CBR
+Bit hızı: 32 kbps CBR
 Konteyner: MP3
 
 ffmpeg ile örnek dönüşüm:
-ffmpeg -i ham.wav -ar 24000 -ac 1 -b:a 112k -c:a libmp3lame \
+ffmpeg -i ham.wav -ar 24000 -ac 1 -b:a 32k -c:a libmp3lame \
   public/audio/en-kalkidikum-heksagon.mp3
 
 KABUL KONTROLÜ (her dosya için kendin koş, geçmeyen varsa yeniden üret)
 1. ffprobe -v error -show_entries stream=sample_rate,channels,bit_rate \
-     -of csv=p=0 <dosya>   → çıktı tam olarak: 24000,1,112000
+     -of csv=p=0 <dosya>   → çıktı tam olarak: 24000,1,32000
 2. Süre 20–45 sn arasında
 3. Dosya boyutu 60–200 KB arasında
 4. TTS'e verilen metin, JSON'daki "description" ile kelime kelime aynı

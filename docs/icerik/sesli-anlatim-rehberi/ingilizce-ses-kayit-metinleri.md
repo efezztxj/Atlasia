@@ -11,7 +11,7 @@ boş olan dokuz durağın seslendirme metni. Metinler İngilizce rehberde
 3. `public/audio/efes-en.json` içindeki ilgili kayda `"audio": "<yol>"` satırını ekle.
 4. `npx vitest run src/data/audioDiscovery.test.ts` → kilit küçülür.
 
-> **Teknik:** MP3, 44.1 kHz, mono, 96–128 kbps. Süreler ~25–37 sn.
+> **Teknik:** MP3, 24 kHz, mono, 32 kbps CBR. Süreler ~25–37 sn.
 > Toplam dokuz kayıt ≈ 4,5 dakika.
 
 ---

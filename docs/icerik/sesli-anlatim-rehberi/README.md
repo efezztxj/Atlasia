@@ -11,9 +11,9 @@ Yeni bir yer, yeni bir şehir veya yeni bir tur eklenecekse önce buradaki
 | `README.md` | Bu dosya: yapılış tarzı, ekleme adımları, açık borçlar |
 | `efes.md` | Efes turu: **57 durak**, numara düzeni, `sharedWith`, borçlar |
 | `kapadokya.md` | Kapadokya turu iskeleti + durak kabul ölçütü |
-| `ingilizce-ses-kayit-metinleri.md` | Ses kaydı bekleyen 9 durak; okunacak metin + dosya adı + süre |
-| `kalan-11-yer-ingilizce.md` | **Kalan 11 yerin İngilizce metni** (9 turda + 2 turda değil) |
-| `agent-ses-gorevi.md` | **Agent'a verilecek görev**: teknik künye (24 kHz/112 kbps mono), telaffuz, kabul kontrolü |
+| `ingilizce-ses-kayit-metinleri.md` | **Tarihsel** — 9 durağın İngilizce metni; kayıtlar 8 Kasım 2026'da tamamlandı |
+| `kalan-11-yer-ingilizce.md` | **Tarihsel** — son 11 yerin İngilizce metni; kayıtlar tamamlandı |
+| `agent-ses-gorevi.md` | **Agent'a verilecek görev**: teknik künye (24 kHz/32 kbps mono), telaffuz, kabul kontrolü |
 | `kayit-paketi/PROMPT.md` | **Agent'a yapıştırılacak hazır prompt** + metinlerin okunacağı yollar |
 | `kayit-paketi/metinler/` | Dokuz metin: `TUMU.txt` (hepsi) + durak başına `.txt` |
 | `kayit-paketi/` | **İnsan seslendiren** için paket: dikte metni, telaffuz sözlüğü, CSV, talimat |
@@ -93,10 +93,11 @@ Böylece her şehir kendi dosyasında, ana kural ise burada tek yerde durur.
 
 | Borç | Etki | Nerede izlenir |
 | --- | --- | --- |
-| Heksagon (51) Türkçe ses kaydı yok | Metin ve konum 8 Kasım'da yeniden yazıldı (Kalkidikum parçası değil); eski kayıt yanlış metni okuyordu, bağlantı kaldırıldı. İngilizce ses yeni metinden üretildi | `src/data/audioDiscovery.test.ts` → `SES_BEKLEYEN = ["heksagon"]` |
 | Yaklaşık konumlu üç durak (52, 53, 57) | Arayüzde "≈ Yaklaşık konum" yazar; saha ölçümü yapılmadı | aynı dosya, `coordinateAccuracy` kilidi |
-| Kalkidikum ekinin koordinatları temsilî; `vedius-gymnasionu` ve `kent-surlari` stadyum noktasını paylaşıyor | Sahada hassas ölçüm gerekir | `efes.md` §4 |
-| Efes turunda iki görselin lisansı doğrulanmadı (`heroon`, `magnesia-kapisi`) | Yayında "Kullanım izni doğrulanmadı" etiketiyle gösteriliyor; Türkçe/İngilizce alternatif gerekiyor | `efes.md` §4 |
+| 33–38 ve 48'in sesi, ekrandaki metnin eski uzun hâlini okuyordu | 8 Kasım 2026'da hepsi güncel metinden yeniden üretildi; metin/süre oranı artık testle kilitli | `efes.md` §2 · `src/data/audioDiscovery.test.ts` |
+| #55 Bizans Hamamları Türkçe kaydın tınısı tur ortalamasından ayrışıyor (z ≈ +3.7) | Dinleyiciye fark edilir mi diye ölçülüyor; sıradaki turda aynı sesle yeniden üretilecek | `ses-tinisi-denetimi-2026-11-08.md` |
+| Kalkidikum ekinin koordinatları temsilî; `vedius-gymnasionu` ve `kent-surlari` stadyum noktasını paylaşıyor | Sahada hassas ölçüm gerekir | `efes.md` §5 |
+| Efes turunda iki görselin lisansı doğrulanmadı (`heroon`, `magnesia-kapisi`) | Yayında "Kullanım izni doğrulanmadı" etiketiyle gösteriliyor; Türkçe/İngilizce alternatif gerekiyor | `efes.md` §5 |
 
 ## 5. Neden tek dosya?
 

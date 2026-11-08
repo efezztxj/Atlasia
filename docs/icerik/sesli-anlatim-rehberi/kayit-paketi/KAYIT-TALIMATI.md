@@ -30,9 +30,9 @@ bittiğinde uygulamada İngilizce dinlenebilir hâle geliyor.
 | | |
 |---|---|
 | Biçim | MP3 |
-| Örnekleme | 44.1 kHz |
+| Örnekleme | 24 000 Hz (turdaki 114 dosyayla aynı) |
 | Kanal | **Mono** |
-| Bit hızı | 96–128 kbps (sabit) |
+| Bit hızı | 32 kbps CBR (sabit) |
 | Ses düzeyi | -16 LUFS (hedef), tepe ≤ -1 dB |
 | Gürültü | Arka plan sessiz; klima/fan kapalı |
 | Süre | Dosya başına 25–37 sn |

@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { GROUPS_BY_TOUR } from "../components/AudioDiscoveryCategories";
@@ -18,19 +18,38 @@ import { GUIDE_PLACES } from "./places";
 
 const FILE = resolve(`public${AUDIO_TOUR_FILE}`);
 
+
+/**
+ * Dosyadan yaklaşık süre (saniye).
+ *
+ * NEDEN: 2026-11-08'de 33–38 ve 48. durakların metni kısaltılmış, ses
+ * kayıtları eski uzun metni okumaya devam etmişti. Hiçbir test ne süreyi ne
+ * metin-ses oranını kontrol ettiği için aylarca fark edilmedi. Aşağıdaki kilit
+ * bu sınıf hatayı yakalar.
+ *
+ * Turdaki bütün kayıtlar 24 000 Hz, mono, 32 kbps CBR (bkz. `efes.md` §2), yani
+ * saniyede tam 4 000 bayt. Süre = boyut / 4 000. Künye değişirse bu sabit de
+ * değişmeli; `kayit-paketi/KAYIT-TALIMATI.md` aynı künyeyi yazıyor.
+ */
+const BYTES_PER_SECOND = 4000;
+
+function audioSeconds(path: string): number {
+  return statSync(path).size / BYTES_PER_SECOND;
+}
+
 /**
  * Türkçe ses kaydı henüz üretilmemiş duraklar.
  *
- * 2026-11-08 (main birleşmesi): Heksagon'un metni ve konumu yeniden yazıldı
- * (Kalkidikum parçası değil; Kuretler Caddesi güneyinde altıgen monopteros).
- * Eski `efes-heksagon.mp3` yanlış metni okuyordu, bağlantı kaldırıldı; yeni
- * Türkçe kayıt gelene kadar durak bu listede kalır. İngilizce kayıt yeni
- * metinden üretildi ve bağlandı.
+ * 2026-11-08: Liste BOŞ — turun 57 durağının tamamı Türkçe sesli.
+ * Heksagon'un metni ve konumu yeniden yazıldığı için eski kaydı
+ * bağlanmamıştı; yeni metinden yeniden üretildi (/audio/efes-heksagon.mp3).
  *
- * Diğer 56 durakta hem TR hem EN kayıt var; listeler bunun dışında BOŞ kalmalı
- * ki sesi olmayan durak sessizce eklenemesin.
+ * Ayrıca 33–38 ve 48'de ses, ekrandaki metnin ESKİ ve daha uzun hâlini
+ * okuyordu (kr/sn 9–11'e karşı tur medyanı 14,6). Sekizi de güncel metinden
+ * yeniden üretildi; artık ses ile metin ayrışmıyor (kontrol:
+ * `scripts/verify-audio-text` yerine bu dosyadaki oran kilidi).
  */
-const SES_BEKLEYEN: string[] = ["heksagon"];
+const SES_BEKLEYEN: string[] = [];
 
 /** İngilizce ses kaydı bekleyen durak kalmadı (57/57). */
 const KALKIDIKUM_ENGLISH_AUDIO_PENDING: string[] = [];
@@ -292,5 +311,32 @@ describe("sesli anlatım rehberi · durak içeriği", () => {
     }
     // Geri kalan 53 durak kesin nokta sayılır; sessizce "yaklaşık" işaretlenemez.
     expect(efes.stops.length - approximate.length).toBe(54);
+  });
+
+  it("ses süresi ekrandaki metinle orantılı (metin değişip ses eskide kalmamış)", () => {
+    // 2026-11-08: 33–38 ve 48'in sesi, ekrandaki kısa metnin ESKİ uzun hâlini
+    // okuyordu (kr/sn 9–11; tur medyanı 14,6). Sekizi de güncel metinden
+    // yeniden üretildi. Bu kilit, metin düzenlenip ses eskide kaldığında düşer.
+    const efes = AUDIO_DISCOVERY_TOURS.find((tour) => tour.placeId === "efes")!;
+    const english = JSON.parse(readFileSync(resolve("public/audio/efes-en.json"), "utf8")) as Record<string, { description: string; audio?: string }>;
+
+    const rates: { tr: number[]; en: number[] } = { tr: [], en: [] };
+    for (const stop of efes.stops) {
+      expect(stop.audio, `${stop.no}: Türkçe ses yolu yok`).toBeTruthy();
+      rates.tr.push(stop.description.length / audioSeconds(resolve("public", stop.audio!.slice(1))));
+      const englishStop = english[stop.id];
+      expect(englishStop?.audio, `${stop.id}: İngilizce ses yolu yok`).toBeTruthy();
+      rates.en.push(englishStop.description.length / audioSeconds(resolve("public", englishStop.audio!.slice(1))));
+    }
+    const check = (values: number[], min: number, max: number, label: string) => {
+      for (const [index, rate] of values.entries()) {
+        const no = efes.stops[index].no;
+        expect(rate, `${label} ${no}: metin ${rate.toFixed(1)} kr/sn — metin ile ses ayrışmış`).toBeGreaterThan(min);
+        expect(rate, `${label} ${no}: metin ${rate.toFixed(1)} kr/sn — metin ile ses ayrışmış`).toBeLessThan(max);
+      }
+    };
+    // Bantlar 8 Kasım 2026 ölçümünden: TR 12,1–16,0 · EN 14,1–17,2.
+    check(rates.tr, 11.5, 17.5, "TR");
+    check(rates.en, 13, 18.5, "EN");
   });
 });
