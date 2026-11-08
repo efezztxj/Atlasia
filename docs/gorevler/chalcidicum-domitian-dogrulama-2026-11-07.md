@@ -268,3 +268,71 @@ test durağı adıyla yakaladı.
 değildir; 19 `oktagon` ve 51 `heksagon` için Commons'ta yapının **kendisini**
 gösteren özgür lisanslı bir kare bulunmadığından cadde görünümü kullanıldı,
 alt metinde bu açıkça belirtildi.
+
+---
+
+## 7. 46'nın sesi ve "canlı site değişmiyor" (2026-11-08)
+
+### 7.1 — 46'nın kaydı repoda duruyordu ama bağlanmamıştı
+
+`public/audio/efes-pollio-domitian-cesmesi.mp3` ve
+`public/audio/en-efes-pollio-domitian-cesmesi.mp3` dosyaları `e813c45`
+commitine girmişti, ancak `sesli-turlar.json` ve `efes-en.json` içinde 46'nın
+`audio` alanı **hiç yazılmamıştı**. Durak bu yüzden "Ses kaydı yok" diyordu.
+
+Kayıtların hangi metni okuduğu dinlenmeden, **boyut/karakter oranı** ile
+ölçüldü (53 TR ve 45 EN eşleşmiş dosyanın medyanı kalibrasyon):
+
+| Dosya | Boyut | Metin | Beklenen | Sapma | Sonuç |
+| --- | --- | --- | --- | --- | --- |
+| `efes-pollio-domitian-cesmesi.mp3` | 133.869 B | 498 krkt | 137.585 B | −%2,7 | güncel metni okuyor |
+| `en-efes-pollio-domitian-cesmesi.mp3` | 134.829 B | 543 krkt | 139.228 B | −%3,2 | güncel metni okuyor |
+| `kalkidikum-heksagon.mp3` | 102.861 B | 656 krkt | 180.961 B | −%43,2 | **eski metin — bağlanmadı** |
+
+46'nın iki kaydı da bağlandı, `SES_BEKLEYEN` ve
+`KALKIDIKUM_ENGLISH_AUDIO_PENDING` listelerinden düşürüldü. Kalan TR ses
+borcu 3: `chalcidicum`, `domitian-cesmesi`, `heksagon`.
+
+### 7.2 — Canlı site neden değişmiyordu: `_headers` başlıkları birleştiriyor
+
+`public/_headers` içinde şu iki kural vardı:
+
+```
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+```
+
+`sesli-turlar.json` bu desenin altında ve **adı parmak izi taşımıyor** —
+içeriği her sürümde değişiyor, dosya adı değişmiyor. Cloudflare Pages
+belgesi açık: eşleşen **tüm** kuralların başlıkları birleştirilir
+("An incoming request which matches multiple rules' URL patterns will inherit
+all rules' headers"); daha özel bir kural genel kuralı **ezmez**. Yani tur
+verisi tarayıcıda **bir yıl `immutable`** olarak önbelleğe alınıyordu.
+
+Kanıt: `https://atlasia.pages.dev/assets/sesli-turlar.json` sunucudan yeni
+içeriği veriyordu (46'nın yeni fotoğrafı oradaydı) ama kullanıcının tarayıcısı
+kendi disk önbelleğinden eski kopyayı okuyordu. Deploy değil, **başlık**
+hatasıydı.
+
+Düzeltme:
+
+```
+/assets/sesli-turlar.json
+  ! Cache-Control
+  Cache-Control: no-cache, must-revalidate
+```
+
+`! Cache-Control` genel kuralın başlığını kaldırır (Cloudflare "Detach a
+header"), sonra dosyaya kendi kısa ömrü verilir. Service worker zaten bu yol
+için ağ-öncelikli davranıyor; çevrimdışı yedeği korunuyor.
+
+**Kilit:** `src/config/cloudflareHeaders.test.ts` → "tur verisi parmak izi
+taşımadığı için uzun ömürlü önbelleğe alınmaz". Test ayrıştırıcısı `!` sözdizimini
+öğrenecek şekilde genişletildi. Kural silinerek mutasyon testi yapıldı; test
+yakaladı.
+
+**Kullanıcının yapması gereken (tek sefer):** Tarayıcı, düzeltme yayına
+girmeden önce eski dosyayı bir yıllık `immutable` olarak işaretledi. Bu yüzden
+ilk açılışta sayfayı **sert yenile** (masaüstü: Ctrl/Cmd + Shift + R; mobil:
+site verilerini temizle). Sonrasında dosya her ziyarette doğrulanır ve bu sorun
+tekrarlamaz.

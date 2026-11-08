@@ -5,6 +5,8 @@ import { describe, expect, it } from "vitest";
 interface HeaderBlock {
   pattern: string;
   headers: Map<string, string>;
+  /** `! Ad` satırları: bu bloğun genel kuraldan KALDIRDIĞI başlıklar. */
+  detached: Set<string>;
 }
 
 const publicDirectory = fileURLToPath(new URL("../../public/", import.meta.url));
@@ -20,12 +22,17 @@ function parseHeaderBlocks(value: string): HeaderBlock[] {
     if (!trimmed || trimmed.startsWith("#")) continue;
 
     if (!/^\s/.test(rawLine)) {
-      current = { pattern: trimmed, headers: new Map() };
+      current = { pattern: trimmed, headers: new Map(), detached: new Set() };
       blocks.push(current);
       continue;
     }
 
     if (!current) throw new Error(`Header rule is missing a path: ${trimmed}`);
+    // Cloudflare "Detach a header": `! Ad` ile daha genel bir kuralın başlığı kaldırılır.
+    if (trimmed.startsWith("!")) {
+      current.detached.add(trimmed.slice(1).trim().toLowerCase());
+      continue;
+    }
     const separator = trimmed.indexOf(":");
     if (separator < 1) throw new Error(`Header is missing a value: ${trimmed}`);
     current.headers.set(
@@ -155,6 +162,22 @@ describe("Cloudflare Pages security headers", () => {
     expect(block("/assets/*").get("cache-control")).toBe("public, max-age=31536000, immutable");
     expect(block("/manifest.webmanifest").get("cache-control")).toContain("max-age=3600");
     expect(block("https://:version.atlasia.pages.dev/*").get("x-robots-tag")).toBe("noindex, nofollow");
+  });
+
+  it("tur verisi parmak izi taşımadığı için uzun ömürlü önbelleğe alınmaz", () => {
+    // Cloudflare Pages `_headers`: eşleşen TÜM kuralların başlıkları birleştirilir,
+    // daha özel kural genel kuralı ezmez. `/assets/*` immutable kuralı
+    // `/assets/sesli-turlar.json` üzerinde de geçerli olduğu için, dosya kendi
+    // bloğunda bu başlığı `!` ile kaldırmalı; yoksa tarayıcı eski rehberi bir yıl
+    // servis eder (2026-11-08: canlıda tam olarak bu oldu).
+    const turData = blocks.find((entry) => entry.pattern === "/assets/sesli-turlar.json");
+    expect(turData, "/assets/sesli-turlar.json için ayrı _headers bloğu yok").toBeTruthy();
+    expect(turData!.headers.get("! cache-control")).toBeUndefined();
+    expect(rawHeaders).toContain("\n/assets/sesli-turlar.json\n  ! Cache-Control");
+    const cacheControl = turData!.headers.get("cache-control") ?? "";
+    expect(cacheControl).toContain("no-cache");
+    expect(cacheControl).not.toContain("immutable");
+    expect(cacheControl).not.toContain("max-age=31536000");
   });
 
   it("stays within Cloudflare's line limit and relies on its safe SPA fallback", () => {
