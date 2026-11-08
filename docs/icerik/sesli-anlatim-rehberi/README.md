@@ -13,6 +13,8 @@ Yeni bir yer, yeni bir şehir veya yeni bir tur eklenecekse önce buradaki
 | `kapadokya.md` | Kapadokya turu iskeleti + durak kabul ölçütü |
 | `ingilizce-ses-kayit-metinleri.md` | Ses kaydı bekleyen 9 durak; okunacak metin + dosya adı + süre |
 | `agent-ses-gorevi.md` | **Agent'a verilecek görev**: teknik künye (24 kHz/112 kbps mono), telaffuz, kabul kontrolü |
+| `kayit-paketi/PROMPT.md` | **Agent'a yapıştırılacak hazır prompt** + metinlerin okunacağı yollar |
+| `kayit-paketi/metinler/` | Dokuz metin: `TUMU.txt` (hepsi) + durak başına `.txt` |
 | `kayit-paketi/` | **İnsan seslendiren** için paket: dikte metni, telaffuz sözlüğü, CSV, talimat |
 
 ## 1. Yapı: tek dosya, içinde turlar
