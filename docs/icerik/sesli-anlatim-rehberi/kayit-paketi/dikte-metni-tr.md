@@ -1,0 +1,28 @@
+# Seslendirme kopyası — Türkçe (dikte metni)
+
+Bu dosya **doğrudan okunur**. Sadece metin var.
+
+Köşeli parantezli satırlar (`**[45] chalcidicum**`) **okunmaz** — hangi
+dosyaya kaydedileceğini söyleyen etiketlerdir.
+
+Her bölüm arasında **2 saniye sessizlik** bırak, dosyaları ayrı kaydet.
+
+Toplam **3 bölüm**.
+
+---
+
+**[45] chalcidicum**
+
+Domitian Meydanı’nın batı kenarında, Bazilika Stoası’nın batı ucunu taşıyan masif bir alt yapı yükselir. Adı Latince chalcidicum kelimesinden gelir; bazilikaya eklenen revaklı salon anlamına gelir. Büyük kesme taş bloklardan örülmüş bu kütle, stoanın batı ucunu desteklemek üzere Nero döneminde eklenmiştir. İçi üç odaya bölünmüştü ve bu odalar doğrudan meydana açılan kapılarla giriliyordu. Yapı, 15,9 metre boyunca meydana doğru taşar; çevre duvarları Panayırdağ’dan getirilen malzemeyle örülmüştür. Geç antik dönemde içine küçük bir kilise yerleştirilmiştir. Bugün kütlenin kendisi ayakta; üst kat süslemesinden geriye bir şey kalmamıştır.
+
+---
+
+**[47] domitian-cesmesi**
+
+Pollio Anıtı’nın hemen güneyinde, MS 92/93 yıllarında inşa edilmiş bir çeşme yapısı yükselir. Büyük apsisi doğrudan Domitian Meydanı’na bakar. Sarmaşık motifli payelerin taşıdığı kemerlerden gelen su, pişmiş toprak borularla dallanan bir sistem üzerinden kente dağıtılıyordu. Nişin içinde, Odysseus’un tek gözlü Polyphemos’u kör etmesini anlatan heykel grubu duruyordu; bu grup çeşme için özel yapılmamış, başka bir yapıdan buraya getirilmişti. Yapı, daha eski olan Pollio Anıtı’nı içine alarak tek bir mimari kulis oluşturur. İmparatorun ölümünden sonra adı buradaki yazıttan da kazınmıştı.
+
+---
+
+**[51] heksagon**
+
+Kuretler Caddesi'nin güney kenarında, Oktogon ile Alytarkhos Stoası arasında altıgen planlı küçük bir anıt yükselir. 1994 kazılarında ortaya çıkarılmıştır; geç antik dönemde üzerine başka bir yapı oturmuş, yürüyüş yolunun döşemesi de anıtın üzerinden geçmiştir. Yapı üç bölümden oluşuyordu: yaklaşık 1,5 metrelik mermer basamaklı bir kaide, üstünde tek sıra sütunlu bir üst yapı ve konik bir çatı. Çevresi 5,6 metre, yüksekliği 9–10 metre kadardı. İçinde, onurlandırılan kişinin heykeli duruyordu; kazılarda bulunan seramik, yapıyı yaklaşık MÖ 1. yüzyılın sonuna tarihlendirir. Bulunduğu yer, Embolos'un mezarlık ve onur anıtları sırasının bir parçasıdır.
