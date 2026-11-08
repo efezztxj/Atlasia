@@ -39,7 +39,11 @@ describe("sesli keşif pinleri", () => {
     const outsideIndex = stops.findIndex((stop) => stop.id === "artemision");
     const outside = made[outsideIndex];
     expect(outside.options.anchor).toBe("center");
-    expect(outside.options.element.querySelector("text")?.textContent).toBe("◆");
+    // Ören yeri dışı durak ◆ biçimini korur ama artık numarasını da gösterir
+    // (numaralar 1..N kesintisiz; eskiden ◆'lar numara tüketmediği için
+    // haritada 16/17/18/24/25/26/27/29/38 numaraları boş görünüyordu).
+    expect(outside.options.element.querySelector("text")?.textContent).toBe(String(stops[outsideIndex].no));
+    expect(outside.options.element.getAttribute("aria-label")).toContain("Ören yeri dışı");
     expect(outside.options.element.querySelector("path")?.getAttribute("fill")).toBe("#704b87");
     outside.options.element.click();
     expect(onSelect).toHaveBeenCalledWith(outsideIndex);
@@ -51,5 +55,38 @@ describe("sesli keşif pinleri", () => {
     }
     markers.remove();
     for (const marker of made) expect(marker.remove).toHaveBeenCalledOnce();
+  });
+
+  it("aynı koordinatı paylaşan duraklar üst üste basmaz, veriyi değiştirmez", () => {
+    made.length = 0;
+    const stops = AUDIO_DISCOVERY_TOURS[0].stops;
+    addAudioStopMarkers({} as Map, stops, 0, vi.fn());
+    // Veri değişmez: durak koordinatları olduğu gibi kalır.
+    const shared = stops.filter((stop) => stop.sharedWith?.length);
+    expect(shared.length).toBeGreaterThan(0);
+    for (const stop of shared) {
+      const index = stops.indexOf(stop);
+      const [lng, lat] = made[index].point!;
+      // Pin görsel olarak kaydırılır (birkaç metre) ama aynı yapıyı işaret eder.
+      const meters = Math.hypot((lat - stop.lat) * 111320, (lng - stop.lng) * 111320 * Math.cos((stop.lat * Math.PI) / 180));
+      expect(meters).toBeLessThan(40);
+    }
+    // Paylaşılan gruptaki pinler birbirinden ayrı konumda.
+    // Not: burada `Map` adı maplibre-gl'in Map tipiyle çakışıyor; düz nesne kullanılır.
+    const groups: Record<string, number[]> = {};
+    for (const stop of stops) {
+      const key = `${stop.lat},${stop.lng}`;
+      const index = stops.indexOf(stop);
+      groups[key] = [...(groups[key] ?? []), index];
+    }
+    for (const indexes of Object.values(groups)) {
+      if (indexes.length < 2) continue;
+      const points = indexes.map((index) => made[index].point!);
+      for (let a = 0; a < points.length; a += 1) {
+        for (let b = a + 1; b < points.length; b += 1) {
+          expect(points[a]).not.toEqual(points[b]);
+        }
+      }
+    }
   });
 });

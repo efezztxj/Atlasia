@@ -19,7 +19,10 @@ export function placeImageCredit(image: Place["image"]) {
 
 export function getPlacePhotos(place: Place) {
   const seen = new Set<string>();
-  return [place.photo, ...(place.gallery ?? []), ...(GALLERIES[place.id] ?? []), place.image]
+  // `place.image` iki biçimde gelebilir (düz URL ya da atıflı nesne). Burada
+  // doğrudan zincire atılırsa nesne `url.match` çağrısında patlar ve o yerin
+  // kartı/galerisi tüm uygulamayı hata sınırına düşürür. Tek çözücü: resolvePhoto.
+  return [place.photo, ...(place.gallery ?? []), ...(GALLERIES[place.id] ?? []), resolvePhoto(place.image)]
     .filter((url): url is string => !!url)
     .filter((url) => {
       const photoId = url.match(/pexels\.com\/photos\/(\d+)/)?.[1];

@@ -34,7 +34,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { analytics } from "../lib/analytics";
 import { CollectionsProvider, isCloudAccount } from "../hooks/useCollections";
 import { GUIDE_PLACES } from "../data/places";
-import { loadAudioDiscoveryForPlace, supportsAudioDiscovery, type AudioDiscoveryTour } from "../data/audioDiscovery";
+import { loadAudioDiscoveryForPlace, loadAudioTours, type AudioDiscoveryTour } from "../data/audioDiscovery";
 import { parseShortcutTab, stripShortcutParam } from "../utils/appShortcut";
 import { formatAccuracy, useGeolocation } from "../hooks/useGeolocation";
 import { useAtlasData } from "../hooks/useAtlasData";
@@ -509,6 +509,31 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
     setNotificationsOpen(false);
     setLayersOpen(false);
   };
+
+  /**
+   * Sesli turu olan yerlerin listesi tek dosyadan bir kez okunur.
+   * Önceden `supportsAudioDiscovery(placeId)` sabit bir listeydi ("efes",
+   * "kalkidikum"); tek dosya yapısına geçildiği için artık gerçek veriden
+   * türetilir ve yeni tur eklemek kod değişikliği gerektirmez.
+   */
+  const [audioTourPlaceIds, setAudioTourPlaceIds] = useState<string[]>([]);
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      try {
+        const tours = await loadAudioTours();
+        if (alive) setAudioTourPlaceIds(tours.map((tour) => tour.placeId));
+      } catch {
+        // Sesli tur dosyası yoksa menü hiç görünmez; harita çalışmaya devam eder.
+        if (alive) setAudioTourPlaceIds([]);
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
+  const supportsAudioDiscovery = useCallback(
+    (placeId: string) => audioTourPlaceIds.includes(placeId),
+    [audioTourPlaceIds],
+  );
 
   const openAudioTour = async (placeId: string, categories: boolean) => {
     const request = ++audioTourRequest.current;
