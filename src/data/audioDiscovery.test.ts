@@ -36,13 +36,17 @@ const FILE = resolve(`public${AUDIO_TOUR_FILE}`);
  * 2026-11-07: Heksagon'un konumu ve metni düzeltildi (Kalkidikum'da değil,
  * Kuretler Caddesi güneyinde). Eski `kalkidikum-heksagon.mp3` yanlış metni
  * okuyordu; bağlantı kaldırıldı, yeni kayıt gelene kadar metin gösterilir.
+ *
+ * 2026-11-08: 46 Pollio'nun TR ve EN kaydı bağlandı. Dosyalar repoda duruyordu
+ * ama `audio` alanı hiç yazılmamıştı; durak sessiz kalıyordu. Kayıtların
+ * güncel metni okuduğu boyut/karakter oranıyla doğrulandı (TR %2,7, EN %3,2
+ * sapma). Heksagon'un eski kaydı %43 kısa olduğu için bağlanmadı.
  */
-const SES_BEKLEYEN = ["chalcidicum", "domitian-cesmesi", "pollio-domitian-cesmesi", "heksagon"];
+const SES_BEKLEYEN = ["chalcidicum", "domitian-cesmesi", "heksagon"];
 
 const KALKIDIKUM_ENGLISH_AUDIO_PENDING = [
   "chalcidicum",
   "domitian-cesmesi",
-  "pollio-domitian-cesmesi",
   "hydreion-kalkidikum",
   "triodos-meydani",
   "heksagon",
