@@ -511,25 +511,35 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
   };
 
   /**
-   * Sesli turu olan yerlerin listesi tek dosyadan bir kez okunur.
+   * Sesli turu olan yerlerin listesi tek dosyadan okunur.
+   *
    * Önceden `supportsAudioDiscovery(placeId)` sabit bir listeydi ("efes",
    * "kalkidikum"); tek dosya yapısına geçildiği için artık gerçek veriden
    * türetilir ve yeni tur eklemek kod değişikliği gerektirmez.
+   *
+   * TEMBELLİK ŞART: dosya ~98 KB ve açılışta indirilirse uygulama kabuğunun
+   * yükleme yoluna girer (Lighthouse mobil eşiği 0,35 → kırılır). Bu yüzden
+   * yalnız bir yer detayı açıldığında, yani "Sesli keşif turunu aç" düğmesinin
+   * gerçekten görüneceği anda istenir. `loadAudioTours` sonucu kendi içinde
+   * önbelleğe alır; tur açılırken ikinci istek gitmez.
    */
   const [audioTourPlaceIds, setAudioTourPlaceIds] = useState<string[]>([]);
+  const audioTourIndexRequested = useRef(false);
+  // Bağımlılık olarak nesne değil sayı: her panel açılışında yeniden istek atılmaz.
+  const storyPlaceCount = storyPlace ? 1 : 0;
   useEffect(() => {
-    let alive = true;
+    if (audioTourIndexRequested.current || !storyPlaceCount) return;
+    audioTourIndexRequested.current = true;
     void (async () => {
       try {
         const tours = await loadAudioTours();
-        if (alive) setAudioTourPlaceIds(tours.map((tour) => tour.placeId));
+        setAudioTourPlaceIds(tours.map((tour) => tour.placeId));
       } catch {
-        // Sesli tur dosyası yoksa menü hiç görünmez; harita çalışmaya devam eder.
-        if (alive) setAudioTourPlaceIds([]);
+        // Sesli tur dosyası yoksa düğme hiç görünmez; harita çalışmaya devam eder.
+        audioTourIndexRequested.current = false;
       }
     })();
-    return () => { alive = false; };
-  }, []);
+  }, [storyPlaceCount]);
   const supportsAudioDiscovery = useCallback(
     (placeId: string) => audioTourPlaceIds.includes(placeId),
     [audioTourPlaceIds],
