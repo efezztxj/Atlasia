@@ -9,7 +9,8 @@
 - Atlas AI, seçilen zaman, ilgi alanı ve ulaşım biçimine göre duraklar ve rota oluşturmaya yardımcı olur.
 - Konum tabanlı sesli rehber, kullanıcı izni ve seçimiyle çalışır.
 - İndirilen harita paketi ve son uygulama kabuğu çevrimdışı açılabilir; sosyal işlemler bağlantı gerektirir.
-- Katalogda 37 seçilmiş rehber nokta ve Efes, Priene, Pompeii ve Ostia için 4 antik kent sesli turu bulunur.
+- Katalogda 28 seçilmiş rehber nokta ve 55 duraklı tek dosyalık sesli anlatım rehberi bulunur.
+- Efes, Priene, Pompeii ve Ostia için 4 antik kent sesli turu vardır.
 
 ## İletişim ve profiller
 

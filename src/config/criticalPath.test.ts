@@ -60,3 +60,31 @@ describe("T7 · kritik yol", () => {
     expect(total).toBeLessThan(988_185 * 1.2);
   });
 });
+
+/**
+ * Sesli anlatım rehberi — açılışta indirilmez (2026-11-07).
+ *
+ * NEDEN: tek dosya yapısına geçildiğinde tur dosyası ~98 KB oldu. `Explorer`
+ * yalnız "bu yerin sesli turu var mı?" sorusunu yanıtlamak için onu açılışta
+ * indiriyordu; uygulama kabuğu Lighthouse mobil profilde 0,35 tabanına dayandığı
+ * için bu istek CI'daki performans kapısını kırdı. Karar: dosya **yalnız bir
+ * yer detayı açıldığında** istenir (`loadAudioTours` kendi içinde önbellekler).
+ */
+describe("sesli tur dosyası · kritik yol", () => {
+  const explorer = readFileSync("src/components/Explorer.tsx", "utf8");
+
+  it("tur dizini boş bağımlılıkla (açılışta) yüklenmez", () => {
+    const effect = explorer.slice(explorer.indexOf("audioTourIndexRequested"));
+    expect(effect).toContain("if (audioTourIndexRequested.current || !storyPlaceCount) return;");
+    expect(effect).toContain("[storyPlaceCount]");
+    // Açılışta koşan boş bağımlılıklı bir tur isteği geri gelmemeli.
+    expect(explorer).not.toMatch(/loadAudioTours\(\)[\s\S]{0,200}\}, \[\]\);/);
+  });
+
+  it("tur listesi kaynağı tek dosyadır", () => {
+    expect(readFileSync("src/data/audioDiscovery.ts", "utf8")).toContain('"/assets/sesli-turlar.json"');
+    // Eski ayrı tur dosyaları geri gelmemeli.
+    expect(explorer).not.toContain("efes-tour.json");
+    expect(explorer).not.toContain("kalkidikum-tour.json");
+  });
+});

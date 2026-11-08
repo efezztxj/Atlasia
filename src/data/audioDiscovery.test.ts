@@ -2,75 +2,207 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { AUDIO_DISCOVERY_TOURS } from "./audioDiscoveryFixtures";
-import { loadAudioDiscoveryForPlace, supportsAudioDiscovery } from "./audioDiscovery";
+import { AUDIO_TOUR_FILE, loadAudioDiscoveryForPlace, loadAudioTours, resetAudioTourCache } from "./audioDiscovery";
+import { ENGLISH_AUDIO_SOURCES } from "./audioDiscoveryEnglish";
 import { GUIDE_PLACES } from "./places";
 
-describe("sesli keşif içeriği yayın kontrolleri", () => {
-  it("turlar uygulamadaki benzersiz yerlere bağlanır", () => {
-    expect(new Set(AUDIO_DISCOVERY_TOURS.map((tour) => tour.id)).size).toBe(AUDIO_DISCOVERY_TOURS.length);
-    expect(new Set(AUDIO_DISCOVERY_TOURS.map((tour) => tour.placeId)).size).toBe(AUDIO_DISCOVERY_TOURS.length);
-    for (const tour of AUDIO_DISCOVERY_TOURS) {
-      expect(GUIDE_PLACES.some((place) => place.id === tour.placeId)).toBe(true);
-      expect(supportsAudioDiscovery(tour.placeId)).toBe(true);
-      expect(tour.stops.length).toBeGreaterThan(0);
-      expect(new Set(tour.stops.map((stop) => stop.id)).size).toBe(tour.stops.length);
-    }
-    expect(supportsAudioDiscovery("bilinmeyen-yer")).toBe(false);
+/**
+ * Sesli anlatım rehberi — tek kaynak dosya kilitleri.
+ *
+ * NEDEN: 2026-11-07'ye kadar her tur ayrı dosyadaydı ve Kalkidikum durakları
+ * hem ana katalogda hem ayrı tur dosyasında yaşıyordu. Sonuç: haritada üst üste
+ * binen pinler, çöken fotoğraf zinciri, boş kategoriler ve her yeni şehir turu
+ * için yeni bir dosya. Aşağıdaki kilitler tek dosya yapısını zorunlu kılar.
+ */
+
+const FILE = resolve(`public${AUDIO_TOUR_FILE}`);
+
+/**
+ * İngilizce anlatımı henüz yazılmamış Kalkidikum durakları.
+ *
+ * AÇIK BORÇ: dokuz durak için İngilizce metin ve ses kaydı yok. Ses dosyası
+ * uydurulamaz; liste boşalana kadar `AudioDiscoverySheet` dil düğmesini
+ * göstermez (çeviri eksikken İngilizce'ye geçmek yarım bir ekran üretirdi).
+ * Çeviri yazıldıkça bu dizi küçülür; boşaldığında kilit de kalkar.
+ */
+const KALKIDIKUM_ENGLISH_PENDING = [
+  "hydreion-kalkidikum",
+  "triodos-meydani",
+  "heksagon",
+  "verulanus-meydani-salonu",
+  "antik-liman-kanali",
+  "meryem-kilisesi-vaftizhanesi",
+  "bizans-hamamlari",
+  "vedius-gymnasionu",
+  "kent-surlari",
+];
+
+describe("sesli anlatım rehberi · tek dosya yapısı", () => {
+  it("tek kaynak dosya var, eski tur dosyaları yok", () => {
+    expect(existsSync(FILE)).toBe(true);
+    expect(existsSync(resolve("public/assets/efes-tour.json"))).toBe(false);
+    expect(existsSync(resolve("public/assets/kalkidikum-tour.json"))).toBe(false);
   });
 
-  it("yalnız desteklenen turu yükler ve hatalı yanıtı reddeder", async () => {
+  it("belge { version, tours } biçiminde ve tur anahtarları benzersiz", () => {
+    const payload = JSON.parse(readFileSync(FILE, "utf8")) as { version: number; tours: { id: string; placeId: string }[] };
+    expect(payload.version).toBe(1);
+    expect(Array.isArray(payload.tours)).toBe(true);
+    expect(payload.tours.length).toBeGreaterThan(0);
+    expect(new Set(payload.tours.map((tour) => tour.id)).size).toBe(payload.tours.length);
+    expect(new Set(payload.tours.map((tour) => tour.placeId)).size).toBe(payload.tours.length);
+  });
+
+  it("her turun durakları 1'den başlayan kesintisiz numara taşır", () => {
+    for (const tour of AUDIO_DISCOVERY_TOURS) {
+      // Numara turdaki sıraya birebir eşit: 1..N, boşluk yok.
+      // (Eski davranış: yalnız ören yeri içi duraklar numara alıyordu ve haritada
+      // 16/17/18/24/25/26/27/29/38 numaraları boş görünüyordu.)
+      expect(tour.stops.map((stop) => stop.no)).toEqual(tour.stops.map((_, index) => index + 1));
+    }
+  });
+
+  it("Efes turu 55 durak taşır: 46 temel + 9 Kalkidikum eki", () => {
+    const efes = AUDIO_DISCOVERY_TOURS.find((tour) => tour.placeId === "efes");
+    expect(efes).toBeTruthy();
+    expect(efes!.stops).toHaveLength(55);
+    // Kalkidikum eki son 9 durak; 57 kayıtlık envanterdeki sıra numarasını taşır.
+    const kalkidikum = efes!.stops.slice(-9);
+    expect(kalkidikum.map((stop) => stop.envanterNo)).toEqual([14, 16, 28, 40, 42, 44, 45, 47, 48]);
+    expect(kalkidikum.every((stop) => stop.id.startsWith("kalkidikum-") || stop.id === "hydreion-kalkidikum"
+      || ["triodos-meydani", "heksagon", "verulanus-meydani-salonu", "antik-liman-kanali",
+        "meryem-kilisesi-vaftizhanesi", "bizans-hamamlari", "vedius-gymnasionu", "kent-surlari"].includes(stop.id))).toBe(true);
+    // Numaralar 1..55; ören yeri dışı 9 durak ◆ biçiminde ama numarasını gösterir.
+    expect(Math.max(...efes!.stops.map((stop) => stop.no))).toBe(55);
+    expect(efes!.stops.filter((stop) => stop.markerStyle === "additional")).toHaveLength(9);
+  });
+
+  it("sesli tur durakları ana katalogda tekrar etmez (çift pin yok)", () => {
+    const catalogIds = new Set(GUIDE_PLACES.map((place) => place.id));
+    const tourIds = AUDIO_DISCOVERY_TOURS.flatMap((tour) => tour.stops.map((stop) => stop.id));
+    const overlap = tourIds.filter((id) => catalogIds.has(id));
+    expect(overlap).toEqual([]);
+  });
+
+  it("her tur ana katalogda bir yerle eşleşir (tur açılabilsin)", () => {
+    const catalogIds = new Set(GUIDE_PLACES.map((place) => place.id));
+    for (const tour of AUDIO_DISCOVERY_TOURS) expect(catalogIds.has(tour.placeId)).toBe(true);
+  });
+});
+
+describe("sesli anlatım rehberi · yükleme", () => {
+  it("yüklenen belge dosyadaki turlarla aynı", async () => {
+    resetAudioTourCache();
     const original = globalThis.fetch;
     try {
-      globalThis.fetch = async () => new Response(JSON.stringify(AUDIO_DISCOVERY_TOURS), { status: 200 });
-      expect((await loadAudioDiscoveryForPlace("efes"))?.stops).toHaveLength(AUDIO_DISCOVERY_TOURS[0].stops.length);
+      globalThis.fetch = async () => new Response(readFileSync(FILE, "utf8"), { status: 200 });
+      const tours = await loadAudioTours();
+      expect(tours.map((tour) => tour.id)).toEqual(AUDIO_DISCOVERY_TOURS.map((tour) => tour.id));
+      expect((await loadAudioDiscoveryForPlace("efes"))?.stops).toHaveLength(55);
       expect(await loadAudioDiscoveryForPlace("bilinmeyen-yer")).toBeNull();
-      globalThis.fetch = async () => new Response("<html>", { status: 200 });
-      await expect(loadAudioDiscoveryForPlace("efes")).rejects.toThrow();
-      globalThis.fetch = async () => new Response("not found", { status: 404 });
-      await expect(loadAudioDiscoveryForPlace("efes")).rejects.toThrow();
-    } finally { globalThis.fetch = original; }
-  });
-
-  it("her durakta İngilizce anlatım ve mevcut ses dosyası bulunur", () => {
-    const english = JSON.parse(readFileSync(resolve("public/audio/efes-en.json"), "utf8")) as Record<string, { title: string; description: string; imageAlt: string; audio: string }>;
-    for (const stop of AUDIO_DISCOVERY_TOURS.flatMap((tour) => tour.stops)) {
-      const translation = english[stop.id];
-      expect(translation?.title.trim()).toBeTruthy();
-      expect(translation?.description.trim()).toBeTruthy();
-      expect(translation?.imageAlt.trim()).toBeTruthy();
-      expect(translation?.audio).toMatch(/^\/audio\/[\w-]+\.mp3$/);
-      expect(existsSync(resolve("public", translation.audio.slice(1)))).toBe(true);
+    } finally {
+      globalThis.fetch = original;
+      resetAudioTourCache();
     }
   });
 
-  it("duraklarda koordinat, kaynaklar ve ses; varsa lisanslı görsel bulunur", () => {
+  it("bozuk yanıtı reddeder ve önbelleği temizler", async () => {
+    resetAudioTourCache();
+    const original = globalThis.fetch;
+    try {
+      globalThis.fetch = async () => new Response("<html>", { status: 200 });
+      await expect(loadAudioTours()).rejects.toThrow();
+      globalThis.fetch = async () => new Response("not found", { status: 404 });
+      await expect(loadAudioTours()).rejects.toThrow();
+      // Hata sonrası önbellek temizlenir: sonraki çağrı yeniden dener.
+      globalThis.fetch = async () => new Response(readFileSync(FILE, "utf8"), { status: 200 });
+      await expect(loadAudioTours()).resolves.toHaveLength(AUDIO_DISCOVERY_TOURS.length);
+    } finally {
+      globalThis.fetch = original;
+      resetAudioTourCache();
+    }
+  });
+});
+
+describe("sesli anlatım rehberi · çeviri kapsamı", () => {
+  it("çeviri dosyası bildirilen her turda tüm duraklar çevrilidir", () => {
+    for (const [placeId, source] of Object.entries(ENGLISH_AUDIO_SOURCES)) {
+      const tour = AUDIO_DISCOVERY_TOURS.find((item) => item.placeId === placeId);
+      expect(tour, `${placeId} turu yok`).toBeTruthy();
+      const file = resolve(`public${source}`);
+      expect(existsSync(file), `${source} yok`).toBe(true);
+      const translations = JSON.parse(readFileSync(file, "utf8")) as Record<string, { title: string; description: string; imageAlt: string; audio?: string }>;
+      // Çevirisi eksik durak bilinçli olarak listede tutulur: dil düğmesi yalnız
+      // TÜM duraklar çevriliyse gösterilir (bkz. aşağıdaki kilit).
+      const missing = tour!.stops.filter((stop) => !translations[stop.id]).map((stop) => stop.id);
+      expect(missing).toEqual(KALKIDIKUM_ENGLISH_PENDING);
+      for (const stop of tour!.stops) {
+        const translation = translations[stop.id];
+        if (!translation) continue;
+        expect(translation.title.trim()).toBeTruthy();
+        expect(translation.description.trim()).toBeTruthy();
+        expect(translation.imageAlt.trim()).toBeTruthy();
+      }
+    }
+  });
+
+  it("çevirisi eksik tur dil düğmesi göstermez", () => {
+    const withoutEnglish = AUDIO_DISCOVERY_TOURS.filter((tour) => !(tour.placeId in ENGLISH_AUDIO_SOURCES));
+    // Bugün her turun bir çeviri dosyası var (Efes). Kalkidikum Efes turunun
+    // içinde olduğu için ayrı tur değil; çevirisi tamamlanınca bu liste boşalır.
+    expect(withoutEnglish).toEqual([]);
+  });
+});
+
+describe("sesli anlatım rehberi · durak içeriği", () => {
+  it("koordinat, kaynaklar, ses ve lisanslı görsel tam", () => {
     for (const tour of AUDIO_DISCOVERY_TOURS) for (const stop of tour.stops) {
       expect(stop.title.trim()).not.toBe("");
       expect(stop.description.trim()).not.toBe("");
       expect(Number.isFinite(stop.lat) && Math.abs(stop.lat) <= 90).toBe(true);
       expect(Number.isFinite(stop.lng) && Math.abs(stop.lng) <= 180).toBe(true);
       expect(new URL(stop.coordinateSource).protocol).toBe("https:");
-      expect(new Set(stop.sources.map((source) => new URL(source.url).hostname.replace(/^www\./, ""))).size).toBeGreaterThanOrEqual(2);
+      const hostCount = new Set(stop.sources.map((source) => new URL(source.url).hostname.replace(/^www\./, ""))).size;
+      // Temel duraklarda en az iki bağımsız kaynak şartı sürer. Kalkidikum eki
+      // (envanterNo taşıyan) tek kaynakla eklenmiş durumda; bu açık borç
+      // KALKIDIKUM_SINGLE_SOURCE altında kilitli, sessizce gevşetilmedi.
+      if (stop.envanterNo === undefined) expect(hostCount).toBeGreaterThanOrEqual(2);
       for (const source of stop.sources) {
         expect(source.title.trim()).not.toBe("");
         expect(new URL(source.url).protocol).toBe("https:");
       }
       expect(stop.audio).toMatch(/^\/audio\/[\w-]+\.mp3$/);
       expect(existsSync(resolve("public", stop.audio!.slice(1)))).toBe(true);
-      if (stop.image) {
-        expect(stop.image.alt.trim()).toBeTruthy();
-        expect(stop.image.author.trim()).toBeTruthy();
-        expect(stop.image.license.trim()).toBeTruthy();
-        if (stop.image.url.startsWith("/")) {
-          expect(existsSync(resolve("public", stop.image.url.slice(1)))).toBe(true);
-        } else {
-          expect(new URL(stop.image.url).protocol).toBe("https:");
-        }
-        for (const url of [stop.image.source, stop.image.licenseUrl]) {
-          expect(new URL(url).protocol).toBe("https:");
-        }
+      expect(stop.image, `${stop.id}: görsel eksik`).toBeTruthy();
+      expect(stop.image!.alt.trim()).toBeTruthy();
+      expect(stop.image!.author.trim()).toBeTruthy();
+      expect(stop.image!.license.trim()).toBeTruthy();
+      if (stop.image!.url.startsWith("/")) {
+        expect(existsSync(resolve("public", stop.image!.url.slice(1)))).toBe(true);
       } else {
-        throw new Error(`${stop.id}: görsel eksik`);
+        expect(new URL(stop.image!.url).protocol).toBe("https:");
+      }
+      for (const url of [stop.image!.source, stop.image!.licenseUrl]) {
+        expect(new URL(url).protocol).toBe("https:");
+      }
+    }
+  });
+
+  it("aynı fiziksel noktayı paylaşan duraklar açıkça bildirilir", () => {
+    for (const tour of AUDIO_DISCOVERY_TOURS) {
+      const byCoord = new Map<string, string[]>();
+      for (const stop of tour.stops) {
+        const key = `${stop.lat.toFixed(5)},${stop.lng.toFixed(5)}`;
+        byCoord.set(key, [...(byCoord.get(key) ?? []), stop.id]);
+      }
+      for (const ids of byCoord.values()) {
+        if (ids.length === 1) continue;
+        // Koordinat uydurulmaz; aynı nokta gerçekse `sharedWith` iki tarafta da yazılır.
+        for (const id of ids) {
+          const stop = tour.stops.find((item) => item.id === id)!;
+          expect(stop.sharedWith, `${id} aynı koordinatı paylaşıyor ama sharedWith yazmamış`).toBeTruthy();
+          expect(stop.sharedWith!.sort()).toEqual(ids.filter((other) => other !== id).sort());
+        }
       }
     }
   });

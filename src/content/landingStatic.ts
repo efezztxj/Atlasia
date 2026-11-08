@@ -31,6 +31,8 @@ export interface LandingStaticFaq {
 export interface VerifiedCatalogCounts {
   guidePlaces: number;
   siteTours: number;
+  /** Sesli anlatım rehberindeki toplam durak (tüm turlar). */
+  audioStops: number;
 }
 
 /**
@@ -41,8 +43,14 @@ export interface VerifiedCatalogCounts {
  * `SITE_TOURS` uzunluklarıyla birebir kilitler).
  */
 export const VERIFIED_CATALOG_COUNTS: VerifiedCatalogCounts = {
-  guidePlaces: 37,
+  guidePlaces: 28,
   siteTours: 4,
+  /**
+   * Sesli anlatım rehberi durakları (`public/assets/sesli-turlar.json`).
+   * Katalog sayısından AYRI tutulur: 9 Kalkidikum durağı haritada çift pin
+   * üretmesin diye katalogdan çıkarıldı, turun içinde yaşıyor.
+   */
+  audioStops: 55,
 };
 
 export interface LandingStaticContent {
@@ -62,7 +70,7 @@ export const LANDING_STATIC: LandingStaticContent = {
   intro:
     "Atlasia — gerçek uydu görüntüleriyle dünyayı keşfet, gezginlerin bıraktığı küçük ipuçlarını bul ve kendi keşfini haritaya bırak.",
   catalogSummary:
-    `Atlasia kapsamında ${VERIFIED_CATALOG_COUNTS.guidePlaces} seçilmiş rehber nokta ve ${VERIFIED_CATALOG_COUNTS.siteTours} antik kent sesli turu bulunur: Efes, Priene, Pompeii ve Ostia. 0 reklam ve takip pikseli.`,
+    `Atlasia kapsamında ${VERIFIED_CATALOG_COUNTS.guidePlaces} seçilmiş rehber nokta, ${VERIFIED_CATALOG_COUNTS.audioStops} duraklı sesli anlatım rehberi ve ${VERIFIED_CATALOG_COUNTS.siteTours} antik kent sesli turu bulunur: Efes, Priene, Pompeii ve Ostia. 0 reklam ve takip pikseli.`,
   details: [
     "Uzaklara gitmek için önce merak etmek yeter. İlham veren rotalara göz at, sana yakın gelenleri kaydet ve kendi izini haritaya bırak.",
     "Atlasia yalnızca nereye gideceğini değil, zamanına göre hangi sırayla gezebileceğini de düşünür. Bir kültür noktasına yaklaştığında sesli anlatım sen onay verirsen başlar.",

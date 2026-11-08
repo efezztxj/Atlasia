@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Pause, Play, Volume2, X } from "lucide-react";
 import type { AudioDiscoveryTour } from "../data/audioDiscovery";
 import type { EnglishAudioStop } from "../data/audioDiscoveryEnglish";
+import { ENGLISH_AUDIO_SOURCES } from "../data/audioDiscoveryEnglish";
 import AudioDiscoveryCategories from "./AudioDiscoveryCategories";
 import { usePanelAccess } from "../hooks/usePanelAccess";
 
@@ -16,6 +17,14 @@ interface Props {
 
 export default function AudioDiscoverySheet({ tour, selectedIndex, onSelect, onClose, attribution, initialCategoriesOpen = false }: Props) {
   const stop = tour.stops[selectedIndex];
+  /**
+   * İngilizce anlatım dosyası turun kendi `placeId`'sinden türetilir ve yalnız
+   * o turun çevirisi varsa kullanılır. Daha önce sabit `/audio/efes-en.json`
+   * yükleniyordu; Kalkidikum durakları o sözlükte olmadığı için "English"
+   * düğmesi her basışta "İngilizce yüklenemedi" hatası veriyordu.
+   * Çevirisi olmayan turda düğme hiç gösterilmez (bkz. `englishSource`).
+   */
+  const englishSource = ENGLISH_AUDIO_SOURCES[tour.placeId] ?? null;
   const [language, setLanguage] = useState<"tr" | "en">("tr");
   const [englishStops, setEnglishStops] = useState<Record<string, EnglishAudioStop> | null>(null);
   const [languageLoading, setLanguageLoading] = useState(false);
@@ -63,10 +72,16 @@ export default function AudioDiscoverySheet({ tour, selectedIndex, onSelect, onC
     if (value === "en" && !englishStops) {
       setLanguageLoading(true);
       try {
-        const response = await fetch("/audio/efes-en.json");
+        const response = await fetch(englishSource);
         if (!response.ok) throw new Error("Translations unavailable");
         const data = await response.json() as Record<string, EnglishAudioStop>;
-        if (!tour.stops.every((item) => data[item.id]?.title && data[item.id]?.description)) throw new Error("Incomplete translations");
+        // Eksik çeviri artık HATA değil: bir turun birkaç durağı (ör. Kalkidikum
+        // eki) henüz çevrilmemiş olabilir. Doğrulama yalnız "dosya bu tura ait mi"
+        // sorusunu yanıtlar; eksik durak için o durakta Türkçe metin kalır ve
+        // "İngilizce anlatım henüz yok" durumu gösterilir. Tamamı eksikse dosya
+        // yanlış turun dosyasıdır → hata.
+        const translated = tour.stops.filter((item) => data[item.id]?.title && data[item.id]?.description);
+        if (!translated.length) throw new Error("Incomplete translations");
         setEnglishStops(data);
       } catch {
         setLanguageError(true);
@@ -99,9 +114,9 @@ export default function AudioDiscoverySheet({ tour, selectedIndex, onSelect, onC
           <button type="button" onClick={onClose} aria-label={en ? "Close audio tour" : "Sesli turu kapat"} className="grid size-11 shrink-0 place-items-center rounded-full border border-leaf/30 text-mint transition hover:bg-leaf/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sun"><X size={18} /></button>
         </header>
 
-        <div role="group" aria-label={en ? "Narration language" : "Anlatım dili"} className="mt-3 flex w-fit gap-1 rounded-full border border-leaf/20 p-1">
+        {englishSource && <div role="group" aria-label={en ? "Narration language" : "Anlatım dili"} className="mt-3 flex w-fit gap-1 rounded-full border border-leaf/20 p-1">
           {(["tr", "en"] as const).map((value) => <button key={value} type="button" lang={value} aria-pressed={language === value} onClick={() => void changeLanguage(value)} disabled={languageLoading} className={`min-h-9 rounded-full px-3 text-[12px] font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sun ${language === value ? "bg-sun text-ink" : "text-mint/75 hover:bg-leaf/10"}`}>{value === "tr" ? "Türkçe" : "English"}</button>)}
-        </div>
+        </div>}
         {languageLoading && <p role="status" className="mt-2 text-[12px] text-mint/75">Loading English…</p>}
         {languageError && <p role="alert" className="mt-2 text-[12px] text-mint/75">English could not be loaded. Please try again. / İngilizce yüklenemedi. Lütfen tekrar dene.</p>}
         {audio && <audio key={`${stop.id}-${language}`} ref={audioRef} src={audio} preload="none" onPlay={() => setSpeaking(true)} onPause={() => setSpeaking(false)} onEnded={() => setSpeaking(false)} onError={() => { setSpeaking(false); setError(en ? "Audio could not be loaded. You can read the text." : "Ses yüklenemedi. Metni okuyabilirsin."); }} />}

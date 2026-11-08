@@ -34,7 +34,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { analytics } from "../lib/analytics";
 import { CollectionsProvider, isCloudAccount } from "../hooks/useCollections";
 import { GUIDE_PLACES } from "../data/places";
-import { loadAudioDiscoveryForPlace, supportsAudioDiscovery, type AudioDiscoveryTour } from "../data/audioDiscovery";
+import { loadAudioDiscoveryForPlace, loadAudioTours, type AudioDiscoveryTour } from "../data/audioDiscovery";
 import { parseShortcutTab, stripShortcutParam } from "../utils/appShortcut";
 import { formatAccuracy, useGeolocation } from "../hooks/useGeolocation";
 import { useAtlasData } from "../hooks/useAtlasData";
@@ -509,6 +509,41 @@ function ExplorerScreen({ installApp }: { installApp: InstallAppController }) {
     setNotificationsOpen(false);
     setLayersOpen(false);
   };
+
+  /**
+   * Sesli turu olan yerlerin listesi tek dosyadan okunur.
+   *
+   * Önceden `supportsAudioDiscovery(placeId)` sabit bir listeydi ("efes",
+   * "kalkidikum"); tek dosya yapısına geçildiği için artık gerçek veriden
+   * türetilir ve yeni tur eklemek kod değişikliği gerektirmez.
+   *
+   * TEMBELLİK ŞART: dosya ~98 KB ve açılışta indirilirse uygulama kabuğunun
+   * yükleme yoluna girer (Lighthouse mobil eşiği 0,35 → kırılır). Bu yüzden
+   * yalnız bir yer detayı açıldığında, yani "Sesli keşif turunu aç" düğmesinin
+   * gerçekten görüneceği anda istenir. `loadAudioTours` sonucu kendi içinde
+   * önbelleğe alır; tur açılırken ikinci istek gitmez.
+   */
+  const [audioTourPlaceIds, setAudioTourPlaceIds] = useState<string[]>([]);
+  const audioTourIndexRequested = useRef(false);
+  // Bağımlılık olarak nesne değil sayı: her panel açılışında yeniden istek atılmaz.
+  const storyPlaceCount = storyPlace ? 1 : 0;
+  useEffect(() => {
+    if (audioTourIndexRequested.current || !storyPlaceCount) return;
+    audioTourIndexRequested.current = true;
+    void (async () => {
+      try {
+        const tours = await loadAudioTours();
+        setAudioTourPlaceIds(tours.map((tour) => tour.placeId));
+      } catch {
+        // Sesli tur dosyası yoksa düğme hiç görünmez; harita çalışmaya devam eder.
+        audioTourIndexRequested.current = false;
+      }
+    })();
+  }, [storyPlaceCount]);
+  const supportsAudioDiscovery = useCallback(
+    (placeId: string) => audioTourPlaceIds.includes(placeId),
+    [audioTourPlaceIds],
+  );
 
   const openAudioTour = async (placeId: string, categories: boolean) => {
     const request = ++audioTourRequest.current;

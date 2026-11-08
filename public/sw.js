@@ -18,8 +18,7 @@ const SHELL = [
   "/icons/icon-192.png",
   "/icons/icon-512.png",
   "/images/atlasia-earth-hero.jpg",
-  "/assets/efes-tour.json",
-  "/assets/kalkidikum-tour.json",
+  "/assets/sesli-turlar.json",
 ];
 
 // Tam HTTPS host + path öneki eşleşmesi (substring değil) — lookalike URL reddi.
@@ -395,7 +394,9 @@ self.addEventListener("fetch", (event) => {
   // veya API cevabı `request.destination` image/script diye önbelleğe girmesin.
   const cacheable = isAllowedStaticPath(parsed.pathname);
 
-  if (parsed.pathname === "/assets/efes-tour.json") {
+  // Sesli anlatım rehberi tek dosyadır (tüm turlar içinde). Ağ öncelikli,
+  // önbellek yedekli: çevrimdışı açılan tur son kaydedilen sürümle çalışır.
+  if (parsed.pathname === "/assets/sesli-turlar.json") {
     event.respondWith(tourResponse(request));
   } else if (cacheable) event.respondWith(cachedAsset(request));
 });

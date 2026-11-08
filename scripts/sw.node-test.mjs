@@ -111,7 +111,7 @@ function createHarness({ now = 1_700_000_000_000 } = {}) {
       });
     }
     if (url.origin === ORIGIN && url.pathname === "/assets/app.js") {
-      return typedResponse('import("./lazy.js"); const vendor = "assets/vendor.js"; const tour = "/assets/efes-tour.json";', {
+      return typedResponse('import("./lazy.js"); const vendor = "assets/vendor.js"; const tour = "/assets/sesli-turlar.json";', {
         status: 200,
         headers: { "Content-Type": "text/javascript" },
         url: url.href,
@@ -260,7 +260,7 @@ test("install: hash'li ve lazy uygulama parçalarıyla kabuğu saklar, skipWaiti
     "/assets/lazy.js",
     "/assets/nested.js",
     "/assets/vendor.js",
-    "/assets/efes-tour.json",
+    "/assets/sesli-turlar.json",
   ]) {
     assert.ok(await shell.match(path), `${path} ön önbellekte olmalı`);
   }
@@ -326,7 +326,7 @@ test("navigasyon ve lazy script ağ yokken aynı sürümün ön önbelleğinden 
 test("Efes tur verisi ağdan güncellenir, çevrimdışında saklanan kopyayı kullanır ve HTML fallback saklanmaz", async () => {
   const harness = createHarness();
   await harness.dispatch("install");
-  const url = `${ORIGIN}/assets/efes-tour.json`;
+  const url = `${ORIGIN}/assets/sesli-turlar.json`;
   harness.routes.set(url, () => typedResponse('[{"id":"new"}]', { status: 200, headers: { "Content-Type": "application/json" }, url }));
   assert.equal(await (await harness.fetchEvent(url)).response.text(), '[{"id":"new"}]');
   harness.routes.set(url, () => typedResponse('<html>fallback</html>', { status: 200, headers: { "Content-Type": "text/html" }, url }));

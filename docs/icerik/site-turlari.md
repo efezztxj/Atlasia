@@ -1,6 +1,13 @@
 # Site turları — kaynaklar ve ekleme ölçütü
 
-Bu dosya `src/data/siteTours.ts` içindeki site turlarının **kanıtını** tutar.
+Bu dosya `src/data/siteTours.ts` içindeki **site turlarının** (yürüyüş rotası
+modeli) kanıtını tutar.
+
+> **Sesli anlatım rehberi ayrı bir sistemdir.** Sesli rehberin verisi, yapılış
+> tarzı ve tur başına dosyaları `docs/icerik/sesli-anlatim-rehberi/` altındadır
+> ([README](./sesli-anlatim-rehberi/README.md)). İki sistem karıştırılmaz:
+> buradaki "site turu" haritada çizilen yürüyüş rotasıdır, "sesli anlatım" ise
+> numaralı duraklardan oluşan rehberdir.
 Kural: koordinat ve yol uydurulmaz. Yol (patika) geometrisi doğrulanamıyorsa o
 tur `polyline` olmadan eklenir ve `isRealPath()` false döner; geometri
 doğrulanmadan çizgi çizilmez.

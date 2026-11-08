@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { GALLERIES } from "../data/galleries";
 import type { Place } from "../types";
 import { getPlacePhotos, photoSource } from "./placePhotos";
+import { GUIDE_PLACES } from "../data/places";
 
 function place(overrides: Partial<Place>): Place {
   return {
@@ -79,5 +80,46 @@ describe("photoSource — kaynak atıf etiketi", () => {
 
   it("tanınmayan kaynağı bağlantısız gezgin fotoğrafı sayar", () => {
     expect(photoSource("data:image/jpeg;base64,AAAA")).toEqual({ label: "Gezgin fotoğrafı", href: null });
+  });
+});
+
+/**
+ * Regresyon kilidi (2026-11-07).
+ *
+ * NEDEN: `Place.image` alanı `string | PlacePhoto` olduktan sonra
+ * `getPlacePhotos` ham `place.image`'ı zincire atıyordu. Atıflı (nesne) görseli
+ * olan bir yer açıldığında `url.match is not a function` fırlıyor ve o yerin
+ * kartı/galerisi tüm uygulamayı hata sınırına düşürüyordu. Testler sentetik
+ * `Place` nesneleri kullandığı için gerçek veriyle hiç koşmamıştı.
+ *
+ * Kural: GERÇEK katalogdaki her yer için `getPlacePhotos` çalışmalı.
+ */
+describe("getPlacePhotos — gerçek katalog güvenliği", () => {
+  it("katalogdaki her yer için çökmeden liste döner", () => {
+    const failures: string[] = [];
+    for (const catalogPlace of GUIDE_PLACES) {
+      try {
+        const photos = getPlacePhotos(catalogPlace);
+        expect(Array.isArray(photos)).toBe(true);
+        for (const url of photos) expect(typeof url).toBe("string");
+      } catch (error) {
+        failures.push(`${catalogPlace.id}: ${(error as Error).message}`);
+      }
+    }
+    expect(failures).toEqual([]);
+  });
+
+  it("atıflı nesne biçimli image düz URL'ye çözülür", () => {
+    const withCredit = place({
+      image: {
+        url: "https://x.example/at%C4%B1fl%C4%B1.jpg",
+        alt: "Atıflı görsel",
+        source: "https://commons.wikimedia.org/wiki/File:Ornek.jpg",
+        author: "Bir Yazar",
+        license: "CC BY-SA 4.0",
+        licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
+      },
+    });
+    expect(getPlacePhotos(withCredit)).toEqual(["https://x.example/at%C4%B1fl%C4%B1.jpg"]);
   });
 });
