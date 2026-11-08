@@ -77,3 +77,28 @@ enerji taşıyor (centroid 794 Hz'e karşı 1 289 Hz); üst bant sınırı ikisi
    ölçülür; **< 8.5** (eski dosyaların üst sınırı) olana kadar aday değiştirilir.
 4. Dosyalar 24 000 Hz, mono, 32 kbps CBR olarak kodlanır; `efes.md` §4/6 ve bu
    belge güncellenir.
+
+## Uygulama — 8/12 yeniden üretildi (8 Kasım 2026)
+
+Denetimden sonra İngilizce kayıtlar `voice-03` ile yeniden üretildi. Bu ses,
+referans dosyaya uzaklığı **6.34** olan ve eski dosyaların aralığına (0–9.31)
+düşen sestir; 12 dosyanın üretildiği `voice-04` ise 10.41 ile aralığın dışında.
+
+| Durak | Yeni uzaklık |
+| --- | --- |
+| 45 Chalcidicum | 4.40 |
+| 46 Pollio | 3.31 |
+| 47 Domitian Çeşmesi | 5.43 |
+| 49 Hydreion | 6.71 |
+| 50 Triodos | 3.73 |
+| 51 Heksagon | 2.99 |
+| 52 Verulanus | 8.26 |
+| 53 Antik Liman | 6.03 |
+
+Sekizinin tamamı eski aralıkta. Dosyalar 24 000 Hz, mono, 32 kbps — turdaki
+diğer kayıtlarla aynı künye; yeniden kodlama gerekmedi (servis çıktısı zaten bu
+biçimde).
+
+**Kalan:** 54, 55, 56, 57 İngilizce. Üretim turu başına 10 klip sınırına takıldı;
+sonraki turda üretilip aynı ölçütle doğrulanacak. Ayrıca #55 Türkçe kaydın
+kendi grubundan ayrışması (z ≈ +2.7) izleniyor.
