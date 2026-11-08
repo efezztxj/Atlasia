@@ -82,7 +82,7 @@ Kurallar:
 
 | Dosya | Ne tutar |
 | --- | --- |
-| [`efes.md`](./efes.md) | Efes turu — 55 durak (46 temel + 9 Kalkidikum eki), açık borçlar |
+| [`efes.md`](./efes.md) | Efes turu — 57 durak (48 temel + 9 Kalkidikum eki), açık borçlar |
 | [`kapadokya.md`](./kapadokya.md) | Kapadokya turu — henüz eklenmedi, iskelet ve ölçüt |
 
 Yeni tur eklerken aynı klasöre `<yer>.md` açılır: o turda hangi durakların

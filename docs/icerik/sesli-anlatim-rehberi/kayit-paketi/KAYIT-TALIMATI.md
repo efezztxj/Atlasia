@@ -2,8 +2,8 @@
 
 ## Ne kaydedilecek
 
-Efes sesli turunun **47–55 numaralı** durakları için İngilizce anlatım.
-**9 ayrı dosya.** Toplam ≈ **649 kelime**, ≈ **4,5 dakika** konuşma.
+Efes sesli turunun **49–57 numaralı** durakları için İngilizce anlatım.
+**9 ayrı dosya.** Toplam ≈ **963 kelime**, ≈ **6.4 dakika** konuşma.
 
 Metinler rehberde **zaten yayında**; eksik olan yalnızca ses. Yani kayıt
 bittiğinde uygulamada İngilizce dinlenebilir hâle geliyor.

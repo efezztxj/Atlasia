@@ -87,7 +87,7 @@ describe("sesli anlatım rehberi · tek dosya yapısı", () => {
         "meryem-kilisesi-vaftizhanesi", "bizans-hamamlari", "vedius-gymnasionu", "kent-surlari"].includes(stop.id))).toBe(true);
     // Numaralar 1..57; ören yeri dışı 9 durak ◆ biçiminde ama numarasını gösterir.
     expect(Math.max(...efes!.stops.map((stop) => stop.no))).toBe(57);
-    expect(efes!.stops.filter((stop) => stop.markerStyle === "additional")).toHaveLength(9);
+    expect(efes!.stops.filter((stop) => stop.markerStyle === "additional")).toHaveLength(10);
   });
 
   it("sesli tur durakları ana katalogda tekrar etmez (çift pin yok)", () => {

@@ -10,12 +10,12 @@ Numaralar tur içinde **1–57 kesintisiz** gider. İki işaret biçimi vardır:
 
 | Biçim | Anlamı | Sayı | Numaralar |
 | --- | --- | --- | --- |
-| Yeşil damla pin | Antik kent çekirdeği **içinde** | 48 | 1–15, 19–23, 28, 30–37, 39–49, 51–57 |
-| Mor ◆ elmas | Antik kent çekirdeği **dışında** | 9 | 16, 17, 18, 24, 25, 26, 27, 29, 38 |
+| Yeşil damla pin | Antik kent çekirdeği **içinde** | 47 | 1–15, 19–23, 28, 30–37, 39–49, 51–56 |
+| Mor ◆ elmas | Antik kent çekirdeği **dışında** | 10 | 16, 17, 18, 24, 25, 26, 27, 29, 38, 57 |
 
 > 2026-11-07: Chalcidicum (45) ve Domitian Çeşmesi (46) eklendi → **46 → 57**.
 
-### Neden 46'dan sonra 47–55 geliyor?
+### Numaralar neden veriden okunuyor?
 
 Efes turu 2026-11-07'ye kadar **46 durak**tı ve numaralar dizi indeksinden
 (`index + 1`) üretiliyordu. Mor ◆ duraklar numara tüketmediği için haritada
@@ -27,45 +27,43 @@ numaralar veriden okunmaya başlandı. Sonuç:
 
 ```
 1 … 46   mevcut duraklar (numara artık veriden geliyor)
-47 … 55  Kalkidikum eki (Hydreion → Kent Surları)
+49 … 57  Kalkidikum eki (Hydreion → Kent Surları)
+         (45 Chalcidicum ve 47 Domitian Çeşmesi 2026-11-07'de araya girdi)
 ```
 
 ## 2. Kalkidikum eki (49–57)
 
-Bu dokuz durak Efes ören yerinin **içindedir**; ayrı bir tur değil, Efes
-turunun devamıdır. Her biri 57 kayıtlık envanterdeki sıra numarasını
+Bu dokuz durak ayrı bir tur değil, Efes turunun devamıdır. Sekizi ören yeri
+çekirdeğinin içinde, 57 (korunmuş sur kesiti) sınırın dışında işaretlenir. Her biri 57 kayıtlık envanterdeki sıra numarasını
 `envanterNo` alanında taşır.
 
-| # | Durak | Envanter no | Kaynak |
-| --- | --- | --- | --- |
-| 49 | Hydreion (Çeşme Yapısı) | 14 | gtp.gr + Wikipedia (Efes) |
-| 50 | Triodos Meydanı | 16 | gtp.gr + Wikipedia (Efes) |
-| 51 | Heksagon (Altıgen Yapı) | 28 | gtp.gr **(tek kaynak — borç)** |
-| 52 | Verulanus Meydanı ve Salonu | 40 | Turkish Archaeological News **(tek kaynak — borç)** |
-| 53 | Antik Liman ve Liman Kanalı | 42 | Wikipedia + gtp.gr |
-| 54 | Meryem Kilisesi Vaftizhanesi | 44 | Wikipedia + gtp.gr |
-| 55 | Bizans Hamamları | 45 | Wikipedia + gtp.gr |
-| 56 | Vedius Gymnasionu | 47 | Turkish Archaeological News + Visit İzmir |
-| 57 | Helenistik ve Bizans Kent Surları | 48 | ToposText + Visit İzmir |
+| # | Durak | Envanter no | Konum kaynağı | Fotoğraf |
+| --- | --- | --- | --- | --- |
+| 49 | Hydreion (Anıt Çeşme) | 14 | OSM yolu 1411590456 | Dosseman, Hydreion + Memmius, 1992 · CC BY-SA 4.0 |
+| 50 | Triodos Meydanı | 16 | TAN Triodos | Sailko, Hadrian Kapısı + Kuretler Caddesi · CC BY-SA 3.0 |
+| 51 | Heksagon | 28 | TAN Oktagon (sıralama) — yaklaşık | Holländer, Kuretler Caddesi · Copyrighted free use |
+| 52 | Verulanus Salonu | 40 | TAN Verulanus — temsilî | Dosseman, Meryem Kilisesi'ne bakış · CC BY-SA 4.0 |
+| 53 | Antik Liman | 42 | Ephesus.net planı — havza ortası | Dosseman, Bülbül Dağı'ndan ovaya bakış · CC BY-SA 4.0 |
+| 54 | Meryem Kilisesi Vaftizhanesi | 44 | Commons dosya GPS'i | Dosseman, vaftiz havuzu · CC BY-SA 4.0 |
+| 55 | Bizans Hamamları | 45 | Vici 24223 | Jarvis, Bizans Sarayı · CC BY-SA 2.0 |
+| 56 | Vedius Gymnasionu | 47 | OSM yolu 183304727 | Raddato, Kaistros heykeli · CC BY-SA 2.0 |
+| 57 | Helenistik ve Bizans Kent Surları | 48 | Commons dosya GPS'i — kesit | Sepp, sur kesiti · CC BY-SA 3.0 |
 
-Kaynak ayrıntısı ve Vikipedi/Wikidata bağı: duraklar tek tek `sources` ve
-`coordinateSource` alanlarında taşır.
+Her durak iki–üç bağımsız kaynak taşır (`sources`). Ayrıntı ve konum
+tartışmaları: [dokuz durak düzeltmesi](../gorevler/efes-dokuz-durak-kimlik-duzeltmesi-2026-11-08.md).
+
 
 ## 3. Aynı noktayı paylaşan duraklar (`sharedWith`)
 
-Koordinat **uydurulmadı**. İki ayrı yapı gerçekten aynı noktayla temsil
-ediliyorsa ilişki `sharedWith` alanına karşılıklı yazıldı ve harita bu pinleri
-~14 m'lik bir yay üzerinde kaydırarak ayırıyor. Veri değişmiyor, yalnız pin
-üst üste binmiyor.
+8 Kasım 2026 itibarıyla turda **aynı koordinatı paylaşan durak kalmadı**;
+`sharedWith` alanı hiçbir durakta yazılı değil. Daha önce beş grup zorunlu
+olarak tek noktaya oturtulmuştu (Bazilika/Heksagon, Meryem Kilisesi/vaftizhane,
+stadyum/Vedius/surlar, Liman Caddesi/antik liman, Liman Hamamları/Bizans
+Hamamları). Bu grupların her biri, konum kaynağı yeniden belirlenerek ayrıldı.
 
-| Nokta | Duraklar |
-| --- | --- |
-| Bazilika Stoası / Devlet Agorası kuzey kenarı | 3 (basilica-stoa), 51 (heksagon) |
-| Meryem Kilisesi kompleksi | 14 (meryem-kilisesi), 54 (meryem-kilisesi-vaftizhanesi) |
-| Stadyum alanı | 15 (efes-stadyumu), 56 (vedius-gymnasionu), 57 (kent-surlari) |
-| Liman Caddesi | 22 (liman-caddesi), 53 (antik-liman-kanali) |
-| Liman Hamamları kompleksi | 37 (liman-hamamlari), 55 (bizans-hamamlari) |
-| Pollio / Hydreion | 46 (pollio-domitian-cesmesi), 49 (hydreion-kalkidikum) |
+Mekanizma yine de yürürlükte: iki durak gerçekten aynı noktayı temsil ederse
+koordinat uydurulmaz, `sharedWith` alanı **karşılıklı** yazılır ve testte zorunlu
+tutulur.
 
 ## 4. Açık borçlar
 
@@ -75,10 +73,12 @@ ediliyorsa ilişki `sharedWith` alanına karşılıklı yazıldı ve harita bu p
    durakta `audio` alanı yoktur ve arayüz "English audio is not available yet.
    You can read the text." der. Kilit: `src/data/audioDiscovery.test.ts` →
    `KALKIDIKUM_ENGLISH_AUDIO_PENDING` (liste sessizce büyüyemez).
-2. **Koordinatlar temsilî.** 56 ve 57 hâlâ stadyum noktasını paylaşıyor; sahada
-   hassas ölçüm gerekiyor. 55 ve 52 de aynı hamam kompleksini paylaşıyor.
-3. **Tek kaynaklı iki durak:** 51 (Heksagon) ve 52 (Verulanus). İkinci bağımsız
-   kaynak bekliyor.
+2. **Türkçe ses kayıtları yer tutucu.** 49–57 eski `kalkidikum-*.mp3`
+   dosyalarını çalıyor; bu kayıtlar düzeltme öncesi metinlerle üretildi.
+   Aynı ses tonuyla yeniden kayıt gerekiyor.
+3. **Temsilî noktalar:** 51 (sıralamadan türetildi), 52 (avlu sınırları toprak
+   altında), 53 (havza ortası, erişim yok), 57 (korunmuş bir kesit). Kaynaklar
+   arasında 25–90 m fark süren duraklar var; sahada ölçüm yapılmadı.
 4. **İki görselin lisansı doğrulanmadı:** `heroon` (#20) ve `magnesia-kapisi`
    (#27), kaynak Turkish Archaeological News. Yayında gösteriliyor; lisans
    teyidi veya değişim gerekiyor.
