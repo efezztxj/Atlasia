@@ -34,8 +34,13 @@ numaralar veriden okunmaya başlandı. Sonuç:
 ## 2. Kalkidikum eki (49–57)
 
 Bu dokuz durak ayrı bir tur değil, Efes turunun devamıdır. Sekizi ören yeri
-çekirdeğinin içinde, 57 (korunmuş sur kesiti) sınırın dışında işaretlenir. Her biri 57 kayıtlık envanterdeki sıra numarasını
-`envanterNo` alanında taşır.
+çekirdeğinin içinde, 57 (korunmuş sur kesiti) sınırın dışında işaretlenir.
+Her biri 57 kayıtlık envanterdeki sıra numarasını `envanterNo` alanında taşır.
+
+**8 Kasım 2026:** Dokuz durağın Türkçe anlatımı yeniden kaydedildi
+(`/audio/efes-*.mp3`). Künye turdaki diğer kayıtlarla aynı — 24 000 Hz, mono,
+32 kbps CBR — süreler 38–50 sn. Okunan metin:
+`kayit-paketi/turkce-dikte-49-57.json`.
 
 | # | Durak | Envanter no | Konum kaynağı | Fotoğraf |
 | --- | --- | --- | --- | --- |
@@ -56,14 +61,13 @@ tartışmaları: [dokuz durak düzeltmesi](../gorevler/efes-dokuz-durak-kimlik-d
 ## 3. Aynı noktayı paylaşan duraklar (`sharedWith`)
 
 8 Kasım 2026 itibarıyla turda **aynı koordinatı paylaşan durak kalmadı**;
-`sharedWith` alanı hiçbir durakta yazılı değil. Daha önce beş grup zorunlu
-olarak tek noktaya oturtulmuştu (Bazilika/Heksagon, Meryem Kilisesi/vaftizhane,
+`sharedWith` hiçbir durakta yazılı değil. Daha önce altı grup zorunlu olarak tek
+noktaya oturtulmuştu (Bazilika/Heksagon, Meryem Kilisesi/vaftizhane,
 stadyum/Vedius/surlar, Liman Caddesi/antik liman, Liman Hamamları/Bizans
-Hamamları). Bu grupların her biri, konum kaynağı yeniden belirlenerek ayrıldı.
+Hamamları, Pollio/Hydreion). Her biri konum kaynağı yeniden belirlenerek ayrıldı.
 
-Mekanizma yine de yürürlükte: iki durak gerçekten aynı noktayı temsil ederse
-koordinat uydurulmaz, `sharedWith` alanı **karşılıklı** yazılır ve testte zorunlu
-tutulur.
+Mekanizma yürürlükte: iki durak gerçekten aynı noktayı temsil ederse koordinat
+uydurulmaz, `sharedWith` **karşılıklı** yazılır ve testte zorunlu tutulur.
 
 ## 4. Açık borçlar
 
@@ -73,23 +77,19 @@ tutulur.
    durakta `audio` alanı yoktur ve arayüz "English audio is not available yet.
    You can read the text." der. Kilit: `src/data/audioDiscovery.test.ts` →
    `KALKIDIKUM_ENGLISH_AUDIO_PENDING` (liste sessizce büyüyemez).
-2. ~~Türkçe ses kayıtları yer tutucu.~~ **Kapatıldı (8 Kasım 2026).**
-   Dokuz durak `kalkidikum-*.mp3` yerine `efes-*.mp3` adlarıyla yeniden
-   kaydedildi; tur JSON'undaki ses yolları güncellendi, eski dosyalar silindi.
-   Künye mevcut tur dosyalarıyla birebir: MP3, 24 000 Hz, mono, 32 kbps CBR,
-   `TSSE = Lavf59.27.100` (ilk çerçeve 64 kbps Xing başlığı). Süreler
-   38–50 sn, ≈14 karakter/sn — diğer 48 Türkçe kayıtla aynı okuma hızı.
-   Okunan metnin birebir kaydı:
-   `kayit-paketi/turkce-dikte-49-57.json`.
-   Açık kalan tek soru **tını**: ses seçimi bu oturumda yapıldı, turdaki
-   diğer kayıtlarla kulakla karşılaştırma henüz yapılmadı.
-3. **Temsilî noktalar:** 51 (sıralamadan türetildi), 52 (avlu sınırları toprak
+2. **Temsilî noktalar:** 51 (sıralamadan türetildi), 52 (avlu sınırları toprak
    altında), 53 (havza ortası, erişim yok), 57 (korunmuş bir kesit). Kaynaklar
    arasında 25–90 m fark süren duraklar var; sahada ölçüm yapılmadı.
+3. ~~Tek kaynaklı iki durak~~ **Kapatıldı:** 51 ve 52 artık üç kaynak taşıyor.
 4. **İki görselin lisansı doğrulanmadı:** `heroon` (#20) ve `magnesia-kapisi`
    (#27), kaynak Turkish Archaeological News. Yayında gösteriliyor; lisans
    teyidi veya değişim gerekiyor.
-5. **Turda ses kaydı olmayan iki durak.** Chalcidicum (45) ve Domitian
-   Çeşmesi (46) 2026-11-07'de tura eklendi; içerik ve koordinat doğrulandı ama
-   ses kaydı henüz yok. Arayüz "Ses kaydı yok. Metni okuyabilirsin." der.
-   Kilit: `src/data/audioDiscovery.test.ts` → `SES_BEKLEYEN`.
+5. **Türkçe ses kaydı olmayan üç durak.** Chalcidicum (45) ve Domitian
+   Çeşmesi (47) tura eklendi; içerik ve koordinat doğrulandı ama ses yok.
+   Pollio Anıtı'nın (46) metni bölündüğü için eski kayıt artık yanlış metni
+   okuyordu; ses alanı kaldırıldı. Üçünde de arayüz "Ses kaydı yok. Metni
+   okuyabilirsin." der. Kilit: `SES_BEKLEYEN`.
+6. **Ses tınısı denetlenmedi.** 49–57 kayıtları yenilendi ve teknik künye
+   mevcut dosyalarla aynı, ama turdaki 46 eski Türkçe kayıtla kulakla
+   karşılaştırma yapılmadı. Tını ayrı düşerse o dokuz dosya başka sesle
+   yeniden üretilmeli.

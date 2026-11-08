@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { GROUPS_BY_TOUR } from "../components/AudioDiscoveryCategories";
 import { AUDIO_DISCOVERY_TOURS } from "./audioDiscoveryFixtures";
 import { AUDIO_TOUR_FILE, loadAudioDiscoveryForPlace, loadAudioTours, resetAudioTourCache } from "./audioDiscovery";
 import { ENGLISH_AUDIO_SOURCES } from "./audioDiscoveryEnglish";
@@ -32,7 +33,7 @@ const FILE = resolve(`public${AUDIO_TOUR_FILE}`);
  * koordinat doğrulandı, ses kaydı henüz yok. Arayüz bu duraklarda
  * "Ses kaydı yok. Metni okuyabilirsin." der. Kayıt geldikçe liste küçülür.
  */
-const SES_BEKLEYEN = ["chalcidicum", "domitian-cesmesi"];
+const SES_BEKLEYEN = ["chalcidicum", "domitian-cesmesi", "pollio-domitian-cesmesi"];
 
 const KALKIDIKUM_ENGLISH_AUDIO_PENDING = [
   "chalcidicum",
@@ -88,6 +89,23 @@ describe("sesli anlatım rehberi · tek dosya yapısı", () => {
     // Numaralar 1..57; ören yeri dışı 9 durak ◆ biçiminde ama numarasını gösterir.
     expect(Math.max(...efes!.stops.map((stop) => stop.no))).toBe(57);
     expect(efes!.stops.filter((stop) => stop.markerStyle === "additional")).toHaveLength(10);
+  });
+
+  it("her durak bir kategori grubunda, gruplarda hayalet id yok", () => {
+    // NEDEN: 2026-11-07'de grup listesinde `heoron` yazıyordu, gerçek id `heroon`.
+    // Harf hatası yüzünden Helenistik Heroon hiçbir kategoride görünmüyordu ve
+    // testler bunu yakalamıyordu (tur 57 durak, gruplar 57 id ama biri sahte).
+    const efes = AUDIO_DISCOVERY_TOURS.find((tour) => tour.placeId === "efes")!;
+    const tourIds = new Set(efes.stops.map((stop) => stop.id));
+    const grouped = new Set<string>();
+    for (const group of GROUPS_BY_TOUR["efes-kamusal-yasam"] ?? []) {
+      for (const id of group.stops) {
+        expect(tourIds.has(id), `grup "${group.id}" turda olmayan id içeriyor: ${id}`).toBe(true);
+        grouped.add(id);
+      }
+    }
+    const ungrouped = [...tourIds].filter((id) => !grouped.has(id));
+    expect(ungrouped, "kategori grubuna girmeyen durak var").toEqual([]);
   });
 
   it("sesli tur durakları ana katalogda tekrar etmez (çift pin yok)", () => {
