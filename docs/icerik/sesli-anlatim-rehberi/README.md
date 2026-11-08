@@ -68,7 +68,7 @@ Kurallar:
 
 | Dosya | Ne tutar |
 | --- | --- |
-| [`efes.md`](./efes.md) | Efes turu — 55 durak (46 temel + 9 Kalkidikum eki), açık borçlar |
+| [`efes.md`](./efes.md) | Efes turu — 57 durak (46 temel + 11 Kalkidikum eki), açık borçlar |
 | [`kapadokya.md`](./kapadokya.md) | Kapadokya turu — henüz eklenmedi, iskelet ve ölçüt |
 
 Yeni tur eklerken aynı klasöre `<yer>.md` açılır: o turda hangi durakların
@@ -77,12 +77,19 @@ Böylece her şehir kendi dosyasında, ana kural ise burada tek yerde durur.
 
 ## 4. Bilinen açık borçlar
 
+2026-11-08'de kapatıldı: Kalkidikum ekinin İngilizce metin **ve sesi** tamam —
+`public/audio/efes-en.json` 57/57 durakta `audio` taşıyor ve dosya diskte
+(`en-efes-*.mp3`), kayıtlar turun geri kalanıyla aynı sentetik TTS boru
+hattından çıkıyor (32 kbps · 24 kHz · mono). Eski
+`KALKIDIKUM_ENGLISH_AUDIO_PENDING` kilidi kaldırıldı; `audioDiscovery.test.ts`
+artık 57/57 `audio` alanını ve dosya varlığını kilitler. Kayıtlar insan
+dinlemesinden geçmedi; bu bir borç değil, üretiliş kaydıdır.
+
 | Borç | Etki | Nerede izlenir |
 | --- | --- | --- |
-| Kalkidikum ekinin İngilizce metni ve sesi yok (9 durak) | Efes turunda o duraklarda İngilizce yerine Türkçe metin kalır | `src/data/audioDiscovery.test.ts` → `KALKIDIKUM_ENGLISH_PENDING` |
-| Kalkidikum ekinin iki durağı tek kaynaklı (`heksagon`, `verulanus-meydani-salonu`) | İkinci bağımsız kaynak gerekiyor | aynı dosya, kaynak kilidi |
+| Kalkidikum ekinin iki durağı tek kaynaklı (`heksagon`, `verulanus-meydani-salonu`) | İkinci bağımsız kaynak gerekiyor | `efes.md` §4 |
 | Kalkidikum ekinin koordinatları temsilî; `vedius-gymnasionu` ve `kent-surlari` stadyum noktasını paylaşıyor | Sahada hassas ölçüm gerekir | `efes.md` §4 |
-| Efes turunda iki görselin lisansı doğrulanmadı (`heroon`, `magnesia-kapisi`) | Yayında gösteriliyor | `efes.md` §5 |
+| Efes turunda iki görselin lisansı doğrulanmadı (`heroon`, `magnesia-kapisi`) | Yayında gösteriliyor | `efes.md` §4 |
 
 ## 5. Neden tek dosya?
 

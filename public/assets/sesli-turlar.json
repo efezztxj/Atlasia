@@ -103,7 +103,8 @@
             }
           ],
           "sharedWith": [
-            "heksagon"
+            "heksagon",
+            "chalcidicum"
           ]
         },
         {
@@ -1432,7 +1433,8 @@
             }
           ],
           "sharedWith": [
-            "hydreion-kalkidikum"
+            "hydreion-kalkidikum",
+            "domitian-cesmesi"
           ]
         },
         {
@@ -1492,7 +1494,8 @@
           ],
           "envanterNo": 14,
           "sharedWith": [
-            "pollio-domitian-cesmesi"
+            "pollio-domitian-cesmesi",
+            "domitian-cesmesi"
           ]
         },
         {
@@ -1549,7 +1552,8 @@
           ],
           "envanterNo": 28,
           "sharedWith": [
-            "basilica-stoa"
+            "basilica-stoa",
+            "chalcidicum"
           ]
         },
         {
@@ -1737,6 +1741,72 @@
           "sharedWith": [
             "efes-stadyumu",
             "vedius-gymnasionu"
+          ]
+        },
+        {
+          "id": "chalcidicum",
+          "no": 56,
+          "title": "Chalcidicum (Kalkidikum)",
+          "envanterNo": 12,
+          "audio": "/audio/kalkidikum-chalcidicum.mp3",
+          "image": {
+            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Ephesus_basilica2.jpg/960px-Ephesus_basilica2.jpg",
+            "alt": "Bazilika Stoası ve Chalcidicum çevresi kalıntıları",
+            "source": "https://commons.wikimedia.org/wiki/File:Ephesus_basilica2.jpg",
+            "author": "Rita1234",
+            "license": "CC BY-SA 3.0",
+            "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/"
+          },
+          "lat": 37.936739,
+          "lng": 27.344431,
+          "description": "Bazilika Stoası’na bitişik Chalcidicum, Roma bazilikalarının uçlarına eklenen genişleme yapısına verilen addır. Efes’te iki chalcidicum anlatılır: batı ucu İmparator Neron döneminde eklenmiş, bazilikayı yaklaşık 16 metre uzatmıştır; üç kapılı, rustikal duvarlı bir yapıdır. Doğudaki ek yalnız Bizans evresinden bilinir; peristil avlu görünümünde yarı sütunlarla çevriliydi ve burada bulunan oturur Augustus ile Livia heykelleri imparatorluk kültüyle ilişkilendirilir. Hangi uca hangi ek düştüğü ve işlevi hâlâ araştırmada. İşaret, Bazilika Stoası ile paylaşılan yaklaşık ortak konumdur; giriş veya rota değildir.",
+          "coordinateSource": "https://www.gtp.gr/LocInfo.asp?InfoId=49&Code=ETRAAD00KODKOD00021&PrimeCode=ETRAAD00KODKOD00021&Level=10&PrimeLevel=10",
+          "sharedWith": [
+            "basilica-stoa",
+            "heksagon"
+          ],
+          "sources": [
+            {
+              "title": "Greek Travel Pages - Ephesos",
+              "url": "https://www.gtp.gr/LocInfo.asp?InfoId=49&Code=ETRAAD00KODKOD00021&PrimeCode=ETRAAD00KODKOD00021&Level=10&PrimeLevel=10"
+            },
+            {
+              "title": "Wikipedia (ES) · Basílica-estoa",
+              "url": "https://es.wikipedia.org/wiki/Bas%C3%ADlica-estoa"
+            }
+          ]
+        },
+        {
+          "id": "domitian-cesmesi",
+          "no": 57,
+          "title": "Domitian Çeşmesi",
+          "envanterNo": 11,
+          "audio": "/audio/kalkidikum-domitian-cesmesi.mp3",
+          "image": {
+            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Efeso%2C_monumento_di_pollio_e_domizianeo_01.JPG/960px-Efeso%2C_monumento_di_pollio_e_domizianeo_01.JPG",
+            "alt": "Domitian Çeşmesi kalıntıları (Pollio Anıtı ile bitişik ortak alan)",
+            "source": "https://commons.wikimedia.org/wiki/File:Efeso%2C_monumento_di_pollio_e_domizianeo_01.JPG",
+            "author": "Sailko",
+            "license": "CC BY-SA 3.0",
+            "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/"
+          },
+          "lat": 37.936724,
+          "lng": 27.3434367,
+          "description": "Domitian Çeşmesi, MS 92/93 yılında yapılan anıtsal çeşmedir; Pollio Anıtı’ndan daha gençtir ve eski anıt mezara bitişik inşa edilmiştir. Nişinde Odysseus ile Polyphemos’u betimleyen heykeller Efes Müzesi’ndedir. OSM kaydı çeşme sınırının yaklaşık merkezini verir; Vici, anıt noktasını birkaç metre kuzeyde gösterir — iki yapı hâlâ tek temsili noktayla gösterilir. Ayrı yapılar oldukları unutulmamalı; işaret yaklaşık ortak konumdur, giriş veya rota değildir.",
+          "coordinateSource": "https://www.openstreetmap.org/way/244582459",
+          "sharedWith": [
+            "pollio-domitian-cesmesi",
+            "hydreion-kalkidikum"
+          ],
+          "sources": [
+            {
+              "title": "Alan tabelası · HMDB",
+              "url": "https://www.hmdb.org/m.asp?m=84337"
+            },
+            {
+              "title": "Turkish Archaeological News · Domitian Square",
+              "url": "https://turkisharchaeonews.net/object/domitian-square-ephesus"
+            }
           ]
         }
       ]

@@ -17,26 +17,6 @@ import { GUIDE_PLACES } from "./places";
 
 const FILE = resolve(`public${AUDIO_TOUR_FILE}`);
 
-/**
- * İngilizce SES KAYDI henüz üretilmemiş dokuz durak.
- *
- * 2026-11-07: metin çevirisi tamamlandı (55/55 durak). Ses kaydı gerçek
- * anlatım gerektirdiği için uydurulamaz; bu duraklarda `audio` alanı yoktur ve
- * arayüz "English audio is not available yet. You can read the text." der.
- * Kayıt eklendikçe bu dizi küçülür, boşaldığında kilit kalkar.
- */
-const KALKIDIKUM_ENGLISH_AUDIO_PENDING = [
-  "hydreion-kalkidikum",
-  "triodos-meydani",
-  "heksagon",
-  "verulanus-meydani-salonu",
-  "antik-liman-kanali",
-  "meryem-kilisesi-vaftizhanesi",
-  "bizans-hamamlari",
-  "vedius-gymnasionu",
-  "kent-surlari",
-];
-
 describe("sesli anlatım rehberi · tek dosya yapısı", () => {
   it("tek kaynak dosya var, eski tur dosyaları yok", () => {
     expect(existsSync(FILE)).toBe(true);
@@ -62,18 +42,22 @@ describe("sesli anlatım rehberi · tek dosya yapısı", () => {
     }
   });
 
-  it("Efes turu 55 durak taşır: 46 temel + 9 Kalkidikum eki", () => {
+  it("Efes turu 57 durak taşır: 46 temel + 11 Kalkidikum eki", () => {
     const efes = AUDIO_DISCOVERY_TOURS.find((tour) => tour.placeId === "efes");
     expect(efes).toBeTruthy();
-    expect(efes!.stops).toHaveLength(55);
-    // Kalkidikum eki son 9 durak; 57 kayıtlık envanterdeki sıra numarasını taşır.
-    const kalkidikum = efes!.stops.slice(-9);
-    expect(kalkidikum.map((stop) => stop.envanterNo)).toEqual([14, 16, 28, 40, 42, 44, 45, 47, 48]);
+    expect(efes!.stops).toHaveLength(57);
+    // Kalkidikum eki son 11 durak; 57 kayıtlık envanterdeki sıra numarasını taşır.
+    // 2026-11-08: #56 Chalcidicum (envanter 12) ve #57 Domitian Çeşmesi
+    // (envanter 11) — bağımsız koordinat olmadığı için komşu durağın noktası
+    // `sharedWith` ile paylaşılır; ayrı yapılar olarak işaretlenir.
+    const kalkidikum = efes!.stops.slice(-11);
+    expect(kalkidikum.map((stop) => stop.envanterNo)).toEqual([14, 16, 28, 40, 42, 44, 45, 47, 48, 12, 11]);
     expect(kalkidikum.every((stop) => stop.id.startsWith("kalkidikum-") || stop.id === "hydreion-kalkidikum"
       || ["triodos-meydani", "heksagon", "verulanus-meydani-salonu", "antik-liman-kanali",
-        "meryem-kilisesi-vaftizhanesi", "bizans-hamamlari", "vedius-gymnasionu", "kent-surlari"].includes(stop.id))).toBe(true);
-    // Numaralar 1..55; ören yeri dışı 9 durak ◆ biçiminde ama numarasını gösterir.
-    expect(Math.max(...efes!.stops.map((stop) => stop.no))).toBe(55);
+        "meryem-kilisesi-vaftizhanesi", "bizans-hamamlari", "vedius-gymnasionu", "kent-surlari",
+        "chalcidicum", "domitian-cesmesi"].includes(stop.id))).toBe(true);
+    // Numaralar 1..57; ören yeri dışı 9 durak ◆ biçiminde ama numarasını gösterir.
+    expect(Math.max(...efes!.stops.map((stop) => stop.no))).toBe(57);
     expect(efes!.stops.filter((stop) => stop.markerStyle === "additional")).toHaveLength(9);
   });
 
@@ -98,7 +82,7 @@ describe("sesli anlatım rehberi · yükleme", () => {
       globalThis.fetch = async () => new Response(readFileSync(FILE, "utf8"), { status: 200 });
       const tours = await loadAudioTours();
       expect(tours.map((tour) => tour.id)).toEqual(AUDIO_DISCOVERY_TOURS.map((tour) => tour.id));
-      expect((await loadAudioDiscoveryForPlace("efes"))?.stops).toHaveLength(55);
+      expect((await loadAudioDiscoveryForPlace("efes"))?.stops).toHaveLength(57);
       expect(await loadAudioDiscoveryForPlace("bilinmeyen-yer")).toBeNull();
     } finally {
       globalThis.fetch = original;
@@ -135,10 +119,17 @@ describe("sesli anlatım rehberi · çeviri kapsamı", () => {
       // METİN çevirisi tam olmalı: hiçbir durak eksik kalamaz.
       const missing = tour!.stops.filter((stop) => !translations[stop.id]).map((stop) => stop.id);
       expect(missing).toEqual([]);
-      // Ses kaydı ise henüz üretilmemiş olabilir; eksikler tam olarak
-      // bilinen borç listesi olmalı (sessizce büyüyemez).
+      // İngilizce ses kaydı 2026-11-08'de tamamlandı (Kalkidikum eki 57 durakla
+      // birlikte 57/57); eski "eksik dokuz durak" kilidi (KALKIDIKUM_ENGLISH_AUDIO_PENDING)
+      // listesi boşaldığı için kaldırıldı. Kayıt işaret ediyorsa dosya diskte olmalı.
       const missingAudio = tour!.stops.filter((stop) => !translations[stop.id]?.audio).map((stop) => stop.id);
-      expect(missingAudio.sort()).toEqual([...KALKIDIKUM_ENGLISH_AUDIO_PENDING].sort());
+      expect(missingAudio).toEqual([]);
+      for (const stop of tour!.stops) {
+        const audio = translations[stop.id]?.audio;
+        if (!audio) continue;
+        expect(audio).toMatch(/^\/audio\/[\w-]+\.mp3$/);
+        expect(existsSync(resolve("public", audio.slice(1))), `${audio} yok`).toBe(true);
+      }
       for (const stop of tour!.stops) {
         const translation = translations[stop.id];
         if (!translation) continue;

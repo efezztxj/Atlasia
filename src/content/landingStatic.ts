@@ -50,7 +50,7 @@ export const VERIFIED_CATALOG_COUNTS: VerifiedCatalogCounts = {
    * Katalog sayısından AYRI tutulur: 9 Kalkidikum durağı haritada çift pin
    * üretmesin diye katalogdan çıkarıldı, turun içinde yaşıyor.
    */
-  audioStops: 55,
+  audioStops: 57,
 };
 
 export interface LandingStaticContent {

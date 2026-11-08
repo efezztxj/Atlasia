@@ -77,14 +77,17 @@ describe("sesli keşif", () => {
 describe("English audio tour", () => {
   it("switches recordings, pauses playback and clearly marks unavailable audio", async () => {
     const { readFileSync } = await import("node:fs");
-    const translations = JSON.parse(readFileSync("public/audio/efes-en.json", "utf8"));
-    // "Kayıt yok" senaryosu: Kalkidikum ekinin METNİ çevrildi ama SESİ henüz
-    // üretilmedi (açık borç, bkz. audioDiscovery.test.ts →
-    // KALKIDIKUM_ENGLISH_AUDIO_PENDING). Test bu gerçek durumu ölçer; ayrıca
-    // veri silinmez.
+    const diskTranslations = JSON.parse(readFileSync("public/audio/efes-en.json", "utf8"));
+    // "Kayıt yok" senaryosu: 2026-11-08'de İngilizce SES 1–55 üretildi, aynı
+    // gün #56 chalcidicum ve #57 domitian-cesmesi de eklendi; diskteki her
+    // durakta `audio` var. "Ses yok" yolu hâlâ desteklense de (gelecekteki
+    // turlar/kesintiler için) ana hat artık gerçek veriyle ölçülemez;
+    // senaryo sentetik kopyayla kurulur.
     const lastStop = AUDIO_DISCOVERY_TOURS[0].stops.at(-1)!;
-    expect(translations[lastStop.id]?.description).toBeTruthy();
-    expect(translations[lastStop.id]?.audio).toBeUndefined();
+    expect(lastStop.id).toBe("domitian-cesmesi");
+    expect(diskTranslations[lastStop.id]?.audio).toBe("/audio/en-efes-domitian-cesmesi.mp3");
+    const translations = { ...diskTranslations, [lastStop.id]: { ...diskTranslations[lastStop.id] } };
+    delete translations[lastStop.id].audio;
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => translations }));
     const pause = vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
     vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
@@ -122,17 +125,16 @@ describe("English audio tour", () => {
     const { readFileSync, existsSync } = await import("node:fs");
     const translations = JSON.parse(readFileSync("public/audio/efes-en.json", "utf8"));
     const stops = AUDIO_DISCOVERY_TOURS[0].stops;
-    // 2026-11-07: Kalkidikum ekinin METNİ çevrildi → küme birebir eşit.
-    // Ses kaydı gerçek anlatım gerektirdiği için henüz üretilmedi; o dokuz
-    // durakta `audio` alanı YOKTUR ve arayüz "English audio is not available
-    // yet" der (bkz. audioDiscovery.test.ts → KALKIDIKUM_ENGLISH_AUDIO_PENDING).
+    // 2026-11-08: metin ve SES çevirisi tam (57/57). Ses alanı varsa dosya
+    // diskte olmalı; art arda gelen "merhaba" testleri gerçek dosyayı ölçer.
     const translated = Object.keys(translations).sort();
     expect(translated).toEqual(stops.map((stop) => stop.id).sort());
     for (const id of translated) {
       const english = translations[id];
       expect(english.title && english.description && english.imageAlt).toBeTruthy();
-      // Ses alanı varsa dosya gerçekten package'da olmalı (404 kovalanmaz).
-      if (english.audio) expect(existsSync(`public${english.audio}`)).toBe(true);
+      // Ses alanı olmayan kayıt kalmamalı: her durakta kayıt vardır.
+      expect(english.audio, `${id}: ses kaydı yok`).toBeTruthy();
+      expect(existsSync(`public${english.audio}`)).toBe(true);
     }
   });
 });
@@ -143,9 +145,9 @@ describe("metni çevrilmiş ama sesi olmayan durak", () => {
     const kalkidikumIndex = tour.stops.findIndex((stop) => stop.id === "hydreion-kalkidikum");
     expect(kalkidikumIndex).toBeGreaterThan(-1);
     render(createElement(AudioDiscoverySheet, { tour, selectedIndex: kalkidikumIndex, onSelect: vi.fn(), onClose: vi.fn() }));
-    // 2026-11-07: Metin çevirisi tamamlandığı için düğme artık görünür.
-    // Durakta yalnız ses kaydı eksik; o durum AudioDiscoverySheet içinde
-    // "English audio is not available yet" ile bildirilir (yukarıdaki test).
+    // 2026-11-08: Metin ve ses çevirisi tamamlandığı için düğme görünür ve
+    // son durakta da Play etkindir; "ses yok" yolu sentetik senaryoyla üstteki
+    // testte sınanmaya devam eder.
     expect(screen.getByRole("button", { name: "English" })).toBeTruthy();
   });
 });

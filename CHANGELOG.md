@@ -1,5 +1,24 @@
 # Atlasia Update
 
+## 2026-11-08 — Efes turu 55 → 57 durak: Chalcidicum ve Domitian Çeşmesi ayrı duraklar
+
+- **İki eksik envanter kaydı eklendi:** #56 `chalcidicum` (envanter 12, Bazilika Stoası’na bitişik chalcidicum ekleri) ve #57 `domitian-cesmesi` (envanter 11, MS 92/93 çeşmesi). Tur 55 → **57** durak oldu; numaralar 1–57 kesintisiz, ◆/drop pin ayrımı ve 9 dış-çekirdek durağı değişmedi.
+- **Koordinat uydurulmadı:** iki durak için bağımsız coğrafi referans yok (bkz. `docs/gorevler/efes-tekil-dogrulama-calismasi-2026-11-04.md`); komşu durağın temsili noktası `sharedWith` ile karşılıklı yazıldı (56 ↔ 3 basilica-stoa, 49 heksagon · 57 ↔ 45 pollio-domitian-cesmesi, 47 hydreion). Metinlerde belirsizlikler açıkça anlatılır: Chalcidicum doğu/batı eşleştirmesi araştırmada; Domitian Çeşmesi ile Pollio Anıtı ayrı yapı ama tek temsili noktayla gösterilir.
+- **Görseller (repo deseni: ortak nokta = ortak lisanslı görsel):** #56 → `Ephesus_basilica2.jpg` (Rita1234, CC BY-SA 3.0); #57 → `Efeso,_monumento_di_pollio_e_domizianeo_01.JPG` (Sailko, CC BY-SA 3.0). Yeni kayıtta "Kullanım izni doğrulanmadı" görseli yok.
+- **Sesler (4 yeni kayıt, tamamı kadın sesi):** 2 TR (`kalkidikum-chalcidicum.mp3`, `kalkidikum-domitian-cesmesi.mp3`) + 2 EN (`en-efes-chalcidicum.mp3`, `en-efes-domitian-cesmesi.mp3`). Üretim sentetik TTS; insan dinlemesi yapılmadı. Katalog sesinin kadın olduğu perde analiziyle teyit edildi (F0 ≈ 175–225 Hz); ilk seçilen erkek TR sesi (F0 ≈ 99–100 Hz) kullanıcı geri bildirimiyle değiştirildi (voice-01 → voice-02; EN voice-00). Kalite profili turla aynı: 32 kbps · 24 kHz · mono, RMS ≈ −19.8…−20.3 dBFS.
+- **Veri/arayüz:** `sesli-turlar.json` 57 durak; `efes-en.json` 57/57 `audio`; `AudioDiscoveryCategories` "Kalkidikum ve liman bölgesi" grubuna 2 durak eklendi; `landingStatic.ts` `audioStops` 55 → **57**; `llms.txt` güncellendi.
+- **Testler:** `audioDiscovery.test.ts` 57 durak / `slice(-11)` / envanterNo `[…, 12, 11]` / yeni id’ler + `toHaveLength(57)` kilidi; `AudioDiscoverySheet.test.ts` yorum güncel. `vitest` (AudioDiscovery*, App, criticalPath, siteSurface, telemetryCatalog, analytics, socialProofT20) — bkz. doğrulama.
+- **Doküman:** `efes.md` (tablolar, `sharedWith`, açık borçlar — "envanterde olmayan iki kayıt" borcu kapandı; koordinatlar ve doğrulama borcu sürer), `sesli-anlatim-rehberi/README.md`, envanter `efes-kapsamli-yer-listesi-2026-11-01.md` (tüm ○ → ✓, 57/57 notu), `efes-tekil-dogrulama-calismasi-2026-11-04.md`’ye 2026-11-08 ekleme notu.
+
+## 2026-11-08 — Efes turu İngilizce sesi 47–55 tamamlandı (55/55)
+
+- **Eksik kayıt üretildi:** Kalkidikum ekinin dokuz durağının İngilizce anlatımı `en-efes-{hydreion-kalkidikum,triodos-meydani,heksagon,verulanus-meydani-salonu,antik-liman-kanali,meryem-kilisesi-vaftizhanesi,bizans-hamamlari,vedius-gymnasionu,kent-surlari}.mp3` olarak eklendi; `public/audio/efes-en.json` 46 → **55/55** durakta `audio` taşıyor ve her `audio` diskte dosya gösteriyor.
+- **Üretiliş kaydı (dürüst beyan):** kayıtlar sentetik TTS çıktısıdır, **insan dinlemesi yapılmadı**; ekrandaki İngilizce metnin seslendirmesidir. Turun geri kalanıyla aynı profil: 32 kbps · 24 kHz · mono MP3, RMS −19.6…−20.4 dBFS, peak ≤ 0.83, 13.9–16.3 karakter/saniye — 1–46 arası EN kayıtlarla birebir aynı üretim boru hattı.
+- **Kilit kalktı:** eski `KALKIDIKUM_ENGLISH_AUDIO_PENDING` listesi (9 durak) boşaldığı için `src/data/audioDiscovery.test.ts`'ten çıkarıldı; test artık hiçbir durakta `audio` eksik kalmamasını ve `audio` yolunun `/audio/[\w-]+.mp3` biçiminde var olan bir dosyayı göstermesini kilitliyor.
+- **Arayüz değişmedi:** "English audio is not available yet. You can read the text." yolu gelecekteki turlar/kesintiler için duruyor; `AudioDiscoverySheet.test.ts` bu yolu artık sentetik bir kopya üzerinde sınıyor (disk verisine bağımlı değil). "covers all tour stops" testi artık tüm 55 durakta `audio` + dosya varlığını şart koşuyor.
+- **Doğrulama:** `vitest run` (AudioDiscoverySheet, audioDiscovery, AudioDiscoveryMap, audioStopMarkers, App, criticalPath, siteSurface, telemetryCatalog, analytics → 24 + 55 test geçti), `tsc --noEmit`, `eslint --max-warnings=0`.
+- **Doküman:** `docs/icerik/sesli-anlatim-rehberi/efes.md` §4 ve `README.md` §4 borç listesi güncellendi (EN ses borcu kapandı; açık borçlar yeniden numaralandı). Not: 8 Türkçe ses kaydının kısaltılmış TR metinle uyumsuzluğu bu turda **ele alınmadı** (ayrı borç, değerlendirme bekliyor).
+
 ## 2026-11-01 (P1-1 + P2-1) — Hata izleme görünür oldu, tanıtımın CLS kayması kaldırıldı
 
 - **Kör nokta:** uygulama çökse kimsenin haberi olmuyordu. `VITE_TELEMETRY_ENDPOINT` tanımlı değilse `telemetry` sessizce hiçbir şey göndermiyor; üstelik toplayıcı `*.workers.dev` adresinde olacakken CSP `connect-src` bu host'u engelliyordu.

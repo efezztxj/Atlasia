@@ -25,10 +25,10 @@ interface StopGroup {
 const GROUPS_BY_TOUR: Readonly<Record<string, readonly StopGroup[]>> = Object.freeze({
   "efes-kamusal-yasam": [
     { id: "upper", tr: "Üst kent ve Devlet Agorası", en: "Upper city and State Agora", stops: ["prytaneion", "devlet-agorasi", "basilica-stoa", "odeon", "memmius", "domitian-meydani", "domitian-tapinagi", "pollio-domitian-cesmesi", "laecanius-cesmesi", "agora-tapinagi", "herakles-kapisi", "yukari-hamam"] },
-    { id: "curetes", tr: "Kuretler Caddesi", en: "Curetes Street", stops: ["hadrian-tapinagi", "trajan-cesmesi", "yamac-evler", "skolastika", "oktagon", "heoron", "latrina", "kuretler-caddesi", "alytarkhos-stoasi", "ask-evi", "yamac-ev-1", "yamac-ev-2"] },
+    { id: "curetes", tr: "Kuretler Caddesi", en: "Curetes Street", stops: ["hadrian-tapinagi", "trajan-cesmesi", "yamac-evler", "skolastika", "oktagon", "heroon", "latrina", "kuretler-caddesi", "alytarkhos-stoasi", "ask-evi", "yamac-ev-1", "yamac-ev-2"] },
     { id: "north", tr: "Kuzey ve çevresi", en: "North and surroundings", stops: ["meryem-kilisesi", "efes-stadyumu", "artemision", "aziz-yuhanna", "isa-bey", "liman-caddesi", "liman-hamamlari", "meryem-ana-evi", "yedi-uyuyanlar", "ayasuluk", "lukas", "magnesia-kapisi", "dogu-gymnasionu"] },
     { id: "lower", tr: "Kütüphane, agora ve tiyatro", en: "Library, agora and theatre", stops: ["celsus-kutuphanesi", "buyuk-tiyatro", "ticaret-agorasi", "mazaeus-mithridates", "mermer-cadde", "tiyatro-cesmesi", "hadrian-kapisi", "tiyatro-gymnasionu", "serapeion"] },
-    { id: "kalkidikum", tr: "Kalkidikum ve liman bölgesi", en: "Chalcidicum and the harbour area", stops: ["hydreion-kalkidikum", "triodos-meydani", "heksagon", "verulanus-meydani-salonu", "antik-liman-kanali", "meryem-kilisesi-vaftizhanesi", "bizans-hamamlari", "vedius-gymnasionu", "kent-surlari"] },
+    { id: "kalkidikum", tr: "Kalkidikum ve liman bölgesi", en: "Chalcidicum and the harbour area", stops: ["hydreion-kalkidikum", "triodos-meydani", "heksagon", "verulanus-meydani-salonu", "antik-liman-kanali", "meryem-kilisesi-vaftizhanesi", "bizans-hamamlari", "vedius-gymnasionu", "kent-surlari", "chalcidicum", "domitian-cesmesi"] },
   ],
 });
 

@@ -154,3 +154,16 @@ Ekrandaki Heroon fotoğraflarından ortadaki, [TAN Heroon sayfasındaki](https:/
 - **Antik liman:** [UNESCO/ICOMOS](https://whc.unesco.org/document/151544) liman havzası ve kanalı ile kıyı değişimini tanımlar; [TAN](https://turkisharchaeonews.net/object/harbour-ephesus) bugünkü bataklık alanının erişime açık olmadığını bildirir. Geniş ve dönemlere göre değişen bir alan olduğundan giriş değil yalnızca yaklaşık temsilî nokta kullanılabilir. TAN başlığındaki konumun fotoğraf çekim noktası olup olmadığı ve görselin havzayı gerçekten gösterip göstermediği incelenmeli.
 - **Triodos alternatifi:** [Cambridge, Antichthon](https://www.cambridge.org/core/journals/antichthon/article/out-of-the-temples-and-into-the-streets-reassembling-the-christianisation-of-roman-urban-space/54E46A3DD5047A7E9369B5C2641B940E) kavşağı dört yolun buluştuğu küçük alan olarak inceler; [TAN](https://turkisharchaeonews.net/object/triodos-square-and-its-main-monuments-ephesus) tarihî kavşak düzenindeki değişiklikleri anlatır. Hadrian Kapısı ve kütüphane işaretleriyle çakışma çözülmeden ayrı pin eklenmemeli.
 - Önceki ses dosyaları korunmuştur. Yeni duraklara aynı seslerle TR/EN kayıt üretilmeden ve ilgili görseller/konumlar kontrol edilmeden bu adaylar tamamlandı sayılmamıştır.
+
+## 2026-11-08 güncellemesi — #56 Chalcidicum ve #57 Domitian Çeşmesi eklendi
+
+Bu dosyanın "Hiçbir aday bu dosyaya dayanarak otomatik yayınlanmaz" ve
+bağımsız coğrafi referans şartı **karşılanmamıştır**; ekleme, 2026-11-08'de
+kullanıcı talebiyle yapılmıştır. İki durak da uydurma koordinat içermez:
+mevcut temsili noktayı `sharedWith` ile paylaşır (#56 ↔ Bazilika Stoası
+noktası 37.936739, 27.344431; #57 ↔ Pollio Anıtı noktası 37.936724, 27.3434367).
+Doğrulanmamış olanlar ilgili durak metinlerinde açıkça yazılıdır (Chalcidicum
+doğu/batı eşleştirmesi araştırmada; Domitian Çeşmesi ile Pollio Anıtı ayrı
+yapılar, tek temsili nokta). İsim/kimlik uyuşmazlığı kayıtları ve bağımsız
+bilimsel kaynak bekleyenler geçerliliğini korur; yeni durakların kaynakları
+(gtp.gr, Wikipedia-ES, HMDB, TAN) ikinci bağımsız teyidin yerini almaz.
