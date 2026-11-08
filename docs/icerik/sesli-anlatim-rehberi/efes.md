@@ -82,7 +82,8 @@ ediliyorsa ilişki `sharedWith` alanına karşılıklı yazıldı ve harita bu p
 4. **İki görselin lisansı doğrulanmadı:** `heroon` (#20) ve `magnesia-kapisi`
    (#27), kaynak Turkish Archaeological News. Yayında gösteriliyor; lisans
    teyidi veya değişim gerekiyor.
-5. **Turda ses kaydı olmayan iki durak.** Chalcidicum (45) ve Domitian
-   Çeşmesi (46) 2026-11-07'de tura eklendi; içerik ve koordinat doğrulandı ama
-   ses kaydı henüz yok. Arayüz "Ses kaydı yok. Metni okuyabilirsin." der.
-   Kilit: `src/data/audioDiscovery.test.ts` → `SES_BEKLEYEN`.
+5. **Türkçe ses kaydı olmayan üç durak.** Chalcidicum (45) ve Domitian
+   Çeşmesi (47) tura eklendi; içerik ve koordinat doğrulandı ama ses yok.
+   Pollio Anıtı'nın (46) metni bölündüğü için eski kayıt artık yanlış metni
+   okuyordu; ses alanı kaldırıldı. Üçünde de arayüz "Ses kaydı yok. Metni
+   okuyabilirsin." der. Kilit: `SES_BEKLEYEN`.
