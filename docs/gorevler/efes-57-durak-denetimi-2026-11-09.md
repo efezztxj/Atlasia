@@ -181,3 +181,20 @@ npx vitest run src/data/audioDiscovery.test.ts
 
 Sayımların tek doğru kaynağı `public/assets/sesli-turlar.json`'dır; belgeler
 veriden türetilmeli, tersi değil.
+
+## 8. Kapanış durumu (9 Kasım 2026, akşam)
+
+Bu turda kapatılabilen her şey kapatıldı. Açık kalan **dört** kalem var ve
+hiçbiri kodda bırakılmış bir yarım iş değil:
+
+| Kalem | Neden açık | Kim kapatır |
+| --- | --- | --- |
+| 52, 53, 57 temsilî nokta | Saha ölçümü gerekir (GPS); kaynaklar arası 25–90 m fark uydurma bir noktayla kapatılmaz | Sahada ölçüm |
+| 20 Heroon, 27 Magnesia Kapısı fotoğrafı | Lisanslı ve doğru kare yok; arama üç kez tükendi, alt metin bunu yazıyor | Ürün kararı (resmî site görselleri) |
+| PR #195 birleştirme | Branch koruması review onayı istiyor | Bağımsız onay |
+| appShell LCP/TBT | Sandbox ölçümü; CLS 0,000 ile kapandı, kalanı ortam gürültüsü | Ortam / yeniden ölçüm |
+
+Bu turda ayrıca kapatılanlar: `efes.md` üç hata, 53/57 gerekçe notu, rozetin
+sabit yanlış cümlesi, İngilizce arayüzde Türkçe not, beş görselin alt metni,
+arşiv kimlik eşlemesi. Hepsi testle kilitli: **1 495 test / 195 dosya**.
+
