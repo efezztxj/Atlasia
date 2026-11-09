@@ -35,17 +35,34 @@ Komut: `npm run build` (üretim derlemesi; `scripts/bundle-budget.mjs` gzip öl�
 > ölçüm değil. Ölçmek için: `dist/assets/*.js` dosyalarını `brotli -q 11` ile
 > sıkıştırıp ilk HTML setindeki parçaları topla.
 
-## 2. Core Web Vitals (Lighthouse mobil) — ölçülmedi
+## 2. Core Web Vitals (Lighthouse mobil) — kısmen ölçüldü
 
-| Metrik | Hedef | Baseline | Durum |
+CI'daki `npm run test:lighthouse` üretim derlemesini `dist/` üzerinden mobil
+profilde **3 kez** koşup medyanı değerlendirir (`lighthouserc.cjs`). Yani ölçüm
+artık her turda otomatik alınıyor; aşağıdaki değerler 2026-11-08 tarihli
+`3de6820`/`bdea262`/`459d8c2` koşularından.
+
+| Metrik | Hedef | `/` (tanıtım) | `/?tab=kesfet` (uygulama kabuğu) |
 |---|---|---|---|
-| LCP (mobil 4G) | < 2,0 s | — | **ölçülmedi** (bu ortamda tarayıcı yok) |
-| CLS | < 0,05 | — | **ölçülmedi** |
-| INP | < 200 ms | — | **ölçülmedi** |
-| Lighthouse Performans | ≥ 90 | — | **ölçülmedi** |
-| Lighthouse Erişilebilirlik | ≥ 95 | — | **ölçülmedi** (kontrast hatları T12 ile giderildi, ölçüm tekrarı yapılmadı) |
+| CLS | < 0,05 | **0,000** ✅ | **0,000** ✅ (önce 0,120) |
+| Lighthouse Performans | ≥ 0,85 / ≥ 0,90 | **0,87** | **0,38** ⚠️ |
+| Lighthouse Erişilebilirlik | ≥ 0,95 | **1,00** ✅ | **0,96** ✅ |
+| LCP | < 2,0 s | 3,8 s ⚠️ | 8–12 s ⚠️ (ortam) |
+| TBT | < 200 ms | 14–34 ms ✅ | ~155 000 ms ⚠️ (ortam) |
 
-Nasıl doldurulur (deploy sonrası, 3 kez):
+**Uygulama kabuğundaki LCP/TBT değerleri gerçek kullanıcı davranışını
+yansıtmıyor.** TBT'nin 155 s çıkması, sayfanın iki buçuk dakika donması demek
+olurdu; böyle bir sayfa açılmaz. Bu, headless Chromium'un GPU'suz ortamda
+MapLibre'ı yazılım çizimine düşürmesiyle uyumlu. Ölçümü ayırmak için iki yol
+var ve ikisi de **sunucu tarafı** iş: (1) gerçek tarayıcıda `--preset=desktop`
+ve GPU ile koşmak, (2) üretim URL'inde (`atlasia.pages.dev`) alan verisi
+(Search Console → Core Web Vitals) toplamak. O veri gelene kadar bu iki satır
+"ölçüldü ama yorumlanamaz" olarak duruyor; eşik düşürülmedi.
+
+CLS tarafı ise **kesin**: kök neden bulundu, düzeltildi ve 3/3 koşuda sıfırlandı
+(font takasını beklemeyen çerez kartı; ayrıntı aşağıdaki bölümde).
+
+Nasıl yeniden ölçülür (yerel, tarayıcı varsa):
 
 ```bash
 npx lighthouse https://atlasia.pages.dev/ \

@@ -466,6 +466,43 @@ describe("kayıt paketi · JSON ile tutarlılık", () => {
     }
   });
 
+  it("dikte JSON'ları turdaki ses yollarını ve (yeniden kaydedilen) metni taşır", () => {
+    // NEDEN: `turkce-dikte-49-57.json` "kayıtta okunan metin" olarak duruyor ama
+    // 51 Heksagon'un metni 8 Kasım'da tamamen değişti; dosya eski yanlış metni
+    // taşımaya devam ediyordu. Bir insan seslendiren ya da bir sonraki ajan bu
+    // dosyadan kayıt yapsa yanlış metni geri getirirdi. Kilit: dosyalar turun
+    // ses yollarıyla birebir örtüşür ve 51 güncel metni taşır.
+    const { tur } = paketDuraklari();
+    const senaryolar: [string, number[]][] = [
+      ["turkce-dikte-49-57.json", [49, 50, 51, 52, 53, 54, 55, 56, 57]],
+      ["turkce-dikte-33-38-48-51.json", TURKCE_PAKET],
+    ];
+    for (const [dosya, beklenen] of senaryolar) {
+      const icerik = JSON.parse(readFileSync(resolve(PAKET_DIZINI, dosya), "utf8")) as Record<
+        string,
+        { no?: number; audio?: string; text?: string }
+      >;
+      const kayitlar = Object.entries(icerik).filter(([key]) => !key.startsWith("$"));
+      expect(kayitlar.map(([, value]) => value.no).sort((a, b) => (a ?? 0) - (b ?? 0)), dosya).toEqual(beklenen);
+      if (dosya === "turkce-dikte-33-38-48-51.json") {
+        const { tur: t } = paketDuraklari();
+        for (const [id, value] of kayitlar) {
+          const durak = t.tours[0].stops.find((stop) => stop.id === id)!;
+          expect(value.audio, `${dosya} ${id}`).toBe(durak.audio);
+          expect(value.text, `${dosya} ${id}: metin turdan farklı`).toBe(durak.description.trim());
+        }
+        continue;
+      }
+      for (const [id, value] of kayitlar) {
+        const durak = tur.tours[0].stops.find((stop) => stop.id === id)!;
+        expect(value.audio, `${dosya} ${id}`).toBe(durak.audio);
+      }
+      // 51 yeniden kaydedildi: metni güncel olmak zorunda.
+      const heksagon = tur.tours[0].stops.find((stop) => stop.id === "heksagon")!;
+      expect(icerik.heksagon.text, "heksagon dikte metni eski sürümde kalmış").toBe(heksagon.description.trim());
+    }
+  });
+
   it("teknik künye ölçülen değerle aynı (32 kbps) ve eski yanlış yazım yok", () => {
     for (const dosya of ["PROMPT.md", "KAYIT-TALIMATI.md"]) {
       const metin = readFileSync(resolve(PAKET_DIZINI, dosya), "utf8");

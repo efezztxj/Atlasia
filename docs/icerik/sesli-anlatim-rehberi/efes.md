@@ -140,6 +140,13 @@ inmez: daha büyük kaydırma pini komşu yapıya taşır.
    `src/data/audioDiscovery.test.ts` içine **metin/süre oranı kilidi** eklendi:
    metin düzenlenip ses eskide kalırsa test düşer.
    Okunan metinler: `kayit-paketi/turkce-dikte-33-38-48-51.json`.
+   **Ek olarak (8 Kasım 2026):** `kayit-paketi/turkce-dikte-49-57.json` de
+   denetlendi. 49, 50, 52–57 için fark **üslup** (sayılar rakamla: "üçüncü
+   yüzyıl" → "MS 3. yüzyıl"; "işaret" → "pin"); rakamla ya da yazıyla yazılan
+   sayı seslendirmede aynı okunduğu için bu durakların kaydı doğru. **51
+   Heksagon** ise dosyada hâlâ ESKİ yanlış metni taşıyordu (kayıt yeni metinden
+   üretilmişti); dosya güncellendi ve artık 51'in metni turdaki metinle birebir
+   aynı — test kilitler.
 3. **Temsilî noktalar — gizlenmiyor, ölçüm borcu sürüyor (8 Kasım 2026).**
    52 (avlu sınırları toprak altında), 53 (havza ortası, erişim yok) ve 57
    (korunmuş bir kesit) veride `coordinateAccuracy: "approximate"` taşır.
