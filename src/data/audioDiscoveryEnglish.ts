@@ -14,6 +14,10 @@ export interface EnglishAudioStop {
   description: string;
   imageAlt: string;
   audio?: string;
+  /** Yaklaşık konum rozeti (bkz. `AudioStop.coordinateShort`). */
+  coordinateShort?: string;
+  /** Yaklaşık konumun uzun gerekçesi (bkz. `AudioStop.coordinateNote`). */
+  coordinateNote?: string;
 }
 
 /** `placeId` → İngilizce anlatım dosyası. Kayıt yoksa dil düğmesi gizlenir. */

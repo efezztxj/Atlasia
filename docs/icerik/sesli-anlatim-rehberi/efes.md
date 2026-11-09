@@ -144,9 +144,15 @@ inmez: daha büyük kaydırma pini komşu yapıya taşır.
 3. **Temsilî noktalar — gizlenmiyor, ölçüm borcu sürüyor (8 Kasım 2026).**
    52 (avlu sınırları toprak altında), 53 (havza ortası, erişim yok) ve 57
    (korunmuş bir kesit) veride `coordinateAccuracy: "approximate"` taşır.
-   Durak kartında "≈ Yaklaşık konum · yapı geniş bir alana yayılıyor; pin
-   merkezini gösterir" yazar; pinin ekran okuyucu adı "(yaklaşık konum)" ile
-   biter. İkisi de testte kilitli. Koordinat **uydurulmadı**: kaynaklar
+   Durak kartındaki rozet **durağın kendi gerekçesini** yazar (9 Kasım'da
+   düzeltildi): 52 "avlu 200 × 240 m; pin avlunun bir köşesini gösterir",
+   53 "havza ortası; yürüyüş güzergâhı değil", 57 "9 km'lik hattın korunmuş
+   tek kesiti". Önceki sürümde üçünde de aynı cümle vardı ("yapı geniş bir
+   alana yayılıyor…") ve 53 için yanlıştı: orada yapı yok, alüvyonla dolmuş
+   ve erişime kapalı bir havza var. Kısa gerekçe `coordinateShort`, uzun
+   gerekçe `coordinateNote` alanında; ikisi de TR + EN yazılı. Pinin ekran
+   okuyucu adı "(yaklaşık konum)" ile biter. Hepsi testte kilitli.
+   Koordinat **uydurulmadı**: kaynaklar
    arasındaki 25–90 m farkı saha ölçümü olmadan kapatmak yanlış olurdu.
    **52 için ek kanıt:** Wikidata Q104641912 ("Halls of Verulanus") aynı yapıya
    37.944090, 27.339919 veriyor — mevcut pinden 100 m kuzeydoğu; avlu

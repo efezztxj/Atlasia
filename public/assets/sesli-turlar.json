@@ -1666,7 +1666,8 @@
           ],
           "envanterNo": 40,
           "coordinateAccuracy": "approximate",
-          "coordinateNote": "Wikidata Q104641912 aynı yapıya 37.944090, 27.339919 verir; bu nokta mevcut pinden 100 m kuzeydoğudadır ve avlu 200 × 240 m olduğu için ikisi de yapının içinde kalır. Pin, Meryem Kilisesi'nin yanındaki köşeyi gösteren temsilî nokta olarak korundu."
+          "coordinateNote": "Wikidata Q104641912 aynı yapıya 37.944090, 27.339919 verir; bu nokta mevcut pinden 100 m kuzeydoğudadır ve avlu 200 × 240 m olduğu için ikisi de yapının içinde kalır. Pin, Meryem Kilisesi'nin yanındaki köşeyi gösteren temsilî nokta olarak korundu.",
+          "coordinateShort": "avlu 200 × 240 m; pin avlunun bir köşesini gösterir"
         },
         {
           "id": "antik-liman-kanali",
@@ -1709,7 +1710,8 @@
           ],
           "envanterNo": 42,
           "coordinateAccuracy": "approximate",
-          "coordinateNote": "Havza ortası, erişime kapalı bir alanda. Antik liman bugün denizden yaklaşık 5 km içeride, Kaystros'un taşıdığı alüvyonla dolmuş düz bir ovada; ne bir giriş ne de korunmuş bir havza kenarı var. Pin, Ephesus.net planındaki havza merkezini gösterir; kıyı çizgisi kaynaklarda farklı çiziliyor. Bugün bataklık ve drenaj sorunu nedeniyle güvenli bir yürüyüş güzergâhı değildir."
+          "coordinateNote": "Havza ortası, erişime kapalı bir alanda. Antik liman bugün denizden yaklaşık 5 km içeride, Kaystros'un taşıdığı alüvyonla dolmuş düz bir ovada; ne bir giriş ne de korunmuş bir havza kenarı var. Pin, Ephesus.net planındaki havza merkezini gösterir; kıyı çizgisi kaynaklarda farklı çiziliyor. Bugün bataklık ve drenaj sorunu nedeniyle güvenli bir yürüyüş güzergâhı değildir.",
+          "coordinateShort": "havza ortası; yürüyüş güzergâhı değil"
         },
         {
           "id": "meryem-kilisesi-vaftizhanesi",
@@ -1868,7 +1870,8 @@
           "envanterNo": 48,
           "coordinateAccuracy": "approximate",
           "markerStyle": "additional",
-          "coordinateNote": "Korunmuş tek bir sur kesiti. Lysimakhos'un çevrelediği hattın 9 km'yi aşan uzunluğundan 3 km'den fazlası ayakta, ama tek bir kapı ya da giriş noktası yok. Nokta, kullanılan Commons fotoğrafının GPS'ini (37.9309764, 27.3395792) birebir taşır; yani fotoğraftaki kesitin durduğu yer. Hattın tamamı tek durak olarak yürünemez."
+          "coordinateNote": "Korunmuş tek bir sur kesiti. Lysimakhos'un çevrelediği hattın 9 km'yi aşan uzunluğundan 3 km'den fazlası ayakta, ama tek bir kapı ya da giriş noktası yok. Nokta, kullanılan Commons fotoğrafının GPS'ini (37.9309764, 27.3395792) birebir taşır; yani fotoğraftaki kesitin durduğu yer. Hattın tamamı tek durak olarak yürünemez.",
+          "coordinateShort": "9 km'lik hattın korunmuş tek kesiti"
         }
       ]
     }

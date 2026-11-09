@@ -25,6 +25,7 @@ uygulamadan türetmez. Aşağıdaki her satır aynı betikle tekrar üretilebili
 | "Lisansı doğrulanmadı" | 0 | 0 |
 | Birebir aynı koordinat | 0 | 0 |
 | Yaklaşık konum işaretli durak | 52, 53, 57 | 3/3 işaretli ve **notlu** |
+| Yaklaşık konum rozeti | durağın kendi gerekçesi, iki dilde | 3/3 TR + 3/3 EN |
 | Ses dosyası eşleşmesi (TR + EN) | 114 dosya | 114/114 mevcut, yetim/eksik 0 |
 
 ## 2. Bulunan hatalar ve düzeltmeleri
@@ -73,6 +74,20 @@ Düzeltme: 53 için "havza ortası, erişime kapalı, kıyı çizgisi kaynaklard
 farklı" notu; 57 için "9 km'den fazlasının 3 km'si ayakta, tek giriş yok, nokta
 fotoğrafın GPS'i (37.9309764, 27.3395792)" notu.
 
+**Aynı hatanın ikinci katı (aynı gün bulundu).** Not eklemek yetmedi: kartın
+üstündeki rozet üç durakta da **sabit** cümleyi yazıyordu — "yapı geniş bir
+alana yayılıyor; pin merkezini gösterir". 53'te ortada yapı yok (alüvyonla
+dolmuş, erişime kapalı bir havza), 57'de ise yapı değil 9 km'lik bir hat var.
+Yani not eklense bile ekranın en görünür yerinde yanlış cümle duruyordu.
+Rozet artık **durağın kendi gerekçesini** yazıyor (`coordinateShort`): 52
+"avlu 200 × 240 m; pin avlunun bir köşesini gösterir", 53 "havza ortası;
+yürüyüş güzergâhı değil", 57 "9 km'lik hattın korunmuş tek kesiti". Jenerik
+cümle yalnız notsuz durak için yedek olarak kaldı.
+
+Ayrıca not **yalnız Türkçeydi**: İngilizce arayüze geçen kullanıcı Türkçe bir
+paragraf görüyordu. Üç durağın kısa ve uzun gerekçesi `public/audio/efes-en.json`
+içine çevrildi; test, İngilizce metinde Türkçe karakter ararsa düşer.
+
 ### 2.5 Görsel alt metinleri başlığı tekrar ediyordu (küçük)
 
 12 (Memmius Anıtı) alt metni yalnızca "Memmius Anıtı"ydı — ekran okuyucu için
@@ -112,7 +127,7 @@ Bulgular yalnız düzeltilmedi, **teste bağlandı** (`src/data/audioDiscovery.t
 - hiçbir durağın alt metni başlığını tekrar edemez ve ≥ 15 karakter olmalı,
 - Kalkidikum eklentilerinin `envanterNo` dizisi ve kimlik biçimi.
 
-Test sayısı 1 492 → **1 493**; 195 dosya.
+Test sayısı 1 492 → **1 495**; 195 dosya.
 
 ## 5. Onay
 
@@ -120,8 +135,8 @@ Veri katmanı (`public/assets/sesli-turlar.json`) denetimden **temiz** geçti:
 57 durak, 47 yeşil / 10 mor, 174 kaynak / 36 alan adı, 114 ses dosyası,
 tekil koordinat ve görsel, eksiksiz künye.
 
-Belge katmanında çıkan üç hata düzeltildi ve testle kilitlendi. Bu hâliyle
-iş **onaylanabilir**. Onayın kapsamı dışında kalan, bilerek açık bırakılan
+Belge katmanında çıkan üç hata, iki küçük bulgu ve rozetin sabit cümlesi
+düzeltildi; hepsi testle kilitlendi. Bu hâliyle iş **onaylanabilir**. Onayın kapsamı dışında kalan, bilerek açık bırakılan
 maddeler §6'da.
 
 ## 6. Onaya dâhil olmayan, açık kalan maddeler
@@ -131,8 +146,16 @@ Bunlar hata değil, **ölçüm/üretim borcu**; hiçbiri yayına çıkmayı enge
 1. **52, 53, 57 temsilî noktalarının saha ölçümü** — arayüzde "≈ Yaklaşık
    konum" ve gerekçe notuyla işaretli.
 2. **20 ve 27 için yapı fotoğrafı** — mevcut kareler yapıyı değil komşusunu
-   gösteriyor ve alt metin bunu açıkça yazıyor; Commons'ta yapıyı ayrı gösteren
-   lisanslı kare yok (arama + incategory + geosearch tükendi).
+   gösteriyor ve alt metin bunu açıkça yazıyor ("kapının kendisi bu karede
+   görünmüyor"). 9 Kasım'da arama **yeniden** ve daha geniş yapıldı ve yine
+   sonuç çıkmadı: Commons'ta `intitle:"magnesia gate"` 0, `Magnesia…` kategori
+   öneki altında ilgili kategori yok, Wikidata Q104641893'te P18 (görsel) yok,
+   `Heroon Ephesos` araması yalnız Trysa (Likya) frizlerini ve genel plan
+   şemasını veriyor. Uydurulmuş ya da başka şehirden bir kare eklemek
+   "doğrulanmış görsel" kuralını bozar; bu yüzden **kasten boş bırakıldı**.
+   Çözüm tek satırlık bir karar: resmî site görsellerinin kullanılmasına izin
+   verilirse künye "Kullanım izni doğrulanmadı" olur ve doğrulama ölçütü
+   bilinçli olarak gevşetilmiş sayılır.
 3. **Konum doğrulamasının Google tarafı** — OSM/Pleiades/Wikidata ile
    karşılaştırıldı, Google Maps bağımsız olarak kontrol edilmedi.
 

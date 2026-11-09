@@ -309,13 +309,17 @@
     "title": "Hall of Verulanus",
     "imageAlt": "The eastern corner of the Square and Hall of Verulanus, looking toward the Church of Mary",
     "description": "The largest athletic area of the harbour district was a colonnaded court about 200 by 240 metres. It takes its name from Verulanus, high priest of Asia under Hadrian. Its floor was paved in thirteen different shades of marble, and the surrounding colonnaded walk (xystos) was where athletes trained. The Harbour Baths lie to its east, the Church of Mary — also called the harbour church — to its west. The court's edges are now under soil, so the pin is representative: it marks the eastern corner beside the Church of Mary. The point given in the sources overlaps the Harbour Baths, so it was not used as it stands.",
-    "audio": "/audio/en-efes-verulanus-salonu.mp3"
+    "audio": "/audio/en-efes-verulanus-salonu.mp3",
+    "coordinateShort": "the court is 200 × 240 m; the pin marks one corner",
+    "coordinateNote": "Wikidata Q104641912 gives 37.944090, 27.339919 for the same structure; that point is 100 m north-east of this pin, and because the court measures 200 × 240 m both fall inside the building. The pin is kept as a representative point next to the Church of Mary."
   },
   "antik-liman-kanali": {
     "title": "Ancient Harbour and Channel",
     "imageAlt": "View from Bülbül Mountain over the silted plain of the ancient harbour",
     "description": "Ephesus was a harbour city; today the ancient harbour lies about five kilometres inland, on flat ground filled with river silt. As the mud carried by the Kaystros cut the harbour off from the city, the basin was moved several times and finally abandoned. Harbour Street (the Arcadiane) ran straight to the harbour, and a channel connected the basin to the sea. Because of marsh and drainage problems the area is not a safe walking route today; the pin marks the centre of the basin, not an entrance. The photograph shows the plain seen from Bülbül Mountain rather than the basin itself.",
-    "audio": "/audio/en-efes-antik-liman.mp3"
+    "audio": "/audio/en-efes-antik-liman.mp3",
+    "coordinateShort": "centre of the basin; not a walking route",
+    "coordinateNote": "The middle of the basin, in an area closed to visitors. The ancient harbour lies about 5 km inland today, on flat ground silted up by the Kaystros; there is neither an entrance nor a preserved basin edge. The pin marks the basin centre from the Ephesus.net plan; sources draw the shoreline differently. Marsh and drainage problems mean it is not a safe walking route today."
   },
   "meryem-kilisesi-vaftizhanesi": {
     "title": "Baptistery of the Church of Mary",
@@ -339,6 +343,8 @@
     "title": "Hellenistic and Byzantine City Walls",
     "imageAlt": "A preserved stretch of the Hellenistic city wall on the slope of Bülbül Mountain",
     "description": "When Lysimachos refounded Ephesus in the early third century BCE he enclosed the city with a wall more than nine kilometres long; over three kilometres of that line still stand. The wall followed the slopes of Panayır and Bülbül mountains, protecting the harbour and the upper city. In the sixth century the Byzantine emperor Justinian left traces of repair and rebuilding. The point marked here is not a gate or an entrance but a preserved stretch of wall on the hillside; the whole circuit cannot be walked as a single stop. The coordinate comes from the location recorded for the Commons photograph.",
-    "audio": "/audio/en-efes-kent-surlari.mp3"
+    "audio": "/audio/en-efes-kent-surlari.mp3",
+    "coordinateShort": "one preserved stretch of a 9 km circuit",
+    "coordinateNote": "A single preserved stretch of wall. More than 3 km of the circuit Lysimachos laid out — over 9 km in total — still stands, but there is no single gate or entrance point. The point carries the GPS of the Commons photograph used here (37.9309764, 27.3395792): that is where the stretch in the photo stands. The whole circuit cannot be walked as one stop."
   }
 }

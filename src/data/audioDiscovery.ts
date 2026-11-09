@@ -42,6 +42,16 @@ export interface AudioDiscoveryStop {
    */
   coordinateNote?: string;
   /**
+   * Yaklaşık konumun **tek satırlık** gerekçesi (kart üstündeki rozet).
+   *
+   * NEDEN: Rozet tüm yaklaşık duraklarda aynı cümleyi yazıyordu ("yapı geniş
+   * bir alana yayılıyor; pin merkezini gösterir"). 53 Antik Liman için bu
+   * **yanlış**: ortada bir yapı yok, alüvyonla dolmuş bir havza var ve alan
+   * erişime kapalı. Gerekçe artık durakta yaşıyor, tek cümleye sığdırılmış
+   * hâli burada; uzun açıklama `coordinateNote`'ta ve kaynaklar bölümünde.
+   */
+  coordinateShort?: string;
+  /**
    * `"additional"` = ören yeri dışındaki yer (haritada numarasız ◆).
    * Alan yoksa durak ören yeri içindedir ve numaralı yeşil pin alır.
    */

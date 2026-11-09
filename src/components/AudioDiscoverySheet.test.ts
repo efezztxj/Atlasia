@@ -33,6 +33,24 @@ describe("sesli keşif", () => {
     view.rerender(createElement(AudioDiscoverySheet, { ...props, selectedIndex: index }));
     expect(screen.getByText(/Yaklaşık konum/)).toBeTruthy();
   });
+  it("yaklaşık konum rozeti durağın kendi gerekçesini yazar", () => {
+    // 2026-11-09: Rozet üç durakta da "yapı geniş bir alana yayılıyor; pin
+    // merkezini gösterir" diyordu. 53 Antik Liman bir yapı değil, alüvyonla
+    // dolmuş ve erişime kapalı bir havza: cümle yanlıştı. Gerekçe durakta.
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+    const tour = AUDIO_DISCOVERY_TOURS[0];
+    const index = tour.stops.findIndex((stop) => stop.no === 53);
+    const props = { tour, selectedIndex: 0, onSelect: vi.fn(), onClose: vi.fn() };
+    const view = render(createElement(AudioDiscoverySheet, props));
+    view.rerender(createElement(AudioDiscoverySheet, { ...props, selectedIndex: index }));
+    expect(screen.getByText(/havza ortası/)).toBeTruthy();
+    expect(screen.queryByText(/yapı geniş bir alana yayılıyor/)).toBeNull();
+    // 57 bir sur hattı: "korunmuş tek kesit" yazar, havza cümlesi sızmaz.
+    const walls = tour.stops.findIndex((stop) => stop.no === 57);
+    view.rerender(createElement(AudioDiscoverySheet, { ...props, selectedIndex: walls }));
+    expect(screen.getByText(/korunmuş tek kesiti/)).toBeTruthy();
+    expect(screen.queryByText(/havza ortası/)).toBeNull();
+  });
   it("kaynaklarda konum anlaşmazlığını gizlemez", () => {
     vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
     const tour = AUDIO_DISCOVERY_TOURS[0];

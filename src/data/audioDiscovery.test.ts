@@ -365,6 +365,33 @@ describe("sesli anlatım rehberi · durak içeriği", () => {
     expect(efes.stops.length - approximate.length).toBe(54);
   });
 
+  it("yaklaşık konumun gerekçesi hem rozette hem uzun notta, iki dilde yazılı", () => {
+    // NEDEN: Rozet üç durakta da aynı jenerik cümleyi yazıyordu — "yapı geniş
+    // bir alana yayılıyor; pin merkezini gösterir". 53 Antik Liman için bu
+    // düpedüz yanlış (ortada yapı yok, alüvyonla dolmuş ve kapalı bir havza
+    // var). Gerekçe artık durakta: kısa hâli rozette, uzun hâli kaynaklarda ve
+    // İngilizce arayüz Türkçe not göstermiyor.
+    const efes = AUDIO_DISCOVERY_TOURS.find((tour) => tour.placeId === "efes")!;
+    const english = JSON.parse(readFileSync(resolve("public/audio/efes-en.json"), "utf8")) as Record<string, {
+      coordinateShort?: string;
+      coordinateNote?: string;
+    }>;
+    const approximate = efes.stops.filter((stop) => stop.coordinateAccuracy === "approximate");
+    expect(approximate.map((stop) => stop.no)).toEqual([52, 53, 57]);
+    for (const stop of approximate) {
+      expect(stop.coordinateShort?.trim().length ?? 0, `${stop.no}: rozet gerekçesi yok`).toBeGreaterThan(15);
+      expect(stop.coordinateShort!.length, `${stop.no}: rozet gerekçesi tek satıra sığmıyor`).toBeLessThanOrEqual(80);
+      expect(stop.coordinateNote!.length, `${stop.no}: uzun gerekçe rozetin tekrarı`).toBeGreaterThan((stop.coordinateShort!.length) + 40);
+      const en = english[stop.id];
+      expect(en?.coordinateShort?.trim().length ?? 0, `${stop.id}: İngilizce rozet yok`).toBeGreaterThan(15);
+      expect(en?.coordinateNote?.trim().length ?? 0, `${stop.id}: İngilizce not yok`).toBeGreaterThan(60);
+      // İngilizce metin Türkçe karakter taşımamalı: çevrilmemiş kopya sızmasın.
+      expect(/[çğıöşüÇĞİÖŞÜ]/.test(`${en.coordinateShort} ${en.coordinateNote}`), `${stop.id}: İngilizce notta Türkçe karakter`).toBe(false);
+    }
+    // Jenerik yedek cümle artık yalnız notsuz durak için; hiçbir yaklaşık durak notsuz değil.
+    expect(approximate.every((stop) => Boolean(stop.coordinateShort))).toBe(true);
+  });
+
   it("ses süresi ekrandaki metinle orantılı (metin değişip ses eskide kalmamış)", () => {
     // 2026-11-08: 33–38 ve 48'in sesi, ekrandaki kısa metnin ESKİ uzun hâlini
     // okuyordu (kr/sn 9–11; tur medyanı 14,6). Sekizi de güncel metinden
