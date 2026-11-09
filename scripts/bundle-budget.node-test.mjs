@@ -103,6 +103,23 @@ test("ilk boya CSS/JS ayrı ölçülür, lazy harita dosyası bu kapıyı harcam
   assert.match(formatBundleReport(summary), /İlk boya CSS:/);
 });
 
+test("toplam CSS eşiği, ilk boya CSS eşiğinden önce kırılmaz", () => {
+  // NEDEN (2026-11-10): `totalCssGzipBytes` 35.900'de 4 B payla duruyordu, ama
+  // içinde kullanıcının ilk boyada indirmediği lazy maplibre CSS'i de var
+  // (~10,1 KB). Yani sahibi olduğumuz CSS için üst sınır 25.781'e inmişti;
+  // oysa aynı dosyanın "asıl" kapısı `initialCssGzipBytes` 26.100 diyordu.
+  // Toplam eşiği özel eşikten ÖNCE kırılınca, özel eşik dekoratif kalıyor ve
+  // 26.100'e kadar izin verilen bir sınıf toplam kapısında patlıyordu.
+  // Bu kilit, aradaki farkın lazy CSS payını (en az 10 KB) kapsamasını ister.
+  const lazyCssFloor = 10_000;
+  assert.ok(
+    BUNDLE_BUDGET.totalCssGzipBytes - BUNDLE_BUDGET.initialCssGzipBytes >= lazyCssFloor,
+    `toplam CSS eşiği (${BUNDLE_BUDGET.totalCssGzipBytes}) ilk boya eşiğinden (${BUNDLE_BUDGET.initialCssGzipBytes}) yalnız ` +
+      `${BUNDLE_BUDGET.totalCssGzipBytes - BUNDLE_BUDGET.initialCssGzipBytes} B yukarıda; ` +
+      `lazy maplibre CSS'i (~10 KB) bu farkın içinde kalmalı, yoksa toplam eşiği asıl kapıdan önce kırılır.`,
+  );
+});
+
 test("ilk boya CSS bütçesi aşılırsa toplam içinde kalsa bile kırar", (t) => {
   const distDir = makeDist(t);
   // Gzip'in sıkıştıramadığı CSS: yalnız ilk boya bütçesini aşar, toplam bütçenin altında kalır.

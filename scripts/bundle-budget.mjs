@@ -176,8 +176,28 @@ export const BUNDLE_BUDGET = Object.freeze({
   //   firebaseAuth 44.778 -> 46.200 · ilk boya CSS 25.372 -> 26.100
   // Bilingual tour and categorized place cards add a small lazy UI module.
   // Four additional sourced stops add about 1 KB gzip; keep a narrow guard pending data extraction.
+  //
+  // 2026-11-10 (toplam CSS eşiği: yanlış kapı kırıyordu) — `totalCssGzipBytes`
+  // 35.900'de 4 B pay kalmıştı. Sorun "uygulama büyüdü" değil, **eşiğin kendi
+  // içinde çelişmesi**: toplam CSS, kullanıcının ilk boyada indirmediği lazy
+  // maplibre dosyasını da sayıyor (ölçüm: toplam 35.896, ilk boya 25.777 →
+  // lazy+satarı 10.119). Yani sahibi olduğumuz CSS için üst sınır
+  // 35.900 − 10.119 = **25.781**, oysa aynı dosyanın "asıl" kapısı
+  // `initialCssGzipBytes` **26.100**. Toplam eşiği, kendisi için ayrılmış
+  // olandan 319 B daha sıkı davranıyordu: 26.100'e kadar izin verilen bir
+  // sınıf, toplam kapısında patlıyordu ve `initialCssGzipBytes` fiilen
+  // dekoratif kalıyordu. Üst sınır, özel kapıdan **önce** kırılmamalı.
+  // Yeni değer: 10.119 (satarı, ölçülen) + 26.100 (ilk boya eşiği) + ~80 B
+  // yuvarlama = 36.300. **İlk boya CSS eşiği (26.100) değişmedi**; yani
+  // kullanıcıya görünen sınır aynı kaldı, yalnız hangi kapının bağlayıcı
+  // olduğu düzeltildi.
+  //   toplam CSS 35.896 / 35.900 (4 B pay)  ->  35.896 / **36.300** (%1,1 pay)
+  //   ilk boya CSS 25.777 / 26.100 (değişmedi)
+  //   toplam JS 1.003.434 / 1.011.000 · ilk HTML 129.266 / 129.400 (değişmedi)
+  // NOT: ilk HTML payı (134 B) da dar; ama orada böyle bir çelişki yok —
+  // tanıtım ve ilk set aynı şeyi ölçüyor. Oraya dokunmak gerçek gevşetme olur.
   totalJsGzipBytes: 1_011_000,
-  totalCssGzipBytes: 35_900,
+  totalCssGzipBytes: 36_300,
   initialGzipBytes: 129_400,
   // İlk HTML ile gelen gerçek ilk boya maliyeti (lazy chunk'lar hariç).
   initialCssGzipBytes: 26_100,
