@@ -91,12 +91,19 @@ Böylece her şehir kendi dosyasında, ana kural ise burada tek yerde durur.
 
 ## 4. Bilinen açık borçlar
 
-| Borç | Etki | Nerede izlenir |
+Yalnızca **gerçekten açık** olanlar. Hepsi saha işi; hiçbiri kod veya ses
+üretimiyle kapanmıyor.
+
+| Borç | Neden açık | Nerede izlenir |
 | --- | --- | --- |
-| Yaklaşık konumlu üç durak (52, 53, 57) | Arayüzde "≈ Yaklaşık konum" yazar; saha ölçümü yapılmadı | aynı dosya, `coordinateAccuracy` kilidi |
-| 33–38 ve 48'in sesi, ekrandaki metnin eski uzun hâlini okuyordu | 8 Kasım 2026'da hepsi güncel metinden yeniden üretildi; metin/süre oranı artık testle kilitli | `efes.md` §2 · `src/data/audioDiscovery.test.ts` |
-| Kalkidikum ekinin koordinatları temsilî; `vedius-gymnasionu` ve `kent-surlari` stadyum noktasını paylaşıyor | Sahada hassas ölçüm gerekir | `efes.md` §5 |
-| 20 Heroon ve 27 Magnesia Kapısı kartlarında **yapının kendisi** görünmüyor | İkisi de CC BY-SA 4.0 (Dosseman) ve alt metin bunu açıkça yazıyor. Commons'ta 8 Kasım'da arandı: özgür lisanslı kare **yok** (Heroon aramaları Trysa Heroonu'na çıkıyor), fotoğraf saha işi | `efes.md` §5 |
+| 52 Verulanus, 53 Antik Liman, 57 Kent Surları: nokta **temsilî** | Avlu sınırları toprak altında / havza ortası / korunmuş bir kesit. Noktalar 2–4 bağımsız kaynakla çapraz kontrol edildi; eksik olan **yerinde ölçüm**. Arayüzde "≈ Yaklaşık konum" yazar | `coordinateAccuracy` kilidi · `efes.md` §5 |
+| Kalkidikum ekinin bir bölümünün noktası kaynaktan türetilmiş | Çift koordinat kalmadı (56↔57 artık 1,9 km ayrı), ama pin yapıyı değil alanı gösteriyor; saha ölçümü gerekir | `efes.md` §5 |
+| 20 Heroon ve 27 Magnesia Kapısı: kartta **yapının kendisi** yok | Commons'ta 8 Kasım 2026'da dört ayrı sorguyla arandı, özgür lisanslı kare **yok** (Heroon aramaları Likya'daki Trysa Heroonu'na çıkıyor). Fotoğraf yerinde çekilmeli. Mevcut kareler CC BY-SA 4.0 ve alt metinleri neyi gösterdiklerini yazıyor | `efes.md` §5 |
+
+Kapananlar (8 Kasım 2026): Heksagon (51) Türkçe kaydı · 33–38 ve 48'in
+metinle ayrışan sesi · #55 Türkçe tınısı · 45–47 Türkçe dikte metni · kayıt
+paketindeki yanlış bit hızı ve eski dosya yolları · 57 Kent Surları'nın
+stadyum fotoğrafı.
 
 ## 5. Neden tek dosya?
 
