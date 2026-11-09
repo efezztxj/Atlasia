@@ -132,8 +132,13 @@ export default function AudioDiscoverySheet({ tour, selectedIndex, onSelect, onC
             <button type="button" onClick={onClose} aria-label={en ? "Close audio tour" : "Sesli turu kapat"} className="grid size-11 shrink-0 place-items-center rounded-full border border-leaf/30 text-mint transition hover:bg-leaf/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sun"><X size={18} /></button>
           </header>
         )}
-        {!collapsed && englishSource && <div role="group" aria-label={en ? "Narration language" : "Anlatım dili"} className="mt-3 flex w-fit gap-1 rounded-full border border-leaf/20 p-1">
-          {(["tr", "en"] as const).map((value) => <button key={value} type="button" lang={value} aria-pressed={language === value} onClick={() => void changeLanguage(value)} disabled={languageLoading} className={`min-h-9 rounded-full px-3 text-[12px] font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sun ${language === value ? "bg-sun text-ink" : "text-mint/75 hover:bg-leaf/10"}`}>{languageLabel(value)}</button>)}
+        {/* Kullanıcı isteği (2026-11-09): açık hâldeki TR/EN de küçültülmüş hâldeki
+            gibi ince olsun. Olculer küçültülmüş panelle aynı (min-h-8, px-2,
+            text-[11px], "TR"/"EN" kısaltması); 32 px bilinçli tercih — Türkçe
+            etiket artı iç boşluk düğmeyi zaten ~44 px'e çıkarıyor ve iki düğme
+            yan yana durduğu için WCAG 2.5.5'teki 24 px alt sınırı rahatça aşılıyor. */}
+        {!collapsed && englishSource && <div role="group" aria-label={en ? "Narration language" : "Anlatım dili"} className="mt-2 flex w-fit gap-0.5 rounded-full border border-leaf/20 p-0.5">
+          {(["tr", "en"] as const).map((value) => <button key={value} type="button" lang={value} aria-label={languageLabel(value)} aria-pressed={language === value} onClick={() => void changeLanguage(value)} disabled={languageLoading} className={`min-h-8 rounded-full px-2 text-[11px] font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sun ${language === value ? "bg-sun text-ink" : "text-mint/75 hover:bg-leaf/10"}`}>{value.toUpperCase()}</button>)}
         </div>}
         {languageLoading && <p role="status" className="mt-2 text-[12px] text-mint/75">Loading English…</p>}
         {languageError && <p role="alert" className="mt-2 text-[12px] text-mint/75">English could not be loaded. Please try again. / İngilizce yüklenemedi. Lütfen tekrar dene.</p>}
