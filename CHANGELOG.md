@@ -8,6 +8,7 @@
 - **Regresyon kilidi:** `src/data/audioDiscovery.test.ts` metin/süre oranını kilitliyor (süre = MP3 boyutu / 4 000 bayt, 32 kbps CBR). Metin düzenlenip ses eskide kalırsa test düşer.
 - **Künye düzeltmesi:** belgelerde bit hızı "112 kbps" ve bir ara "64 kbps" yazıyordu. 114 dosya `miniaudio` ile çözüldü: 24 000 Hz, mono, **32 kbps CBR**. 64 kbps yanılgısı, ilk çerçevenin (Xing bilgi çerçevesi) başlığından okumaktan geliyor.
 - **Kayıt paketi JSON'dan türetildi:** `kayit-listesi.csv` / `dikte-metni.md` (45, 47, 49–57) ve `kayit-listesi-tr.csv` / `dikte-metni-tr.md` (33–38, 45, 47, 48, 51) artık kayıtlı metinle birebir; eski `en-kalkidikum-*` yolları tarihsel not olarak işaretlendi.
+- **#55 Bizans Hamamları Türkçe kaydı yenilendi:** eski kayıt tınıda (MFCC sapması 12.03, z ≈ +2.7) ve perdede (226.4 Hz'e karşı tur medyanı 210.5 Hz) turun dışındaydı. Aynı sesle yeniden üretildi: yeni sapma 8.69 (z +1.2), f0 210.5 Hz, 500–2 kHz bant oranı 0.210 (tur ortalaması 0.251). Türkçe tarafta açık tını borcu kalmadı.
 - **Doğrulama:** `tsc`, `eslint --max-warnings=0`, **195 dosya / 1 482 test**, `test:scripts`, `vite build` + bundle bütçesi + SW kabuğu, `audit:check`.
 - Ayrıntı: `docs/icerik/sesli-anlatim-rehberi/efes.md` §2, `ses-tinisi-denetimi-2026-11-08.md`.
 

@@ -169,8 +169,8 @@ inmez: daha büyük kaydırma pini komşu yapıya taşır.
 6. **Ses tınısı — ölçüldü (8 Kasım 2026).** Türkçe 57 dosyanın grup
    ortalamaları 2.4–3.4, perde 212–216 Hz. İngilizce 12 kayıt eski anlatıcıdan
    ayrışıyordu (referansa uzaklık 10.4–12.9'a karşı eski dosyalarda 0.0–9.3);
-   12'si yeniden üretildi, yeni aralık 2.6–8.3. Tek izleme kalemi **#55
-   Türkçe** (z ≈ +2.7, metni sayı ağırlıklı).
+   12'si yeniden üretildi, yeni aralık 2.6–8.3. **#55 Türkçe** de yeniden
+   üretildi (aşağıdaki 10. madde).
 7. ~~45/46/47 pinleri üst üste biniyor.~~ **Kapatıldı (8 Kasım 2026).**
    Eşik 20 m'ye çıkarıldı, kümeler 16 m yarıçaplı yaya yerleştirildi (§3).
 8. ~~45–47 Türkçe dikte dosyası yok.~~ **Kapatıldı (8 Kasım 2026).**
@@ -185,9 +185,16 @@ inmez: daha büyük kaydırma pini komşu yapıya taşır.
    Kilisesi'nde, Bizans Hamamları Liman Hamamları'nda, Vedius ve surlar stadyumda,
    antik liman Liman Caddesi'nde); bu dal o çakışmayı açıyor.
 
-10. **#55 Türkçe kaydın tınısı — izleme (8 Kasım 2026).** 57 dosyalık Türkçe
-    korpusta en aykırı kayıt #55 Bizans Hamamları (sapma 7.15, z ≈ +3.7; tur
-    medyanı 2.82). Metni sayı ağırlıklı ("yetmiş beş metrekare", "bin dokuz yüz
-    ellili") ve bu MFCC sapmasının bir bölümünü açıklar; yine de diğer 56 dosya
-    1.6–5.8 aralığında kaldığı için kayıt yenilenmeye değer. Sıradaki turda
-    aynı sesle üretilip ölçülecek.
+10. ~~#55 Türkçe kaydın tınısı ayrışıyordu.~~ **Kapatıldı (8 Kasım 2026).**
+    Eski kayıt, turun geri kalanından hem tınıda hem perdede ayrışıyordu:
+    MFCC sapması 12.03 (z ≈ **+2.7**, tur medyanı 6.16) ve medyan f0 **226.4 Hz**
+    (tur medyanı **210.5 ± 12.3**). Metni sayı ağırlıklı olduğu için farkın bir
+    bölümü sözcük dağılımından geliyordu, ama perde farkı bunu tek başına
+    açıklamıyordu. Aynı sesle (`voice-03`) yeniden üretildi, 43.19 sn,
+    metin/süre oranı 13.99 kr/sn:
+    - MFCC sapması **8.69** (z **+1.2**) — artık olağan aralıkta; en aykırı
+      dosya #52 (z +2.8).
+    - medyan f0 **210.5 Hz** — tur medyanıyla birebir aynı.
+    - 500–2 kHz bant oranı 0.210 (tur ortalaması 0.251, eski kayıtta 0.149).
+    Yeniden üretim, ses kimliği korunduğu için turun geri kalanını etkilemedi;
+    yalnız bu tek dosya değişti.

@@ -115,7 +115,7 @@ Eski 45 dosyanın ortalaması 5.09 — grup düzeyinde fark kalmadı.
 Metni sayı ağırlıklı ("yetmiş beş metreye elli metrelik", "bin dokuz yüz
 ellili"); fark büyük olasılıkla sözcük dağılımından. O tarihte Türkçe anlatıcı
 sesi kayıtlı olmadığı için dokunulmadı; 8 Kasım'ın üçüncü turunda Türkçe ses
-kaydedildi, yani bu madde artık **yapılabilir** bir borç (aşağıya bakın).
+kaydedildi ve kayıt yenilendi (**aşağıdaki son bölüm**).
 
 ## Türkçe taraf — 33–38, 48, 51 yenilendi (8 Kasım 2026, aynı gün üçüncü tur)
 
@@ -141,5 +141,17 @@ Sekizi de güncel metinden üretildi. Bir daha kaçmaması için
 bayt/sn) hesaplayıp metin/süre oranını kilitliyor: TR 11.5–17.5, EN 13–18.5.
 Metin değişip ses eskide kalırsa test düşer.
 
-**Kalan izleme:** #55 Türkçe. Yeniden üretim artık mümkün; sıradaki turda
-aynı sesle üretilip ölçülecek.
+**#55 Türkçe — yenilendi (aynı gün, dördüncü tur).** Eski kayıt hem tınıda hem
+perdede turun dışındaydı; bu, metnin sayı ağırlıklı olmasıyla tek başına
+açıklanamıyordu (f0 226.4 Hz'e karşı tur medyanı 210.5 ± 12.3 Hz). Kayıt
+`voice-03` ile yeniden üretildi (43.19 sn, metin/süre oranı 13.99 kr/sn):
+
+| Ölçüt | Eski #55 | Yeni #55 | Tur |
+| --- | --- | --- | --- |
+| MFCC sapması (medyan vektöre) | 12.03 (z **+2.7**) | **8.69 (z +1.2)** | medyan 6.16, MAD 1.49 |
+| Medyan f0 | 226.4 Hz | **210.5 Hz** | 210.5 ± 12.3 Hz |
+| 500–2 kHz bant oranı | 0.149 | **0.210** | ortalama 0.251 |
+| Spektral centroid | 441 Hz | **481 Hz** | ~534 Hz |
+
+Üç eksende de turun içine girdi; en aykırı dosya artık #52 (z +2.8).
+**Türkçe tarafta açık tını borcu kalmadı.**

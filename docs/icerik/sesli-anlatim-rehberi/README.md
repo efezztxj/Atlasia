@@ -95,9 +95,8 @@ Böylece her şehir kendi dosyasında, ana kural ise burada tek yerde durur.
 | --- | --- | --- |
 | Yaklaşık konumlu üç durak (52, 53, 57) | Arayüzde "≈ Yaklaşık konum" yazar; saha ölçümü yapılmadı | aynı dosya, `coordinateAccuracy` kilidi |
 | 33–38 ve 48'in sesi, ekrandaki metnin eski uzun hâlini okuyordu | 8 Kasım 2026'da hepsi güncel metinden yeniden üretildi; metin/süre oranı artık testle kilitli | `efes.md` §2 · `src/data/audioDiscovery.test.ts` |
-| #55 Bizans Hamamları Türkçe kaydın tınısı tur ortalamasından ayrışıyor (z ≈ +3.7) | Dinleyiciye fark edilir mi diye ölçülüyor; sıradaki turda aynı sesle yeniden üretilecek | `ses-tinisi-denetimi-2026-11-08.md` |
 | Kalkidikum ekinin koordinatları temsilî; `vedius-gymnasionu` ve `kent-surlari` stadyum noktasını paylaşıyor | Sahada hassas ölçüm gerekir | `efes.md` §5 |
-| Efes turunda iki görselin lisansı doğrulanmadı (`heroon`, `magnesia-kapisi`) | Yayında "Kullanım izni doğrulanmadı" etiketiyle gösteriliyor; Türkçe/İngilizce alternatif gerekiyor | `efes.md` §5 |
+| 20 Heroon ve 27 Magnesia Kapısı kartlarında **yapının kendisi** görünmüyor | İkisi de CC BY-SA 4.0 (Dosseman) ve alt metin bunu açıkça yazıyor ("kapının kendisi bu karede görünmüyor"); yine de yapıyı gösteren lisanslı bir kare gerekiyor | `efes.md` §5 |
 
 ## 5. Neden tek dosya?
 
