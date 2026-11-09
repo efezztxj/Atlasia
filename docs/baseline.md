@@ -158,3 +158,40 @@ render-bloklayan üçüncü taraf CSS'i kaldırdığı için LCP'ye de yarar.
   aralıklarını ve CSP daralmasını kilitler.
 
 Ölçüm: bir sonraki CI turunda `/` CLS'in 3/3 koşuda 0,00x kalması bekleniyor.
+
+## Uygulama kabuğu (`?tab=kesfet`) CLS'i — ölçüldü ve düzeltildi (2026-11-08)
+
+Lighthouse CI, appShell sayfasında CLS'i koşudan koşuya **0,000 · 0,018 · 0,120**
+olarak veriyordu; 0,120'lik koşularda toplam kaymanın tamamı tek öğeye yazılıyordu:
+`<section aria-labelledby="cookie-consent-title">` (çerez kartı). Aynı koşularda
+performans 0,34'e düşüp 0,35'lik tabanı kırıyordu — yani **kapı, CLS'in kuyruk
+değeri yüzünden dalgalıydı**, kod değişikliği olmadan.
+
+**Kök neden.** Kart `position: fixed` ile alta sabit. Fontlar
+`font-display: swap` ile geliyor: metin önce yedek fontla diziliyor, gerçek font
+inince satır sayısı değişiyor, kartın yüksekliği değişiyor ve üst kenarı yukarı
+kayıyor. Sabit konum bunu engellemiyor — kayma kartın kendi içinde oluyor.
+
+**Düzeltme.** (1) Dört font dosyası `<link rel="preload" as="font">` ile erken
+iniyor (`crossorigin` dahil); Türkçe sayfa dördünü de kullanıyor, yani ek bayt yok.
+(2) Kart, `document.fonts.load(...)` çözülene kadar **bağlanmıyor** (900 ms tavan;
+`fonts` API'si yoksa ya da istek reddedilirse hemen görünür). `document.fonts.ready`
+bilinçli olarak kullanılmadı: panel hiçbir fontu tetiklemediyse anında çözülür ve
+kayma geri gelir.
+
+**Ölçüm (aynı commit, iki CI koşusu).**
+
+| Sayfa | Önce | Sonra |
+|---|---|---|
+| `/?tab=kesfet` CLS | 0,120 (3/3 koşu) | **0,000** |
+| `/?tab=kesfet` perf | 0,34 | **0,38** |
+| `/` CLS | 0,000–0,020 | **0,000** |
+| `/` perf | 0,87 | 0,87 |
+
+İlk HTML seti 129.204 B / 129.400 B gzip — eşik değişmedi.
+
+**Açık kalan (bu turda kapsam dışı).** appShell'de TBT ≈ **154 s** ve LCP
+8–11 s ölçülüyor; "prioritize-lcp-image" fırsatı 2–3 s gösteriyor. TBT'nin bu
+büyüklüğü gerçek bir kullanıcı senaryosuyla açıklanamıyor (sayfa donmuş olurdu);
+headless ortamda MapLibre'ın yazılım çizimine düşmesiyle uyumlu. Bu ortamda
+tarayıcı olmadığı için ölçülemedi; sunucu tarafında ayrı bir tur gerektiriyor.

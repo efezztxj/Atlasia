@@ -26,9 +26,14 @@
   `src/config/selfHostedFonts.test.ts` (dört preload, `crossorigin`, dosyalar var).
 - **Bütçe:** ilk HTML seti 129.204 B / 129.400 B gzip — preload satırları ve
   `preconnect` bu bütçenin içinde kaldı (eşik değiştirilmedi, %0,15 pay).
+- **Ölçüm (aynı commit, iki CI koşusu):** `/?tab=kesfet` CLS **0,120 → 0,000**
+  (3/3 koşu), performans **0,34 → 0,38**; `/` CLS 0,000 ve performans 0,87
+  değişmedi. Kapı artık CLS'in kuyruk değeri yüzünden dalgalanmıyor.
 - **Doğrulama:** `tsc`, `eslint`, **195 dosya / 1 487 test**, `test:scripts`,
-  `vite build` + bundle bütçesi + SW kabuğu, `audit:check`. Lighthouse sonucu
-  bir sonraki CI turunda okunacak.
+  `vite build` + bundle bütçesi + SW kabuğu, `audit:check`; iki CI koşusu da yeşil.
+- **Açık kalan:** appShell'de TBT ≈ 154 s / LCP 8–11 s. Bu büyüklük gerçek bir
+  kullanıcı senaryosuyla açıklanamıyor (sayfa donmuş olurdu); headless ortamda
+  MapLibre'ın yazılım çizimine düşmesiyle uyumlu ve bu ortamda ölçülemiyor.
 
 ## 2026-11-08 — Efes turu 57 durak, iki dilde tam sesli
 
