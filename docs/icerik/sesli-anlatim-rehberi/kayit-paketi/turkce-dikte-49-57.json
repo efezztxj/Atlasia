@@ -1,0 +1,66 @@
+{
+  "$comment": "49–57 numaralı durakların Türkçe ses kaydı üretilirken okunan metinler. 8 Kasım 2026'da ekran metinleri üslup açısından normalleştirildi (sayılar rakamla: 'üçüncü yüzyıl' → 'MS 3. yüzyıl'; 'işaret' → 'pin'). Rakamla ya da yazıyla yazılan sayı seslendirmede aynı okunduğu için bu durakların kaydı yenilenmedi; söylenen ile okunan arasında fark yok. TEK istisna 51 Heksagon: metni ve konumu 8 Kasım'da tamamen yeniden yazıldı, kaydı yeni metinden yeniden üretildi, bu yüzden burada da güncel metin duruyor. Ekran metni HER ZAMAN tek doğru kaynaktır: public/assets/sesli-turlar.json.",
+  "hydreion-kalkidikum": {
+    "no": 49,
+    "title": "Hydreion (Çeşme Yapısı)",
+    "audio": "/audio/efes-hydreion.mp3",
+    "text": "Kuretler Caddesi'nin batı ucunda, Memmius Anıtı'nın hemen yanında yarım daire planlı bir çeşme yapısı durur. Kazı yayınlarında Hydreion adıyla anılan bu nymphaeum, caddeye bakan nişi ve iki havuzuyla kentin su dağıtım ağının görünür bir düğümüydü. Nişin önündeki dört kaide, Tetrarşi dönemine ait heykelleri taşıyordu; bu da yapının üçüncü yüzyılın sonunda hâlâ kullanımda olduğunu gösterir. İlk evresinin tarihi kaynaklarda ayrılır. Kazı yayınlarına dayanan ansiklopedi maddesi yapıyı birinci yüzyıla koyar ve üçüncü yüzyıl başında yeniden düzenlendiğini söyler; saha rehberleri ise inşayı iki yüz yılı dolayına verir. Kalıntılar bugün cadde kotunun altında kaldığı için yakından bakmadan seçilmez.",
+    "note": "Kayıt bu metinden üretildi; ekran metni sonradan üslup olarak normalleştirildi (anlam ve okunuş aynı)."
+  },
+  "triodos-meydani": {
+    "no": 50,
+    "title": "Triodos Meydanı",
+    "audio": "/audio/efes-triodos-meydani.mp3",
+    "text": "Kuretler Caddesi, Mermer Cadde ve Ortygia yolunun kesiştiği bu küçük meydan, antik kentin Üç Yol'udur. Batıda Celsus Kütüphanesi'nin cephesi yükselir, kuzeyde Kuretler Caddesi geçer. Meydanın en görkemli yapısı, bugün Hadrian Kapısı denilen üç katlı kapıdır. Aslında Triodos Kapısı olarak anılıyordu ve orta kemeri yanlardakinden genişti. İki yüz altmış iki depreminden sonra onarılan kapı, kente giriş törenlerinin sahnesiydi. Meydandaki yuvarlak anıtın ne olduğu tartışmalıdır: bir görüş onu güneş saati, bir başkası mezar anıtı sayar. Buradaki işaret meydanın ortasındadır; kapı ve kütüphane işaretlerine çok yakındır.",
+    "note": "Kayıt bu metinden üretildi; ekran metni sonradan üslup olarak normalleştirildi (anlam ve okunuş aynı)."
+  },
+  "heksagon": {
+    "no": 51,
+    "title": "Heksagon (Altıgen Anıt)",
+    "audio": "/audio/efes-heksagon.mp3",
+    "text": "Kuretler Caddesi'nin güney kenarında, Oktogon ile Alytarkhos Stoası arasında altıgen planlı küçük bir anıt yükselir. 1994 kazılarında ortaya çıkarılmıştır; geç antik dönemde üzerine başka bir yapı oturmuş, yürüyüş yolunun döşemesi de anıtın üzerinden geçmiştir. Yapı üç bölümden oluşuyordu: yaklaşık 1,5 metrelik mermer basamaklı bir kaide, üstünde tek sıra sütunlu bir üst yapı ve konik bir çatı. Çevresi 5,6 metre, yüksekliği 9–10 metre kadardı. İçinde, onurlandırılan kişinin heykeli duruyordu; kazılarda bulunan seramik, yapıyı yaklaşık MÖ 1. yüzyılın sonuna tarihlendirir. Bulunduğu yer, Embolos'un mezarlık ve onur anıtları sırasının bir parçasıdır.",
+    "note": "Metin ve konum 8 Kasım 2026'da yeniden yazıldı; kayıt bu metinden üretildi."
+  },
+  "verulanus-meydani-salonu": {
+    "no": 52,
+    "title": "Verulanus Meydanı ve Salonu",
+    "audio": "/audio/efes-verulanus-salonu.mp3",
+    "text": "Liman bölgesinin en büyük spor alanı, yaklaşık iki yüz metreye iki yüz kırk metrelik sütunlu bir avluydu. Adını, Hadrianus döneminde Asya başrahibi olan Verulanus'tan alır. Avlunun zemini on üç ayrı mermer tonuyla kaplanmıştı; çevresindeki revaklı yürüyüş yolu, yani kystos, atletlerin antrenman alanıydı. Doğusunda Liman Hamamları, batısında liman kilisesi olarak da anılan Meryem Kilisesi yer alır. Avlunun sınırları bugün toprak altında olduğu için buradaki işaret temsilidir: Meryem Kilisesi'nin yanındaki doğu köşesini gösterir. Kaynaklarda verilen nokta Liman Hamamları'yla çakıştığı için olduğu gibi kullanılmadı.",
+    "note": "Kayıt bu metinden üretildi; ekran metni sonradan üslup olarak normalleştirildi (anlam ve okunuş aynı)."
+  },
+  "antik-liman-kanali": {
+    "no": 53,
+    "title": "Antik Liman ve Liman Kanalı",
+    "audio": "/audio/efes-antik-liman.mp3",
+    "text": "Efes bir liman kentiydi; bugün antik liman denizden yaklaşık beş kilometre içeride, alüvyonla dolmuş düz bir arazide kalır. Kaystros'un taşıdığı çamur limanı kentten kopardıkça havza birkaç kez taşındı ve sonunda terk edildi. Liman Caddesi, yani Arkadiane, doğrudan limana uzanıyordu; kanal ise havzayı denizle birleştiriyordu. Bataklık ve drenaj sorunu yüzünden alan bugün güvenli bir yürüyüş güzergâhı değildir. Buradaki işaret havzanın ortasını gösterir, bir giriş kapısını değil. Karttaki fotoğraf havzayı değil, Bülbül Dağı'ndan ovaya bakışı gösterir.",
+    "note": "Kayıt bu metinden üretildi; ekran metni sonradan üslup olarak normalleştirildi (anlam ve okunuş aynı)."
+  },
+  "meryem-kilisesi-vaftizhanesi": {
+    "no": 54,
+    "title": "Meryem Kilisesi Vaftizhanesi",
+    "audio": "/audio/efes-meryem-vaftizhanesi.mp3",
+    "text": "Meryem Kilisesi'nin kuzeyindeki avluda sekizgen planlı bir vaftizhane yer alır. Dört girişli yapının ortasında iki yandan merdivenle inilen çok köşeli bir vaftiz havuzu bulunur; Türkiye'de bu ölçekte en iyi korunmuş havuzlardan biri sayılır. Yunanca ve Latince yazıtlı döşeme levhaları zeminin onarım evrelerini gösterir. Yapı, dört yüz otuz birde toplanan Efes Konsili'ne ev sahipliği yapan kilisenin parçasıdır; ancak kesin tarihi kaynaklarda dördüncü ile altıncı yüzyıl arasında değişir. Buradaki konum, avlunun kuzey kesimini gösteren fotoğrafın konumundan alınmıştır; ayrıca yayımlanmış bir koordinat değildir.",
+    "note": "Kayıt bu metinden üretildi; ekran metni sonradan üslup olarak normalleştirildi (anlam ve okunuş aynı)."
+  },
+  "bizans-hamamlari": {
+    "no": 55,
+    "title": "Bizans Hamamları",
+    "audio": "/audio/efes-bizans-hamamlari.mp3",
+    "text": "Alt girişin kuzeyinde, stadyumla tiyatroyu birleştiren caddenin batısında, yaklaşık yetmiş beş metreye elli metrelik büyük bir geç antik yapı yükselir. Kazılar bin dokuz yüz ellili yıllarda burada bir hamam, bir yönetici sarayı ve bir kilise olasılığını birlikte tartıştı; bugünkü yorum tek bir işlev yerine çok evreli bir komplekse işaret eder. Sekizgen bir salon, geniş bir avlu ve mozaikli koridorlar yapının bölümleridir. Konstantin Hamamları adı bu yapıya değil, liman bölgesindeki Liman Hamamları'na aittir; bu karışma eski yayınlarda sık görülür. Buradaki işaret, hamam olarak tanımlanan noktadır; saray olarak tanımlanan noktayla arasında yaklaşık yirmi beş metre vardır.",
+    "note": "Kayıt bu metinden üretildi; ekran metni sonradan üslup olarak normalleştirildi (anlam ve okunuş aynı)."
+  },
+  "vedius-gymnasionu": {
+    "no": 56,
+    "title": "Vedius Gymnasionu",
+    "audio": "/audio/efes-vedius-gymnasionu.mp3",
+    "text": "Stadyumun kuzeyinde, kent surunun hemen içinde Efes'in en iyi incelenmiş hamam ve gymnasion kompleksi yer alır. Yapıyı yüz kırk yedi ile yüz kırk dokuz yılları arasında Publius Vedius Antoninus ve eşi Flavia Papiane yaptırdı; ilk evresi yüz otuz beş metreye seksen beş metrelik bir alanı kaplar. Soğuk havuz salonunda bulunan dev Kaistros heykeli bugün İzmir Müzesi'ndedir; karttaki fotoğraf o heykeli gösterir, yapının kendisini değil. Adağın kime yapıldığı kaynaklarda çelişkilidir: bir kayıt Afrodit'i, bir diğeri Artemis ile Antoninus Pius'u anar. Yapı ziyarete kapalıdır; bu yüzden işaret temsilî bir noktadır ve kaynaklar arasında yaklaşık doksan metrelik konum farkı vardır.",
+    "note": "Kayıt bu metinden üretildi; ekran metni sonradan üslup olarak normalleştirildi (anlam ve okunuş aynı)."
+  },
+  "kent-surlari": {
+    "no": 57,
+    "title": "Helenistik ve Bizans Kent Surları",
+    "audio": "/audio/efes-kent-surlari.mp3",
+    "text": "Lysimakhos, milattan önce üçüncü yüzyılın başında Efes'i yeniden kurarken kenti dokuz kilometreyi aşan bir surla çevirdi; bu hattın üç kilometreyi aşan bölümü bugün ayaktadır. Sur, Panayır ve Bülbül dağlarının yamaçlarını izleyerek limanı ve üst kenti koruma altına alıyordu. Bizans döneminde, altıncı yüzyılda Justinianus surlarda onarım ve yeniden inşa izleri bıraktı. Burada işaretlenen nokta bir kapı ya da giriş değil, yamaçta korunmuş bir duvar kesitidir; hattın tamamı tek bir durak olarak yürünemez. Bu kesit biletli ziyaret alanının dışında kaldığı için haritada mor elmasla işaretlenir. Konum, fotoğrafın kaydedildiği noktadan alınmıştır.",
+    "note": "Kayıt bu metinden üretildi; ekran metni sonradan üslup olarak normalleştirildi (anlam ve okunuş aynı)."
+  }
+}

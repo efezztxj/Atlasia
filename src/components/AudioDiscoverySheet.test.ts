@@ -22,6 +22,47 @@ describe("sesli keşif", () => {
     fireEvent.click(screen.getByRole("button", { name: "2. Devlet Agorası" }));
     expect(select).toHaveBeenCalledWith(1);
   });
+  it("yaklaşık konumlu durakta konum güvenilirliğini açıkça yazar", () => {
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+    const tour = AUDIO_DISCOVERY_TOURS[0];
+    const index = tour.stops.findIndex((stop) => stop.no === 52);
+    const props = { tour, selectedIndex: 0, onSelect: vi.fn(), onClose: vi.fn() };
+    const view = render(createElement(AudioDiscoverySheet, props));
+    // Prytaneion kesin nokta: uyarı yok.
+    expect(screen.queryByText(/Yaklaşık konum/)).toBeNull();
+    view.rerender(createElement(AudioDiscoverySheet, { ...props, selectedIndex: index }));
+    expect(screen.getByText(/Yaklaşık konum/)).toBeTruthy();
+  });
+  it("yaklaşık konum rozeti durağın kendi gerekçesini yazar", () => {
+    // 2026-11-09: Rozet üç durakta da "yapı geniş bir alana yayılıyor; pin
+    // merkezini gösterir" diyordu. 53 Antik Liman bir yapı değil, alüvyonla
+    // dolmuş ve erişime kapalı bir havza: cümle yanlıştı. Gerekçe durakta.
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+    const tour = AUDIO_DISCOVERY_TOURS[0];
+    const index = tour.stops.findIndex((stop) => stop.no === 53);
+    const props = { tour, selectedIndex: 0, onSelect: vi.fn(), onClose: vi.fn() };
+    const view = render(createElement(AudioDiscoverySheet, props));
+    view.rerender(createElement(AudioDiscoverySheet, { ...props, selectedIndex: index }));
+    expect(screen.getByText(/havza ortası/)).toBeTruthy();
+    expect(screen.queryByText(/yapı geniş bir alana yayılıyor/)).toBeNull();
+    // 57 bir sur hattı: "korunmuş tek kesit" yazar, havza cümlesi sızmaz.
+    const walls = tour.stops.findIndex((stop) => stop.no === 57);
+    view.rerender(createElement(AudioDiscoverySheet, { ...props, selectedIndex: walls }));
+    expect(screen.getByText(/korunmuş tek kesiti/)).toBeTruthy();
+    expect(screen.queryByText(/havza ortası/)).toBeNull();
+  });
+  it("kaynaklarda konum anlaşmazlığını gizlemez", () => {
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+    const tour = AUDIO_DISCOVERY_TOURS[0];
+    const index = tour.stops.findIndex((stop) => stop.coordinateNote);
+    expect(index, "en az bir durak konum notu taşımalı").toBeGreaterThan(-1);
+    const props = { tour, selectedIndex: index, onSelect: vi.fn(), onClose: vi.fn() };
+    render(createElement(AudioDiscoverySheet, props));
+    fireEvent.click(screen.getByRole("button", { name: "Kaynakları gör" }));
+    expect(screen.getByText(tour.stops[index].coordinateNote!)).toBeTruthy();
+    // Not taşımayan durakta bu paragraf görünmez.
+    expect(screen.queryByText(/Wikidata Q104641912/)).toBeTruthy();
+  });
   it("kaydı çalar, durak değişiminde ve kapanışta durdurur", async () => {
     const play = vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
     const pause = vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
@@ -171,13 +212,15 @@ describe("English audio tour", () => {
   it("switches recordings, pauses playback and clearly marks unavailable audio", async () => {
     const { readFileSync } = await import("node:fs");
     const translations = JSON.parse(readFileSync("public/audio/efes-en.json", "utf8"));
-    // "Kayıt yok" senaryosu: Kalkidikum ekinin METNİ çevrildi ama SESİ henüz
-    // üretilmedi (açık borç, bkz. audioDiscovery.test.ts →
-    // KALKIDIKUM_ENGLISH_AUDIO_PENDING). Test bu gerçek durumu ölçer; ayrıca
-    // veri silinmez.
+    // 2026-11-08: Turun 57 durağının tamamı İngilizce sesli. "Kayıt yok"
+    // durumu artık gerçek veride bulunmadığı için senaryo BİLİNÇLİ OLARAK
+    // kurulur: son durağın `audio` alanı yalnız bu testin kopyasında silinir.
+    // Böylece "English audio is not available yet" yolunun çalıştığı
+    // korunur, yayın verisi değişmez.
     const lastStop = AUDIO_DISCOVERY_TOURS[0].stops.at(-1)!;
     expect(translations[lastStop.id]?.description).toBeTruthy();
-    expect(translations[lastStop.id]?.audio).toBeUndefined();
+    expect(translations[lastStop.id]?.audio).toBe("/audio/en-efes-kent-surlari.mp3");
+    delete translations[lastStop.id].audio;
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => translations }));
     const pause = vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
     vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
@@ -215,17 +258,16 @@ describe("English audio tour", () => {
     const { readFileSync, existsSync } = await import("node:fs");
     const translations = JSON.parse(readFileSync("public/audio/efes-en.json", "utf8"));
     const stops = AUDIO_DISCOVERY_TOURS[0].stops;
-    // 2026-11-07: Kalkidikum ekinin METNİ çevrildi → küme birebir eşit.
-    // Ses kaydı gerçek anlatım gerektirdiği için henüz üretilmedi; o dokuz
-    // durakta `audio` alanı YOKTUR ve arayüz "English audio is not available
-    // yet" der (bkz. audioDiscovery.test.ts → KALKIDIKUM_ENGLISH_AUDIO_PENDING).
+    // 2026-11-08: Metin ve ses 57/57 tam; çeviri kümesi tur duraklarıyla
+    // birebir eşit ve HER durakta gerçek bir kayıt dosyası var.
     const translated = Object.keys(translations).sort();
     expect(translated).toEqual(stops.map((stop) => stop.id).sort());
     for (const id of translated) {
       const english = translations[id];
       expect(english.title && english.description && english.imageAlt).toBeTruthy();
-      // Ses alanı varsa dosya gerçekten package'da olmalı (404 kovalanmaz).
-      if (english.audio) expect(existsSync(`public${english.audio}`)).toBe(true);
+      // Ses alanı zorunlu ve dosya gerçekten pakette olmalı (404 kovalanmaz).
+      expect(english.audio, `${id}: İngilizce ses yolu yok`).toBeTruthy();
+      expect(existsSync(`public${english.audio}`), `${id}: dosya yok`).toBe(true);
     }
   });
 });

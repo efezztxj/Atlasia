@@ -2,12 +2,16 @@
 
 Bu dosya **doğrudan okunur**. Sadece metin var; süre/kelime yok.
 
-Köşeli parantezli satırlar (`**[45] domitian-cesmesi**`) **okunmaz** —
+Köşeli parantezli satırlar (`**[45] chalcidicum**`) **okunmaz** —
 onlar hangi dosyaya kaydedileceğini söyleyen etiketlerdir.
 
 Her bölüm arasında **2 saniye sessizlik** bırak, dosyaları ayrı kaydet.
 
 Toplam **11 bölüm**.
+
+> **Durum (8 Kasım 2026):** Bu 11 kaydın tamamı üretildi ve turda yayında.
+> Dosya artık **yeniden kayıt / arşiv** içindir; metinler
+> `public/audio/efes-en.json` ile birebir aynıdır (test kilitler).
 
 ---
 
@@ -25,13 +29,13 @@ Just south of the Pollio Monument rises a fountain built in 92/93 CE, its great 
 
 **[49] hydreion-kalkidikum**
 
-The Hydreion in the Chalcidicum quarter is a fountain house built in the first century and remodelled in the early third. Standing west of the Basilica, it held statues of Diocletian and the other Tetrarchs on four pedestals. Its facade combined a pair of basins with a semicircular niche, framed by three arches carried on Corinthian columns. For the district, it was a vital point in both water management and public life.
+At the western end of Curetes Street, right beside the Monument of Memmius, stands a fountain house with a semicircular plan. Known in excavation reports as the Hydreion, this nymphaeum was a visible node in the city's water network, with its niche and two basins facing the street. Four pedestals in front of the niche carried statues of the Tetrarchs, which shows the building was still in use in the late third century CE. The date of its first phase is disputed in the sources: the encyclopaedia entry based on excavation reports puts the building in the first century CE and has it remodelled in the early third, while field guides date the construction to around 200 CE. The remains now lie below street level, so they are hard to make out without looking closely.
 
 ---
 
 **[50] triodos-meydani**
 
-Triodos Square, whose name means "three roads", lies at the heart of Ephesus. Marble Street, Curetes Street and the Ortygia road all meet here, making it one of the most impressive crossings of the ancient city. The facade of the Library of Celsus rises to the west, while Curetes Street comes into view to the north. The Gate of Mazeus and Mithridates first served as the entrance; later the Gate of Hadrian, also called the Triodos Gate, took over that role. The square marks the starting point of the city's religious and ceremonial route.
+This small square, where Curetes Street, Marble Street and the Ortygia road meet, is the ancient city's "three roads". The façade of the Library of Celsus rises to the west, and Curetes Street passes to the north. Its grandest monument is the three-storey gate now called Hadrian's Gate; it was originally known as the Triodos Gate, and its central arch was wider than the side ones. Repaired after the earthquake of 262, the gate framed ceremonial entries into the city. The identity of the round monument on the square is debated: one view calls it a sundial, another a tomb. The pin sits at the centre of the square, very close to the gate and library pins.
 
 ---
 
@@ -43,34 +47,36 @@ On the south side of Curetes Street, between the Octagon and the Stoa of Alytarc
 
 **[52] verulanus-meydani-salonu**
 
-The Hall of Verulanus, the main square of the harbour district, is a vast athletic complex measuring two hundred by two hundred and forty metres. Built under the emperor Hadrian by the high priest Verulanus, it had a courtyard paved with thirteen different shades of marble. This arched court, the xystos, where athletes trained, was enclosed by a triple colonnade. Its eastern corner was uncovered only recently, beside the Church of Mary.
+The largest athletic area of the harbour district was a colonnaded court about 200 by 240 metres. It takes its name from Verulanus, high priest of Asia under Hadrian. Its floor was paved in thirteen different shades of marble, and the surrounding colonnaded walk (xystos) was where athletes trained. The Harbour Baths lie to its east, the Church of Mary — also called the harbour church — to its west. The court's edges are now under soil, so the pin is representative: it marks the eastern corner beside the Church of Mary. The point given in the sources overlaps the Harbour Baths, so it was not used as it stands.
 
 ---
 
 **[53] antik-liman-kanali**
 
-The ancient harbour of Ephesus and its canal were the lifeline joining the city to the sea. Harbour Street, the Arcadiane, ran down towards the water. Over the centuries the harbour and the channel silted up; today only their remains survive, yet in antiquity they were the centre of trade and sea traffic. The canal served as a waterway linking the city to the interior.
+Ephesus was a harbour city; today the ancient harbour lies about five kilometres inland, on flat ground filled with river silt. As the mud carried by the Kaystros cut the harbour off from the city, the basin was moved several times and finally abandoned. Harbour Street (the Arcadiane) ran straight to the harbour, and a channel connected the basin to the sea. Because of marsh and drainage problems the area is not a safe walking route today; the pin marks the centre of the basin, not an entrance. The photograph shows the plain seen from Bülbül Mountain rather than the basin itself.
 
 ---
 
 **[54] meryem-kilisesi-vaftizhanesi**
 
-The baptistery in the northern atrium of the Church of Mary is an octagonal structure with four entrances. At its centre lies a sixth- to seventh-century immersion font with a double staircase. Floor panels carrying Greek and Latin inscriptions decorate the other parts of the building. This is one of the best-preserved sections of the church in which the councils of 431 were held.
+In the courtyard north of the Church of Mary stands an octagonal baptistery. The building has four entrances, and at its centre is a multi-sided font reached by steps on two sides; it counts as one of the best-preserved fonts of this size in Turkey. Floor panels inscribed in Greek and Latin record phases of repair. The baptistery belongs to the church that hosted the Council of Ephesus in 431, though its exact date ranges between the fourth and sixth centuries in the sources. The position comes from the photograph showing the northern part of the courtyard; it is not a separately published coordinate.
 
 ---
 
 **[55] bizans-hamamlari**
 
-The Byzantine Baths, west of the Harbour Baths, were built over Roman structures from the fifth century onwards. The complex consisted of cold, warm and hot rooms, and its corridors were decorated with mosaics in the Byzantine period. Also known as the Baths of Constantine, the building reflects the culture of water and cleanliness at Ephesus in late antiquity.
+North of the lower entrance, west of the street joining the stadium and the theatre, stands a large late-antique complex about 75 by 50 metres. Excavations in the 1950s debated a bath, a governor's palace and a church on the same spot; the current reading points to a multi-phase complex rather than a single function. An octagonal hall, a broad courtyard and mosaic corridors are among its parts. The name "Baths of Constantine" belongs not to this building but to the Harbour Baths; the confusion is common in older literature. The pin is Vici's bath point, about 25 metres from the palace point.
 
 ---
 
 **[56] vedius-gymnasionu**
 
-The Vedius Gymnasium, north of the stadium, was built between 147 and 149 by Publius Vedius Antoninus and his wife. The structure, one hundred and thirty-five by eighty-five metres, served both as a gymnasium and as a bath. Dedicated to Aphrodite and to the emperor Antoninus Pius, it was damaged by fire in the sixth century and was excavated in 1928. Important statues from the site are now displayed in the archaeological museums of Istanbul and İzmir.
+North of the stadium, just inside the city wall, stands the best-studied bath-gymnasium complex of Ephesus. Publius Vedius Antoninus and his wife Flavia Papiane had it built in 147–149, and its first phase covered an area of 135 by 85 metres. The colossal statue of Kaystros found in the frigidarium is now in the Izmir Museum; the photograph here shows that statue, not the building. The dedication is inconsistent in the sources: one record names Aphrodite, another Artemis together with Antoninus Pius. The site is closed to visitors, so the pin is representative, and the sources differ by about 90 metres.
 
 ---
 
 **[57] kent-surlari**
 
-The walls enclosing Ephesus ran for some eight kilometres. The remains surviving from the Hellenistic period, together with the Justinianic walls rebuilt in the sixth century, tell the story of the city's defences. The Gates of Magnesia and Koressos and the Harbour Gate formed its main entrances. Parts of the walls can still be seen today east of the stadium and towards the harbour.
+When Lysimachos refounded Ephesus in the early third century BCE he enclosed the city with a wall more than nine kilometres long; over three kilometres of that line still stand. The wall followed the slopes of Panayır and Bülbül mountains, protecting the harbour and the upper city. In the sixth century the Byzantine emperor Justinian left traces of repair and rebuilding. The point marked here is not a gate or an entrance but a preserved stretch of wall on the hillside; the whole circuit cannot be walked as a single stop. The coordinate comes from the location recorded for the Commons photograph.
+
+---

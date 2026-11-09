@@ -226,3 +226,60 @@ describe("CookieConsent", () => {
     expect(contrastRatio(parseHex("#10241a"), parseHex("#eab54f"))).toBeGreaterThanOrEqual(WCAG_AA_NORMAL);
   });
 });
+
+/**
+ * CLS kilidi (2026-11-08).
+ *
+ * Lighthouse `?tab=kesfet` koşusunda toplam CLS 0,120 çıktı ve kaynak olarak
+ * TEK öğe gösterildi: çerez kartının `<section>`'u. Kart alta sabit olduğu için
+ * yüksekliği değişince üst kenarı kayar; metin yedek fontla dizilip gerçek font
+ * gelince yeniden dizilince tam bu oluyordu. Çözüm: kart, kendi metnini çizen
+ * fontlar yüklenene kadar **bağlanmaz** (bağlanmayan öğe kaymaz).
+ */
+describe("CookieConsent · font takası kayması", () => {
+  const kart = () => screen.queryByRole("heading", { name: "Çerez ve cihaz depolaması" });
+  const kur = (load: () => Promise<unknown>) => {
+    Object.defineProperty(document, "fonts", { configurable: true, value: { load } });
+  };
+
+  afterEach(() => {
+    delete (document as unknown as { fonts?: unknown }).fonts;
+    vi.useRealTimers();
+  });
+
+  it("fontlar yüklenmeden kart bağlanmaz, yüklenince bağlanır", async () => {
+    let bitir: () => void = () => {};
+    const bekleyen = new Promise<void>((resolve) => {
+      bitir = resolve;
+    });
+    kur(() => bekleyen);
+
+    render(createElement(CookieConsent));
+    // Efekt koştu, `load` çağrıldı ama söz çözülmedi.
+    await act(async () => {});
+    expect(kart()).toBeNull();
+
+    await act(async () => {
+      bitir();
+      await bekleyen;
+    });
+    await waitFor(() => expect(kart()).toBeTruthy());
+  });
+
+  it("font isteği hata verirse kart yine de bağlanır", async () => {
+    kur(() => Promise.reject(new Error("font-src engeli")));
+    render(createElement(CookieConsent));
+    await waitFor(() => expect(kart()).toBeTruthy());
+  });
+
+  it("fontlar hiç gelmezse 900 ms sonra yedek fontla bağlanır", async () => {
+    vi.useFakeTimers();
+    kur(() => new Promise(() => {}));
+    render(createElement(CookieConsent));
+    expect(kart()).toBeNull();
+    await act(async () => {
+      vi.advanceTimersByTime(900);
+    });
+    expect(kart()).toBeTruthy();
+  });
+});

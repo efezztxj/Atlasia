@@ -105,6 +105,15 @@
          önceden yapılırsa ilk harita karesi daha erken gelir. -->
     <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin />
     <link rel="dns-prefetch" href="https://tiles.openfreemap.org" />
+    <link rel="preconnect" href="https://images.pexels.com" crossorigin />
+    <link rel="dns-prefetch" href="https://images.pexels.com" />
+    <!-- Fontlar erken iner: takas ilk boyamadan sonraya kalırsa metin yeniden
+         diziliyor ve alta sabit paneller kayıyor (CLS). Gerekçe: test dosyası
+         `src/config/selfHostedFonts.test.ts`. -->
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/dm-sans-latin.woff2" crossorigin />
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/dm-sans-latin-ext.woff2" crossorigin />
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/bricolage-latin.woff2" crossorigin />
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/bricolage-latin-ext.woff2" crossorigin />
     <!-- Fontlar kendi origin'imizden: üçüncü taraf font CSS'i render'ı
          blokluyordu ve font takası ilk boyamadan sonra kaldığı için tanıtım
          hero'su kayıyordu (CLS 0,002-0,049 arası salınıyordu). Aynı dosyalar

@@ -1,5 +1,52 @@
 # Atlasia Update
 
+## 2026-11-08 — Uygulama kabuğu CLS'i: çerez kartı font takasını beklemiyor
+
+- **Ölçüm:** Lighthouse `?tab=kesfet` koşusu 3/3 kez **CLS 0,120** ve toplam CLS'in
+  **tamamı** tek bir öğeye yazıldı: çerez kartının `<section>`'u. Aynı koşuda
+  `perf 0,34` ile 0,35'lik tabanın 0,01 altında kalıyordu.
+- **Kök neden:** kart alta sabit (`position: fixed; bottom: …`). Fontlar
+  `font-display: swap` ile geliyor: metin önce yedek fontla diziliyor, gerçek font
+  sonradan inince satır sayısı değişiyor, kartın yüksekliği değişiyor ve **üst
+  kenarı yukarı kayıyor**. Sabit konum, kaymayı engellemiyor — kaymanın kendisi
+  kartın içinde oluyor.
+- **Düzeltme (iki katman):**
+  1. **Fontlar önceden yükleniyor** (`<link rel="preload" as="font">`, dört dosya,
+     `crossorigin` ile). Türkçe sayfa dördünü de zaten kullanıyor; ek bayt yok,
+     yalnızca daha erken iniyor. `?tab=kesfet` sayfası için Pexels'e `preconnect`
+     de eklendi (LCP öğesi oradan geliyor: `-319 ms` fırsatı).
+  2. **Kart, kendi metnini çizen fontlar hazır olana kadar bağlanmıyor**
+     (`document.fonts.load`, 900 ms üst sınır). Bağlanmayan öğe kaymaz. Font isteği
+     reddedilirse ya da API yoksa (jsdom, eski tarayıcı) kart hemen görünür.
+- **Neden `document.fonts.ready` değil:** o, "şu an yüklü olan her şey bitti" der;
+  panel hiçbir fontu tetiklemediyse anında çözülür ve kayma geri gelir. `load`
+  isteği başlatır ve bitmesini bekler.
+- **Kilitler:** `src/components/CookieConsent.test.ts` (üç yeni test: font
+  gelmeden bağlanmama, font hatasında bağlanma, 900 ms tavanı) ve
+  `src/config/selfHostedFonts.test.ts` (dört preload, `crossorigin`, dosyalar var).
+- **Bütçe:** ilk HTML seti 129.204 B / 129.400 B gzip — preload satırları ve
+  `preconnect` bu bütçenin içinde kaldı (eşik değiştirilmedi, %0,15 pay).
+- **Ölçüm (aynı commit, iki CI koşusu):** `/?tab=kesfet` CLS **0,120 → 0,000**
+  (3/3 koşu), performans **0,34 → 0,38**; `/` CLS 0,000 ve performans 0,87
+  değişmedi. Kapı artık CLS'in kuyruk değeri yüzünden dalgalanmıyor.
+- **Doğrulama:** `tsc`, `eslint`, **195 dosya / 1 487 test**, `test:scripts`,
+  `vite build` + bundle bütçesi + SW kabuğu, `audit:check`; iki CI koşusu da yeşil.
+- **Açık kalan:** appShell'de TBT ≈ 154 s / LCP 8–11 s. Bu büyüklük gerçek bir
+  kullanıcı senaryosuyla açıklanamıyor (sayfa donmuş olurdu); headless ortamda
+  MapLibre'ın yazılım çizimine düşmesiyle uyumlu ve bu ortamda ölçülemiyor.
+
+## 2026-11-08 — Efes turu 57 durak, iki dilde tam sesli
+
+- **Kapsam:** Efes sesli turu **57 durak**; her durak **Türkçe 57/57** ve **İngilizce 57/57** sesli. Dokuz Kalkidikum yapısı ana haritadan çıkarılıp turun numaralı duraklarına taşındı; numaralar artık veriden okunuyor (16/17/18/24/25/26/27/29/38 boşlukları bu yüzdendi).
+- **Sessiz hata bulundu — metin kısalmış, ses eskide kalmış:** 33–38 ve 48. durakların metni bir noktada kısaltılmış, ses kayıtları eski uzun metni okumaya devam etmişti (metin/süre oranı 7,7–10,8 kr/sn; tur medyanı 14,6). Yedisi güncel metinden yeniden üretildi (yeni oranlar 13,2–15,2). Heksagon'un (51) yanlış metni okuyan Türkçe kaydı da yenilendi.
+- **"Aynı anlatıcı mı?" ölçüldü:** aynı metinle üretilen örneklerin eski kayıtlara uzaklığı TR 3.34 / EN 3.60; korpusta farklı metinlerin tipik uzaklığı TR 4.61 / EN 4.39. Yeni kayıtlar aynı ses ailesinde, eski dosyanın kopyası değil.
+- **Regresyon kilidi:** `src/data/audioDiscovery.test.ts` metin/süre oranını kilitliyor (süre = MP3 boyutu / 4 000 bayt, 32 kbps CBR). Metin düzenlenip ses eskide kalırsa test düşer.
+- **Künye düzeltmesi:** belgelerde bit hızı "112 kbps" ve bir ara "64 kbps" yazıyordu. 114 dosya `miniaudio` ile çözüldü: 24 000 Hz, mono, **32 kbps CBR**. 64 kbps yanılgısı, ilk çerçevenin (Xing bilgi çerçevesi) başlığından okumaktan geliyor.
+- **Kayıt paketi JSON'dan türetildi:** `kayit-listesi.csv` / `dikte-metni.md` (45, 47, 49–57) ve `kayit-listesi-tr.csv` / `dikte-metni-tr.md` (33–38, 45, 47, 48, 51) artık kayıtlı metinle birebir; eski `en-kalkidikum-*` yolları tarihsel not olarak işaretlendi.
+- **#55 Bizans Hamamları Türkçe kaydı yenilendi:** eski kayıt tınıda (MFCC sapması 12.03, z ≈ +2.7) ve perdede (226.4 Hz'e karşı tur medyanı 210.5 Hz) turun dışındaydı. Aynı sesle yeniden üretildi: yeni sapma 8.69 (z +1.2), f0 210.5 Hz, 500–2 kHz bant oranı 0.210 (tur ortalaması 0.251). Türkçe tarafta açık tını borcu kalmadı.
+- **Doğrulama:** `tsc`, `eslint --max-warnings=0`, **195 dosya / 1 482 test**, `test:scripts`, `vite build` + bundle bütçesi + SW kabuğu, `audit:check`.
+- Ayrıntı: `docs/icerik/sesli-anlatim-rehberi/efes.md` §2, `ses-tinisi-denetimi-2026-11-08.md`.
+
 ## 2026-11-01 (P1-1 + P2-1) — Hata izleme görünür oldu, tanıtımın CLS kayması kaldırıldı
 
 - **Kör nokta:** uygulama çökse kimsenin haberi olmuyordu. `VITE_TELEMETRY_ENDPOINT` tanımlı değilse `telemetry` sessizce hiçbir şey göndermiyor; üstelik toplayıcı `*.workers.dev` adresinde olacakken CSP `connect-src` bu host'u engelliyordu.

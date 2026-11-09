@@ -2,7 +2,9 @@
 
 1 Kasım 2026. Kapsam: Efes antik kentindeki adlandırılmış yapı ve alanlar; ardından ören yeri dışındaki ilgili tarihî yerler. Bu, araştırılan kaynaklardan derlenmiş kapsamlı **çalışma listesi**, bütün kazı buluntularının eksiksiz resmî kataloğu değildir. Kentin tamamı kazılmamıştır. Sıralama yürüyüş rotası değildir. Bir kaydın burada bulunması, koordinatının, erişiminin, fotoğrafının veya anlatısının pin için doğrulandığı anlamına gelmez.
 
-**✓** = yerel uygulamada temsil ediliyor (47 kayıt, 46 durak; Pollio Anıtı ve Domitian Çeşmesi ortak durak; yeni kayıtların konumları temsilîdir ve ayrıntılı doğrulaması sürer). **○** = henüz pin yok. Geniş alanlar ve yapıların bölümleri için tek pin mi, birden fazla pin mi olacağı ayrıca incelenmelidir.
+**✓** = yerel uygulamada temsil ediliyor (57 kayıt, 57 durak; birkaç durak temsilî noktadır ve sahada ölçülmemiştir). **○** = henüz pin yok.
+
+8 Kasım 2026: 12, 14, 16, 28, 40, 42, 44, 45, 47 ve 48 numaralı kayıtlar Efes sesli turuna durak olarak eklendi. Chalcidicum (12) ile Domitian Çeşmesi (11) ayrı durak olarak açıldığı için tur **57 durak**; envanter kapsamı **57/57**. Dokuz durağın kimlik, konum ve fotoğraf düzeltmesi: [dokuz durak düzeltmesi](efes-dokuz-durak-kimlik-duzeltmesi-2026-11-08.md). Geniş alanlar ve yapıların bölümleri için tek pin mi, birden fazla pin mi olacağı ayrıca incelenmelidir.
 
 ## Antik kent: üst kent ve Devlet Agorası
 
@@ -17,11 +19,11 @@
 9. ✓ Domitian Tapınağı / imparatorluk kültü tapınağı
 10. ✓ Pollio Anıtı (Domitian Çeşmesi ile ortak durak)
 11. ✓ Pollio Anıtı yanındaki Domitian Çeşmesi (ortak durak; ayrı yapı)
-12. ○ Chalcidicum (Kalkidikum)
+12. ✓ Chalcidicum (Kalkidikum)
 13. ✓ Memmius Anıtı
-14. ○ Hydreion (Memmius Anıtı yakınındaki su yapısı; ayrı yapı)
+14. ✓ Hydreion (Memmius Anıtı yakınındaki su yapısı; ayrı yapı)
 15. ✓ Herakles Kapısı
-16. ○ Triodos Meydanı (kavşak alanı; sınır ve ad kontrol edilecek)
+16. ✓ Triodos Meydanı (kavşak alanı; sınır ve ad kontrol edilecek)
 
 ## Kuretler Caddesi ve çevresi
 
@@ -36,7 +38,7 @@
 25. ✓ Yamaç Ev 2 — genel Yamaç Evler kaydının alt bölümü; erişim kontrol edilmeli
 26. ✓ Oktagon (2025 çalışması incelenen iskeletin Arsinoe IV olmadığını gösteriyor; anıtın ve defin evrelerinin bütünü ayrıca araştırılmalı)
 27. ✓ Hellenistik Heroon (Androklos ile ilişkilendirme kesin değildir)
-28. ○ Heksagon (Hexagon)
+28. ✓ Heksagon (Hexagon)
 29. ✓ Hadrian Kapısı (Hadrian Tapınağı'ndan farklı yapı; temsilî nokta)
 30. ✓ Aşk Evi olarak adlandırılan konut alanı (eski işlev yorumu hatalı; temsilî nokta)
 
@@ -54,15 +56,15 @@
 ## Liman ve kuzey bölgesi
 
 39. ✓ Liman Caddesi / Arkadiane (aynı cadde)
-40. ○ Verulanus Meydanı / salonu
+40. ✓ Verulanus Meydanı / salonu
 41. ✓ Liman Hamamları ve Gymnasionu (kompleks; temsilî nokta)
-42. ○ Antik liman ve liman kanalı (geniş alan; erişim ayrıca doğrulanmalı)
+42. ✓ Antik liman ve liman kanalı (geniş alan; erişim ayrıca doğrulanmalı)
 43. ✓ Meryem Kilisesi / Konsil Kilisesi
-44. ○ Meryem Kilisesi Vaftizhanesi (kilisenin parçası; ayrı pin gerekliliği kontrol edilecek)
-45. ○ Bizans Hamamları
+44. ✓ Meryem Kilisesi Vaftizhanesi (kilisenin parçası; ayrı pin gerekliliği kontrol edilecek)
+45. ✓ Bizans Hamamları
 46. ✓ Stadyum
-47. ○ Vedius Gymnasionu
-48. ○ Helenistik ve Bizans kent surları (çizgisel alanlar; dönem ve sınır kontrol edilecek)
+47. ✓ Vedius Gymnasionu
+48. ✓ Helenistik ve Bizans kent surları (çizgisel alanlar; dönem ve sınır kontrol edilecek)
 
 ## Antik kent çekirdeği dışında veya giriş çevresinde
 

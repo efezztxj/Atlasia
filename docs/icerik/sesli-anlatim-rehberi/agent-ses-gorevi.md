@@ -1,5 +1,12 @@
 # Ses üretimi — agent için görev tanımı
 
+> **Kapanış notu (8 Kasım 2026).** Bu belge tarihsel kayıttır. Turun 57 durağının
+> tamamı hem Türkçe hem İngilizce seslidir (`/audio/efes-*.mp3`,
+> `/audio/en-efes-*.mp3`); aşağıdaki "bekleyen / kalan" listeleri artık geçerli
+> değildir. Yakın pinlerin ayrılması ve `sharedWith` temizliği de yapıldı.
+> Güncel durum: [`efes.md`](./efes.md) §3–§5.
+
+
 7 Kasım 2026. Bu dosya **bir agent'a verilmek üzere** yazıldı. İnsan
 seslendiren için değil.
 
@@ -35,15 +42,21 @@ ne ise o okunacak.
 
 ## 2. Teknik künye (mevcut dosyalardan ölçüldü)
 
+> **Düzeltme (8 Kasım 2026).** Bu tabloda bit hızı **112 kbps** yazıyordu; bu
+> yanlıştı. Dosyalar MPEG-2 Layer III başlığı taşıyor ve o tabloda indeks 4 =
+> 32 kbps'dir — MPEG-1 tablosuyla okununca 112 çıkıyor. 114 dosyanın tamamı
+> `miniaudio` ile çözülüp doğrulandı: 24 000 Hz, mono, **32 kbps CBR**
+> (saniyede 4 000 bayt). Süre = dosya boyutu / 4 000.
+
 | Alan | Değer | Nasıl ölçüldü |
 |---|---|---|
 | Konteyner | MP3 | dosya başlığı |
 | ID3 | ID3v2.4, tek etiket `TSSE = Lavf59.27.100` | ilk 45 bayt |
 | Örnekleme | **24 000 Hz** | MPEG çerçeve başlığı |
 | Kanal | **mono** | çerçeve başlığı |
-| Bit hızı | **64 kbps CBR** | çerçeve başlığı |
-| Örnek başına bayt | 8 000 B/s | 64 kbps ÷ 8 |
-| Süre | 24–51 sn | metin uzunluğundan (899 kelime ÷ 150 klm/dk) |
+| Bit hızı | **32 kbps CBR** | çerçeve başlığı (MPEG-2 Layer III, sürekli çerçeveler) |
+| Saniyedeki bayt | **4 000 B/s** | 32 kbps ÷ 8 |
+| Süre | 24–51 sn | metin uzunluğundan (899 kelime ÷ 150 kelime/dk) |
 
 Doğrulama komutu (ffmpeg varsa):
 
@@ -51,7 +64,7 @@ Doğrulama komutu (ffmpeg varsa):
 ffprobe -v error -show_entries stream=sample_rate,channels,bit_rate -of csv=p=0 <dosya>
 ```
 
-Beklenen çıktı: `24000,1,64000`
+Beklenen çıktı: `24000,1,32000`
 
 **Bu künyeden sapma.** Farklı örnekleme/bit hızı, turda duraklar arasında
 duyulabilir tını farkı yaratır. Yeni dosyalar mevcutlarla aynı ayarda olmalı.

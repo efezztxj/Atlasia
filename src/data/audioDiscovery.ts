@@ -24,6 +24,34 @@ export interface AudioDiscoveryStop {
   sources: { title: string; url: string }[];
   coordinateSource: string;
   /**
+   * Noktanın ne kadar güvenilir olduğu. Alan yoksa koordinat kaynağındaki
+   * değerin kendisidir.
+   *
+   * `"approximate"` = yapı geniş bir alana yayılıyor, sınırları toprak altında
+   * ya da nokta sıralamadan türetildi; kaynaklar arasında 25–90 m fark sürebilir
+   * (51 Heksagon, 52 Verulanus, 53 Antik Liman, 57 sur kesiti). Arayüzde
+   * "≈ Yaklaşık konum" olarak **açıkça** yazılır; kesin konum izlenimi verilmez.
+   */
+  coordinateAccuracy?: "approximate";
+  /**
+   * Kaynaklar aynı noktada anlaşmıyorsa farkın kaydı.
+   *
+   * NEDEN: 52 Verulanus için Wikidata Q104641912 başka bir nokta veriyor ve
+   * ikisi arasında 100 m var. Hangi noktanın seçildiğini ve neden seçildiğini
+   * sessizce saklamak yerine durak kartında kaynak bölümünde gösterilir.
+   */
+  coordinateNote?: string;
+  /**
+   * Yaklaşık konumun **tek satırlık** gerekçesi (kart üstündeki rozet).
+   *
+   * NEDEN: Rozet tüm yaklaşık duraklarda aynı cümleyi yazıyordu ("yapı geniş
+   * bir alana yayılıyor; pin merkezini gösterir"). 53 Antik Liman için bu
+   * **yanlış**: ortada bir yapı yok, alüvyonla dolmuş bir havza var ve alan
+   * erişime kapalı. Gerekçe artık durakta yaşıyor, tek cümleye sığdırılmış
+   * hâli burada; uzun açıklama `coordinateNote`'ta ve kaynaklar bölümünde.
+   */
+  coordinateShort?: string;
+  /**
    * `"additional"` = ören yeri dışındaki yer (haritada numarasız ◆).
    * Alan yoksa durak ören yeri içindedir ve numaralı yeşil pin alır.
    */

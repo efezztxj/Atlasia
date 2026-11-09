@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { GROUPS_BY_TOUR } from "../components/AudioDiscoveryCategories";
@@ -18,45 +18,41 @@ import { GUIDE_PLACES } from "./places";
 
 const FILE = resolve(`public${AUDIO_TOUR_FILE}`);
 
+
 /**
- * İngilizce SES KAYDI henüz üretilmemiş dokuz durak.
+ * Dosyadan yaklaşık süre (saniye).
  *
- * 2026-11-07: metin çevirisi tamamlandı (57/57 durak). Ses kaydı gerçek
- * anlatım gerektirdiği için uydurulamaz; bu duraklarda `audio` alanı yoktur ve
- * arayüz "English audio is not available yet. You can read the text." der.
- * Kayıt eklendikçe bu dizi küçülür, boşaldığında kilit kalkar.
+ * NEDEN: 2026-11-08'de 33–38 ve 48. durakların metni kısaltılmış, ses
+ * kayıtları eski uzun metni okumaya devam etmişti. Hiçbir test ne süreyi ne
+ * metin-ses oranını kontrol ettiği için aylarca fark edilmedi. Aşağıdaki kilit
+ * bu sınıf hatayı yakalar.
+ *
+ * Turdaki bütün kayıtlar 24 000 Hz, mono, 32 kbps CBR (bkz. `efes.md` §2), yani
+ * saniyede tam 4 000 bayt. Süre = boyut / 4 000. Künye değişirse bu sabit de
+ * değişmeli; `kayit-paketi/KAYIT-TALIMATI.md` aynı künyeyi yazıyor.
  */
+const BYTES_PER_SECOND = 4000;
+
+function audioSeconds(path: string): number {
+  return statSync(path).size / BYTES_PER_SECOND;
+}
+
 /**
  * Türkçe ses kaydı henüz üretilmemiş duraklar.
  *
- * 2026-11-07: Chalcidicum ve ayrı Domitian Çeşmesi tura eklendi; içerik ve
- * koordinat doğrulandı, ses kaydı henüz yok. Arayüz bu duraklarda
- * "Ses kaydı yok. Metni okuyabilirsin." der. Kayıt geldikçe liste küçülür.
+ * 2026-11-08: Liste BOŞ — turun 57 durağının tamamı Türkçe sesli.
+ * Heksagon'un metni ve konumu yeniden yazıldığı için eski kaydı
+ * bağlanmamıştı; yeni metinden yeniden üretildi (/audio/efes-heksagon.mp3).
  *
- * 2026-11-07: Heksagon'un konumu ve metni düzeltildi (Kalkidikum'da değil,
- * Kuretler Caddesi güneyinde). Eski `kalkidikum-heksagon.mp3` yanlış metni
- * okuyordu; bağlantı kaldırıldı, yeni kayıt gelene kadar metin gösterilir.
- *
- * 2026-11-08: 46 Pollio'nun TR ve EN kaydı bağlandı. Dosyalar repoda duruyordu
- * ama `audio` alanı hiç yazılmamıştı; durak sessiz kalıyordu. Kayıtların
- * güncel metni okuduğu boyut/karakter oranıyla doğrulandı (TR %2,7, EN %3,2
- * sapma). Heksagon'un eski kaydı %43 kısa olduğu için bağlanmadı.
+ * Ayrıca 33–38 ve 48'de ses, ekrandaki metnin ESKİ ve daha uzun hâlini
+ * okuyordu (kr/sn 9–11'e karşı tur medyanı 14,6). Sekizi de güncel metinden
+ * yeniden üretildi; artık ses ile metin ayrışmıyor (kontrol:
+ * `scripts/verify-audio-text` yerine bu dosyadaki oran kilidi).
  */
-const SES_BEKLEYEN = ["chalcidicum", "domitian-cesmesi", "heksagon"];
+const SES_BEKLEYEN: string[] = [];
 
-const KALKIDIKUM_ENGLISH_AUDIO_PENDING = [
-  "chalcidicum",
-  "domitian-cesmesi",
-  "hydreion-kalkidikum",
-  "triodos-meydani",
-  "heksagon",
-  "verulanus-meydani-salonu",
-  "antik-liman-kanali",
-  "meryem-kilisesi-vaftizhanesi",
-  "bizans-hamamlari",
-  "vedius-gymnasionu",
-  "kent-surlari",
-];
+/** İngilizce ses kaydı bekleyen durak kalmadı (57/57). */
+const KALKIDIKUM_ENGLISH_AUDIO_PENDING: string[] = [];
 
 describe("sesli anlatım rehberi · tek dosya yapısı", () => {
   it("tek kaynak dosya var, eski tur dosyaları yok", () => {
@@ -96,7 +92,27 @@ describe("sesli anlatım rehberi · tek dosya yapısı", () => {
         "meryem-kilisesi-vaftizhanesi", "bizans-hamamlari", "vedius-gymnasionu", "kent-surlari"].includes(stop.id))).toBe(true);
     // Numaralar 1..57; ören yeri dışı 9 durak ◆ biçiminde ama numarasını gösterir.
     expect(Math.max(...efes!.stops.map((stop) => stop.no))).toBe(57);
-    expect(efes!.stops.filter((stop) => stop.markerStyle === "additional")).toHaveLength(9);
+    // Sayı değil LİSTE kilitli: 9 Kasım denetiminde `efes.md` §1'deki yeşil liste
+    // 50'yi atlıyordu ve bir notta Domitian Çeşmesi "46" yazıyordu (doğrusu 47;
+    // 46 Pollio Anıtı). Belge sayıları veriyle birebir olmak zorunda.
+    expect(efes!.stops.filter((stop) => stop.markerStyle === "additional").map((stop) => stop.no)).toEqual([16, 17, 18, 24, 25, 26, 27, 29, 38, 57]);
+  });
+
+  it("yaklaşık konumlu her durak nedenini yazar; görsel alt metni başlığı tekrar etmez", () => {
+    // NEDEN: 9 Kasım denetiminde 52'de `coordinateNote` vardı ama 53 ve 57'de yoktu;
+    // karttaki genel cümle ("yapı geniş bir alana yayılıyor") 53 için yanlış
+    // (havza ortası, erişim yok) ve 57 için eksik (korunmuş bir kesit).
+    // Ayrıca 12 durağın alt metni yalnızca başlığı tekrar ediyordu ("Memmius Anıtı"):
+    // ekran okuyucu için bilgi eklemeyen alt metin, olmayan alt metne eşittir.
+    const efes = AUDIO_DISCOVERY_TOURS.find((tour) => tour.placeId === "efes")!;
+    for (const stop of efes.stops) {
+      if (stop.coordinateAccuracy === "approximate") {
+        expect(stop.coordinateNote?.trim().length ?? 0, `${stop.no}: yaklaşık konum nedeni yok`).toBeGreaterThan(40);
+      }
+      const norm = (value: string) => value.toLocaleLowerCase("tr").replace(/[^a-zçğıöşü ]/g, "").replace(/\s+/g, " ").trim();
+      expect(norm(stop.image!.alt), `${stop.no}: alt metin başlığı tekrar ediyor`).not.toBe(norm(stop.title));
+      expect(stop.image!.alt.trim().length, `${stop.no}: alt metin çok kısa`).toBeGreaterThanOrEqual(15);
+    }
   });
 
   it("her durak bir kategori grubunda, gruplarda hayalet id yok", () => {
@@ -312,107 +328,236 @@ describe("sesli anlatım rehberi · durak içeriği", () => {
       }
     }
   });
+
+  it("sharedWith yalnız gerçekten aynı noktayı gösterir (karşılıklı ve ≤30 m)", () => {
+    // 2026-11-08: Altı durakta `sharedWith` kalmıştı ama koordinatlar aylar önce
+    // ayrılmıştı — 3↔51 arası 324 m, 15↔57 arası 1 774 m. Alan "aynı fiziksel
+    // nokta" demek olduğu için bu kayıtlar yanlıştı; temizlendi. Test, alanı
+    // yeniden yanlış kullanmaya karşı kilitler.
+    const meters = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) =>
+      Math.hypot((a.lat - b.lat) * 111320, (a.lng - b.lng) * 111320 * Math.cos((a.lat * Math.PI) / 180));
+    for (const tour of AUDIO_DISCOVERY_TOURS) {
+      for (const stop of tour.stops) {
+        for (const otherId of stop.sharedWith ?? []) {
+          const other = tour.stops.find((item) => item.id === otherId);
+          expect(other, `${stop.id}: sharedWith'te turda olmayan id var (${otherId})`).toBeTruthy();
+          expect(other!.sharedWith, `${stop.id}→${otherId} karşılıklı değil`).toContain(stop.id);
+          expect(meters(stop, other!), `${stop.id}→${otherId} aynı nokta değil`).toBeLessThan(30);
+        }
+      }
+    }
+  });
+
+  it("yaklaşık konumlu üç durak açıkça işaretli", () => {
+    // 51 Heksagon (sıralamadan türetilmiş nokta), 52 Verulanus (avlu toprak
+    // altında), 53 Antik Liman (havza ortası), 57 sur kesiti. Nokta silinmez;
+    // arayüzde "≈ yaklaşık konum" yazar ve pin erişilebilir adı bunu söyler.
+    const efes = AUDIO_DISCOVERY_TOURS.find((tour) => tour.placeId === "efes")!;
+    // 51 Heksagon main birleşmesinde ÖAW/Berns kaynaklı gerçek bir noktaya
+    // taşındığı için listeden çıktı; kalan üç durak temsilî.
+    const approximate = efes.stops.filter((stop) => stop.coordinateAccuracy === "approximate");
+    expect(approximate.map((stop) => stop.no)).toEqual([52, 53, 57]);
+    for (const stop of approximate) {
+      expect(new URL(stop.coordinateSource).protocol).toBe("https:");
+      expect(stop.sources.length).toBeGreaterThanOrEqual(2);
+    }
+    // Geri kalan 53 durak kesin nokta sayılır; sessizce "yaklaşık" işaretlenemez.
+    expect(efes.stops.length - approximate.length).toBe(54);
+  });
+
+  it("yaklaşık konumun gerekçesi hem rozette hem uzun notta, iki dilde yazılı", () => {
+    // NEDEN: Rozet üç durakta da aynı jenerik cümleyi yazıyordu — "yapı geniş
+    // bir alana yayılıyor; pin merkezini gösterir". 53 Antik Liman için bu
+    // düpedüz yanlış (ortada yapı yok, alüvyonla dolmuş ve kapalı bir havza
+    // var). Gerekçe artık durakta: kısa hâli rozette, uzun hâli kaynaklarda ve
+    // İngilizce arayüz Türkçe not göstermiyor.
+    const efes = AUDIO_DISCOVERY_TOURS.find((tour) => tour.placeId === "efes")!;
+    const english = JSON.parse(readFileSync(resolve("public/audio/efes-en.json"), "utf8")) as Record<string, {
+      coordinateShort?: string;
+      coordinateNote?: string;
+    }>;
+    const approximate = efes.stops.filter((stop) => stop.coordinateAccuracy === "approximate");
+    expect(approximate.map((stop) => stop.no)).toEqual([52, 53, 57]);
+    for (const stop of approximate) {
+      expect(stop.coordinateShort?.trim().length ?? 0, `${stop.no}: rozet gerekçesi yok`).toBeGreaterThan(15);
+      expect(stop.coordinateShort!.length, `${stop.no}: rozet gerekçesi tek satıra sığmıyor`).toBeLessThanOrEqual(80);
+      expect(stop.coordinateNote!.length, `${stop.no}: uzun gerekçe rozetin tekrarı`).toBeGreaterThan((stop.coordinateShort!.length) + 40);
+      const en = english[stop.id];
+      expect(en?.coordinateShort?.trim().length ?? 0, `${stop.id}: İngilizce rozet yok`).toBeGreaterThan(15);
+      expect(en?.coordinateNote?.trim().length ?? 0, `${stop.id}: İngilizce not yok`).toBeGreaterThan(60);
+      // İngilizce metin Türkçe karakter taşımamalı: çevrilmemiş kopya sızmasın.
+      expect(/[çğıöşüÇĞİÖŞÜ]/.test(`${en.coordinateShort} ${en.coordinateNote}`), `${stop.id}: İngilizce notta Türkçe karakter`).toBe(false);
+    }
+    // Jenerik yedek cümle artık yalnız notsuz durak için; hiçbir yaklaşık durak notsuz değil.
+    expect(approximate.every((stop) => Boolean(stop.coordinateShort))).toBe(true);
+  });
+
+  it("ses süresi ekrandaki metinle orantılı (metin değişip ses eskide kalmamış)", () => {
+    // 2026-11-08: 33–38 ve 48'in sesi, ekrandaki kısa metnin ESKİ uzun hâlini
+    // okuyordu (kr/sn 9–11; tur medyanı 14,6). Sekizi de güncel metinden
+    // yeniden üretildi. Bu kilit, metin düzenlenip ses eskide kaldığında düşer.
+    const efes = AUDIO_DISCOVERY_TOURS.find((tour) => tour.placeId === "efes")!;
+    const english = JSON.parse(readFileSync(resolve("public/audio/efes-en.json"), "utf8")) as Record<string, { description: string; audio?: string }>;
+
+    const rates: { tr: number[]; en: number[] } = { tr: [], en: [] };
+    for (const stop of efes.stops) {
+      expect(stop.audio, `${stop.no}: Türkçe ses yolu yok`).toBeTruthy();
+      rates.tr.push(stop.description.length / audioSeconds(resolve("public", stop.audio!.slice(1))));
+      const englishStop = english[stop.id];
+      expect(englishStop?.audio, `${stop.id}: İngilizce ses yolu yok`).toBeTruthy();
+      rates.en.push(englishStop.description.length / audioSeconds(resolve("public", englishStop.audio!.slice(1))));
+    }
+    const check = (values: number[], min: number, max: number, label: string) => {
+      for (const [index, rate] of values.entries()) {
+        const no = efes.stops[index].no;
+        expect(rate, `${label} ${no}: metin ${rate.toFixed(1)} kr/sn — metin ile ses ayrışmış`).toBeGreaterThan(min);
+        expect(rate, `${label} ${no}: metin ${rate.toFixed(1)} kr/sn — metin ile ses ayrışmış`).toBeLessThan(max);
+      }
+    };
+    // Bantlar 8 Kasım 2026 ölçümünden: TR 12,1–16,0 · EN 14,1–17,2.
+    check(rates.tr, 11.5, 17.5, "TR");
+    check(rates.en, 13, 18.5, "EN");
+  });
 });
+
+/**
+ * Kayıt paketi (`docs/icerik/sesli-anlatim-rehberi/kayit-paketi/`) insan
+ * seslendiren için hazırlanır: dikte metni, CSV ve talimat aynı metni taşımak
+ * zorunda. 2026-11-08'de paket ile JSON ayrışmıştı (metinler kısalmış, ses
+ * eskiyi okuyordu; CSV'de artık var olmayan dosya yolları vardı). Bu kilitler
+ * paketin **kayıtlı metinden türetildiğini** zorunlu kılar.
+ *
+ * Paket kapsamı sabittir: sesi 8 Kasım 2026'da üretilen/yenilenen duraklar.
+ * Yeni durak eklenirse bu listeye eklenir — paket sessizce geride kalamaz.
+ */
+const PAKET_DIZINI = "docs/icerik/sesli-anlatim-rehberi/kayit-paketi";
+const INGILIZCE_PAKET = [45, 47, 49, 50, 51, 52, 53, 54, 55, 56, 57];
+const TURKCE_PAKET = [33, 34, 35, 36, 37, 38, 45, 47, 48, 51];
+
+function paketDuraklari() {
+  const tur = JSON.parse(readFileSync(resolve("public/assets/sesli-turlar.json"), "utf8")) as {
+    tours: { stops: { id: string; no: number; title: string; description: string; audio: string }[] }[];
+  };
+  const ingilizce = JSON.parse(readFileSync(resolve("public/audio/efes-en.json"), "utf8")) as Record<
+    string,
+    { title: string; audio: string; description: string }
+  >;
+  return { tur, ingilizce };
+}
+
+function dikteBolumleri(dosya: string) {
+  const dikte = readFileSync(resolve(PAKET_DIZINI, dosya), "utf8");
+  const parts = dikte.split(/\*\*\[(\d+)\] ([\w-]+)\*\*\n\n/).slice(1);
+  const bolumler = new Map<number, { id: string; metin: string }>();
+  for (let index = 0; index < parts.length; index += 3) {
+    bolumler.set(Number(parts[index]), {
+      id: parts[index + 1],
+      metin: parts[index + 2].replace(/\n---\s*$/, "").trim(),
+    });
+  }
+  return bolumler;
+}
+
+function csvSatirlari(dosya: string) {
+  return readFileSync(resolve(PAKET_DIZINI, dosya), "utf8")
+    .split(/\r?\n/)
+    .slice(1)
+    .filter(Boolean)
+    .map((line) => line.match(/^"([^"]*)","([^"]*)","([^"]*)"/))
+    .filter((match): match is RegExpMatchArray => Boolean(match));
+}
 
 describe("kayıt paketi · JSON ile tutarlılık", () => {
-  const DIR = "docs/icerik/sesli-anlatim-rehberi/kayit-paketi";
-  const englishFile = JSON.parse(readFileSync("public/audio/efes-en.json", "utf8")) as Record<
-    string, { title: string; audio?: string; description: string }
-  >;
-
-  /**
-   * NEDEN: 2026-11-08'e kadar kayıt talimatı "9 dosya, 47–55" diyordu ama
-   * gerçek borç 11 dosyaydı (45 chalcidicum ve 47 domitian-cesmesi eksikti).
-   * Seslendiren iki durağı hiç kaydetmeyecekti. Ayrıca üç ayrı belgede
-   * "112 kbps" yazıyordu; 101 dosyanın tamamı 64 kbps çıktı. Bu kilit
-   * paketin JSON'dan türetildiğini zorunlu kılar.
-   */
-  const pendingEnglish = () => Object.entries(englishFile)
-    .filter(([, record]) => !record.audio)
-    .map(([id]) => id)
-    .sort();
-
-  it("dikte metni İngilizce sesi eksik olan TÜM durakları içerir", () => {
-    const dikte = readFileSync(resolve(DIR, "dikte-metni.md"), "utf8");
-    for (const id of pendingEnglish()) {
-      expect(dikte, `${id} dikte metninde yok — seslendiren bu durağı atlar`).toContain(`] ${id}**`);
+  it("İngilizce dikte metni paket kapsamını ve güncel metni taşır", () => {
+    const { tur, ingilizce } = paketDuraklari();
+    const bolumler = dikteBolumleri("dikte-metni.md");
+    expect([...bolumler.keys()].sort((a, b) => a - b)).toEqual(INGILIZCE_PAKET);
+    for (const no of INGILIZCE_PAKET) {
+      const durak = tur.tours[0].stops.find((stop) => stop.no === no)!;
+      const kayit = ingilizce[durak.id];
+      const bolum = bolumler.get(no)!;
+      expect(bolum.id, `${no}: dikte metni kimliği`).toBe(durak.id);
+      expect(bolum.metin, `${no}: dikte metni kayıtlı metinden farklı`).toBe(kayit.description.trim());
     }
   });
 
-  it("dikte metnindeki her bölüm JSON açıklamasıyla birebir aynı", () => {
-    const dikte = readFileSync(resolve(DIR, "dikte-metni.md"), "utf8");
-    const parts = dikte.split(/\*\*\[\d+\] ([\w-]+)\*\*\n\n/).slice(1);
-    const metinler: Record<string, string> = {};
-    for (let index = 0; index < parts.length; index += 2) {
-      metinler[parts[index]] = parts[index + 1].replace(/\n---\s*$/, "").trim();
-    }
-    expect(Object.keys(metinler).sort()).toEqual(pendingEnglish());
-    for (const [id, text] of Object.entries(metinler)) {
-      expect(text, `${id}: dikte metni JSON açıklamasından farklı`).toBe(englishFile[id].description.trim());
-    }
-  });
-
-  it("kayıt listesi CSV'si sesi eksik duraklarla birebir örtüşür", () => {
-    const rows = readFileSync(resolve(DIR, "kayit-listesi.csv"), "utf8")
-      .split(/\r?\n/)
-      .slice(1)
-      .filter(Boolean)
-      .map((line) => line.match(/^"([^"]*)","([^"]*)","([^"]*)"/))
-      .filter((match): match is RegExpMatchArray => Boolean(match));
-    expect(rows.map((match) => match[2]).sort()).toEqual(pendingEnglish());
-    for (const [, , id, dosya] of rows) {
-      expect(dosya).toBe(`en-kalkidikum-${id}.mp3`);
+  it("İngilizce kayıt listesi CSV'si gerçek dosya yollarını ve metni taşır", () => {
+    const { tur, ingilizce } = paketDuraklari();
+    const rows = csvSatirlari("kayit-listesi.csv");
+    expect(rows.map((match) => Number(match[1]))).toEqual(INGILIZCE_PAKET);
+    for (const match of rows) {
+      const no = Number(match[1]);
+      const durak = tur.tours[0].stops.find((stop) => stop.no === no)!;
+      const kayit = ingilizce[match[2]];
+      expect(match[2], `${no}: CSV kimliği`).toBe(durak.id);
+      expect(match[3], `${no}: CSV dosya adı`).toBe(kayit.audio.split("/").pop());
+      expect(existsSync(resolve("public", kayit.audio.slice(1))), `${no}: ses dosyası yok`).toBe(true);
     }
   });
 
-  it("teknik künye belgelerde ölçülen değerle aynı (64 kbps) ve eski 112 kbps kalmamış", () => {
-    for (const file of ["PROMPT.md", "KAYIT-TALIMATI.md"]) {
-      const text = readFileSync(resolve(DIR, file), "utf8");
-      expect(text, `${file}: 64 kbps yazmıyor`).toContain("64 kbps");
-      expect(text, `${file}: kaldırılmış 112 kbps geri gelmiş`).not.toContain("112 kbps");
+  it("Türkçe dikte metni ve CSV'si güncel metni taşır", () => {
+    const { tur } = paketDuraklari();
+    const bolumler = dikteBolumleri("dikte-metni-tr.md");
+    expect([...bolumler.keys()].sort((a, b) => a - b)).toEqual(TURKCE_PAKET);
+    const rows = csvSatirlari("kayit-listesi-tr.csv");
+    expect(rows.map((match) => Number(match[1]))).toEqual(TURKCE_PAKET);
+    for (const no of TURKCE_PAKET) {
+      const durak = tur.tours[0].stops.find((stop) => stop.no === no)!;
+      expect(bolumler.get(no)!.metin, `${no}: Türkçe dikte metni JSON'dan farklı`).toBe(durak.description.trim());
+    }
+    for (const match of rows) {
+      const durak = tur.tours[0].stops.find((stop) => stop.no === Number(match[1]))!;
+      expect(match[2], `${match[1]}: CSV kimliği`).toBe(durak.id);
+      expect(match[3], `${match[1]}: CSV dosya adı`).toBe(durak.audio.split("/").pop());
+      expect(existsSync(resolve("public", durak.audio.slice(1))), `${match[1]}: ses dosyası yok`).toBe(true);
+    }
+  });
+
+  it("dikte JSON'ları turdaki ses yollarını ve (yeniden kaydedilen) metni taşır", () => {
+    // NEDEN: `turkce-dikte-49-57.json` "kayıtta okunan metin" olarak duruyor ama
+    // 51 Heksagon'un metni 8 Kasım'da tamamen değişti; dosya eski yanlış metni
+    // taşımaya devam ediyordu. Bir insan seslendiren ya da bir sonraki ajan bu
+    // dosyadan kayıt yapsa yanlış metni geri getirirdi. Kilit: dosyalar turun
+    // ses yollarıyla birebir örtüşür ve 51 güncel metni taşır.
+    const { tur } = paketDuraklari();
+    const senaryolar: [string, number[]][] = [
+      ["turkce-dikte-49-57.json", [49, 50, 51, 52, 53, 54, 55, 56, 57]],
+      ["turkce-dikte-33-38-48-51.json", TURKCE_PAKET],
+    ];
+    for (const [dosya, beklenen] of senaryolar) {
+      const icerik = JSON.parse(readFileSync(resolve(PAKET_DIZINI, dosya), "utf8")) as Record<
+        string,
+        { no?: number; audio?: string; text?: string }
+      >;
+      const kayitlar = Object.entries(icerik).filter(([key]) => !key.startsWith("$"));
+      expect(kayitlar.map(([, value]) => value.no).sort((a, b) => (a ?? 0) - (b ?? 0)), dosya).toEqual(beklenen);
+      if (dosya === "turkce-dikte-33-38-48-51.json") {
+        const { tur: t } = paketDuraklari();
+        for (const [id, value] of kayitlar) {
+          const durak = t.tours[0].stops.find((stop) => stop.id === id)!;
+          expect(value.audio, `${dosya} ${id}`).toBe(durak.audio);
+          expect(value.text, `${dosya} ${id}: metin turdan farklı`).toBe(durak.description.trim());
+        }
+        continue;
+      }
+      for (const [id, value] of kayitlar) {
+        const durak = tur.tours[0].stops.find((stop) => stop.id === id)!;
+        expect(value.audio, `${dosya} ${id}`).toBe(durak.audio);
+      }
+      // 51 yeniden kaydedildi: metni güncel olmak zorunda.
+      const heksagon = tur.tours[0].stops.find((stop) => stop.id === "heksagon")!;
+      expect(icerik.heksagon.text, "heksagon dikte metni eski sürümde kalmış").toBe(heksagon.description.trim());
+    }
+  });
+
+  it("teknik künye ölçülen değerle aynı (32 kbps) ve eski yanlış yazım yok", () => {
+    for (const dosya of ["PROMPT.md", "KAYIT-TALIMATI.md"]) {
+      const metin = readFileSync(resolve(PAKET_DIZINI, dosya), "utf8");
+      expect(metin, `${dosya}: 32 kbps yazmıyor`).toContain("32 kbps");
+      expect(metin, `${dosya}: kaldırılmış 112 kbps geri gelmiş`).not.toContain("112 kbps");
     }
     const gorev = readFileSync("docs/icerik/sesli-anlatim-rehberi/agent-ses-gorevi.md", "utf8");
-    expect(gorev).not.toContain("112 kbps");
-    expect(gorev).toContain("64 kbps CBR");
-  });
-});
-
-describe("Türkçe kayıt paketi · JSON ile tutarlılık", () => {
-  const DIR = "docs/icerik/sesli-anlatim-rehberi/kayit-paketi";
-  const tur = JSON.parse(readFileSync("public/assets/sesli-turlar.json", "utf8")) as {
-    tours: { stops: { id: string; no: number; title: string; description: string; audio?: string }[] }[];
-  };
-  const pendingTurkish = () => tur.tours[0].stops.filter((stop) => !stop.audio).sort((a, b) => a.no - b.no);
-
-  it("Türkçe dikte metni sesi eksik olan tüm durakları içerir", () => {
-    const dikte = readFileSync(resolve(DIR, "dikte-metni-tr.md"), "utf8");
-    for (const stop of pendingTurkish()) {
-      expect(dikte, `${stop.id} Türkçe dikte metninde yok`).toContain(`] ${stop.id}**`);
-    }
-  });
-
-  it("Türkçe dikte metni JSON açıklamasıyla birebir aynı", () => {
-    const dikte = readFileSync(resolve(DIR, "dikte-metni-tr.md"), "utf8");
-    const parts = dikte.split(/\*\*\[\d+\] ([\w-]+)\*\*\n\n/).slice(1);
-    const metinler: Record<string, string> = {};
-    for (let index = 0; index < parts.length; index += 2) {
-      metinler[parts[index]] = parts[index + 1].replace(/\n---\s*$/, "").trim();
-    }
-    expect(Object.keys(metinler).sort()).toEqual(pendingTurkish().map((stop) => stop.id).sort());
-    for (const stop of pendingTurkish()) {
-      expect(metinler[stop.id], `${stop.id}: Türkçe dikte metni JSON'dan farklı`)
-        .toBe(stop.description.trim());
-    }
-  });
-
-  it("Türkçe kayıt listesi CSV'si sesi eksik duraklarla örtüşür", () => {
-    const rows = readFileSync(resolve(DIR, "kayit-listesi-tr.csv"), "utf8")
-      .split(/\r?\n/)
-      .slice(1)
-      .filter(Boolean)
-      .map((line) => line.match(/^"([^"]*)","([^"]*)","([^"]*)"/))
-      .filter((match): match is RegExpMatchArray => Boolean(match));
-    expect(rows.map((match) => match[2]).sort()).toEqual(pendingTurkish().map((stop) => stop.id).sort());
-    for (const [, , id, dosya] of rows) expect(dosya).toBe(`${id}.mp3`);
+    expect(gorev).toContain("32 kbps CBR");
+    expect(gorev).toContain("24000,1,32000");
   });
 });

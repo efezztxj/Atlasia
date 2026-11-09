@@ -11,9 +11,9 @@ Yeni bir yer, yeni bir şehir veya yeni bir tur eklenecekse önce buradaki
 | `README.md` | Bu dosya: yapılış tarzı, ekleme adımları, açık borçlar |
 | `efes.md` | Efes turu: **57 durak**, numara düzeni, `sharedWith`, borçlar |
 | `kapadokya.md` | Kapadokya turu iskeleti + durak kabul ölçütü |
-| `ingilizce-ses-kayit-metinleri.md` | Ses kaydı bekleyen 9 durak; okunacak metin + dosya adı + süre |
-| `kalan-11-yer-ingilizce.md` | **Kalan 11 yerin İngilizce metni** (9 turda + 2 turda değil) |
-| `agent-ses-gorevi.md` | **Agent'a verilecek görev**: teknik künye (24 kHz/64 kbps mono), telaffuz, kabul kontrolü |
+| `ingilizce-ses-kayit-metinleri.md` | **Tarihsel** — 9 durağın İngilizce metni; kayıtlar 8 Kasım 2026'da tamamlandı |
+| `kalan-11-yer-ingilizce.md` | **Tarihsel** — son 11 yerin İngilizce metni; kayıtlar tamamlandı |
+| `agent-ses-gorevi.md` | **Agent'a verilecek görev**: teknik künye (24 kHz/32 kbps mono), telaffuz, kabul kontrolü |
 | `kayit-paketi/PROMPT.md` | **Agent'a yapıştırılacak hazır prompt** + metinlerin okunacağı yollar |
 | `kayit-paketi/metinler/` | Dokuz metin: `TUMU.txt` (hepsi) + durak başına `.txt` |
 | `kayit-paketi/` | **İnsan seslendiren** için paket: dikte metni, telaffuz sözlüğü, CSV, talimat |
@@ -82,7 +82,7 @@ Kurallar:
 
 | Dosya | Ne tutar |
 | --- | --- |
-| [`efes.md`](./efes.md) | Efes turu — 55 durak (46 temel + 9 Kalkidikum eki), açık borçlar |
+| [`efes.md`](./efes.md) | Efes turu — 57 durak (48 temel + 9 Kalkidikum eki), açık borçlar |
 | [`kapadokya.md`](./kapadokya.md) | Kapadokya turu — henüz eklenmedi, iskelet ve ölçüt |
 
 Yeni tur eklerken aynı klasöre `<yer>.md` açılır: o turda hangi durakların
@@ -91,11 +91,19 @@ Böylece her şehir kendi dosyasında, ana kural ise burada tek yerde durur.
 
 ## 4. Bilinen açık borçlar
 
-| Borç | Etki | Nerede izlenir |
+Yalnızca **gerçekten açık** olanlar. Hepsi saha işi; hiçbiri kod veya ses
+üretimiyle kapanmıyor.
+
+| Borç | Neden açık | Nerede izlenir |
 | --- | --- | --- |
-| Kalkidikum ekinin İngilizce metni ve sesi yok (9 durak) | Efes turunda o duraklarda İngilizce yerine Türkçe metin kalır | `src/data/audioDiscovery.test.ts` → `KALKIDIKUM_ENGLISH_PENDING` |
-| Kalkidikum ekinin koordinatları temsilî; `vedius-gymnasionu` ve `kent-surlari` stadyum noktasını paylaşıyor | Sahada hassas ölçüm gerekir | `efes.md` §4 |
-| Efes turunda iki görselin lisansı doğrulanmadı (`heroon`, `magnesia-kapisi`) | Yayında "Kullanım izni doğrulanmadı" etiketiyle gösteriliyor; Türkçe/İngilizce alternatif gerekiyor | `efes.md` §4 |
+| 52 Verulanus, 53 Antik Liman, 57 Kent Surları: nokta **temsilî** | Avlu sınırları toprak altında / havza ortası / korunmuş bir kesit. Noktalar 2–4 bağımsız kaynakla çapraz kontrol edildi; eksik olan **yerinde ölçüm**. Arayüzde "≈ Yaklaşık konum" yazar | `coordinateAccuracy` kilidi · `efes.md` §5 |
+| Kalkidikum ekinin bir bölümünün noktası kaynaktan türetilmiş | Çift koordinat kalmadı (56↔57 artık 1,9 km ayrı), ama pin yapıyı değil alanı gösteriyor; saha ölçümü gerekir | `efes.md` §5 |
+| 20 Heroon ve 27 Magnesia Kapısı: kartta **yapının kendisi** yok | Commons'ta 8 Kasım 2026'da dört ayrı sorguyla arandı, özgür lisanslı kare **yok** (Heroon aramaları Likya'daki Trysa Heroonu'na çıkıyor). Fotoğraf yerinde çekilmeli. Mevcut kareler CC BY-SA 4.0 ve alt metinleri neyi gösterdiklerini yazıyor | `efes.md` §5 |
+
+Kapananlar (8 Kasım 2026): Heksagon (51) Türkçe kaydı · 33–38 ve 48'in
+metinle ayrışan sesi · #55 Türkçe tınısı · 45–47 Türkçe dikte metni · kayıt
+paketindeki yanlış bit hızı ve eski dosya yolları · 57 Kent Surları'nın
+stadyum fotoğrafı.
 
 ## 5. Neden tek dosya?
 

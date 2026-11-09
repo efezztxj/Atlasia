@@ -68,6 +68,9 @@ export default function AudioDiscoverySheet({ tour, selectedIndex, onSelect, onC
   const title = englishStop?.title ?? stop.title;
   const description = englishStop?.description ?? stop.description;
   const audio = en ? englishStop?.audio : stop.audio;
+  // Yaklaşık konum gerekçesi dile göre: İngilizce arayüzde Türkçe not gösterme.
+  const coordinateShort = en ? (englishStop?.coordinateShort ?? stop.coordinateShort) : stop.coordinateShort;
+  const coordinateNote = en ? (englishStop?.coordinateNote ?? stop.coordinateNote) : stop.coordinateNote;
   const changeLanguage = async (value: "tr" | "en") => {
     if (value === language || languageLoading) return;
     audioRef.current?.pause();
@@ -149,6 +152,12 @@ export default function AudioDiscoverySheet({ tour, selectedIndex, onSelect, onC
             <div className="min-w-0 flex-1">
               <p className="text-[10px] font-bold tracking-[0.12em] text-sun uppercase">{en ? `Stop ${selectedIndex + 1}` : `${selectedIndex + 1}. durak`}</p>
               <p className="mt-1 break-words text-[14px] leading-snug font-semibold">{title}</p>
+              {stop.coordinateAccuracy === "approximate" && (
+                // Gerekçe durakta yaşar: tek cümle 53 Antik Liman için yanlıştı
+                // (ortada yapı yok, alüvyonla dolmuş ve kapalı bir havza var).
+                // Not yoksa jenerik cümle yalnız yedek olarak kullanılır.
+                <p className="mt-1 text-[11px] leading-snug text-sun">≈ {en ? "Approximate location" : "Yaklaşık konum"}<span className="text-mint/70"> · {coordinateShort ?? (en ? "the pin marks a representative point for this place" : "pin bu yer için temsilî bir noktayı gösterir")}</span></p>
+              )}
             </div>
           )}
           {collapsed && englishSource && (
@@ -180,7 +189,7 @@ export default function AudioDiscoverySheet({ tour, selectedIndex, onSelect, onC
             {stopsOpen && <ol id="audio-tour-stops" aria-label={en ? "Tour stops" : "Tur durakları"} className="mt-2 flex flex-wrap gap-2">{tour.stops.map((item, index) => <li key={item.id}><button type="button" aria-current={selectedIndex === index ? "step" : undefined} onClick={() => select(index)} className={`min-h-11 rounded-full border px-3 text-[12px] transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sun ${selectedIndex === index ? "border-sun/60 bg-sun/10 text-sun" : "border-leaf/30 hover:bg-leaf/10"}`}>{index + 1}. {en ? (englishStops?.[item.id]?.title ?? item.title) : item.title}</button></li>)}</ol>}
           </div>
           <button type="button" onClick={() => setShowSources((value) => !value)} aria-expanded={showSources} className="mt-3 min-h-11 rounded-full border border-leaf/30 px-4 text-[13px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sun">{en ? (showSources ? "Hide sources" : "View sources") : (showSources ? "Kaynakları gizle" : "Kaynakları gör")}</button>
-          {showSources && <div className="mt-3 text-[12px] leading-relaxed">{en ? "Sources: " : "Kaynaklar: "}{stop.sources.map((source, index) => <span key={source.url}>{index > 0 && " · "}<a href={source.url} target="_blank" rel="noreferrer" className="underline">{source.title}</a></span>)} · <a href={stop.coordinateSource} target="_blank" rel="noreferrer" className="underline">{en ? "Coordinate source" : "Konum kaynağı"}</a></div>}
+          {showSources && <div className="mt-3 text-[12px] leading-relaxed">{en ? "Sources: " : "Kaynaklar: "}{stop.sources.map((source, index) => <span key={source.url}>{index > 0 && " · "}<a href={source.url} target="_blank" rel="noreferrer" className="underline">{source.title}</a></span>)} · <a href={stop.coordinateSource} target="_blank" rel="noreferrer" className="underline">{en ? "Coordinate source" : "Konum kaynağı"}</a>{coordinateNote && <p className="mt-2 text-[11px] leading-relaxed text-mint/70">{coordinateNote}</p>}</div>}
           <p className="mt-4 text-[11px] leading-relaxed text-mint/70">{en ? "Purple diamonds mark places outside the ancient city core. Locations are approximate; check entrances and walking conditions on site. This sequence is not a route." : "Mor elmaslar antik kent çekirdeği dışındaki yerleri gösterir. Konumlar yaklaşıktır; girişleri ve yürüyüş koşullarını sahada kontrol et. Bu sıralama yol tarifi değildir."}</p>
         </div>
         {attribution && <div className="mt-3 border-t border-leaf/20 pt-2">{attribution}</div>}

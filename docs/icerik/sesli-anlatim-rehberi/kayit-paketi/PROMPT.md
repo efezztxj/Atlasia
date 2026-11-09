@@ -1,5 +1,17 @@
 # Ses agent'ına yapıştırılacak prompt
 
+> **Kapanış notu (8 Kasım 2026).** Bu belge tarihsel kayıttır. Turun 57 durağının
+> tamamı hem Türkçe hem İngilizce seslidir (`/audio/efes-*.mp3`,
+> `/audio/en-efes-*.mp3`); aşağıdaki "bekleyen / kalan" listeleri artık geçerli
+> değildir. Yakın pinlerin ayrılması ve `sharedWith` temizliği de yapıldı.
+> Güncel durum: [`efes.md`](../efes.md) §3–§5.
+>
+> Aşağıdaki kod bloğu, o gün agent'a gönderilen metnin **aynısıdır**. İçindeki
+> `en-kalkidikum-*` dosya adları ve "101 dosya" ifadesi 8 Kasım öncesinin
+> durumudur; bugün geçerli adlar `kayit-listesi.csv` içindeki `hedef_yol`
+> sütunundadır (test ikisini kilitler).
+
+
 Aşağıdaki bloğu **olduğu gibi** kopyala, agent'a ver. Tek bir şeyi
 doldurman gerekiyor: `<<SES>>` yerine kullanılacak sesin adı/kimliği.
 
@@ -79,17 +91,17 @@ en-kalkidikum-domitian-cesmesi.mp3
 TEKNİK KÜNYE (101 dosyanın TAMAMI çerçeve başlığından ölçüldü — birebir uy)
 Örnekleme: 24 000 Hz
 Kanal: mono
-Bit hızı: 64 kbps CBR
+Bit hızı: 32 kbps CBR
 Konteyner: MP3
 ID3: ID3v2.4, tek etiket TSSE = Lavf59.27.100
 
-ffmpeg ile dönüşüm:
-ffmpeg -i ham.wav -ar 24000 -ac 1 -b:a 64k -c:a libmp3lame \
+ffmpeg ile örnek dönüşüm:
+ffmpeg -i ham.wav -ar 24000 -ac 1 -b:a 32k -c:a libmp3lame \
   public/audio/en-kalkidikum-heksagon.mp3
 
 KABUL KONTROLÜ (her dosya için kendin koş, geçmeyen varsa yeniden üret)
 1. ffprobe -v error -show_entries stream=sample_rate,channels,bit_rate \
-     -of csv=p=0 <dosya>   → çıktı tam olarak: 24000,1,64000
+     -of csv=p=0 <dosya>   → çıktı tam olarak: 24000,1,32000
 2. Süre 10–55 sn arasında (mevcut kütüphane 10,5–23 sn; metinler 24–51 sn)
 3. Dosya boyutu 60–250 KB arasında
 4. TTS'e verilen metin, JSON'daki "description" ile kelime kelime aynı

@@ -1,5 +1,12 @@
 # Kalan 12 yerin İngilizcesi
 
+> **Kapanış notu (8 Kasım 2026).** Bu belge tarihsel kayıttır. Turun 57 durağının
+> tamamı hem Türkçe hem İngilizce seslidir (`/audio/efes-*.mp3`,
+> `/audio/en-efes-*.mp3`); aşağıdaki "bekleyen / kalan" listeleri artık geçerli
+> değildir. Yakın pinlerin ayrılması ve `sharedWith` temizliği de yapıldı.
+> Güncel durum: [`efes.md`](./efes.md) §3–§5.
+
+
 > **Güncelleme 2026-11-07:** Chalcidicum ve Domitian Çeşmesi tura eklendi
 > (durak 45 ve 46). Yeni sayı: **12** — 9 Kalkidikum eki + 2 yeni durak +
 > metni değişen Pollio Anıtı. Aşağıdaki 56/57 numaraları tarihsel kayıttır;
@@ -117,6 +124,6 @@ en-kalkidikum-chalcidicum.mp3        ← turda değil
 en-kalkidikum-domitian-cesmesi.mp3   ← turda değil
 ```
 
-Teknik künye: **24 000 Hz · mono · 64 kbps CBR** (101 dosyanın tamamı ölçüldü).
+Teknik künye: **24 000 Hz · mono · 32 kbps CBR** (114 dosya çözülerek doğrulandı; 112 ve 64 kbps yazımları düzeltildi).
 Telaffuz kuralları: `kayit-paketi/agent-ses-gorevi.md` §4.
 Agent prompt'u: `kayit-paketi/PROMPT.md`.

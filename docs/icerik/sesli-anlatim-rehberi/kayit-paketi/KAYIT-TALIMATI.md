@@ -1,13 +1,18 @@
 # Kayıt talimatı — okunacak dosya
 
 > **İki dil var.** İngilizce: `dikte-metni.md` + `kayit-listesi.csv` (11 dosya).
-> Türkçe: `dikte-metni-tr.md` + `kayit-listesi-tr.csv` (3 dosya).
-> İkisi bağımsız ilerler; biri bitince o dil yayına girer.
+> Türkçe: `dikte-metni-tr.md` + `kayit-listesi-tr.csv` (10 dosya).
+> İkisi bağımsız ilerler; biri bitince o dil yayına girer. **İkisi de tamam**
+> (8 Kasım 2026); bu paket artık yeniden kayıt ve arşiv içindir.
 
 ## Ne kaydedilecek
 
 Efes sesli turunun **45 ve 47–57 numaralı** durakları için İngilizce anlatım.
-**11 ayrı dosya.** Toplam ≈ **899 kelime**, ≈ **6 dakika** konuşma.
+**11 ayrı dosya.** Toplam ≈ **1 035 kelime**, ≈ **7 dakika** konuşma.
+
+> **Durum (8 Kasım 2026):** Bu 11 kaydın tamamı üretildi ve turda yayında.
+> Paket artık **yeniden kayıt / arşiv** içindir; yeni bir durak eklenirse aynı
+> adımlar izlenir.
 
 Metinler rehberde **zaten yayında**; eksik olan yalnızca ses. Yani kayıt
 bittiğinde uygulamada İngilizce dinlenebilir hâle geliyor.
@@ -34,37 +39,42 @@ bittiğinde uygulamada İngilizce dinlenebilir hâle geliyor.
 | | |
 |---|---|
 | Biçim | MP3 |
-| Örnekleme | **24 kHz** |
+| Örnekleme | **24 000 Hz** (turdaki 114 dosyayla aynı) |
 | Kanal | **Mono** |
-| Bit hızı | **64 kbps (sabit)** |
+| Bit hızı | **32 kbps CBR** (sabit) |
 | Ses düzeyi | -16 LUFS (hedef), tepe ≤ -1 dB |
 | Gürültü | Arka plan sessiz; klima/fan kapalı |
 | Süre | Dosya başına 24–51 sn |
 
-Bu değerler turdaki 101 dosyanın **tamamından** çerçeve başlığı okunarak
-ölçüldü. Farklı bir ayarla kaydedersen duraklar arasında duyulabilir tını
-farkı olur.
+Bu değerler turdaki 114 dosyanın (57 TR + 57 EN) tamamı `miniaudio` ile
+çözülerek doğrulandı: 24 000 Hz, mono, 32 kbps CBR (saniyede 4 000 bayt).
+Yalnız ilk çerçeve (Xing bilgi çerçevesi) 64 kbps başlığı taşır; dosya
+bit hızını oradan okumak yanıltır, süre = boyut / 4 000. Farklı bir ayarla
+kaydedersen duraklar arasında duyulabilir tını farkı olur.
 
 ## Dosya adları (aynen bunlar)
 
 ```
-public/audio/en-kalkidikum-chalcidicum.mp3
-public/audio/en-kalkidikum-domitian-cesmesi.mp3
-public/audio/en-kalkidikum-hydreion.mp3
-public/audio/en-kalkidikum-triodos-meydani.mp3
-public/audio/en-kalkidikum-heksagon.mp3
-public/audio/en-kalkidikum-verulanus-meydani-salonu.mp3
-public/audio/en-kalkidikum-antik-liman-kanali.mp3
-public/audio/en-kalkidikum-meryem-kilisesi-vaftizhanesi.mp3
-public/audio/en-kalkidikum-bizans-hamamlari.mp3
-public/audio/en-kalkidikum-vedius-gymnasionu.mp3
-public/audio/en-kalkidikum-kent-surlari.mp3
+public/audio/en-efes-chalcidicum.mp3
+public/audio/en-efes-domitian-cesmesi.mp3
+public/audio/en-efes-hydreion.mp3
+public/audio/en-efes-triodos-meydani.mp3
+public/audio/en-efes-heksagon.mp3
+public/audio/en-efes-verulanus-salonu.mp3
+public/audio/en-efes-antik-liman.mp3
+public/audio/en-efes-meryem-vaftizhanesi.mp3
+public/audio/en-efes-bizans-hamamlari.mp3
+public/audio/en-efes-vedius-gymnasionu.mp3
+public/audio/en-efes-kent-surlari.mp3
 ```
+
+Adı uydurma — `kayit-listesi.csv`'deki `hedef_yol` sütunu neyse o; test
+ikisinin birebir aynı olduğunu kilitler.
 
 ## Teslimden sonra
 
 Dosyalar geldiğinde `public/audio/efes-en.json` içindeki on bir kayda `audio`
-alanı eklenir, test kilidi küçülür, yayına çıkar.
+alanı eklenir ve yayına çıkar. **Bu adım 8 Kasım 2026'da tamamlandı.**
 
 **Kısmi teslim olur.** Üç dosya gelse üçü bağlanır; kalanlar Türkçe metinle
 çalışmaya devam eder. Hepsini beklemek gerekmez.
@@ -72,28 +82,35 @@ alanı eklenir, test kilidi küçülür, yayına çıkar.
 
 ---
 
-# Türkçe kayıt (3 dosya)
+# Türkçe kayıt (10 dosya)
 
-Aynı rehberin **Türkçe** sesi eksik olan üç durağı. Teknik künye İngilizceyle
-**aynı**: 24 kHz · mono · 64 kbps CBR.
+Metni 8 Kasım 2026'da yenilenen on durağın Türkçe kaydı (33–38, 45, 47, 48, 51).
+Sesleri güncel metinden üretildi; bu bölüm artık **yeniden kayıt / arşiv**
+içindir. Teknik künye İngilizceyle **aynı**: 24 kHz · mono · 32 kbps CBR.
 
 | Dosya | Neden |
 |---|---|
-| `dikte-metni-tr.md` | Seslendirenin okuyacağı Türkçe metin, 3 bölüm |
+| `dikte-metni-tr.md` | Seslendirenin okuyacağı Türkçe metin, 10 bölüm |
 | `kayit-listesi-tr.csv` | Dosya adı, süre, kelime sayısı, metin |
+| `turkce-dikte-33-38-48-51.json` | Aynı metinlerin makine okunur kopyası |
 
 ## Dosya adları (aynen bunlar)
 
 ```
-public/audio/chalcidicum.mp3
-public/audio/domitian-cesmesi.mp3
-public/audio/heksagon.mp3
+public/audio/efes-tiyatro-gymnasionu.mp3
+public/audio/efes-yukari-hamam.mp3
+public/audio/efes-serapeion.mp3
+public/audio/efes-yamac-ev-2.mp3
+public/audio/efes-liman-hamamlari.mp3
+public/audio/efes-meryem-ana-evi.mp3
+public/audio/efes-chalcidicum.mp3
+public/audio/efes-domitian-cesmesi.mp3
+public/audio/efes-laecanius-cesmesi.mp3
+public/audio/efes-heksagon.mp3
 ```
 
-Dikkat: bu üçü `kalkidikum-` öneki **taşımaz**. Turda 49–57 arasındaki
-Kalkidikum durakları `kalkidikum-<id>.mp3` adını kullanıyor; 45, 47 ve 51 ise
-yalın `<id>.mp3`. Adı uydurma — `kayit-listesi-tr.csv`'deki `hedef_yol`
-sütunu neyse o.
+Adı uydurma — `kayit-listesi-tr.csv`'deki `hedef_yol` sütunu neyse o; test
+ikisinin birebir aynı olduğunu kilitler.
 
 ## Türkçe telaffuz notları
 
