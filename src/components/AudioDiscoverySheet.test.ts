@@ -111,6 +111,36 @@ describe("küçültülmüş panel tek satır (görsel 2)", () => {
   });
 });
 
+describe("dil düğmesi açık ve küçük hâlde aynı incelikte (kullanıcı isteği 2026-11-09)", () => {
+  const siniflar = (root: Element) => {
+    const buttons = root.querySelectorAll('[role="group"][aria-label="Anlatım dili"] button');
+    expect(buttons).toHaveLength(2);
+    return Array.from(buttons).map((button) => button.className);
+  };
+
+  it("her iki hâlde de min-h-8 · px-2 · text-[11px] · TR/EN kısaltması", () => {
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+    const { container } = render(createElement(AudioDiscoverySheet, { tour: AUDIO_DISCOVERY_TOURS[0], selectedIndex: 0, onSelect: vi.fn(), onClose: vi.fn() }));
+
+    for (const className of siniflar(container)) {
+      expect(className).toContain("min-h-8");
+      expect(className).toContain("px-2");
+      expect(className).toContain("text-[11px]");
+      // Büyük hâlde 44 px'lik düğme ve "Türkçe" yazısı geri gelmesin.
+      expect(className).not.toContain("min-h-9");
+      expect(className).not.toContain("min-h-11");
+      expect(className).not.toContain("px-3");
+    }
+    expect(screen.getByRole("button", { name: "Türkçe" }).textContent).toBe("TR");
+    expect(screen.getByRole("button", { name: "English" }).textContent).toBe("EN");
+
+    // Küçültülmüş hâl de aynı ölçüleri kullanmalı.
+    fireEvent.click(screen.getByRole("button", { name: "Sesli turu küçült" }));
+    expect(siniflar(container)).toEqual(siniflar(container));
+    expect(screen.getByRole("button", { name: "Türkçe" }).textContent).toBe("TR");
+  });
+});
+
 describe("dinleme paneli kısa durur (kullanıcı kararı 2026-11-09)", () => {
   it("panel kısa yükseklikle açılır, fotoğraf ve hikâye içeride kaydırılarak gelir", () => {
     vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
