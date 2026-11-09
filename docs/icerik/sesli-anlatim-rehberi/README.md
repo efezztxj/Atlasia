@@ -96,7 +96,7 @@ Böylece her şehir kendi dosyasında, ana kural ise burada tek yerde durur.
 | Yaklaşık konumlu üç durak (52, 53, 57) | Arayüzde "≈ Yaklaşık konum" yazar; saha ölçümü yapılmadı | aynı dosya, `coordinateAccuracy` kilidi |
 | 33–38 ve 48'in sesi, ekrandaki metnin eski uzun hâlini okuyordu | 8 Kasım 2026'da hepsi güncel metinden yeniden üretildi; metin/süre oranı artık testle kilitli | `efes.md` §2 · `src/data/audioDiscovery.test.ts` |
 | Kalkidikum ekinin koordinatları temsilî; `vedius-gymnasionu` ve `kent-surlari` stadyum noktasını paylaşıyor | Sahada hassas ölçüm gerekir | `efes.md` §5 |
-| 20 Heroon ve 27 Magnesia Kapısı kartlarında **yapının kendisi** görünmüyor | İkisi de CC BY-SA 4.0 (Dosseman) ve alt metin bunu açıkça yazıyor ("kapının kendisi bu karede görünmüyor"); yine de yapıyı gösteren lisanslı bir kare gerekiyor | `efes.md` §5 |
+| 20 Heroon ve 27 Magnesia Kapısı kartlarında **yapının kendisi** görünmüyor | İkisi de CC BY-SA 4.0 (Dosseman) ve alt metin bunu açıkça yazıyor. Commons'ta 8 Kasım'da arandı: özgür lisanslı kare **yok** (Heroon aramaları Trysa Heroonu'na çıkıyor), fotoğraf saha işi | `efes.md` §5 |
 
 ## 5. Neden tek dosya?
 

@@ -161,8 +161,25 @@ inmez: daha büyük kaydırma pini komşu yapıya taşır.
    gösterdiklerini açıkça yazıyor. Ek olarak 49, 50, 53, 54, 55, 56, 57'de bu
    dalın daha isabetli kareleri geri getirildi (Hydreion, Triodos, liman ovası,
    vaftiz havuzu, Bizans Sarayı, Kaistros heykeli, sur kesiti) — hepsi zaten
-   Commons/CC lisanslı. Kalan iş: 20 ve 27 için yapının kendisini gösteren,
-   lisansı doğrulanmış bir kare bulmak.
+   Commons/CC lisanslı.
+   **Kalan iş (20 Heroon, 27 Magnesia Kapısı): yapının kendisini gösteren
+   lisanslı kare.** 8 Kasım 2026'da Commons'ta arandı ve **bulunamadı**;
+   aramalar tekrar edilmesin diye buraya yazılıyor:
+   - `list=search` "Heroon Ephesus" → 15 sonuç, hepsi kitap/PDF; tek "Heroon"
+     dosyaları **Trysa Heroonu** (Likya, Viyana müzesi frizleri) — Efes değil.
+   - `list=search` "Ephesos Heroon" → 22 sonuç, yine Trysa frizleri.
+   - `incategory:Ephesus heroon` → 0 sonuç.
+   - `list=geosearch` 20'nin noktası (37.938754, 27.341317, r=120 m) → 25 dosya,
+     hepsi Hadrian Kapısı / Yamaç Evler / Kuretler Caddesi manzarası; Heroon'u
+     ayrı gösteren kare yok.
+   - "Magnesian Gate" / "Magnesia Kapısı" / "Magnesia-Tor" → yalnız *kapıdan
+     çıkan yol* kareleri (bizim kullandığımız dahil) ve tarihî kitap taramaları.
+   - `list=geosearch` 27'nin noktası (37.934554, 27.350495, r=150 m) → 2 dosya,
+     ikisi de "MariaRoad" yolu.
+   Yani sorun lisans değil, **özgür lisanslı karenin var olmaması**. Fotoğraf
+   yalnız yerinde çekilebilir; o yüzden bu kalem saha işi olarak duruyor. Mevcut
+   iki kare CC BY-SA 4.0 (Dosseman) ve alt metinleri neyi gösterdiklerini açıkça
+   yazıyor ("kapının kendisi bu karede görünmüyor"), yani yanlış bilgi vermiyorlar.
 5. ~~Türkçe ses kaydı olmayan üç durak.~~ **Kapatıldı (8 Kasım 2026).**
    Chalcidicum (45) ve Domitian Çeşmesi (47) kayıtları bağlandı;
    `main`'de Pollio (46) da bağlanmıştı.
