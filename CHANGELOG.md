@@ -1,5 +1,35 @@
 # Atlasia Update
 
+## 2026-11-08 — Uygulama kabuğu CLS'i: çerez kartı font takasını beklemiyor
+
+- **Ölçüm:** Lighthouse `?tab=kesfet` koşusu 3/3 kez **CLS 0,120** ve toplam CLS'in
+  **tamamı** tek bir öğeye yazıldı: çerez kartının `<section>`'u. Aynı koşuda
+  `perf 0,34` ile 0,35'lik tabanın 0,01 altında kalıyordu.
+- **Kök neden:** kart alta sabit (`position: fixed; bottom: …`). Fontlar
+  `font-display: swap` ile geliyor: metin önce yedek fontla diziliyor, gerçek font
+  sonradan inince satır sayısı değişiyor, kartın yüksekliği değişiyor ve **üst
+  kenarı yukarı kayıyor**. Sabit konum, kaymayı engellemiyor — kaymanın kendisi
+  kartın içinde oluyor.
+- **Düzeltme (iki katman):**
+  1. **Fontlar önceden yükleniyor** (`<link rel="preload" as="font">`, dört dosya,
+     `crossorigin` ile). Türkçe sayfa dördünü de zaten kullanıyor; ek bayt yok,
+     yalnızca daha erken iniyor. `?tab=kesfet` sayfası için Pexels'e `preconnect`
+     de eklendi (LCP öğesi oradan geliyor: `-319 ms` fırsatı).
+  2. **Kart, kendi metnini çizen fontlar hazır olana kadar bağlanmıyor**
+     (`document.fonts.load`, 900 ms üst sınır). Bağlanmayan öğe kaymaz. Font isteği
+     reddedilirse ya da API yoksa (jsdom, eski tarayıcı) kart hemen görünür.
+- **Neden `document.fonts.ready` değil:** o, "şu an yüklü olan her şey bitti" der;
+  panel hiçbir fontu tetiklemediyse anında çözülür ve kayma geri gelir. `load`
+  isteği başlatır ve bitmesini bekler.
+- **Kilitler:** `src/components/CookieConsent.test.ts` (üç yeni test: font
+  gelmeden bağlanmama, font hatasında bağlanma, 900 ms tavanı) ve
+  `src/config/selfHostedFonts.test.ts` (dört preload, `crossorigin`, dosyalar var).
+- **Bütçe:** ilk HTML seti 129.204 B / 129.400 B gzip — preload satırları ve
+  `preconnect` bu bütçenin içinde kaldı (eşik değiştirilmedi, %0,15 pay).
+- **Doğrulama:** `tsc`, `eslint`, **195 dosya / 1 487 test**, `test:scripts`,
+  `vite build` + bundle bütçesi + SW kabuğu, `audit:check`. Lighthouse sonucu
+  bir sonraki CI turunda okunacak.
+
 ## 2026-11-08 — Efes turu 57 durak, iki dilde tam sesli
 
 - **Kapsam:** Efes sesli turu **57 durak**; her durak **Türkçe 57/57** ve **İngilizce 57/57** sesli. Dokuz Kalkidikum yapısı ana haritadan çıkarılıp turun numaralı duraklarına taşındı; numaralar artık veriden okunuyor (16/17/18/24/25/26/27/29/38 boşlukları bu yüzdendi).

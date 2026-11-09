@@ -29,6 +29,17 @@ export default function CookieConsent() {
   // izin verilmedi / yükleniyor / yüklendi / engellendi.
   const [clarityState, setClarityState] = useState<ClarityStatus>(() => clarityStatus());
   const [privacyOpen, setPrivacyOpen] = useState(false);
+  // Panel alta sabitlendiği için yüksekliği değişince ÜST kenarı kayar. Metin,
+  // yedek fontla bir kez dizilip gerçek font gelince yeniden dizildiğinde tam
+  // bu oluyordu: Lighthouse `?tab=kesfet` CLS'ini (0,120) bu bölüme yazdı
+  // (2026-11-08). Çözüm: panoyu, kendi metnini çizen fontlar hazır olana kadar
+  // **hiç bağlamamak**. Bağlanmayan öğe kaymaz; geç bağlanma CLS üretmez.
+  //
+  // Neden `document.fonts.ready` değil: o, "şu an yüklü olan her şey bitti"
+  // demek — panel hiçbir fontu tetiklemediyse hemen çözülür ve aynı kayma geri
+  // gelir. `fonts.load` ise isteği başlatır ve bitmesini bekler.
+  // `fonts` API'si olmayan ortamda (jsdom, eski tarayıcı) hemen bağlanır.
+  const [fontsReady, setFontsReady] = useState(() => typeof document === "undefined" || !document.fonts);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const primaryRef = useRef<HTMLButtonElement>(null);
@@ -71,6 +82,26 @@ export default function CookieConsent() {
       window.removeEventListener(CLARITY_STATUS_EVENT, onClarityStatus);
     };
   }, []);
+
+  useEffect(() => {
+    if (fontsReady) return;
+    let cancelled = false;
+    const done = () => {
+      if (!cancelled) setFontsReady(true);
+    };
+    // Fontlar gelmezse (kapalı ağ, font-src engeli, yavaş bağlantı) paneli
+    // süresiz ertelemek olmaz: 900 ms sonra yedek fontla bağlanır.
+    const timer = setTimeout(done, 900);
+    const ornek = "Çerez ve cihaz depolaması ışık ölçüm";
+    Promise.all([
+      document.fonts.load('1rem "DM Sans"', ornek),
+      document.fonts.load('700 1rem "Bricolage Grotesque"', ornek),
+    ]).then(done, done);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [fontsReady]);
 
   useEffect(() => {
     if (!open || !saved || privacyOpen) return;
@@ -120,6 +151,9 @@ export default function CookieConsent() {
   };
 
   if (!open && !privacyOpen) return null;
+  // Gizlilik açıklaması kullanıcı tıklamasıyla açılır, font beklemez;
+  // yalnız çerez kartı font hazır olana kadar bağlanmaz.
+  if (open && !fontsReady) return null;
 
   return (
     <>

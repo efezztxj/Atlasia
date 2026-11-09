@@ -58,6 +58,29 @@ describe("fontlar kendi origin'imizden (CLS + LCP)", () => {
     expect(headers).not.toMatch(/style-src[^;]*fonts\.googleapis/);
   });
 
+  it("dört font dosyası da önceden yüklenir (font takası geç kalmasın)", () => {
+    // NEDEN: `font-display: swap` yüzünden metin önce yedek fontla diziliyor,
+    // gerçek font gelince yeniden diziliyordu. Alt kenara sabit çerez paneli bu
+    // yüzden yükseklik değiştirip üst kenarından kayıyordu; Lighthouse
+    // `?tab=kesfet` CLS'i (0,120) bu paneldi. Preload, takası ilk boyamadan
+    // önceye çeker. Dört dosya da Türkçe sayfada zaten kullanılıyor.
+    const preloads = [...html.matchAll(/<link rel="preload" as="font"[^>]*href="(\/fonts\/[^"]+)"[^>]*>/g)].map((m) => m[1]);
+    expect(preloads.sort()).toEqual([
+      "/fonts/bricolage-latin-ext.woff2",
+      "/fonts/bricolage-latin.woff2",
+      "/fonts/dm-sans-latin-ext.woff2",
+      "/fonts/dm-sans-latin.woff2",
+    ]);
+    for (const link of html.matchAll(/<link rel="preload" as="font"[^>]*>/g)) {
+      // Font isteği CORS modunda gider; `crossorigin` yoksa preload iki kez indirilir.
+      expect(link[0]).toContain("crossorigin");
+      expect(link[0]).toContain('type="font/woff2"');
+    }
+    for (const src of preloads) {
+      expect(existsSync(fileURLToPath(new URL(`public${src}`, root)))).toBe(true);
+    }
+  });
+
   it("lisans dosyası yayında (SIL OFL zorunluluğu)", () => {
     const license = readFileSync(fileURLToPath(new URL("public/fonts/OFL.txt", root)), "utf8");
     expect(license).toMatch(/SIL Open Font License/);
