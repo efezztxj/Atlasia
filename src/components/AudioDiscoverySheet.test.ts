@@ -14,6 +14,8 @@ describe("sesli keşif", () => {
     render(createElement(AudioDiscoverySheet, { tour: AUDIO_DISCOVERY_TOURS[0], selectedIndex: 0, onSelect: select, onClose: vi.fn() }));
     expect(screen.getByRole("img", { name: "Efes Prytaneion kalıntıları" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "CC BY-SA 3.0" })).toBeTruthy();
+    // 2026-11-09: çip listesi kapalı başlar (57 çip paneli kaplıyordu).
+    fireEvent.click(screen.getByRole("button", { name: /Tur durakları/ }));
     expect(screen.getByRole("button", { name: "1. Prytaneion" }).getAttribute("aria-current")).toBe("step");
     fireEvent.click(screen.getByRole("button", { name: "Kaynakları gör" }));
     expect(screen.getByRole("link", { name: "Konum kaynağı" })).toBeTruthy();
@@ -71,6 +73,66 @@ describe("sesli keşif", () => {
     render(createElement(AudioDiscoverySheet, { tour: AUDIO_DISCOVERY_TOURS[0], selectedIndex: 0, onSelect: vi.fn(), onClose: vi.fn() }));
     fireEvent.click(screen.getByRole("button", { name: "Dinle" }));
     await waitFor(() => expect(screen.getByRole("status").textContent).toContain("Ses kaydı açılamadı"));
+  });
+});
+
+describe("küçültülmüş panel tek satır (görsel 2)", () => {
+  it("tek satırda kalır: başlığa dokunmak genişletir, dil düğmeleri isim alanının yanındadır", () => {
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+    render(createElement(AudioDiscoverySheet, { tour: AUDIO_DISCOVERY_TOURS[0], selectedIndex: 0, onSelect: vi.fn(), onClose: vi.fn() }));
+    fireEvent.click(screen.getByRole("button", { name: "Sesli turu küçült" }));
+    // Görsel 2'de başlık ve ileri/geri oklar aynı satırdadır; dil değiştirme
+    // o boşluğa taşındığı için küçültülmüş hâlde iki satıra taşmaz.
+    expect(screen.getByRole("button", { name: "Sesli turu genişlet" }).getAttribute("aria-expanded")).toBe("false");
+    const group = screen.getByRole("group", { name: "Anlatım dili" });
+    expect(within(group).getByRole("button", { name: "Türkçe" }).getAttribute("aria-pressed")).toBe("true");
+    expect(within(group).getByRole("button", { name: "English" })).toBeTruthy();
+    // Büyük başlıktaki dil düğmeleri çökmüş hâlde görünmez (ikinci grup yok).
+    expect(screen.getAllByRole("group", { name: "Anlatım dili" })).toHaveLength(1);
+    // Küçültülmüşken kapat düğmesi yoktur (görsel 2 tek satır); Escape çalışır.
+    expect(screen.queryByRole("button", { name: "Sesli turu kapat" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Sesli turu genişlet" }));
+    expect(screen.getByRole("button", { name: "Sesli turu kapat" })).toBeTruthy();
+    expect(screen.getByRole("img", { name: "Efes Prytaneion kalıntıları" })).toBeTruthy();
+  });
+
+  it("küçültülmüş hâlden dil değiştirir ve oynatmayı durdurur", async () => {
+    const { readFileSync } = await import("node:fs");
+    const translations = JSON.parse(readFileSync("public/audio/efes-en.json", "utf8"));
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => translations }));
+    const pause = vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+    render(createElement(AudioDiscoverySheet, { tour: AUDIO_DISCOVERY_TOURS[0], selectedIndex: 0, onSelect: vi.fn(), onClose: vi.fn() }));
+    fireEvent.click(screen.getByRole("button", { name: "Sesli turu küçült" }));
+    fireEvent.click(within(screen.getByRole("group", { name: "Anlatım dili" })).getByRole("button", { name: "English" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Play" })).toBeTruthy());
+    expect(pause).toHaveBeenCalled();
+    expect(document.querySelector("audio")?.getAttribute("src")).toBe("/audio/en-efes-prytaneion.mp3");
+    vi.unstubAllGlobals();
+  });
+});
+
+describe("tur durakları listesi açılıp kapanır (görsel 3)", () => {
+  it("kapalı başlar, açılır ve tekrar kapanır", () => {
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+    render(createElement(AudioDiscoverySheet, { tour: AUDIO_DISCOVERY_TOURS[0], selectedIndex: 0, onSelect: vi.fn(), onClose: vi.fn() }));
+    const toggle = screen.getByRole("button", { name: /Tur durakları/ });
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    // Kapalıyken 57 çip DOM'da yok: panel ilk açılışta metni görünür bırakır.
+    expect(screen.queryByRole("list", { name: "Tur durakları" })).toBeNull();
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByRole("list", { name: "Tur durakları" })).toBeTruthy();
+    expect(toggle.getAttribute("aria-controls")).toBe("audio-tour-stops");
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByRole("list", { name: "Tur durakları" })).toBeNull();
+  });
+
+  it("küçültülmüş panelde liste düğmesi görünmez", () => {
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+    render(createElement(AudioDiscoverySheet, { tour: AUDIO_DISCOVERY_TOURS[0], selectedIndex: 0, onSelect: vi.fn(), onClose: vi.fn() }));
+    fireEvent.click(screen.getByRole("button", { name: "Sesli turu küçült" }));
+    expect(screen.queryByRole("button", { name: /Tur durakları/ })).toBeNull();
   });
 });
 
