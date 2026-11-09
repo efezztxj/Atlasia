@@ -150,7 +150,9 @@ inmez: daha büyük kaydırma pini komşu yapıya taşır.
    **52 için ek kanıt:** Wikidata Q104641912 ("Halls of Verulanus") aynı yapıya
    37.944090, 27.339919 veriyor — mevcut pinden 100 m kuzeydoğu; avlu
    200 × 240 m olduğu için iki nokta da yapının içinde kalır. Fark durak
-   kartında (`coordinateNote`) yazılı. Kalan iş: üç noktayı yerinde ölçmek.
+   kartında (`coordinateNote`) yazılı. **Kalan iş: üç noktayı yerinde ölçmek**
+   (saha gerektirir; bu ortamda yapılamaz). Noktalar 2–3 bağımsız kaynakla
+   çapraz kontrol edildi, sorun kaynak değil ölçüm.
 4. **Görseller — lisans kapısı geçildi, konu eşleşmesi iki durakta zayıf.**
    `main`'in 8 Kasım süpürmesi 57 görselin hepsini özgür lisanslı hâle getirdi
    ve "kullanım izni doğrulanmadı" durumunu testle yayından men etti; yerel

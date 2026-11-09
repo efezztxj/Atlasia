@@ -111,7 +111,7 @@ biçimde).
 Böylece **12 İngilizce kaydın tamamı** eski aralıkta: 2.57–8.26, ortalama 5.11.
 Eski 45 dosyanın ortalaması 5.09 — grup düzeyinde fark kalmadı.
 
-**Açık kalan tek izleme:** #55 Türkçe kayıt kendi grubundan ayrışıyor (z ≈ +2.7).
+**O tarihte açık kalan tek izleme (sonradan kapatıldı):** #55 Türkçe kayıt kendi grubundan ayrışıyor (z ≈ +2.7).
 Metni sayı ağırlıklı ("yetmiş beş metreye elli metrelik", "bin dokuz yüz
 ellili"); fark büyük olasılıkla sözcük dağılımından. O tarihte Türkçe anlatıcı
 sesi kayıtlı olmadığı için dokunulmadı; 8 Kasım'ın üçüncü turunda Türkçe ses
