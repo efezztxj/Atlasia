@@ -98,6 +98,12 @@ export default function AudioDiscoverySheet({ tour, selectedIndex, onSelect, onC
     setLanguage(value);
   };
   const select = (index: number) => { audioRef.current?.pause(); onSelect(index); };
+  /**
+   * Kullanıcı kararı (2026-11-09): dinleme paneli kısa dursun. Panel açılışta
+   * yalnız başlık + dil + durak kartı + "Diğer yerler" kadar yer kaplar
+   * (≈ görseldeki üst kısım); fotoğraf ve hikâye panelin İÇİNDE kaydırılarak
+   * görülür. Önceden 55dvh idi ve açılışta fotoğrafın yarısını gösteriyordu.
+   */
   const languageLabel = (value: "tr" | "en") => (value === "tr" ? "Türkçe" : "English");
   return (
     <>
@@ -106,7 +112,7 @@ export default function AudioDiscoverySheet({ tour, selectedIndex, onSelect, onC
       inert={categoriesOpen}
       lang={language}
       aria-labelledby="audio-discovery-title"
-      className="fixed inset-x-3 bottom-[calc(66px+env(safe-area-inset-bottom))] z-50 mx-auto max-h-[55dvh] max-w-[440px] overflow-y-auto overscroll-contain rounded-[24px] border border-leaf/30 bg-ink text-mint shadow-2xl md:right-4 md:bottom-4 md:left-auto"
+      className="fixed inset-x-3 bottom-[calc(66px+env(safe-area-inset-bottom))] z-50 mx-auto max-h-[min(42dvh,340px)] max-w-[440px] overflow-y-auto overscroll-contain rounded-[24px] border border-leaf/30 bg-ink text-mint shadow-2xl md:right-4 md:bottom-4 md:left-auto md:max-h-[min(46dvh,380px)]"
     >
       <div className={collapsed ? "p-2.5 sm:p-3" : "p-4 sm:p-5"}>
         {!collapsed && (
