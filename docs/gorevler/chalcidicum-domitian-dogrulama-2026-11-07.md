@@ -254,8 +254,8 @@ kareye aitti. Kalan 9 yerel görselin hepsi tek tek gözle doğrulandı.
 **Kapanan durum:**
 - 57/57 durağın görsel künyesi tam (`url`, `alt`, `source`, `author`, `license`,
   `licenseUrl`) ve **hiçbiri** "doğrulanmadı" değil.
-- 57/57 görsel **benzersiz** — hiçbir durak başka bir durağın fotoğrafını
-  kullanmıyor.
+- 57/57 görselin künyesi tam; aynı koordinatı paylaşan duraklar
+  (`sharedWith`) kasten aynı kareyi kullanabilir — bkz. §9.4 düzeltmesi.
 - Yerel dosya denetimi: 9 kullanılan / 9 mevcut / 0 eksik / 0 artık.
 
 **Yeni kilit (test):** `src/data/audioDiscovery.test.ts` içine eklenen kural
@@ -411,3 +411,112 @@ doğru, sıra kayıtta.
 
 Mutasyon testi: `dikte-metni.md`'den 45 chalcidicum bölümü çıkarıldığında
 **2 test düştü**; geri konunca yeşil.
+
+---
+
+## 9. Görsel künyesi tam denetimi (2026-11-08)
+
+"Yaptıklarını denetle" isteği üzerine §6'nın kendi kendine verdiği üç
+"kapandı" iddiası bağımsız olarak yeniden ölçüldü. Üçü de **doğru** çıktı,
+ama biri hariç: §6'nın "57/57 görsel benzersiz" cümlesi yanlış yazılmıştı.
+
+### 9.1 — Yöntem
+
+| Adım | Araç | Kapsam |
+| --- | --- | --- |
+| Thumb yolunu sözlükle karşılaştır | Commons `prop=imageinfo&iiurlwidth=960` | **48/48** Commons dosyası |
+| Lisans karşılaştır | `iiextmetadatafilter=LicenseShortName` | **48/48** |
+| Yazar karşılaştır | `iiextmetadatafilter=Artist` | **48/48** |
+| Kategori ⇄ durak konusu | `prop=categories` | **48/48** |
+| Yerel dosyaları gözle | `read_file` | **9/9** |
+
+Thumb yolu tahmin edilmez — API'nin döndürdüğü `thumburl` ile JSON'daki
+`image.url` **birebir** karşılaştırıldı. Bu, §6'nın "elle kurulan 8 yoldan
+2'si yanlıştı" hatasının bir daha oluşamayacağı yöntemdir.
+
+### 9.2 — Sonuçlar
+
+| Denetim | Sonuç |
+| --- | --- |
+| Thumb yolu | **48/48 doğru** · 0 hatalı |
+| Lisans metni | **48/48 eşleşti** · 0 farklı |
+| Yazar | **48/48 eşleşti** (tek fark `Sailko`/`sailko` büyük-küçük harf) |
+| Yerel görsel | **9/9 gözle doğru** |
+| Görsel dosyası diskte | **9/9 var**, 0 eksik |
+
+### 9.3 — Tek gerçek bulgu: 57 `kent-surlari` yanlış fotoğraftaydı
+
+57. durak **Helenistik ve Bizans Kent Surları**, `Ancient stadium in Ephesus,
+April 2024 (1).jpg` dosyasını kullanıyordu. Dosyanın Commons künyesi
+`Category:Stadium (Ephesus)`, açıklaması "Ancient stadium in Ephesus" —
+yani **stadyum**. 15. durak `efes-stadyumu` aynı serinin `(5).jpg` karesini
+kullanıyordu: iki stadyum fotoğrafı, biri surlar için.
+
+Doğru fotoğraf bulundu ve yerleştirildi:
+
+| Alan | Değer |
+| --- | --- |
+| Dosya | `Ancient city wall of Ephesos. Near Selçuk, İzmir Province, Turkey - panoramio (2).jpg` |
+| Kategori | `Category:Ancient city wall of Ephesus` |
+| Yazılı | Maarten Sepp · CC BY-SA 3.0 |
+| Yol | `/1/1f/` (API'den alındı, elle kurulmadı) |
+
+Kategori adı birebir "city wall of Ephesus"; surlar için uygun kare.
+Aynı kategoride 3 dosya daha var, yedek olarak duruyor.
+
+### 9.4 — Yanlış olan cümle: "57/57 görsel benzersiz"
+
+§6'da yazılan bu cümle **doğru değildi**. `sharedWith` alanı olan 5 durak
+çifti — 14/54, 15/56/57, 22/53, 37/55, 46/49 — **kasten** aynı koordinatı
+paylaşır ve bazıları aynı fotoğrafı kullanır:
+
+- 15 `efes-stadyumu` ve 57 `kent-surlari` → **ikisi de aynı stadyum serisi**
+  (bu artık 57'nin değişmesiyle çözüldü)
+- 55 `bizans-hamamlari` → 37 `liman-hamamlari` ile **aynı** `Harbor Baths…10.jpg`;
+  alt metinde "Liman Hamamları kompleksi; Bizans Hamamları bu yapıların
+  üzerine kuruldu" diyerek bu **bilinçli** olarak açıklanmış.
+
+Yani "benzersiz" yanlış bir iddiaydı; doğru ifade: *her durağın künyesi tam,
+paylaşılan koordinatlarda görsel kasten tekrar edebilir.* §6'nın bu cümlesi
+düzeltildi.
+
+### 9.5 — Kategori ⇄ konu taraması: 44 uyumlu, 4 temsilî
+
+48 Commons görselinin kategori adı durak konusuyla karşılaştırıldı. 44'ü
+birebir kendi yapısını gösteriyor. 4 tanesi **temsilî** ama alt metin bunu
+açıkça söylüyor — yeni bir bulgu değil, §6'nın bilinen sınırı:
+
+| # | Durak | Dosya kategorisi | Neden |
+| --- | --- | --- | --- |
+| 19 | `oktagon` | `Curetes Street in Ephesus` | Oktagon'un kendisi Commons'ta yok |
+| 42 | `alytarkhos-stoasi` | `Mosaics in Curetes Street` | Stoa'nın kendisi yok |
+| 45 | `chalcidicum` | `Curetes Street in Ephesus` | Kalkidikum'un kendisi yok |
+| 51 | `heksagon` | `Curetes Street in Ephesus` | Heksagon'un kendisi yok |
+
+Bunların dördü de alt metinde "bu sıranın içindedir / bu caddenin ucundadır"
+diye konumlanıyor; okuyucuya yapının kendisi gösteriliyor izlenimi
+verilmiyor.
+
+**Doğrulama sırasında düzelen iki şüpheli:**
+
+- 56 `vedius-gymnasionu` — dosya `Category:Theatre Gymnasium`, ilk bakışta
+  33 `tiyatro-gymnasionu` ile karışmış görünüyor. Ama Commons açıklaması
+  "This area had the Gymnasium of Vedius and theatre baths" — **doğru**.
+- 2 `devlet-agorasi` — dosya `Category:Odeon (Ephesus)` + `State Agora`,
+  açıklaması "The Odeon seen from across the State Agora" — **doğru**,
+  alt metin de bunu söylüyor.
+- 49 `hydreion-kalkidikum` — `Pollio Fountain (Ephesus)` kategorisinde ama
+  Hydreion Pollio Anıtı'nın yanındadır; konum itibarıyla savunulabilir.
+
+### 9.6 — Kalan sınır (dürüstçe)
+
+Bu denetim **künyeyi** doğrular, **pikseli** değil: her dosyanın Commons'ta
+o yapıya ait olduğunu doğrular; fotoğrafın o yapıyı gerçekten gösterdiğini
+gözle onaylamak 39 Commons görselinde **mümkün değil** — Wikimedia thumb
+URL'leri bu ortamdan HTTP 500/SSL hatası veriyor. Görsel olarak doğrulanan
+9 dosya yalnızca yerel `/images/efes/*.jpg` (gerçekten indirilebilir) ve
+elle karşılaştırılabildi.
+
+Kategori adı + Commons açıklaması, elle seçilmiş bir fotoğrafın o yapıya
+ait olduğuna dair yeterli kanıttır; ama "fotoğrafta şu an ne görünüyor"
+sorusuna yalnızca kategori üzerinden cevap verilebiliyor.
