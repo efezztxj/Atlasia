@@ -4,6 +4,7 @@ import type { AudioDiscoveryTour } from "../data/audioDiscovery";
 import type { EnglishAudioStop } from "../data/audioDiscoveryEnglish";
 import { ENGLISH_AUDIO_SOURCES } from "../data/audioDiscoveryEnglish";
 import AudioDiscoveryCategories from "./AudioDiscoveryCategories";
+import PhotoLightbox from "./PhotoLightbox";
 import { usePanelAccess } from "../hooks/usePanelAccess";
 
 interface Props {
@@ -36,6 +37,8 @@ export default function AudioDiscoverySheet({ tour, selectedIndex, onSelect, onC
   const [stopsOpen, setStopsOpen] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [showSources, setShowSources] = useState(false);
+  /** Durak fotoğrafı tam ekran (kullanıcı isteği 2026-11-09: "nerede fotoğraf varsa"). */
+  const [fullscreen, setFullscreen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
 
@@ -160,7 +163,7 @@ export default function AudioDiscoverySheet({ tour, selectedIndex, onSelect, onC
         {!collapsed && <button type="button" onClick={() => setCategoriesOpen(true)} className="mt-3 flex min-h-11 w-full items-center justify-between rounded-xl border border-leaf/30 px-4 text-left text-[13px] font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sun"><span>{en ? "Other places" : "Diğer yerler"}</span><ChevronRight size={17} aria-hidden="true" /></button>}
 
         <div hidden={collapsed}>
-          {stop.image && <figure className="mt-4"><img key={stop.id} src={stop.image.url} alt={englishStop?.imageAlt ?? stop.image.alt} className="h-36 w-full rounded-2xl object-cover" loading="lazy" onError={(event) => { event.currentTarget.style.display = "none"; }} /><figcaption className="mt-2 text-[10px] leading-relaxed text-mint/70"><a href={stop.image.source} target="_blank" rel="noreferrer" className="underline">{stop.image.author}</a> · <a href={stop.image.licenseUrl} target="_blank" rel="noreferrer" className="underline">{stop.image.license === "Kullanım izni doğrulanmadı" && en ? "Reuse permission not verified" : stop.image.license}</a> · {en ? "Resized and cropped" : "Boyutlandırıldı ve kırpıldı"}{stop.id === "domitian-tapinagi" ? (en ? " · Reconstructed columns’ origin uncertain." : " · Yeniden kurulan sütunların kökeni belirsiz.") : ""}</figcaption></figure>}
+          {stop.image && <figure className="mt-4"><button type="button" onClick={() => setFullscreen(true)} aria-label={`${stop.image.alt} — tam ekran aç`} className="block w-full rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sun"><img key={stop.id} src={stop.image.url} alt={englishStop?.imageAlt ?? stop.image.alt} className="h-36 w-full rounded-2xl object-cover" loading="lazy" onError={(event) => { event.currentTarget.style.display = "none"; }} /></button><figcaption className="mt-2 text-[10px] leading-relaxed text-mint/70"><a href={stop.image.source} target="_blank" rel="noreferrer" className="underline">{stop.image.author}</a> · <a href={stop.image.licenseUrl} target="_blank" rel="noreferrer" className="underline">{stop.image.license === "Kullanım izni doğrulanmadı" && en ? "Reuse permission not verified" : stop.image.license}</a> · {en ? "Resized and cropped" : "Boyutlandırıldı ve kırpıldı"}{stop.id === "domitian-tapinagi" ? (en ? " · Reconstructed columns’ origin uncertain." : " · Yeniden kurulan sütunların kökeni belirsiz.") : ""}</figcaption></figure>}
           <div className="mt-4 border-t border-leaf/20 pt-4"><h3 className="text-[14px] font-semibold">{en ? "The story of this place" : "Bu yerin hikâyesi"}</h3><p className="mt-2 text-[13px] leading-relaxed text-mint/80">{description}</p></div>
           <div className="mt-4 border-t border-leaf/20 pt-4">
             {/* Görsel 3: 57 çiplük liste paneli kaplıyordu; artık açılıp kapanıyor. */}
@@ -177,6 +180,12 @@ export default function AudioDiscoverySheet({ tour, selectedIndex, onSelect, onC
         {attribution && <div className="mt-3 border-t border-leaf/20 pt-2">{attribution}</div>}
       </div>
     </section>
+    {fullscreen && stop.image && (
+      <PhotoLightbox
+        photo={{ url: stop.image.url, alt: englishStop?.imageAlt ?? stop.image.alt, credit: stop.image.author, source: stop.image.source }}
+        onClose={() => setFullscreen(false)}
+      />
+    )}
     {categoriesOpen && <AudioDiscoveryCategories tour={tour} selectedIndex={selectedIndex} speaking={speaking} language={language} englishStops={englishStops} onSelect={select} onClose={() => setCategoriesOpen(false)} />}
     </>
   );
