@@ -176,3 +176,28 @@ Bunlar yayına uygun doğrulanmış veriler değildir. #187 içindeki kayıtlar 
     kind: "guide",
   }
 ```
+
+---
+
+## Nereden nereye — arşiv kimliği → turdaki durak
+
+Bu dokuz kayıt 2026-11-07'de ana katalogdan çıkarılıp numaralı sesli tura
+taşındı; kimlikleri çakışmayı önlemek için yeniden adlandırıldı. Eşleme:
+
+| Arşiv kimliği | Turdaki kimlik | Durak no |
+| --- | --- | --- |
+| `kalkidikum-hydreion` | `hydreion-kalkidikum` | 49 |
+| `kalkidikum-triodos-meydani` | `triodos-meydani` | 50 |
+| `kalkidikum-heksagon` | `heksagon` | 51 |
+| `kalkidikum-verulanus-meydani-salonu` | `verulanus-meydani-salonu` | 52 |
+| `kalkidikum-antik-liman-kanali` | `antik-liman-kanali` | 53 |
+| `kalkidikum-meryem-kilisesi-vaftizhanesi` | `meryem-kilisesi-vaftizhanesi` | 54 |
+| `kalkidikum-bizans-hamamlari` | `bizans-hamamlari` | 55 |
+| `kalkidikum-vedius-gymnasionu` | `vedius-gymnasionu` | 56 |
+| `kalkidikum-kent-surlari` | `kent-surlari` | 57 |
+
+**Bu belgedeki veriler yayına girmez.** Metinler, koordinatlar ve görseller
+turdaki güncel kayıtlardan farklıdır; burada yalnız "ne vardı, neden
+düzeltildi" sorusunun yanıtı durur. Güncel doğru kaynak:
+`public/assets/sesli-turlar.json`.
+

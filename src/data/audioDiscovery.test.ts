@@ -92,7 +92,27 @@ describe("sesli anlatım rehberi · tek dosya yapısı", () => {
         "meryem-kilisesi-vaftizhanesi", "bizans-hamamlari", "vedius-gymnasionu", "kent-surlari"].includes(stop.id))).toBe(true);
     // Numaralar 1..57; ören yeri dışı 9 durak ◆ biçiminde ama numarasını gösterir.
     expect(Math.max(...efes!.stops.map((stop) => stop.no))).toBe(57);
-    expect(efes!.stops.filter((stop) => stop.markerStyle === "additional")).toHaveLength(10);
+    // Sayı değil LİSTE kilitli: 9 Kasım denetiminde `efes.md` §1'deki yeşil liste
+    // 50'yi atlıyordu ve bir notta Domitian Çeşmesi "46" yazıyordu (doğrusu 47;
+    // 46 Pollio Anıtı). Belge sayıları veriyle birebir olmak zorunda.
+    expect(efes!.stops.filter((stop) => stop.markerStyle === "additional").map((stop) => stop.no)).toEqual([16, 17, 18, 24, 25, 26, 27, 29, 38, 57]);
+  });
+
+  it("yaklaşık konumlu her durak nedenini yazar; görsel alt metni başlığı tekrar etmez", () => {
+    // NEDEN: 9 Kasım denetiminde 52'de `coordinateNote` vardı ama 53 ve 57'de yoktu;
+    // karttaki genel cümle ("yapı geniş bir alana yayılıyor") 53 için yanlış
+    // (havza ortası, erişim yok) ve 57 için eksik (korunmuş bir kesit).
+    // Ayrıca 12 durağın alt metni yalnızca başlığı tekrar ediyordu ("Memmius Anıtı"):
+    // ekran okuyucu için bilgi eklemeyen alt metin, olmayan alt metne eşittir.
+    const efes = AUDIO_DISCOVERY_TOURS.find((tour) => tour.placeId === "efes")!;
+    for (const stop of efes.stops) {
+      if (stop.coordinateAccuracy === "approximate") {
+        expect(stop.coordinateNote?.trim().length ?? 0, `${stop.no}: yaklaşık konum nedeni yok`).toBeGreaterThan(40);
+      }
+      const norm = (value: string) => value.toLocaleLowerCase("tr").replace(/[^a-zçğıöşü ]/g, "").replace(/\s+/g, " ").trim();
+      expect(norm(stop.image!.alt), `${stop.no}: alt metin başlığı tekrar ediyor`).not.toBe(norm(stop.title));
+      expect(stop.image!.alt.trim().length, `${stop.no}: alt metin çok kısa`).toBeGreaterThanOrEqual(15);
+    }
   });
 
   it("her durak bir kategori grubunda, gruplarda hayalet id yok", () => {

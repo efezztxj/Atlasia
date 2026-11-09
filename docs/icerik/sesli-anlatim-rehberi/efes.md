@@ -10,10 +10,16 @@ Numaralar tur içinde **1–57 kesintisiz** gider. İki işaret biçimi vardır:
 
 | Biçim | Anlamı | Sayı | Numaralar |
 | --- | --- | --- | --- |
-| Yeşil damla pin | Antik kent çekirdeği **içinde** | 47 | 1–15, 19–23, 28, 30–37, 39–49, 51–56 |
+| Yeşil damla pin | Antik kent çekirdeği **içinde** | 47 | 1–15, 19–23, 28, 30–37, 39–56 |
 | Mor ◆ elmas | Antik kent çekirdeği **dışında** | 10 | 16, 17, 18, 24, 25, 26, 27, 29, 38, 57 |
 
-> 2026-11-07: Chalcidicum (45) ve Domitian Çeşmesi (46) eklendi → **46 → 57**.
+> **Denetim (9 Kasım 2026).** Bu iki satır veriyle birebir: 47 + 10 = 57. Önceki
+> sürümde yeşil listede **50 (Triodos Meydanı)** atlanmıştı ve "Chalcidicum (45) ve
+> Domitian Çeşmesi (46)" yazıyordu; Domitian Çeşmesi **47**'dir (46 Pollio
+> Anıtı'dır). İkisi de düzeltildi. Sayımı `audioDiscovery.test.ts` kilitler.
+
+> 2026-11-07: Chalcidicum (45) ve Domitian Çeşmesi (47) eklendi; dokuz Kalkidikum
+> durağıyla birlikte tur **46 → 57** oldu. (46 Pollio Anıtı'dır; üçü aynı köşede durur.)
 
 ### Numaralar neden veriden okunuyor?
 
@@ -66,18 +72,6 @@ Her biri 57 kayıtlık envanterdeki sıra numarasını `envanterNo` alanında ta
 | 56 | Vedius Gymnasionu | 47 | OSM yolu 183304727 | Raddato, Kaistros heykeli · CC BY-SA 2.0 | TR + EN |
 | 57 | Helenistik ve Bizans Kent Surları | 48 | Commons dosya GPS'i — kesit | Sepp, sur kesiti · CC BY-SA 3.0 | TR + EN |
 
-
-| # | Durak | Envanter no | Konum kaynağı | Fotoğraf |
-| --- | --- | --- | --- | --- |
-| 49 | Hydreion (Anıt Çeşme) | 14 | OSM yolu 1411590456 | Dosseman, Hydreion + Memmius, 1992 · CC BY-SA 4.0 |
-| 50 | Triodos Meydanı | 16 | TAN Triodos | Sailko, Hadrian Kapısı + Kuretler Caddesi · CC BY-SA 3.0 |
-| 51 | Heksagon | 28 | TAN Oktagon (sıralama) — yaklaşık | Holländer, Kuretler Caddesi · Copyrighted free use |
-| 52 | Verulanus Salonu | 40 | TAN Verulanus — temsilî | Dosseman, Meryem Kilisesi'ne bakış · CC BY-SA 4.0 |
-| 53 | Antik Liman | 42 | Ephesus.net planı — havza ortası | Dosseman, Bülbül Dağı'ndan ovaya bakış · CC BY-SA 4.0 |
-| 54 | Meryem Kilisesi Vaftizhanesi | 44 | Commons dosya GPS'i | Dosseman, vaftiz havuzu · CC BY-SA 4.0 |
-| 55 | Bizans Hamamları | 45 | Vici 24223 | Jarvis, Bizans Sarayı · CC BY-SA 2.0 |
-| 56 | Vedius Gymnasionu | 47 | OSM yolu 183304727 | Raddato, Kaistros heykeli · CC BY-SA 2.0 |
-| 57 | Helenistik ve Bizans Kent Surları | 48 | Commons dosya GPS'i — kesit | Sepp, sur kesiti · CC BY-SA 3.0 |
 
 Her durak iki–üç bağımsız kaynak taşır (`sources`). Ayrıntı ve konum
 tartışmaları: [dokuz durak düzeltmesi](../gorevler/efes-dokuz-durak-kimlik-duzeltmesi-2026-11-08.md).

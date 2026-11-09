@@ -334,7 +334,7 @@
           "audio": "/audio/efes-mazaeus-kapisi.mp3",
           "image": {
             "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/16.3_Mazeus-Mithridates_Gate_in_Ephesus.JPG/960px-16.3_Mazeus-Mithridates_Gate_in_Ephesus.JPG",
-            "alt": "Mazaeus ve Mithridates Kapısı",
+            "alt": "Agora'nın güney kapısı: Mazaeus ve Mithridates Kapısı",
             "source": "https://commons.wikimedia.org/wiki/File:16.3_Mazeus-Mithridates_Gate_in_Ephesus.JPG",
             "author": "José Luiz Bernardes Ribeiro",
             "license": "CC BY-SA 3.0",
@@ -366,7 +366,7 @@
           "audio": "/audio/efes-memmius.mp3",
           "image": {
             "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Memmius_monument_%28Ephesus%29_Turkey.jpg/960px-Memmius_monument_%28Ephesus%29_Turkey.jpg",
-            "alt": "Memmius Anıtı",
+            "alt": "Kuretler Caddesi'ndeki Memmius Anıtı",
             "source": "https://commons.wikimedia.org/wiki/File:Memmius_monument_%28Ephesus%29_Turkey.jpg",
             "author": "Ashokmehta72",
             "license": "CC BY-SA 4.0",
@@ -677,7 +677,7 @@
           "audio": "/audio/efes-liman-caddesi.mp3",
           "image": {
             "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Ephesus_Arcadiane_%28Harbour%29_Street_in_2011_3567.jpg/960px-Ephesus_Arcadiane_%28Harbour%29_Street_in_2011_3567.jpg",
-            "alt": "Efes Liman Caddesi",
+            "alt": "Büyük Tiyatro'dan limana uzanan Liman Caddesi",
             "source": "https://commons.wikimedia.org/wiki/File:Ephesus_Arcadiane_%28Harbour%29_Street_in_2011_3567.jpg",
             "author": "Dosseman",
             "license": "CC BY-SA 4.0",
@@ -986,7 +986,7 @@
           "audio": "/audio/efes-mermer-cadde.mp3",
           "image": {
             "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Turkey-2801_%282217172440%29.jpg/960px-Turkey-2801_%282217172440%29.jpg",
-            "alt": "Efes Mermer Caddesi",
+            "alt": "Celsus Kütüphanesi'nden tiyatroya uzanan Mermer Cadde",
             "source": "https://commons.wikimedia.org/wiki/File:Turkey-2801_%282217172440%29.jpg",
             "author": "Dennis G. Jarvis",
             "license": "CC BY-SA 2.0",
@@ -1459,7 +1459,7 @@
           "title": "Domitian Çeşmesi",
           "image": {
             "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Efes_%28Ephesos%29_-_Domitian_%C3%87e%C5%9Fmesi_-_panoramio.jpg/960px-Efes_%28Ephesos%29_-_Domitian_%C3%87e%C5%9Fmesi_-_panoramio.jpg",
-            "alt": "Domitian Çeşmesi",
+            "alt": "Domitian Meydanı'ndaki Domitian Çeşmesi",
             "source": "https://commons.wikimedia.org/wiki/File:Efes_(Ephesos)_-_Domitian_%C3%87e%C5%9Fmesi_-_panoramio.jpg",
             "author": "Yağmur Aydın",
             "license": "CC BY-SA 3.0",
@@ -1708,7 +1708,8 @@
             }
           ],
           "envanterNo": 42,
-          "coordinateAccuracy": "approximate"
+          "coordinateAccuracy": "approximate",
+          "coordinateNote": "Havza ortası, erişime kapalı bir alanda. Antik liman bugün denizden yaklaşık 5 km içeride, Kaystros'un taşıdığı alüvyonla dolmuş düz bir ovada; ne bir giriş ne de korunmuş bir havza kenarı var. Pin, Ephesus.net planındaki havza merkezini gösterir; kıyı çizgisi kaynaklarda farklı çiziliyor. Bugün bataklık ve drenaj sorunu nedeniyle güvenli bir yürüyüş güzergâhı değildir."
         },
         {
           "id": "meryem-kilisesi-vaftizhanesi",
@@ -1866,7 +1867,8 @@
           ],
           "envanterNo": 48,
           "coordinateAccuracy": "approximate",
-          "markerStyle": "additional"
+          "markerStyle": "additional",
+          "coordinateNote": "Korunmuş tek bir sur kesiti. Lysimakhos'un çevrelediği hattın 9 km'yi aşan uzunluğundan 3 km'den fazlası ayakta, ama tek bir kapı ya da giriş noktası yok. Nokta, kullanılan Commons fotoğrafının GPS'ini (37.9309764, 27.3395792) birebir taşır; yani fotoğraftaki kesitin durduğu yer. Hattın tamamı tek durak olarak yürünemez."
         }
       ]
     }
