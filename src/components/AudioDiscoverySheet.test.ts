@@ -111,6 +111,23 @@ describe("küçültülmüş panel tek satır (görsel 2)", () => {
   });
 });
 
+describe("dinleme paneli kısa durur (kullanıcı kararı 2026-11-09)", () => {
+  it("panel kısa yükseklikle açılır, fotoğraf ve hikâye içeride kaydırılarak gelir", () => {
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+    const { container } = render(createElement(AudioDiscoverySheet, { tour: AUDIO_DISCOVERY_TOURS[0], selectedIndex: 0, onSelect: vi.fn(), onClose: vi.fn() }));
+    const panel = container.querySelector("section")!;
+    // Panel açılışta yalnız başlık + dil + durak kartı kadar yer kaplar.
+    // 55dvh'e geri dönülürse bu test kırılır.
+    expect(panel.className).toContain("max-h-[min(42dvh,340px)]");
+    expect(panel.className).not.toContain("55dvh");
+    // İçerik kaydırılabilir olmalı; aksi hâlde fotoğrafa hiç ulaşılamazdı.
+    expect(panel.className).toContain("overflow-y-auto");
+    // Fotoğraf hâlâ DOM'da: panel içinde kaydırınca görünür, tam ekran açılabilir.
+    expect(screen.getByRole("img", { name: "Efes Prytaneion kalıntıları" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Bu yerin hikâyesi" })).toBeTruthy();
+  });
+});
+
 describe("durak fotoğrafı tam ekran", () => {
   it("fotoğrafa dokunmak tam ekran açar, Escape kapatır", () => {
     vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
