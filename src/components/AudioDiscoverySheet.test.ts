@@ -111,6 +111,20 @@ describe("küçültülmüş panel tek satır (görsel 2)", () => {
   });
 });
 
+describe("durak fotoğrafı tam ekran", () => {
+  it("fotoğrafa dokunmak tam ekran açar, Escape kapatır", () => {
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+    render(createElement(AudioDiscoverySheet, { tour: AUDIO_DISCOVERY_TOURS[0], selectedIndex: 0, onSelect: vi.fn(), onClose: vi.fn() }));
+    fireEvent.click(screen.getByRole("button", { name: /Efes Prytaneion kalıntıları — tam ekran aç/ }));
+    const dialog = screen.getByRole("dialog", { name: "Fotoğraf, tam ekran" });
+    expect(within(dialog).getByRole("img", { name: "Efes Prytaneion kalıntıları" })).toBeTruthy();
+    // Atıf tam ekranda da görünür (lisans yükümlülüğü küçük görselle sınırlı değil).
+    expect(within(dialog).getByRole("link", { name: /Elelicht/ })).toBeTruthy();
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    expect(screen.queryByRole("dialog", { name: "Fotoğraf, tam ekran" })).toBeNull();
+  });
+});
+
 describe("tur durakları listesi açılıp kapanır (görsel 3)", () => {
   it("kapalı başlar, açılır ve tekrar kapanır", () => {
     vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});

@@ -26,6 +26,7 @@ import { usePanelAccess } from "../hooks/usePanelAccess";
 import { useAuth } from "../contexts/AuthContext";
 import { blockUser } from "../lib/moderation";
 import ReportDialog from "./ReportDialog";
+import PhotoLightbox from "./PhotoLightbox";
 import { requestConfirm } from "./ConfirmDialog";
 import { advice } from "../utils/placeAdvice";
 import { buildGooglePlaceDirectionsUrl, buildYandexPlaceDirectionsUrl } from "../utils/mapLinks";
@@ -58,6 +59,8 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, onAudio
   const [imageLoaded, setImageLoaded] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  /** Tam ekran fotoğraf (null = kapalı). Ana görsel ve galeri pulları aynı görüntüleyiciyi kullanır. */
+  const [fullscreenPhoto, setFullscreenPhoto] = useState<string | null>(null);
   const [blocking, setBlocking] = useState(false);
   const { user } = useAuth();
 
@@ -105,21 +108,29 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, onAudio
           <button type="button" onClick={onClose} aria-label="Yer detayını kapat" className="grid size-11 place-items-center rounded-full bg-ink/85"><X size={18} /></button>
         </header>
 
-        <figure className="relative h-[min(35dvh,350px)] min-h-[220px] shrink-0 bg-[#12362a]">
+        {/* Fotoğraf panelin en tepesinden başlar (kullanıcı isteği 2026-11-09):
+    üstteki güvenli alan payı figure'a taşındı, böylece görselin üstünde
+    boş şerit kalmıyor. Başlık düğmeleri görselin ÜSTÜNDE yüzer. */}
+        <figure className="relative h-[min(42dvh,380px)] min-h-[240px] shrink-0 bg-[#12362a]">
           {photo ? (
             <>
-              <img
-                key={photo.url}
-                src={photo.url}
-                decoding="async"
-                alt={`${place.title}${photo.nearby ? " yakın çevresi" : ""}, galeri fotoğrafı ${index + 1}`}
-                className="size-full object-cover"
-                onLoad={() => setImageLoaded(true)}
-                onError={() => {
-                  setFailed((current) => [...current, photo.url]);
-                  setIndex(0);
-                }}
-              />
+              {/* Görsele dokunmak tam ekran açar (kullanıcı isteği 2026-11-09).
+                  Düğme tüm alanı kaplar; figcaption üstünde kaldığı için atıf
+                  bağlantısı hâlâ tıklanabilir. */}
+              <button type="button" onClick={() => setFullscreenPhoto(photo.url)} aria-label={`${place.title} fotoğrafını tam ekran aç`} className="absolute inset-0 block size-full">
+                <img
+                  key={photo.url}
+                  src={photo.url}
+                  decoding="async"
+                  alt={`${place.title}${photo.nearby ? " yakın çevresi" : ""}, galeri fotoğrafı ${index + 1}`}
+                  className="size-full object-cover"
+                  onLoad={() => setImageLoaded(true)}
+                  onError={() => {
+                    setFailed((current) => [...current, photo.url]);
+                    setIndex(0);
+                  }}
+                />
+              </button>
               {!imageLoaded && <div className="skeleton pointer-events-none absolute inset-0 grid place-content-center bg-ink/30 text-sm">Fotoğraf yükleniyor...</div>}
               <figcaption className="absolute inset-x-0 bottom-0 bg-ink/90 px-4 py-2 text-[11px] text-mint/90">
                 {photo.nearby && <span className="mr-2 text-sun">Yakın çevreden</span>}
@@ -257,6 +268,12 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, onAudio
         </div>
         {attribution && <div className="shrink-0 border-t border-white/10 bg-[#041c16] px-5 py-2">{attribution}</div>}
       </aside>
+      {fullscreenPhoto && photo && (
+        <PhotoLightbox
+          photo={{ url: fullscreenPhoto, alt: `${place.title} fotoğrafı`, credit: photo.credit ?? undefined, source: photo.source ?? undefined }}
+          onClose={() => setFullscreenPhoto(null)}
+        />
+      )}
       {showReport && user && (
         <ReportDialog targetType="place" targetId={place.id} targetOwnerUid={place.authorUid} targetLabel={place.title} reporterUid={user.uid} onClose={() => setShowReport(false)} onReported={() => setStatus("Raporun alındı, inceleyeceğiz.")} />
       )}
