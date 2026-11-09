@@ -258,6 +258,38 @@ describe("sesli anlatım rehberi · durak içeriği", () => {
     }
   });
 
+  it("bir durağın görseli başka bir durağın yapısını gösteremez", () => {
+    // NEDEN: 2026-11-08 denetimine kadar 57 `kent-surlari` (Helenistik ve
+    // Bizans Kent Surları) stadyum fotoğrafıyla yayındaydı — 15
+    // `efes-stadyumu` ile aynı Commons serisinden. Aynı koordinatı paylaşmak
+    // (sharedWith) aynı yapıyı göstermeyi MEŞRULAŞTIRMAZ: 37/55 liman hamamı
+    // çifti aynı yapıdır, 15/57 değildi.
+    //
+    // Kural: bir dosya adı (`…/File:X.jpg`) ikinci bir durağa yalnızca iki
+    // durak `sharedWith` ile aynı yapıyı paylaşıyorsa bağlanabilir. Yeni bir
+    // durak eklerken hazır fotoğrafı kopyalamak bu testi kırar.
+    const AYNI_YAPI = new Set(["37|55", "55|37", "14|54", "54|14", "22|53", "53|22", "46|49", "49|46"]);
+    const bySource = new Map<string, string[]>();
+    for (const tour of AUDIO_DISCOVERY_TOURS) {
+      for (const stop of tour.stops) {
+        const key = decodeURIComponent(stop.image!.source);
+        bySource.set(key, [...(bySource.get(key) ?? []), stop.id]);
+      }
+    }
+    for (const [source, ids] of bySource) {
+      if (ids.length === 1) continue;
+      for (const a of ids) {
+        for (const b of ids) {
+          if (a === b) continue;
+          expect(
+            AYNI_YAPI.has(`${a}|${b}`),
+            `${a} ve ${b} aynı görseli kullanıyor ama aynı yapı değil — ${source}`,
+          ).toBe(true);
+        }
+      }
+    }
+  });
+
   it("aynı fiziksel noktayı paylaşan duraklar açıkça bildirilir", () => {
     for (const tour of AUDIO_DISCOVERY_TOURS) {
       const byCoord = new Map<string, string[]>();
