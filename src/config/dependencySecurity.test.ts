@@ -18,6 +18,10 @@ const lock = JSON.parse(readFileSync("package-lock.json", "utf8")) as PackageLoc
 // eşitlik kilidi değildir. 6.14.0+ gibi bilinçli yükseltmeler serbesttir.
 const MAPLIBRE_SECURITY_FLOOR = "6.4.1";
 
+// Firebase'in dar @grpc/grpc-js aralığını ("~1.9.0") güvenli 1.13.6'ya çeken
+// override'ın geçerli olduğu bilinen alt sınır. Üstü serbesttir.
+const FIREBASE_GRPC_FLOOR = "13.1.0";
+
 function parseVersion(spec: string): [number, number, number] {
   const match = /^(\d+)\.(\d+)\.(\d+)/.exec(spec.trim().replace(/^[\^~]/, ""));
   if (!match) throw new Error(`Sürüm çözümlenemedi: ${spec}`);
@@ -65,9 +69,14 @@ describe("üretim bağımlılığı güvenlik sabitlemeleri", () => {
   });
 
   it("Firebase'in dar gRPC aralığını ilk güvenli 1.x sürümüne override eder", () => {
-    // Firebase 13.1: kırıcı değişiklikler yalnız @firebase/ai'da (kullanılmıyor);
+    // Firebase 13.x: kırıcı değişiklikler yalnız @firebase/ai'da (kullanılmıyor);
     // auth/firestore uyumlu. gRPC override'ı 13'te de aynen geçerli.
-    expect(manifest.dependencies?.firebase).toBe("^13.1.0");
+    // Sürüm 13.1.0 taban çizgisinde sabitlenmez: yama sürümü yükseltmeleri
+    // Dependabot PR'larıyla serbestçe gelebilmeli. Korumak istediğimiz şey
+    // 13.x ana hattı ve gRPC override'ının hâlâ geçerli olması.
+    const firebaseRange = manifest.dependencies?.firebase ?? "";
+    expect(firebaseRange).toMatch(/^\^13\./);
+    expect(isAtLeast(firebaseRange, FIREBASE_GRPC_FLOOR)).toBe(true);
     expect(manifest.overrides?.["@grpc/grpc-js"]).toBe("1.13.6");
     expect(lock.packages?.["node_modules/@grpc/grpc-js"]?.version).toBe("1.13.6");
     expect(lock.packages?.["node_modules/@firebase/firestore/node_modules/@grpc/grpc-js"]).toBeUndefined();
