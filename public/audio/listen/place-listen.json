@@ -1,0 +1,343 @@
+{
+  "version": 1,
+  "updated": "2026-11-10",
+  "note": "Rehberdeki 28 yerin genel dinleme metni ve ses yolu. Metinler yerin tamamına üstün körü bir bakış verir; durak durak gezinmez. Ses dosyaları bu klasöre <id>.mp3 (Türkçe) ve en-<id>.mp3 (İngilizce) adıyla gelir.",
+  "entries": [
+    {
+      "id": "efes",
+      "title": "Efes Antik Kenti",
+      "tr": {
+        "audio": "/audio/listen/efes.mp3",
+        "text": "Efes'e limandan yukarı doğru girdiğinizi düşünün. Kentin görkemi deniz ticaretinden geldi: mermer cadde, hamamlar, kütüphane ve yamaç evleri aynı ekonomiden beslendi. Celsus Kütüphanesi'nin cephesi bugün de ayakta; arkasındaki nişlerde artık kitaplar değil, boşluk var. Menderes'in taşıdığı alüvyon denizi kilometrelerce geriye itti; liman önce sığlaştı, sonra kurudu, kent de yavaş yavaş yukarı çekildi. Burada en çok anlatan şey büyük yapılar değil, eşik taşlarındaki aşınma: kaç kuşağın aynı basamağa bastığını gösterir. Sabah ilk ışıkta taşın damarları okunur, öğleye doğru cadde kalabalıklaşır."
+      },
+      "en": {
+        "audio": "/audio/listen/en-efes.mp3",
+        "text": "Imagine entering Ephesus from the old harbour and walking uphill. The city's grandeur came from sea trade: the marble street, the baths, the library and the hillside houses all grew from the same economy. The façade of the Library of Celsus still stands; the niches behind it now hold emptiness rather than scrolls. Over centuries the river's silt pushed the sea away, the harbour shallowed, and the city withdrew inland. What speaks loudest here is not the big monuments but the wear on the doorsteps, which shows how many generations stood on the same stone. In early morning light you can read the veins in the marble; by midday the street fills up."
+      }
+    },
+    {
+      "id": "kapadokya",
+      "title": "Kapadokya",
+      "tr": {
+        "audio": "/audio/listen/kapadokya.mp3",
+        "text": "Kapadokya bir manzara değil, uzun bir zaman meselesi. Volkanların bıraktığı kül tüfünü rüzgâr ve yağmur binlerce yıl oydu; geriye peri bacaları, vadiler ve yumuşak kayalıklar kaldı. İnsanlar bu yumuşaklığı işledi: kayaya oyulmuş kiliseler, güvercinlikler, yerin altına inen şehirler. Göreme'de gün doğarken vadinin üstünde yüzden fazla balon yükselir; gökyüzünü yerde izlemek isteyenler Aşk Vadisi'nin sırtına çıkar. Sabahın ilk saatleri hem en serin hem en sakin zamandır. Öğleden sonra güneş taşı beyazlatır; akşamüstü ise kayalıklar turuncuya döner ve vadi kendi rengini bulur."
+      },
+      "en": {
+        "audio": "/audio/listen/en-kapadokya.mp3",
+        "text": "Cappadocia is less a landscape than a long argument with time. Wind and rain carved the volcanic ash for thousands of years, leaving fairy chimneys, valleys and rock that still feels soft. People worked with that softness: churches cut into the stone, pigeon houses, cities that go down into the ground. At dawn in Göreme more than a hundred balloons rise above the valley; those who stay on the ground climb the ridge of Love Valley to watch them for free. The first hours are the coolest and the quietest. By afternoon the sun bleaches the stone; in the evening the cliffs turn orange and the valley finds its colour."
+      }
+    },
+    {
+      "id": "pamukkale",
+      "title": "Pamukkale Travertenleri",
+      "tr": {
+        "audio": "/audio/listen/pamukkale.mp3",
+        "text": "Pamukkale'ye bakınca insan önce beyazı görür, sonra suyun sesini duyar. Kaynağın suyu kireç doludur; yüzyıllar boyunca yamaçtan aşağı akarken kalsiyum karbonatı bıraktı ve bu terasları yaptı. Su hâlâ ılık, yaklaşık otuz beş derece. Teraslarda ayakkabı çıkarmak zorunludur; taş kaygan ve serttir, çıplak ayak daha iyi tutunur. Antik Hierapolis aynı yamacın üstünde kurulmuş: tiyatro, nekropol ve antik havuz kentin termal suyla olan ilişkisini sürdürüyor. Gün batımına doğru beyaz yüzey pembeye döner; o saat aynı zamanda kalabalığın en çok azaldığı zamandır."
+      },
+      "en": {
+        "audio": "/audio/listen/en-pamukkale.mp3",
+        "text": "At Pamukkale the eye finds white first, then the ear catches the water. The spring is heavy with lime; for centuries it ran down the slope, left calcium carbonate behind and built these terraces step by step. The water is still warm, around thirty-five degrees. You have to take your shoes off on the terraces; the stone is slippery and hard, and bare feet grip better. Ancient Hierapolis stands on the same slope above: its theatre, its necropolis and its thermal pool all describe the same relationship with the water. As the sun goes down the white surface turns pink, and that is also when the crowds thin out."
+      }
+    },
+    {
+      "id": "kaputas",
+      "title": "Kaputaş Plajı",
+      "tr": {
+        "audio": "/audio/listen/kaputas.mp3",
+        "text": "Kaputaş, Kaş ile Kalkan arasında iki kayalığın arasına sıkışmış küçük bir koy. Yolun üstündeki bariyerlerden bakınca turkuaz su bir yarık gibi görünür; aşağı inmek için yüzlerce basamaklı merdiveni kullanmak gerekir. Koy kısa ve dar. Öğleden sonra neredeyse tamamı gölgede kalır; bu yüzden su sabah saatlerinde daha ılık ve daha sakindir. Akşamüstü rüzgâr yukarıdan iner, dalga yükselir. Su birkaç metre sonra hızla derinleşir; çocuklarla gelenlerin bunu bilmesi gerekir. Dönüşte aynı basamaklar günün en yorucu kısmı olacak; acele etmeyin."
+      },
+      "en": {
+        "audio": "/audio/listen/en-kaputas.mp3",
+        "text": "Kaputaş is a small bay squeezed between two rocky headlands on the road between Kaş and Kalkan. From the barrier above, the turquoise water looks like a crack in the coast; to get down you take a staircase of several hundred steps. The bay is short and narrow. In the afternoon almost all of it sits in shade, so the water is warmer and calmer early in the day; later the wind comes down from the cliffs and the waves pick up. The water deepens quickly a few metres out, which matters if you come with children. Climbing back up the same steps is the hardest part of the visit; take it slowly."
+      }
+    },
+    {
+      "id": "galata",
+      "title": "Galata & Haliç",
+      "tr": {
+        "audio": "/audio/listen/galata.mp3",
+        "text": "Galata Kulesi'nin yanında durup Haliç'e bakın: önünüzde aşağı doğru inen sokaklar, arkanızda köprüye akan trafik. Kule, on dördüncü yüzyılda Cenevizlilerin gözetleme kulesi olarak dikildi; o günden beri defalarca yandı ve onarıldı, gövdesi değişti ama silueti aynı kaldı. Karaköy'ün gürültüsü yukarıya çıkmaz; balkona çıktığınızda şehir düzleşir ve sesi kısılır. Aşağı indiğinizde çay içmek için en iyi yer, köprüye doğru yürürken rastladığınız küçük dükkânlardır. Hezarfen'in uçuşu bir efsane olsa da rüzgâr hâlâ aynı köşeden esiyor."
+      },
+      "en": {
+        "audio": "/audio/listen/en-galata.mp3",
+        "text": "Stand beside the Galata Tower and look across the Golden Horn: streets falling away in front of you, traffic streaming towards the bridge behind. The tower was built in the fourteenth century as a Genoese watchtower; it has burned and been repaired many times since, so the fabric changed while the silhouette stayed the same. The noise of Karaköy does not climb with you; from the balcony the city flattens and its volume drops. When you come back down, the best place for tea is one of the small shops on the way to the bridge. Hezarfen's flight may be legend, but the wind still comes from the same corner."
+      }
+    },
+    {
+      "id": "gaziantep",
+      "title": "Gaziantep Çarşıları",
+      "tr": {
+        "audio": "/audio/listen/gaziantep.mp3",
+        "text": "Gaziantep'i anlatmak için önce mutfağa bakmak gerekir, ama şehir yalnızca yemek değil. Bakırcılar Çarşısı'nda dövme bakırın sesi birkaç sokak öteden duyulur; tezgâhlar sabah erken kurulur, öğleye doğru ara sokaklar dolar. Fıstık burada her şeyin içinde: baklavada, kahvede, hatta sabah çorbasında. Beyran, gün doğmadan içilen, kuzu eti ve pirinçle yapılan bir çorba; günü ayakta geçirecekseniz iyi bir başlangıç. Şehir 2015'te yemek alanında UNESCO yaratıcı şehirler ağına katıldı. Akşamüstü çarşı boşalırken taş hanların avluları serinler; o saatte bir çay içmek en doğrusu."
+      },
+      "en": {
+        "audio": "/audio/listen/en-gaziantep.mp3",
+        "text": "To talk about Gaziantep you have to start with the kitchen, but the city is more than food. In the coppersmiths' bazaar the sound of hammered metal carries several streets away; stalls go up early and the lanes fill by midday. Pistachio is in everything here: in baklava, in coffee, even in the morning soup. Beyran is a soup of lamb and rice eaten before sunrise, a good start if you plan to be on your feet all day. In 2015 the city joined the UNESCO creative cities network for gastronomy. In the late afternoon, as the bazaar empties, the courtyards of the old caravanserais cool down; that is the hour for a glass of tea."
+      }
+    },
+    {
+      "id": "gobeklitepe",
+      "title": "Göbeklitepe",
+      "tr": {
+        "audio": "/audio/listen/gobeklitepe.mp3",
+        "text": "Göbeklitepe'ye vardığınızda ilk gördüğünüz şey bir tepe; asıl şaşırtıcı olan yerin altında. Yaklaşık on bir bin yıl önce, henüz tarım ve yerleşik köy yokken, insanlar buraya T biçimli büyük taşlar dikti. Taşların üzerinde tilki, yılan, akrep ve turna kabartmaları var; kimin, hangi inançla yaptığı hâlâ tartışılıyor. Anıtlar kullanımdan sonra toprakla kapatılmış; bu yüzden binlerce yıl bozulmadan kaldılar. Alanda yürürken çevrenin ne kadar açık olduğuna dikkat edin: bu tepe ovaya ve ufka hâkim. Öğle sıcağında gölge azdır; sabah erken ya da akşamüstü gelmek hem serin hem sakin olur."
+      },
+      "en": {
+        "audio": "/audio/listen/en-gobeklitepe.mp3",
+        "text": "What you see first at Göbeklitepe is a hill; the surprise is underneath it. About eleven thousand years ago, before farming and settled villages, people raised large T-shaped pillars here. The stones carry reliefs of foxes, snakes, scorpions and cranes, and who made them, and for which belief, is still argued over. After use the enclosures were buried, which is why they survived intact for millennia. Standing there, notice how open the country is: the hill commands the plain and the horizon. There is little shade at midday, so early morning or late afternoon is both cooler and quieter."
+      }
+    },
+    {
+      "id": "likya",
+      "title": "Likya Yolu · Faralya",
+      "tr": {
+        "audio": "/audio/listen/likya.mp3",
+        "text": "Likya Yolu, Fethiye'den Antalya'ya uzanan, kırmızı beyaz işaretlerle boyanmış uzun bir yürüyüş rotası. Faralya, bu rotanın en bilinen duraklarından biri: Kelebekler Vadisi'nin üstündeki yamaçta kurulmuş, aşağıda deniz, yukarıda çam ormanı. Yolun bu bölümü taş döşeli ve yer yer dik; sabah erken başlamak gölgede yürümek demek. Vadiye inen patika dik ve tozlu, çıkışı ise daha yorucu; suyunuzu buna göre taşıyın. Akşamüstü sis dağdan aşağı inerken vadi bir anda kapanır ve manzara kaybolur. Likya'nın asıl hediyesi bu: yürürken zamanın yavaşlaması."
+      },
+      "en": {
+        "audio": "/audio/listen/en-likya.mp3",
+        "text": "The Lycian Way runs from Fethiye towards Antalya, marked with red and white flashes. Faralya is one of its best-known stops, built on the slope above Butterfly Valley, with the sea below and pine forest above. This section is paved with stone and steep in places, so an early start means walking in shade. The path down into the valley is steep and dusty and the climb back is harder; carry water accordingly. In the evening mist comes down from the mountain and the valley closes in. That is the real gift of the Lycian Way: walking slows time down."
+      }
+    },
+    {
+      "id": "kackar",
+      "title": "Kaçkar Dağları",
+      "tr": {
+        "audio": "/audio/listen/kackar.mp3",
+        "text": "Kaçkar Dağları, Doğu Karadeniz'in arka bahçesi. Yaylalar, buzul gölleri ve sis bir arada; en yüksek nokta neredeyse dört bin metre. Yaz aylarında Ayder ve çevresindeki yaylalarda hayvancılık sürüyor; ahşap evler, seranderler ve çayırlar aynı ritmi paylaşıyor. Buzul göllerinin kenarında çadır kurmak isteyenler için en iyi mevsim temmuz ve ağustos; akşam sis çöktüğünde manzara kapanır, sabah güneşle birlikte yeniden açılır. Yağmur burada sürpriz değil, kural. Patikalar yer yer silinir; işaretlere ve yaylacılara güvenin."
+      },
+      "en": {
+        "audio": "/audio/listen/en-kackar.mp3",
+        "text": "The Kaçkar Mountains are the back garden of the eastern Black Sea. High pastures, glacier lakes and mist arrive together, and the highest point reaches almost four thousand metres. In summer, herding still goes on in the yaylas around Ayder; wooden houses, hay barns and meadows keep the same rhythm. July and August are the best months to camp beside the glacier lakes; in the evening the mist closes the view and in the morning it opens again with the sun. Rain here is not a surprise, it is the rule. Paths fade in places, so trust the waymarks and the shepherds."
+      }
+    },
+    {
+      "id": "moda",
+      "title": "Moda Sahili",
+      "tr": {
+        "audio": "/audio/listen/moda.mp3",
+        "text": "Moda, Kadıköy'ün denize uzanan burnu. Sabah erkenden sahil boyunca yürüyenler, köpek gezdirenler, simit alıp iskeleye oturanlar. Çay bahçeleri gün boyu açık; en güzel masa, rüzgârı arkaya alıp adaları önünüze koyan masa. Hafta sonları mahalleli sahili birlikte temizler; burada kıyı bir manzara değil, ortak bir oda gibi kullanılıyor. Akşamüstü güneş batarken taşlar hâlâ sıcaktır; insanlar oturup denizi izler. Moda'nın hikâyesi büyük anıtlarda değil, bu gündelik alışkanlıklarda: aynı yerde aynı saatte buluşan komşular."
+      },
+      "en": {
+        "audio": "/audio/listen/en-moda.mp3",
+        "text": "Moda is the headland of Kadıköy reaching into the sea. Early in the morning people walk the shore, walk their dogs, buy a simit and sit down on the pier. The tea gardens stay open all day; the best table is the one with the wind at your back and the Princes' Islands in front of you. At weekends residents clean the shoreline together; here the coast is not a view but a shared room. In the evening, as the sun sets, the stones are still warm and people sit watching the water. Moda's story is not in monuments but in these habits: neighbours meeting in the same place at the same hour."
+      }
+    },
+    {
+      "id": "santorini",
+      "title": "Oia, Santorini",
+      "tr": {
+        "audio": "/audio/listen/santorini.mp3",
+        "text": "Santorini'ye denizden bakınca bir ada değil, yarım daire görürsünüz. Bu şekli, yaklaşık üç bin altı yüz yıl önce patlayan bir volkan çizdi; kraterin içine deniz doldu, kalderanın dudaklarına köyler kuruldu. Oia bu dudağın kuzeyinde. Mavi kubbeler ve beyaz badanalı evler sert ışığa karşı bir çözüm: beyaz serinletir, mavi denizi hatırlatır. Gün batımı için kalabalık kaleye yığılır; oysa en güzel ışık, sokakların arasına sızan son turuncu dilimde. Sabah erken saatlerde köy kendi sesini duyar; öğleden sonra tur grupları sokakları doldurur."
+      },
+      "en": {
+        "audio": "/audio/listen/en-santorini.mp3",
+        "text": "From the sea, Santorini is not an island but a half-circle. A volcano that erupted some thirty-six centuries ago drew that shape; the sea filled the crater and villages were built along the rim. Oia sits on the northern lip. Blue domes and whitewashed houses are an answer to hard light: white keeps things cool, blue remembers the sea. At sunset the crowd packs into the castle, yet the best light is the last orange slice slipping between the lanes. Early in the morning the village hears itself; by afternoon the tour groups fill the steps."
+      }
+    },
+    {
+      "id": "navagio",
+      "title": "Navagio Koyu",
+      "tr": {
+        "audio": "/audio/listen/navagio.mp3",
+        "text": "Navagio, Zakynthos'un kuzeybatısında, dik kayalıklarla çevrili bir koy. Kumsalda paslı bir gemi enkazı yatıyor: MV Panagiotis adlı gemi 1980'de karaya oturdu. Yerel anlatı kaçakçılık ve bir kovalamacadan söz eder; gemi sigara yüküyle gelmiş, kıyıya sıkışmış. Koya karadan yol yok; yalnızca tekneyle gidilir, bu yüzden en sakin saat sabahın erken saatleridir. Kayalıkların yüksekliği iki yüz metreyi bulur ve üstlerinden taş düşebilir; resmî uyarı olduğunda plaj kapatılır, bu uyarılara uyun. Denizden bakınca koy bir sahne gibi durur; içine girince tuz, pas ve kalabalık aynı anda gelir."
+      },
+      "en": {
+        "audio": "/audio/listen/en-navagio.mp3",
+        "text": "Navagio is a bay on the north-west coast of Zakynthos, walled in by tall cliffs. A rusting ship lies on the sand: the MV Panagiotis ran aground in 1980. The local story is one of smuggling and a chase; the ship came in with a cargo of cigarettes and stuck fast. There is no road down, only boats, which is why early morning is the quietest hour. The cliffs rise some two hundred metres and rockfall is real; when official warnings close the beach, respect them. From the water the bay looks like a stage set; inside it you get salt, rust and crowds at once."
+      }
+    },
+    {
+      "id": "napoli",
+      "title": "Napoli Sokakları",
+      "tr": {
+        "audio": "/audio/listen/napoli.mp3",
+        "text": "Napoli'de yemek bir gelenek değil, günün ritmi. Sabah erkenden espresso barları ayakta içenlerle dolar; öğleye doğru hamur açılmaya başlar. Margherita söylencesi 1889'a uzanır: bir pizzacının kraliçe için yaptığı pizza, domates, mozzarella ve fesleğenle İtalya bayrağını andırıyordu. Bugün en iyi pizza en sade olanı: ince hamur, iyi domates, biraz tuz. Şehir yüksek sesli ve dağınık; Spaccanapoli'de yürürken sokak bir anda daralır, sonra bir meydana açılır. Akşamüstü kalabalık artar, motorlar korna çalar; Napoli'yi anlamak için bu gürültüyü kabul etmek gerekiyor."
+      },
+      "en": {
+        "audio": "/audio/listen/en-napoli.mp3",
+        "text": "In Naples food is not a tradition, it is the rhythm of the day. Espresso bars fill early with people drinking standing up; by late morning the dough starts to be worked. The Margherita story reaches back to 1889, when a pizzaiolo made a pizza for the queen with tomato, mozzarella and basil, the colours of the Italian flag. Today the best pizza is the plainest: thin dough, good tomatoes, a little salt. The city is loud and untidy; walking Spaccanapoli the street narrows and then opens into a square without warning. In the evening the noise rises. To understand Naples you have to accept it."
+      }
+    },
+    {
+      "id": "venedik",
+      "title": "Venedik · Acqua Alta",
+      "tr": {
+        "audio": "/audio/listen/venedik.mp3",
+        "text": "Venedik'te su bir manzara değil, altyapı. Kanallar şehrin sokakları, tekneler ise kamyonları. Acqua alta, yani yüksek su, sonbahar ve kış aylarında meydanların zeminini kaplar; San Marco bu yüzden en erken su basan yerlerden biri. Bariyerler 2020'den beri çalışıyor ama kalıcı çözüm hâlâ tartışılıyor. Yürüdüğünüz yüksek taş basamaklar aslında sel için yapılmış yollardır. Sabah erken saatlerde, dükkânlar açılmadan önce sokaklar kendi sessizliğine kavuşur; kanal suyu durur ve evlerin rengi suya düşer. O saatte Venedik kalabalığın değil, kendisinin olur."
+      },
+      "en": {
+        "audio": "/audio/listen/en-venedik.mp3",
+        "text": "In Venice water is not scenery, it is infrastructure. Canals are the streets and boats are the lorries. Acqua alta, the high water, covers the paving in autumn and winter; Piazza San Marco floods early and often. The barriers have been working since 2020, but the permanent solution is still argued over. The raised stone steps you walk on were built as flood paths. Early in the morning, before the shops open, the streets get their silence back; the canal water stills and the colours of the houses fall into it. At that hour Venice belongs to itself."
+      }
+    },
+    {
+      "id": "camino",
+      "title": "Camino de Santiago",
+      "tr": {
+        "audio": "/audio/listen/camino.mp3",
+        "text": "Camino de Santiago, yüzyıllardır yürünen bir hac yolunun son durağı. Santiago de Compostela'ya gelenler katedralin önündeki meydanda oturur; yeni bir yürüyüşçü göründüğünde kısa bir alkış yükselir. Yol tek bir rota değil, Avrupa'nın her yerinden gelen patikaların birleşmesi. İnsanlar bin kilometre de yürüyor, son yüz kilometre de; önemli olan mesafe değil, yürümenin kendisi. Şehirde taş sokaklar, üniversite kalabalığı ve yağmur bir arada; Galiçya'nın havası sürprizli. Akşamüstü meydanda oturup gelenleri izlemek, yolun en güzel kısmı olabilir."
+      },
+      "en": {
+        "audio": "/audio/listen/en-camino.mp3",
+        "text": "The Camino de Santiago is the last stage of a pilgrimage walked for centuries. Those who arrive sit in the square in front of the cathedral; when a new walker appears, a short round of applause goes up. The route is not one path but many, converging from all over Europe. People walk a thousand kilometres or the last hundred; what matters is the walking, not the distance. In the city, stone streets, students and rain share the same space, because Galicia's weather is unpredictable. Sitting in the square in the late afternoon, watching the arrivals, may be the best part of the road."
+      }
+    },
+    {
+      "id": "skogafoss",
+      "title": "Skógafoss",
+      "tr": {
+        "audio": "/audio/listen/skogafoss.mp3",
+        "text": "Skógafoss, İzlanda'nın güney kıyısında, altmış metre yüksekliğinde bir şelale. Su, eski bir deniz kayalığının kenarından düşüyor; kıyı çizgisi geri çekildiğinde geriye bu basamak kalmış. Düşen su o kadar ince bir toz yapıyor ki güneşli günlerde önünde sürekli bir gökkuşağı duruyor. Sağındaki merdivenlerden yukarı çıkınca patika, yukarıdaki vadiye ve buzulun bıraktığı düzlüğe açılıyor. Efsaneye göre şelalenin arkasında bir sandık saklı; bugün orada yalnızca su ve gürültü var. Sabah erken saatlerde otopark boş, şelale ise en yüksek sesinde."
+      },
+      "en": {
+        "audio": "/audio/listen/en-skogafoss.mp3",
+        "text": "Skógafoss drops sixty metres on Iceland's south coast. The water falls from the edge of an old sea cliff; when the coastline retreated, this step was left behind. The falling water turns into such fine spray that on sunny days there is always a rainbow in front of it. The stairs on the right lead up to a path along the valley above and the flats the glacier left behind. Legend says a chest is hidden behind the waterfall; today there is only water and noise. Early in the morning the car park is empty and the falls are at their loudest."
+      }
+    },
+    {
+      "id": "lofoten",
+      "title": "Lofoten Adaları",
+      "tr": {
+        "audio": "/audio/listen/lofoten.mp3",
+        "text": "Lofoten, kutup dairesinin kuzeyinde bir takımada. Dağlar denizden doğrudan yükseliyor; kıyıda kırmızı balıkçı evleri, yani rorbuer, suya ayak basıyor. Kışın morina sürüleri gelir, kurutma rafları dolar; yazın güneş geç saatlere kadar batmaz, haziran ortasında neredeyse hiç batmaz. Gece güneşi altında kıyıda kamp kurmak mümkün, ama hava hızla değişir; rüzgâr ve yağmur her an gelebilir. Kışın kuzey ışıkları açık ve soğuk gecelerde görünür. Burada mesafeler uzun, yollar dar; plan yaparken feribot saatlerini unutmayın."
+      },
+      "en": {
+        "audio": "/audio/listen/en-lofoten.mp3",
+        "text": "Lofoten is an archipelago north of the Arctic Circle. Mountains rise straight out of the sea; at the water's edge red fishermen's cabins, the rorbuer, stand on stilts. In winter the cod come in and the drying racks fill; in summer the sun sets late, and around midsummer hardly at all. You can camp on the shore under the midnight sun, but the weather changes fast, and wind and rain can arrive at any moment. In winter the northern lights appear on clear, cold nights. Distances are long and roads narrow, so do not forget the ferry timetables."
+      }
+    },
+    {
+      "id": "machu",
+      "title": "Machu Picchu",
+      "tr": {
+        "audio": "/audio/listen/machu.mp3",
+        "text": "Machu Picchu, deniz seviyesinden yaklaşık iki bin dört yüz metre yükseklikte, iki zirvenin arasındaki bir eyerde kurulmuş. On beşinci yüzyılda, Pachacuti döneminde yapıldı; tarım terasları, tapınaklar ve su kanalları aynı planın parçası. İspanyol kayıtlarında adı geçmez; şehir yüzyıllarca ormanın içinde kaldı, 1911'de Hiram Bingham tarafından dünyaya duyuruldu. Sabah ilk girişte sis genellikle hâlâ vadidedir; Huayna Picchu'nun arkasından çekilirken taşlar birer birer görünür. Giriş saatleri ve rotalar biletle sınırlı; planınızı önceden yapın. Yükseklik nedeniyle ilk saatlerde yavaş yürümek en iyisi."
+      },
+      "en": {
+        "audio": "/audio/listen/en-machu.mp3",
+        "text": "Machu Picchu sits at about 2,400 metres, on a saddle between two peaks. It was built in the fifteenth century under Pachacuti, with terraces, temples and water channels belonging to one plan. Its name does not appear in Spanish records; the city stayed inside the forest for centuries and was brought to the world's attention by Hiram Bingham in 1911. At the first entry of the morning the mist usually still lies in the valley; as it draws back behind Huayna Picchu the stones appear one by one. Entry times and routes are limited by ticket, so plan ahead. Because of the altitude, walk slowly for the first hour."
+      }
+    },
+    {
+      "id": "kyoto",
+      "title": "Fushimi Inari",
+      "tr": {
+        "audio": "/audio/listen/kyoto.mp3",
+        "text": "Fushimi Inari, Kyoto'nun güneyinde bir dağın eteğinde. Sekizinci yüzyıldan beri Inari'ye, yani pirinç ve bereketin kami'sine adanmış. Dağa tırmanan patikalar boyunca binlerce kırmızı torii kapısı dizilir; her kapı bir işletme ya da aile tarafından adak olarak dikilmiş, üzerinde bağışçının adı yazılı. Tünelin ilk bölümü kalabalıktır çünkü herkes o fotoğrafı ister; yukarı çıktıkça insan azalır, sessizlik artar. Tilki heykelleri Inari'nin elçileridir; ağızlarındaki anahtar tahıl ambarının kilididir. Alan gece de açık; lambalar yandığında kırmızı, yosun ve sessizlik aynı koridorda durur."
+      },
+      "en": {
+        "audio": "/audio/listen/en-kyoto.mp3",
+        "text": "Fushimi Inari sits at the foot of a mountain south of Kyoto. It has been dedicated to Inari, the kami of rice and abundance, since the eighth century. Thousands of red torii gates line the paths up the mountain; each was given as an offering by a business or a family, and the donor's name is written on the gate. The first stretch of the tunnel is crowded, because everyone wants that photograph; higher up the people thin out and the silence grows. The fox statues are Inari's messengers, and the keys in their mouths are the keys to the rice store. The site is open at night too, when the lamps come on and red, moss and quiet share the same corridor."
+      }
+    },
+    {
+      "id": "aral",
+      "title": "Moynaq Gemi Mezarlığı",
+      "tr": {
+        "audio": "/audio/listen/aral.mp3",
+        "text": "Moynaq, Özbekistan'da, bir zamanlar Aral Gölü'nün limanıydı. Bugün çölde paslı gemiler yatıyor; ufukta su yok. Göl, 1960'lardan itibaren sulama için nehirlerin yönlendirilmesiyle küçüldü; deniz kıyıdan yüz kilometreden fazla uzaklaştı. Gemilerin bulunduğu yer artık bir mezarlık: biri yan yatmış, biri dikilmiş, hepsi rüzgârla aşınmış. Buraya gelmek hüzünlü ama öğretici; iklimin ve su yönetiminin ne yapabileceğini en iyi anlatan yerlerden biri. Yazın sıcaklık çok yüksek, gölgede bile nefes almak zor; sabah erken ya da akşamüstü gelin. Yerel rehberle gitmek hem yol hem anlatı açısından daha iyi."
+      },
+      "en": {
+        "audio": "/audio/listen/en-aral.mp3",
+        "text": "Moynaq, in Uzbekistan, was once the port of the Aral Sea. Today rusting ships lie in the desert and there is no water on the horizon. From the 1960s the sea shrank as rivers were diverted for irrigation, and the shoreline withdrew more than a hundred kilometres. The place where the ships stand is a graveyard: one lies on its side, one still stands upright, all are scoured by wind. Coming here is sad and instructive, one of the clearest places to see what climate and water management can do. Summer heat is extreme, so come early or late. A local guide makes both the road and the story easier."
+      }
+    },
+    {
+      "id": "girne",
+      "title": "Girne Limanı ve Kalesi",
+      "tr": {
+        "audio": "/audio/listen/girne.mp3",
+        "text": "Girne'de liman ile kale aynı kareye sığar. Eski liman boyunca yürürken tekneler, balıkçılar ve kafeler birbirine karışır; kaleye çıktığınızda arkada Beşparmak Dağları, önde deniz aynı anda görünür. Kale, Bizans döneminde yapıldı, Lusignanlar ve Venedikliler tarafından genişletildi; içindeki batık gemi müzesinde milattan önce dördüncü yüzyıla ait bir ticaret gemisi sergilenir. Surların üstünde yürümek, şehrin savunma mantığını anlamanın en iyi yolu. Sabah ışığında liman sakin, öğleye doğru kalabalıklaşır. Akşamüstü kalenin gölgesi limana düşerken bir kahve içmek için en doğru zaman."
+      },
+      "en": {
+        "audio": "/audio/listen/en-girne.mp3",
+        "text": "In Kyrenia the harbour and the castle fit in one frame. Walking the old harbour you pass boats, fishermen and cafés mixed together; from the castle the Five Finger Mountains sit behind you and the sea in front. The castle began in the Byzantine period and was enlarged by the Lusignans and the Venetians; its shipwreck museum displays a trading ship from the fourth century BC. Walking the walls is the best way to understand how the town defended itself. In morning light the harbour is calm and it fills towards midday. In the late afternoon, as the castle's shadow reaches the water, is the right time for coffee."
+      }
+    },
+    {
+      "id": "buyuk-han",
+      "title": "Büyük Han",
+      "tr": {
+        "audio": "/audio/listen/buyuk-han.mp3",
+        "text": "Büyük Han, Lefkoşa'nın surlarla çevrili eski şehir merkezinde, 1572'de yapılmış bir kervansaray. Osmanlılar Kıbrıs'ı aldıktan sonra inşa edildi; Bursa'daki Koza Han örnek alınmış. İki katlı avlunun çevresinde altmış sekiz oda vardı; üst katta yolcular kalır, alt katta hayvanlar ve mallar dururdu. Avlunun ortasında küçük bir mescit ve bir çeşme var. İngiliz döneminde hapishane olarak da kullanıldı, yirminci yüzyılın sonunda restore edildi. Bugün avludaki kafelerde oturmak, taşın serinliğini ve geçmişin gürültüsünü aynı anda hissetmek demek. Üst kattaki atölyelere bakmayı unutmayın."
+      },
+      "en": {
+        "audio": "/audio/listen/en-buyuk-han.mp3",
+        "text": "Büyük Han is a caravanserai built in 1572 in the walled old town of Nicosia. It went up after the Ottomans took Cyprus, and it takes its model from the Koza Han in Bursa. Sixty-eight rooms surrounded a two-storey courtyard; travellers stayed upstairs while animals and goods stayed below. In the middle of the courtyard there is a small prayer room and a fountain. In the British period it also served as a prison, and it was restored at the end of the twentieth century. Sitting in the courtyard cafés today means feeling the cool of the stone and the noise of the past at once. Do not miss the workshops on the upper floor."
+      }
+    },
+    {
+      "id": "salamis",
+      "title": "Salamis Antik Kenti",
+      "tr": {
+        "audio": "/audio/listen/salamis.mp3",
+        "text": "Salamis, Gazimağusa'nın kuzeyinde, deniz kenarında kurulmuş antik bir kent. En çarpıcı bölümü, sütunlu avlusu ve hamamlarıyla gymnasion: mermer sütunların bir kısmı hâlâ ayakta, yere düşenler sıralar hâlinde duruyor. Kentin tiyatrosu denize bakar; oturduğunuzda önünüze sahne değil, ufuk gelir. Salamis, limanın dolması ve depremler yüzünden geç antik dönemde önemini yitirdi. Alanda gölge azdır; yaz aylarında öğle sıcağı bunaltıcı olur, su ve şapka şart. Sabah erken saatlerde sütunların arasındaki ışık, taşın dokusunu en iyi gösteren zamandır."
+      },
+      "en": {
+        "audio": "/audio/listen/en-salamis.mp3",
+        "text": "Salamis is an ancient city on the coast north of Famagusta. Its most striking part is the gymnasium with its colonnaded courtyard and baths: some of the marble columns still stand, and the fallen ones lie in rows. The city's theatre faces the sea; when you sit down, what you get is not a stage but the horizon. Salamis lost its importance in late antiquity as the harbour silted up and earthquakes struck. There is little shade on the site; midday heat in summer is brutal, so bring water and a hat. Early morning, when the light falls between the columns, shows the texture of the stone best."
+      }
+    },
+    {
+      "id": "karpaz",
+      "title": "Karpaz Altınkum",
+      "tr": {
+        "audio": "/audio/listen/karpaz.mp3",
+        "text": "Karpaz Yarımadası, Kıbrıs'ın kuzeydoğuya doğru uzanan ince ucu. Altınkum, bu uzun kumsalın en bilinen bölümü: kum ince, deniz sığ, arkası bomboş. Deniz kaplumbağaları burada yumurtluyor; yuvalar işaretli ve korunuyor, işaretli alanlara basmamak gerekiyor. Yarımadada yabani eşekler serbest dolaşır; araçla giderken yolun ortasında durabilirler. Burada büyük tesis yok, bu yüzden su ve yiyecek yanınıza alın. Akşamüstü ışık kumu altına çevirir; sabah ise kumsal neredeyse bomboş, yalnızca dalga ve rüzgâr sesi var."
+      },
+      "en": {
+        "audio": "/audio/listen/en-karpaz.mp3",
+        "text": "The Karpaz peninsula is the thin tip of Cyprus stretching to the north-east. Altınkum is the best-known stretch of that long beach: fine sand, shallow water, nothing behind you. Sea turtles nest here; the nests are marked and protected, and you must keep off the marked areas. Wild donkeys roam the peninsula and may stop in the middle of the road as you drive. There are no large facilities, so bring water and food with you. In the late afternoon the light turns the sand to gold; in the morning the beach is almost empty, with only waves and wind."
+      }
+    },
+    {
+      "id": "petra",
+      "title": "Petra · El-Hazine",
+      "tr": {
+        "audio": "/audio/listen/petra.mp3",
+        "text": "Petra'ya giden yol, Siq adlı dar bir kanyonun içinden geçer. Duvarlar iki yana yükselir, gökyüzü bir çizgiye iner; yürürken adımların sesi taşta yankılanır. Kanyon bitince El-Hazine, yani Hazine, bir anda karşınıza çıkar: kırmızı kumtaşına oyulmuş iki katlı bir cephe. Bu yapı bir tapınak değil, bir kral mezarı. Petra, Nebatilerin ticaret kentiydi; kervan yollarından gelen baharat ve tütsü burada vergilendirilirdi. Sabahın ilk ışığında taş pembe, akşamüstü kırmızı olur. Gece mumlarla yapılan yürüyüş ayrı bir deneyim ama kalabalık; sabahı tercih edin."
+      },
+      "en": {
+        "audio": "/audio/listen/en-petra.mp3",
+        "text": "The way into Petra runs through a narrow gorge called the Siq. The walls rise on both sides until the sky narrows to a line, and your footsteps echo off the stone. Then the gorge ends and Al-Khazneh, the Treasury, appears in front of you: a two-storey façade cut into red sandstone. It is not a temple but a royal tomb. Petra was the trading city of the Nabataeans, where spices and incense from the caravan routes were taxed. In the first light the stone is pink; in the late afternoon it turns red. The candlelit walk at night is a separate experience but crowded, so choose the morning."
+      }
+    },
+    {
+      "id": "chefchaouen",
+      "title": "Chefchaouen",
+      "tr": {
+        "audio": "/audio/listen/chefchaouen.mp3",
+        "text": "Chefchaouen, Rif Dağları'nın eteğinde, 1471'de kurulmuş bir şehir. En çok mavi sokaklarıyla bilinir: duvarlar, merdivenler, kapılar aynı mavinin tonlarına boyanmış. Bu geleneğin yirminci yüzyılda Yahudi mahallesinden yayıldığı söylenir; nedeni gökyüzünü hatırlatmak, serinlik ya da sadece boyanın bolluğu olabilir. Sabah erken saatlerde sokaklar sessizdir, çamaşır ipleri henüz asılıdır; tur otobüsleri geldiğinde merdivenler dolar. Şehirde kaybolmak en iyi plan: yukarı çıkan sokaklar sonunda hep bir manzaraya açılır. Akşamüstü mavi, ışıkla birlikte griye döner."
+      },
+      "en": {
+        "audio": "/audio/listen/en-chefchaouen.mp3",
+        "text": "Chefchaouen was founded in 1471 at the foot of the Rif Mountains. It is best known for its blue streets: walls, stairs and doors painted in shades of the same blue. The habit is said to have spread from the Jewish quarter in the twentieth century; the reason may have been to recall the sky, to cool the lanes, or simply because paint was plentiful. Early in the morning the streets are quiet and the washing lines are still full; when the tour buses arrive the stairs fill up. Getting lost is the best plan here, because the lanes going up always end in a view. In the late afternoon the blue turns grey with the light."
+      }
+    },
+    {
+      "id": "banff",
+      "title": "Moraine Gölü",
+      "tr": {
+        "audio": "/audio/listen/banff.mp3",
+        "text": "Moraine Gölü, Kanada'nın Banff Milli Parkı'nda, On Zirve Vadisi'nin dibinde. Suyun turkuaz rengi buzuldan geliyor: buzul kayayı un haline getiriyor ve bu ince toz suda asılı kalıyor. Gölün kıyısındaki kayalık yığınına, yani Rockpile'a tırmanmak en kısa yol; sabahın ilk ışığında manzara aynaya döner, öğleden sonra rüzgâr suyu bozar. Göl yolu kış aylarında kapalı; sezon genellikle haziran başında açılır. Otopark erken dolar, bu yüzden sabah erken gelmek gerekir. Banff, 1885'te kurulan Kanada'nın ilk milli parkı; burada doğa, koruma fikrinin kendisi kadar eski."
+      },
+      "en": {
+        "audio": "/audio/listen/en-banff.mp3",
+        "text": "Moraine Lake sits at the foot of the Valley of the Ten Peaks in Banff National Park, Canada. The turquoise comes from the glacier: ice grinds rock into flour, and that fine dust stays suspended in the water. Climbing the heap of rocks at the shore, the Rockpile, is the shortest way up; in the first light the lake turns to a mirror, and by afternoon the wind breaks the surface. The road to the lake is closed in winter and usually opens in early June. The car park fills early, so come at dawn. Banff became Canada's first national park in 1885; here nature is as old as the idea of protecting it."
+      }
+    },
+    {
+      "id": "positano",
+      "title": "Positano",
+      "tr": {
+        "audio": "/audio/listen/positano.mp3",
+        "text": "Positano, Amalfi kıyısında kayaya yapışmış bir kasaba. Evler yukarı doğru basamak basamak dizilmiş; limandan yukarı çıkan her merdiven başka bir terasa açılır. Ortaçağda denizcilik kasabasıydı, yirminci yüzyılda yazarlar ve ressamlar buraya yerleşti. Kilisedeki siyah Meryem ikonu, kasabanın denizle olan eski bağını hatırlatır. Sabah erken saatlerde sokaklar serin ve boş; öğleden sonra güneş cepheleri yakar, gölge tarafa geçilir. Plaj küçük, deniz berrak. Akşamüstü ışık cepheleri sırayla boyar; o saatte bir terasta oturup aşağıdaki limana bakmak, kasabanın bütün mantığını anlatır."
+      },
+      "en": {
+        "audio": "/audio/listen/en-positano.mp3",
+        "text": "Positano is a town glued to the rock on the Amalfi coast. Houses climb the slope step by step, and every staircase up from the harbour opens onto another terrace. It was a maritime town in the Middle Ages, and in the twentieth century writers and painters moved in. The black Madonna in the church recalls how old the town's relationship with the sea is. Early in the morning the lanes are cool and empty; in the afternoon the sun burns the façades and people move to the shade. The beach is small and the water clear. In the evening the light paints the houses one by one, and sitting on a terrace above the harbour explains the whole logic of the place."
+      }
+    }
+  ]
+}

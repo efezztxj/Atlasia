@@ -27,6 +27,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { blockUser } from "../lib/moderation";
 import ReportDialog from "./ReportDialog";
 import PhotoLightbox from "./PhotoLightbox";
+import PlaceListenCard from "./PlaceListenCard";
 import { requestConfirm } from "./ConfirmDialog";
 import { advice } from "../utils/placeAdvice";
 import { buildGooglePlaceDirectionsUrl, buildYandexPlaceDirectionsUrl } from "../utils/mapLinks";
@@ -209,6 +210,10 @@ export default function PlaceDetails({ place, onClose, onStreet, onPlan, onAudio
           {status && <p role="status" className="mt-2 text-[13px] text-sun">{status}</p>}
           {onAudioDiscovery && <button type="button" onClick={onAudioDiscovery} className="mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-sun px-4 text-[14px] font-semibold text-ink"><Play size={16} />Sesli keşif turunu aç</button>}
           {onAudioCategories && <button type="button" onClick={onAudioCategories} className="mt-2 flex min-h-12 w-full items-center justify-between rounded-xl border border-leaf/30 bg-leaf/[0.06] px-4 text-left text-[14px] font-semibold text-mint focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sun"><span>Sesli anlatım kategorileri</span><ChevronRight size={17} aria-hidden="true" /></button>}
+          {/* Kullanıcı isteği (2026-11-10): 28 rehber yerinin tamamı için yerin
+              bütününü anlatan tek parça dinleme. Durak listesi yok; metin
+              kaydın dökümüdür ve kayıt oynatılamazsa okunur kalır. */}
+          <PlaceListenCard placeId={place.id} placeTitle={place.title} />
           <p className="mt-5 text-[15px] leading-[1.8] text-mint/90">{story}</p>
           {place.historySource ? (
             <p className="mt-2 text-[11px] leading-relaxed text-mint/70" data-testid="place-attribution">

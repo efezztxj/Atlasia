@@ -1,5 +1,43 @@
 # Atlasia Update
 
+## 2026-11-10 — 28 rehber yeri için genel dinleme (metin + oynatıcı + kayıt paketi)
+
+- **Ne eklendi:** `src/data/places.ts`'teki **28 yerin tamamı** için, yeri bir
+  bütün olarak anlatan tek parça dinleme kartı. Efes turundaki durak durağı
+  gezinme yok; metin "üstün körü" bir bakış veriyor (TR 513–606, EN 540–655
+  karakter → kayıtta ~35–45 sn).
+- **Metinler neden JSON'da:** 28 yer × 2 dil ≈ 41 kB. Ana paketin (gzip) kalan
+  payı ~13,6 kB olduğu için metinler `/audio/listen/place-listen.json` içinde
+  duruyor; kart açılınca bir kez çekilip modül düzeyinde önbellekleniyor
+  (`src/lib/placeListen.ts`). Dil değişimi `localStorage`'da hatırlanıyor.
+- **Oynatıcı:** `src/components/PlaceListenCard.tsx` — oynat/duraklat, ilerleme
+  çubuğu, süre, TR/EN düğmesi ve "Metni oku" dökümü. Kayıt yoksa kart
+  "Ses kaydı henüz yayında değil" der ve metin okunabilir kalır; metinler hiç
+  yüklenemezse kart çizilmez (boş oynatıcı, olmayan özelliği varmış gibi
+  göstermekten kötüdür).
+- **Kayıt paketi:** `docs/icerik/sesli-anlatim-rehberi/kayit-paketi/genel-dinleme/`
+  içinde `kayit-listesi-tr.csv` / `kayit-listesi-en.csv`, `TUMU-*.txt`,
+  `metinler/` (56 dosya) ve ses ajanına verilecek `PROMPT.md` (telaffuz sözlüğü
+  ve teknik künye dâhil). Paket **tek kaynaktan** üretiliyor:
+  `npm run content:listen-paket` (`scripts/content/place-listen-package.mjs`).
+- **Ses dosyaları bu PR'da YOK.** Mevcut 114 MP3 kendi ses ajanıyla üretildi;
+  o tını yeniden üretilemiyor. `PROMPT.md` aynı sesle 56 dosyayı üretmek için
+  hazır; dosyalar `public/audio/listen/` altına düşünce kart otomatik çalar
+  (kod değişikliği gerekmez).
+- **Kilitler:** `src/data/placeListen.test.ts` 28 yerin tamamını, başlık
+  eşleşmesini, `her id` → `audio/listen/<id>.mp3` + `en-<id>.mp3` kuralını,
+  uzunluk aralığını, İngilizce metne Türkçe cümle sızmamasını, klasördeki her
+  MP3'ün bir kayda bağlı olmasını ve kayıt paketinin JSON'la birebir aynı
+  olduğunu doğrular. `src/lib/placeListen.test.ts` bozuk kaydı sessizce
+  atlamadığını ve başarısız isteğin önbelleğe yazılmadığını kilitler.
+  `src/components/PlaceListenCard.test.ts` oynatma, dil değişimi, döküm ve
+  kayıt-yok durumunu gerçek render ile sınar.
+- **Kaynak notu:** `docs/icerik/sesli-anlatim-rehberi/genel-dinleme-kaynaklar.md`
+  — 4 yer bu turda kaynakla kontrol edildi (Kaçkar, Göbeklitepe, Büyük Han,
+  Navagio), 24 yer yerleşik ansiklopedik bilgi; **saha teyidi yok**. Riskli
+  sayısal ayrıntılar (merdiven sayısı, ziyaretçi kotası, patlama tarihi) metne
+  alınmadı; yerine yuvarlak ifade kondu.
+
 ## 2026-11-10 — Konum künyesinde "kaynak var" ≠ "kaynak sayıyı veriyor" (51 Heksagon)
 
 - **Bulgu:** 51 Heksagon'un `coordinateSource` alanı doğrudan bir PDF'i gösteriyordu
