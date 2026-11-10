@@ -57,6 +57,17 @@ jobs:
         # annotation'ı olarak API'den de okunabilsin (kurallar adımıyla aynı fikir).
         run: npm test -- --reporter=default --reporter=github-actions
 
+      - name: Unit tests · coverage gate
+        # Kapsam eşiği (vitest.config.ts → coverage.thresholds). Eşikler
+        # ölçülenin alt sınırı; düşüş CI'ı kırmızı yapar. Testler burada
+        # ikinci kez koşuyor ama kapı ayrı bir check-run olarak görünüyor —
+        # "yeşil ama kapsam düştü" durumu ayırt edilebilsin.
+        run: npm run test:cov
+
+      - name: State doc freshness
+        # docs/DURUM.md üretilen dosyadır; bayatlarsa kırmızı.
+        run: npm run state:doc -- --check
+
       - name: Script tests (no credentials)
         run: npm run test:scripts
 

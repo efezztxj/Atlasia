@@ -16,6 +16,28 @@ export default defineConfig({
     include: ["src/**/*.test.ts"],
     passWithNoTests: false,
     reporters: ["default"],
+      /*
+       * Kapsam kapısı (F0-2'den uyarlanmış, 2026-11-09). Eşikler İŞKEMBEDEN
+       * değil ÖLÇÜMDEN gelir: amaç "yüksek eşik" değil **düşememek**.
+       *
+       * Ölçüm (197 test dosyası / 1505 test, bu commit):
+       *   statements %63,99 · branches %56,78 · functions %59,54 · lines %69,11
+       * Eşik = ölçülenin tam sayı alt sınırı. Kapsam düşerse CI kırmızı olur;
+       * yeni test yazıp yükseltmek serbest, düşürmek gerekçe ister.
+       */
+      coverage: {
+        provider: "v8",
+        reporter: ["text-summary", "json-summary"],
+        reportsDirectory: "coverage",
+        include: ["src/**/*.{ts,tsx}"],
+        exclude: ["src/**/*.test.*"],
+        thresholds: {
+          statements: 63,
+          branches: 56,
+          functions: 59,
+          lines: 69,
+        },
+      },
     env: {
       VITE_FIREBASE_API_KEY: "",
       VITE_FIREBASE_AUTH_DOMAIN: "",
