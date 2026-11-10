@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   estimatedListenSeconds,
@@ -52,6 +53,14 @@ describe("parsePlaceListen", () => {
         ],
       }),
     ).toThrow(/iki kez/);
+  });
+});
+
+describe("yayındaki dosya", () => {
+  it("gerçek place-listen.json ayrıştırıcıdan geçer ve 28 yer taşır", () => {
+    const map = parsePlaceListen(JSON.parse(readFileSync("public/audio/listen/place-listen.json", "utf8")));
+    expect(Object.keys(map)).toHaveLength(28);
+    expect(map.efes.en.audio).toBe("/audio/listen/en-efes.mp3");
   });
 });
 
