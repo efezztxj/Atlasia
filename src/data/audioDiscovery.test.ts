@@ -348,36 +348,42 @@ describe("sesli anlatım rehberi · durak içeriği", () => {
     }
   });
 
-  it("yaklaşık konumlu üç durak açıkça işaretli", () => {
-    // 51 Heksagon (sıralamadan türetilmiş nokta), 52 Verulanus (avlu toprak
-    // altında), 53 Antik Liman (havza ortası), 57 sur kesiti. Nokta silinmez;
+  it("yaklaşık konumlu beş durak açıkça işaretli", () => {
+    // 45 Chalcidicum (Pollio'nun 8 m kuzeyi), 51 Heksagon (cadde sırası),
+    // 52 Verulanus (avlu toprak altında), 53 Antik Liman (havza ortası),
+    // 57 sur kesiti. Nokta silinmez;
     // arayüzde "≈ yaklaşık konum" yazar ve pin erişilebilir adı bunu söyler.
     const efes = AUDIO_DISCOVERY_TOURS.find((tour) => tour.placeId === "efes")!;
-    // 51 Heksagon main birleşmesinde ÖAW/Berns kaynaklı gerçek bir noktaya
-    // taşındığı için listeden çıktı; kalan üç durak temsilî.
+    // 2026-11-10: 51'in işareti 8 Kasım'da "ÖAW/Berns kaynaklı gerçek bir nokta"
+    // denilerek kaldırılmıştı. İki kaynak da yapıyı anlatır ama **sayısal
+    // koordinat vermez** (Thür makalesi plan, Berns tezi çizim ağırlıklı; Berns'te
+    // "Abbildungen ... liegen am Archäologischen Institut"). Bu yüzden nokta
+    // hâlâ sıralamadan türetilmiş bir temsilî noktadır ve işaret geri kondu.
+    // 45 Chalcidicum da aynı sınıf: kendi doğrulama belgesi "temsilî nokta"
+    // diyor (Pollio + 8 m kuzey), ama veride işaret yoktu.
     const approximate = efes.stops.filter((stop) => stop.coordinateAccuracy === "approximate");
-    expect(approximate.map((stop) => stop.no)).toEqual([52, 53, 57]);
+    expect(approximate.map((stop) => stop.no)).toEqual([45, 51, 52, 53, 57]);
     for (const stop of approximate) {
       expect(new URL(stop.coordinateSource).protocol).toBe("https:");
       expect(stop.sources.length).toBeGreaterThanOrEqual(2);
     }
-    // Geri kalan 53 durak kesin nokta sayılır; sessizce "yaklaşık" işaretlenemez.
-    expect(efes.stops.length - approximate.length).toBe(54);
+    // Geri kalan 52 durak kesin nokta sayılır; sessizce "yaklaşık" işaretlenemez.
+    expect(efes.stops.length - approximate.length).toBe(52);
   });
 
   it("yaklaşık konumun gerekçesi hem rozette hem uzun notta, iki dilde yazılı", () => {
-    // NEDEN: Rozet üç durakta da aynı jenerik cümleyi yazıyordu — "yapı geniş
-    // bir alana yayılıyor; pin merkezini gösterir". 53 Antik Liman için bu
-    // düpedüz yanlış (ortada yapı yok, alüvyonla dolmuş ve kapalı bir havza
-    // var). Gerekçe artık durakta: kısa hâli rozette, uzun hâli kaynaklarda ve
-    // İngilizce arayüz Türkçe not göstermiyor.
+    // NEDEN: Rozet yaklaşık durakların hepsinde aynı jenerik cümleyi yazıyordu —
+    // "yapı geniş bir alana yayılıyor; pin merkezini gösterir". 53 Antik Liman
+    // için bu düpedüz yanlış (ortada yapı yok, alüvyonla dolmuş ve kapalı bir
+    // havza var). Gerekçe artık durakta: kısa hâli rozette, uzun hâli
+    // kaynaklarda ve İngilizce arayüz Türkçe not göstermiyor.
     const efes = AUDIO_DISCOVERY_TOURS.find((tour) => tour.placeId === "efes")!;
     const english = JSON.parse(readFileSync(resolve("public/audio/efes-en.json"), "utf8")) as Record<string, {
       coordinateShort?: string;
       coordinateNote?: string;
     }>;
     const approximate = efes.stops.filter((stop) => stop.coordinateAccuracy === "approximate");
-    expect(approximate.map((stop) => stop.no)).toEqual([52, 53, 57]);
+    expect(approximate.map((stop) => stop.no)).toEqual([45, 51, 52, 53, 57]);
     for (const stop of approximate) {
       expect(stop.coordinateShort?.trim().length ?? 0, `${stop.no}: rozet gerekçesi yok`).toBeGreaterThan(15);
       expect(stop.coordinateShort!.length, `${stop.no}: rozet gerekçesi tek satıra sığmıyor`).toBeLessThanOrEqual(80);

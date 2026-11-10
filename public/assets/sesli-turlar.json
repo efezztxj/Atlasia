@@ -1403,7 +1403,7 @@
           "lat": 37.93676,
           "lng": 27.343363,
           "description": "Domitian Meydanı’nın batı kenarında, Bazilika Stoası’nın batı ucunu taşıyan masif bir alt yapı yükselir. Adı Latince chalcidicum kelimesinden gelir; bazilikaya eklenen revaklı salon anlamına gelir. Büyük kesme taş bloklardan örülmüş bu kütle, stoanın batı ucunu desteklemek üzere Nero döneminde eklenmiştir. İçi üç odaya bölünmüştü ve bu odalar doğrudan meydana açılan kapılarla giriliyordu. Yapı, 15,9 metre boyunca meydana doğru taşar; çevre duvarları Panayırdağ’dan getirilen malzemeyle örülmüştür. Geç antik dönemde içine küçük bir kilise yerleştirilmiştir. Bugün kütlenin kendisi ayakta; üst kat süslemesinden geriye bir şey kalmamıştır.",
-          "coordinateSource": "https://www.researchgate.net/publication/228370491_Neue_Forschungen_zur_Stadtplanung_in_Ephesos",
+          "coordinateSource": "https://www.openstreetmap.org/way/244582459",
           "sources": [
             {
               "title": "Turkish Archaeological News · Domitian Meydanı",
@@ -1423,7 +1423,10 @@
             }
           ],
           "envanterNo": 12,
-          "audio": "/audio/efes-chalcidicum.mp3"
+          "audio": "/audio/efes-chalcidicum.mp3",
+          "coordinateAccuracy": "approximate",
+          "coordinateShort": "Pollio Anıtı'nın ~8 m kuzeyinde; sıralamadan türetildi",
+          "coordinateNote": "Chalcidicum'un yayımlanmış koordinatı yok: Wikidata'da kaydı bulunmuyor, Domitian Meydanı sayfası yalnızca \"meydandan kuzeye yürürken ilk yapı, hemen yanında Pollio Anıtı\" der. Pin, Pollio Anıtı'nın OpenStreetMap noktasından (37.936724, 27.3434367) 8 m kuzeye konularak türetildi; saha ölçümü yapılmadı. Yapının tek kimliği de tartışmalıdır."
         },
         {
           "id": "pollio-domitian-cesmesi",
@@ -1603,7 +1606,7 @@
           "lat": 37.93843,
           "lng": 27.3417,
           "description": "Kuretler Caddesi'nin güney kenarında, Oktogon ile Alytarkhos Stoası arasında altıgen planlı küçük bir anıt yükselir. 1994 kazılarında ortaya çıkarılmıştır; geç antik dönemde üzerine başka bir yapı oturmuş, yürüyüş yolunun döşemesi de anıtın üzerinden geçmiştir. Yapı üç bölümden oluşuyordu: yaklaşık 1,5 metrelik mermer basamaklı bir kaide, üstünde tek sıra sütunlu bir üst yapı ve konik bir çatı. Çevresi 5,6 metre, yüksekliği 9–10 metre kadardı. İçinde, onurlandırılan kişinin heykeli duruyordu; kazılarda bulunan seramik, yapıyı yaklaşık MÖ 1. yüzyılın sonuna tarihlendirir. Bulunduğu yer, Embolos'un mezarlık ve onur anıtları sırasının bir parçasıdır.",
-          "coordinateSource": "https://www.austriaca.at/0xc1aa5576%200x002295da.pdf",
+          "coordinateSource": "https://turkisharchaeonews.net/object/octagon-ephesus",
           "sources": [
             {
               "title": "Thür · Zur Kuretenstrasse von Ephesos (ÖAW)",
@@ -1627,7 +1630,10 @@
             }
           ],
           "envanterNo": 28,
-          "audio": "/audio/efes-heksagon.mp3"
+          "audio": "/audio/efes-heksagon.mp3",
+          "coordinateAccuracy": "approximate",
+          "coordinateShort": "Oktogon'un ~30 m doğusunda; cadde sırasından türetildi",
+          "coordinateNote": "Heksagon'un yayımlanmış bir GPS'i yok. Thür'ün ÖAW makalesi ve Berns'in tezi yapıyı ve cadde üzerindeki sırasını anlatır, sayısal koordinat vermez. Pin, Oktogon'un yayımlanmış GPS'inden (TAN: 37.938650, 27.341465) cadde dizilimine göre yaklaşık 30 m doğuya kaydırılarak türetildi; saha ölçümü yapılmadı."
         },
         {
           "id": "verulanus-meydani-salonu",

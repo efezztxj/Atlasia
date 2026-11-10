@@ -1,5 +1,90 @@
 # Atlasia Update
 
+## 2026-11-10 — Konum künyesinde "kaynak var" ≠ "kaynak sayıyı veriyor" (51 Heksagon)
+
+- **Bulgu:** 51 Heksagon'un `coordinateSource` alanı doğrudan bir PDF'i gösteriyordu
+  (H. Thür, *Zur Kuretenstraße von Ephesos*, ÖAW). Makale baştan sona tarandı:
+  içinde **tek bir enlem/boylam yok** — yapıyı ve cadde üzerindeki sırasını anlatır,
+  konum için planlara (Abb. 2, 7, 12) gönderir. İkinci kaynak (Berns 1996) da aynı:
+  çizimleri ayrıca Kiel'de tutulur. Yani künye, koordinatı **vermeyen** bir kaynağı
+  koordinat kaynağı olarak gösteriyordu.
+- **Nasıl oldu:** 8 Kasım'da 51 "ÖAW/Berns kaynaklı gerçek bir noktaya taşındı"
+  denilerek yaklaşık listesinden çıkarılmıştı. O iki kaynak sayısal koordinat
+  vermediği için nokta hâlâ cadde sırasından türetilmiş temsilî bir noktaydı;
+  `coordinateAccuracy` işareti sessizce kayboldu ve kod yorumu ("51 yaklaşık")
+  veriyle çelişir hâle geldi.
+- **Düzeltme:** işaret geri kondu; künye Oktogon'un yayımlanmış GPS'ine
+  (**37.938650, 27.341465**, Turkish Archaeological News) çevrildi; pinin bu
+  noktadan cadde dizilimine göre ~30 m doğuda olduğu (ölçülen 32 m) hem rozette
+  hem kaynak notunda, **TR + EN** yazıldı. Arayüzde artık "≈ Yaklaşık konum ·
+  Oktogon'un ~30 m doğusunda; cadde sırasından türetildi" görünür.
+- **Aynı desenin ikinci örneği — 45 Chalcidicum:** kendi doğrulama belgesi bu
+  noktayı zaten "temsilî" diye yazıyor (Pollio Anıtı'nın 8 m kuzeyi, saha
+  ölçümü yok), ama veride `coordinateAccuracy` işareti yoktu ve künye koordinat
+  vermeyen bir yayına (Groh 2006) işaret ediyordu. İşaret kondu, künye Pollio'nun
+  OpenStreetMap noktasına (`way/244582459`) çevrildi; rozet "Pollio Anıtı'nın
+  ~8 m kuzeyinde; sıralamadan türetildi" yazıyor.
+- **Kilit:** `audioDiscovery.test.ts` yaklaşık listesini
+  `[45, 51, 52, 53, 57]` olarak tutuyor; işaret bir daha sessizce kaldırılamaz.
+  Yaklaşık durak sayısı 3 → **5**, kesin nokta 52. `audioStopMarkers.test.ts`
+  ekran okuyucu adını, `AudioDiscoverySheet.test.ts` kartın kendi gerekçesini
+  gösterdiğini doğruluyor.
+- **Yan düzeltme:** "kaynaklarda konum anlaşmazlığını gizlemez" testi "ilk notu
+  olan durak" varsayımıyla çalışıyordu ve 51'e not eklenince sessizce başka
+  durağa kaydı; artık durağı numarayla seçiyor.
+- **Doğrulama:** `tsc`, `eslint --max-warnings=0`, **197 dosya / 1 505 test**,
+  `vite build` + bundle bütçesi + SW kabuğu.
+- Ayrıntı: `docs/gorevler/efes-57-durak-denetimi-2026-11-09.md` §9,
+  `docs/icerik/sesli-anlatim-rehberi/efes.md` §3.
+
+## 2026-11-10 — Yapı bütçesi: toplam CSS kapısı kendi özel kapısından önce kırılıyordu
+
+- **Belirti:** `totalCssGzipBytes` 35.900'de **4 bayt** pay bırakıyordu; sıradaki
+  en küçük sınıf CI'ı kıracaktı.
+- **Kök neden:** toplam CSS, kullanıcının ilk boyada indirmediği lazy maplibre
+  dosyasını da sayıyor (ölçüm: toplam 35.896 · ilk boya 25.783 → lazy payı
+  10.113). Yani sahibi olduğumuz CSS için üst sınır 25.787'ye iniyordu; oysa
+  aynı dosyanın asıl kapısı `initialCssGzipBytes` **26.100**. Toplam eşiği,
+  kendisi için ayrılmış özel eşikten ~313 B daha sıkı davranıyor ve 26.100'e
+  kadar izin verilen bir sınıfı toplam kapısında patlatıyordu.
+- **Düzeltme:** toplam eşik 35.900 → **36.300** (= lazy payı 10.113 + ilk boya
+  eşiği 26.100 + yuvarlama). **İlk boya CSS eşiği değişmedi**; kullanıcıya
+  görünen sınır aynı.
+- **Kilit:** `bundle-budget.node-test.mjs` iki eşik arasındaki farkın lazy CSS
+  payını (≥10 KB) kapsamasını istiyor; eski değer bu testle düşer.
+- **Ölçüm (bu derleme):** ilk HTML 129.274 / 129.400 · toplam JS 1.003.459 /
+  1.011.000 · toplam CSS 35.902 / 36.300 · ilk boya CSS 25.783 / 26.100 ·
+  appShell 585.047 / 603.400.
+
+## 2026-11-09 — Efes turu denetimi: üç belge hatası, rozet gerekçeleri, alt metinler
+
+- **Bağımsız denetim:** 57 durağın tamamı veriye karşı yeniden ölçüldü
+  (numara sürekliliği, ◆ ayrımı, kaynak sayısı ve alan adı çeşitliliği, görsel
+  tekilliği, künye bütünlüğü, ses eşleşmesi). Veri katmanı temiz; **belge
+  katmanında üç hata** çıktı.
+- **`efes.md` §1:** yeşil pin listesi 50'yi (Triodos Meydanı) atlıyordu —
+  "46 numara" yazıyordu, gerçek 47. Liste `1–15, 19–23, 28, 30–37, 39–56` oldu.
+- **`efes.md` §1:** "Domitian Çeşmesi (46)" yazıyordu; Domitian Çeşmesi **47**,
+  46 ise Pollio Anıtı.
+- **`efes.md` §3:** aynı başlıkla **iki Kalkidikum tablosu** vardı; ikincisi
+  eskiydi (51 için "TAN Oktagon", "Holländer · Copyrighted free use"). Silindi.
+- **Rozet gerekçesi:** yaklaşık konumlu duraklarda rozet sabit cümle yazıyordu
+  ("yapı geniş bir alana yayılıyor; pin merkezini gösterir"). 53 Antik Liman bir
+  yapı değil — alüvyonla dolmuş, erişime kapalı bir havza — ve 57 de 9 km'lik
+  bir hat. Rozet artık durağın **kendi** gerekçesini yazıyor (`coordinateShort`),
+  uzun hâli `coordinateNote`'ta; **ikisi de TR + EN**. Önce İngilizce arayüzde
+  Türkçe paragraf görünüyordu.
+- **Alt metinler:** 11, 12, 22, 32 ve 47 başlığı tekrar ediyordu ("Memmius
+  Anıtı"); beşi yer/bağlam ekleyecek biçimde yazıldı. Ekran okuyucu için
+  bilgi eklemeyen alt metin, olmayan alt metne eşittir.
+- **Dikte dosyası:** `turkce-dikte-49-57.json` 51'in **eski yanlış metnini**
+  taşıyordu; turdan türetildi ve 51 güncel metne çekildi (bu dosyadan yapılacak
+  bir kayıt hatayı geri getirirdi).
+- **Kilitler:** mor ◆ durakların listesi (sayı değil), yaklaşık konumda zorunlu
+  gerekçe, İngilizce metinde Türkçe karakter yasağı, alt metnin başlığı tekrar
+  etmemesi, dikte dosyasının turdaki ses yollarına bağlılığı.
+- Ayrıntı: `docs/gorevler/efes-57-durak-denetimi-2026-11-09.md`.
+
 ## 2026-11-08 — Uygulama kabuğu CLS'i: çerez kartı font takasını beklemiyor
 
 - **Ölçüm:** Lighthouse `?tab=kesfet` koşusu 3/3 kez **CLS 0,120** ve toplam CLS'in
