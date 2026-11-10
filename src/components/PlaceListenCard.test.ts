@@ -96,6 +96,17 @@ describe("PlaceListenCard", () => {
     expect(window.localStorage.getItem("atlasia.listen.language")).toBe("en");
   });
 
+  it("yer değişirken önceki yerin metnini göstermez", async () => {
+    const { rerender } = render(createElement(PlaceListenCard, { placeId: "efes", placeTitle: "Efes Antik Kenti" }));
+    await screen.findByTestId("place-listen");
+    fireEvent.click(screen.getByRole("button", { name: "Metni oku" }));
+    expect(await screen.findByText(TR_TEXT)).toBeTruthy();
+
+    rerender(createElement(PlaceListenCard, { placeId: "kapadokya", placeTitle: "Kapadokya" }));
+
+    expect(screen.queryByText(TR_TEXT)).toBeNull();
+  });
+
   it("kaydı olmayan yer için hiçbir şey çizmez", async () => {
     const { container } = render(createElement(PlaceListenCard, { placeId: "kullanici-yeri", placeTitle: "Kendi yerim" }));
     await waitFor(() => expect(container.innerHTML).toBe(""));

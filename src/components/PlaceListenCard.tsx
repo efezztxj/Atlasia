@@ -81,9 +81,13 @@ export default function PlaceListenCard({ placeId, placeTitle }: Props) {
   // Metinler yüklenemezse kart hiç görünmez: boş bir oynatıcı, olmayan bir
   // özelliği varmış gibi göstermekten daha kötüdür. Ses kaydı yoksa kart
   // görünür kalır, çünkü metin okunabilir bir içeriktir.
-  if (loadFailed || !entry) return null;
+  // Sözlük önbellekli; yer değiştirirken bir önceki yerin metni bir kare
+  // görünmesin diye kimlik eşleşmesi aranır (yanlış yerin dökümünü göstermek,
+  // boş kalmaktan kötüdür).
+  const active = entry && entry.id === placeId ? entry : null;
+  if (loadFailed || !active) return null;
 
-  const block = entry[language];
+  const block = active[language];
   const total = duration || estimatedListenSeconds(block.text);
   const titleId = `place-listen-${placeId}`;
   const textId = `place-listen-text-${placeId}`;
@@ -195,7 +199,7 @@ export default function PlaceListenCard({ placeId, placeTitle }: Props) {
       )}
 
       <audio
-        key={`${entry.id}-${language}`}
+        key={`${active.id}-${language}`}
         ref={audioRef}
         src={block.audio}
         preload="none"
