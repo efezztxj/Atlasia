@@ -201,3 +201,85 @@ sabit yanlış cümlesi, İngilizce arayüzde Türkçe not, beş görselin alt m
 arşiv kimlik eşlemesi. Hepsi testle kilitli: **1 495 test / 195 dosya**
 (9 Kasım 2026 ölçümü; güncel sayı için `npm run test:run`).
 
+## 9. Sonradan bulunan hata: 51 Heksagon'un konum künyesi (10 Kasım 2026)
+
+9 Kasım denetiminde "16 OK" satırları arasında geçen bir kalem, ertesi gün
+yanlış çıktı. Kayıt buraya **düzeltme olarak** ekleniyor; yukarıdaki 9 Kasım
+tablosu o günün ölçümüdür ve olduğu gibi bırakıldı.
+
+**Bulgu.** 51 Heksagon'un `coordinateSource` alanı doğrudan bir PDF'i
+gösteriyordu:
+
+```
+https://www.austriaca.at/0xc1aa5576%200x002295da.pdf
+```
+
+Bu, H. Thür'ün "Zur Kuretenstraße von Ephesos" makalesi. Makale açıldı ve
+baştan sona tarandı: **içinde tek bir enlem/boylam yok.** Yapıyı, cadde
+üzerindeki sırasını ve kazı tarihini anlatır; konum için planlara (Abb. 2, 7,
+12 — C. Kurtze çizimi) gönderir. Yani künye, koordinatı **vermeyen** bir
+kaynağı koordinat kaynağı olarak gösteriyordu.
+
+İkinci kaynak (Berns, *Grab- und Memorialbauten*, Köln 1996) da aynı: tez
+metni yapıyı tartışır, çizimleri ayrıca Kiel'de tutulur ("Die Abbildungen
+dieser Arbeit liegen am Archäologischen Institut …"). Onda da sayısal
+koordinat yok.
+
+**Nasıl oldu.** 8 Kasım'da 51 listeden çıkarılmış: testin kendi yorumu
+"main birleşmesinde ÖAW/Berns kaynaklı gerçek bir noktaya taşındığı için
+listeden çıktı" diyor. Ama o iki kaynak gerçek bir koordinat vermiyor; nokta
+hâlâ sıralamadan türetilmiş temsilî bir noktaydı ve `coordinateAccuracy`
+işareti sessizce kayboldu. Tip tanımındaki yorum ise 51'i hâlâ "yaklaşık"
+sayıyordu — yani kod ile veri birbirini tutmuyordu.
+
+**Düzeltme.**
+- `coordinateAccuracy: "approximate"` geri kondu.
+- `coordinateSource` → Oktogon sayfası (TAN, yayımlanmış GPS
+  **37.938650, 27.341465**). Pin bu noktadan cadde dizilimine göre ~30 m
+  doğuda; ölçülen mesafe 32 m.
+- `coordinateShort`: "Oktogon'un ~30 m doğusunda; cadde sırasından türetildi"
+  · EN: "about 30 m east of the Octagon; derived from the street sequence"
+- `coordinateNote` (TR + EN): koordinatın türetilmiş olduğunu, iki akademik
+  kaynağın sayısal koordinat vermediğini ve saha ölçümü yapılmadığını yazar.
+
+**Kilit.** `audioDiscovery.test.ts` yaklaşık liste beklentisini
+`[51, 52, 53, 57]` yaptı; kesin nokta sayısı 53. Böylece işaret bir daha
+"gerçek bir kaynak var" denilerek sessizce kaldırılamaz — kaldırılırsa test
+düşer.
+
+**Ders.** "Kaynak var" ile "kaynak bu sayıyı veriyor" aynı şey değil.
+Bir koordinatın kaynağı, o koordinatı **yazıyla** içermek zorunda.
+
+### 9b. Aynı sınıfın ikinci örneği: 45 Chalcidicum
+
+51 düzeltilirken aynı hata deseni diğer duraklarda da arandı: `coordinateSource`
+alanı **koordinat içermeyen** bir belgeye işaret eden durak. Tek eşleşme 45
+Chalcidicum'du (Groh 2006, ResearchGate yayın sayfası).
+
+Kendi doğrulama belgesi bu noktayı zaten açıkça "temsilî" diye yazıyor:
+
+> `Domitian Meydanı merkezi (23, TAN): 37.936787, 27.343329`
+> `Pollio Anıtı (46, OSM 244582459): 37.936724, 27.3434367`
+> `Chalcidicum = Pollio'nun 8 m kuzeyi: 37.936760, 27.343363`
+> … "Sahada ölçüm yapılmadı."
+
+Yani nokta türetilmiş, ama veride `coordinateAccuracy` yoktu — 51 ile birebir
+aynı sessiz kayıp. Düzeltme:
+
+- `coordinateAccuracy: "approximate"` eklendi.
+- `coordinateSource` → Pollio Anıtı'nın OSM noktası (`way/244582459`), yani
+  kaydırmanın gerçek çıpası.
+- `coordinateShort`: "Pollio Anıtı'nın ~8 m kuzeyinde; sıralamadan türetildi"
+  · EN: "about 8 m north of the Pollio monument; derived from the sequence"
+- `coordinateNote` (TR + EN): Wikidata'da kaydı olmadığını, TAN'ın yalnızca
+  "meydandan kuzeye ilk yapı" dediğini, pinin Pollio'dan 8 m kuzeye
+  konulduğunu ve saha ölçümü yapılmadığını yazar.
+
+**Yaklaşık konumlu durak sayısı 3 → 5** (45, 51, 52, 53, 57). Kesin nokta
+sayısı 52. Test listesi `[45, 51, 52, 53, 57]` olarak kilitlendi.
+
+**Neden bu ikisi dışında başka durak yok:** kalan 52 durağın `coordinateSource`
+alanı ya bir harita/veritabanı sayfası (OSM way, Wikidata P625, Vici, Pleiades)
+ya da GPS satırı yayımlayan bir sayfa (TAN, Commons dosya sayfası). Yani kaynak,
+sayıyı **yazıyla** içeriyor.
+

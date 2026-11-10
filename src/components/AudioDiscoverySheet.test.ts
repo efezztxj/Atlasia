@@ -54,14 +54,21 @@ describe("sesli keşif", () => {
   it("kaynaklarda konum anlaşmazlığını gizlemez", () => {
     vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
     const tour = AUDIO_DISCOVERY_TOURS[0];
-    const index = tour.stops.findIndex((stop) => stop.coordinateNote);
-    expect(index, "en az bir durak konum notu taşımalı").toBeGreaterThan(-1);
+    // Durağı numarayla seç: "ilk notu olan durak" varsayımı 51'e not eklenince
+    // sessizce başka bir durağa kayıyordu (10 Kasım 2026).
+    const index = tour.stops.findIndex((stop) => stop.no === 52);
+    expect(index, "52 turda olmalı").toBeGreaterThan(-1);
     const props = { tour, selectedIndex: index, onSelect: vi.fn(), onClose: vi.fn() };
-    render(createElement(AudioDiscoverySheet, props));
+    const view = render(createElement(AudioDiscoverySheet, props));
     fireEvent.click(screen.getByRole("button", { name: "Kaynakları gör" }));
     expect(screen.getByText(tour.stops[index].coordinateNote!)).toBeTruthy();
-    // Not taşımayan durakta bu paragraf görünmez.
     expect(screen.queryByText(/Wikidata Q104641912/)).toBeTruthy();
+    // 51 (Heksagon) da kendi gerekçesini gösterir; 52'nin notu sızmaz.
+    const heksagon = tour.stops.findIndex((stop) => stop.no === 51);
+    view.rerender(createElement(AudioDiscoverySheet, { ...props, selectedIndex: heksagon }));
+    // `showSources` açık kaldığı için düğme artık "Kaynakları gizle" diyor.
+    expect(screen.getByText(/Heksagon'un yayımlanmış bir GPS'i yok/)).toBeTruthy();
+    expect(screen.queryByText(/Wikidata Q104641912/)).toBeNull();
   });
   it("kaydı çalar, durak değişiminde ve kapanışta durdurur", async () => {
     const play = vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();

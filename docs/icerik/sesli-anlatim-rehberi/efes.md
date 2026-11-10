@@ -142,12 +142,15 @@ inmez: daha büyük kaydırma pini komşu yapıya taşır.
    üretilmişti); dosya güncellendi ve artık 51'in metni turdaki metinle birebir
    aynı — test kilitler.
 3. **Temsilî noktalar — gizlenmiyor, ölçüm borcu sürüyor (8 Kasım 2026).**
-   52 (avlu sınırları toprak altında), 53 (havza ortası, erişim yok) ve 57
-   (korunmuş bir kesit) veride `coordinateAccuracy: "approximate"` taşır.
+   45 (Pollio'nun 8 m kuzeyi), 51 (cadde sırasından türetilmiş),
+   52 (avlu sınırları toprak altında), 53 (havza ortası, erişim yok) ve
+   57 (korunmuş bir kesit) veride `coordinateAccuracy: "approximate"` taşır.
    Durak kartındaki rozet **durağın kendi gerekçesini** yazar (9 Kasım'da
-   düzeltildi): 52 "avlu 200 × 240 m; pin avlunun bir köşesini gösterir",
-   53 "havza ortası; yürüyüş güzergâhı değil", 57 "9 km'lik hattın korunmuş
-   tek kesiti". Önceki sürümde üçünde de aynı cümle vardı ("yapı geniş bir
+   düzeltildi): 45 "Pollio Anıtı'nın ~8 m kuzeyinde; sıralamadan türetildi",
+   51 "Oktogon'un ~30 m doğusunda; cadde sırasından türetildi",
+   52 "avlu 200 × 240 m; pin avlunun bir köşesini gösterir", 53 "havza
+   ortası; yürüyüş güzergâhı değil", 57 "9 km'lik hattın korunmuş tek
+   kesiti". Önceki sürümde hepsinde aynı cümle vardı ("yapı geniş bir
    alana yayılıyor…") ve 53 için yanlıştı: orada yapı yok, alüvyonla dolmuş
    ve erişime kapalı bir havza var. Kısa gerekçe `coordinateShort`, uzun
    gerekçe `coordinateNote` alanında; ikisi de TR + EN yazılı. Pinin ekran
@@ -157,9 +160,24 @@ inmez: daha büyük kaydırma pini komşu yapıya taşır.
    **52 için ek kanıt:** Wikidata Q104641912 ("Halls of Verulanus") aynı yapıya
    37.944090, 27.339919 veriyor — mevcut pinden 100 m kuzeydoğu; avlu
    200 × 240 m olduğu için iki nokta da yapının içinde kalır. Fark durak
-   kartında (`coordinateNote`) yazılı. **Kalan iş: üç noktayı yerinde ölçmek**
-   (saha gerektirir; bu ortamda yapılamaz). Noktalar 2–3 bağımsız kaynakla
-   çapraz kontrol edildi, sorun kaynak değil ölçüm.
+   kartında (`coordinateNote`) yazılı.
+   **51 için düzeltme (10 Kasım 2026):** 8 Kasım'da işaret "ÖAW/Berns kaynaklı
+   gerçek bir nokta" denilerek kaldırılmıştı. İki kaynak da yapıyı anlatır ama
+   **sayısal koordinat vermez**: Thür'ün makalesi planlarla çalışır (Abb. 2, 7,
+   12), Berns'in tezinde çizimler ayrıca Kiel'de tutulur. Ayrıca
+   `coordinateSource` doğrudan bu PDF'i gösteriyordu; o PDF'te enlem/boylam yok,
+   yani kaynak künyesi yanlıştı. İşaret geri kondu, künye Oktogon'un yayımlanmış
+   GPS'ine (TAN 37.938650, 27.341465) çevrildi ve pinin cadde sırasına göre
+   ~30 m doğuya kaydırıldığı gerekçesiyle yazıldı.
+   **45 için düzeltme (10 Kasım 2026):** Chalcidicum'un kendi doğrulama
+   belgesi (`chalcidicum-domitian-dogrulama-2026-11-07.md` §1) noktayı zaten
+   "temsilî" diye yazıyor ve Pollio'nun 8 m kuzeyi olarak türetildiğini
+   açıklıyor; ama veride işaret yoktu ve `coordinateSource` koordinatı
+   vermeyen bir yayına (Groh 2006, ResearchGate) işaret ediyordu. İşaret
+   kondu, künye Pollio'nun OpenStreetMap noktasına (way/244582459) çevrildi.
+   **Kalan iş: beş noktayı yerinde ölçmek** (saha gerektirir; bu ortamda
+   yapılamaz). Noktalar 2–3 bağımsız kaynakla çapraz kontrol edildi, sorun
+   kaynak değil ölçüm.
 4. **Görseller — lisans kapısı geçildi, konu eşleşmesi iki durakta zayıf.**
    `main`'in 8 Kasım süpürmesi 57 görselin hepsini özgür lisanslı hâle getirdi
    ve "kullanım izni doğrulanmadı" durumunu testle yayından men etti; yerel

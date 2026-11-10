@@ -267,7 +267,9 @@
     "title": "Chalcidicum",
     "imageAlt": "Curetes Street; the Chalcidicum lies at its western end, facing the Basilica Stoa",
     "description": "At the western edge of Domitian Square stands a massive substructure that carried the western end of the Basilica Stoa. Its name comes from the Latin chalcidicum, a porticoed hall added to a basilica. Built of large ashlar blocks, it was added in the reign of Nero to support the western end of the stoa. Its interior was divided into three chambers, entered through doorways opening directly onto the square. The structure projects fifteen point nine metres into the square, and its outer walls were built of stone brought from Mount Panayır. In late antiquity a small church was installed inside it. The mass itself survives; nothing of its upper decoration remains.",
-    "audio": "/audio/en-efes-chalcidicum.mp3"
+    "audio": "/audio/en-efes-chalcidicum.mp3",
+    "coordinateShort": "about 8 m north of the Pollio monument; derived from the sequence",
+    "coordinateNote": "The Chalcidicum has no published coordinate: it has no Wikidata item, and the Domitian Square page only says it is the first building north of the square, right next to the Pollio monument. The pin is placed 8 m north of the Pollio monument's OpenStreetMap point (37.936724, 27.3434367); no field measurement has been made. The building's single identity is also debated."
   },
   "pollio-domitian-cesmesi": {
     "title": "Pollio Monument",
@@ -303,7 +305,9 @@
     "title": "Hexagon (Hexagonal Monument)",
     "imageAlt": "The upper stretch of Curetes Street; the Hexagon stands in the row of monuments along its south side",
     "description": "On the south side of Curetes Street, between the Octagon and the Stoa of Alytarches, stands a small monument on a hexagonal plan. It was brought to light in the 1994 excavations; in late antiquity another structure was built over it, and the paving of the street ran across it as well. The building had three parts: a marble three-stepped base about one and a half metres high, a colonnaded superstructure above it, and a conical roof. Its circumference was five point six metres and its height nine to ten metres. Inside stood the statue of the person honoured. Pottery found in the building dates it to around the late first century BC. Its position belongs to the row of burial and honorary monuments along the Embolos.",
-    "audio": "/audio/en-efes-heksagon.mp3"
+    "audio": "/audio/en-efes-heksagon.mp3",
+    "coordinateShort": "about 30 m east of the Octagon; derived from the street sequence",
+    "coordinateNote": "The Hexagon has no published GPS. The Austrian Academy of Sciences article and Berns's dissertation describe the building and its place on the street but give no decimal coordinates. The pin is derived from the Octagon's published GPS (TAN: 37.938650, 27.341465), shifted about 30 m east along the street sequence; no field measurement has been made."
   },
   "verulanus-meydani-salonu": {
     "title": "Hall of Verulanus",
