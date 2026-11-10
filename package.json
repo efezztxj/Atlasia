@@ -45,7 +45,8 @@
     "test:rules:emulator": "node scripts/run-firestore-rules-tests.mjs",
     "social:publish": "node scripts/publish-instagram.mjs",
     "test:cov": "vitest run --coverage",
-    "state:doc": "node scripts/state-doc.mjs"
+    "state:doc": "node scripts/state-doc.mjs",
+    "content:listen-paket": "node scripts/content/place-listen-package.mjs"
   },
   "dependencies": {
     "@types/tz-lookup": "^6.1.2",
