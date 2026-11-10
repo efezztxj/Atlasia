@@ -56,3 +56,4 @@ __pycache__/
 /.lighthouseci/
 lhci.log
 lhci-tail.txt
+coverage/

@@ -43,7 +43,9 @@
     "audit:check": "node scripts/audit-baseline.mjs",
     "test:rules": "vitest run --config vitest.rules.config.ts",
     "test:rules:emulator": "node scripts/run-firestore-rules-tests.mjs",
-    "social:publish": "node scripts/publish-instagram.mjs"
+    "social:publish": "node scripts/publish-instagram.mjs",
+    "test:cov": "vitest run --coverage",
+    "state:doc": "node scripts/state-doc.mjs"
   },
   "dependencies": {
     "@types/tz-lookup": "^6.1.2",
@@ -74,6 +76,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
+    "@vitest/coverage-v8": "^5.0.5",
     "axe-core": "^4.14.0",
     "eslint": "^10.13.0",
     "eslint-plugin-react-hooks": "^7.1.1",
