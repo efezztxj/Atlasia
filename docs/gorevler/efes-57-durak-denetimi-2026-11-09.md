@@ -127,7 +127,9 @@ Bulgular yalnız düzeltilmedi, **teste bağlandı** (`src/data/audioDiscovery.t
 - hiçbir durağın alt metni başlığını tekrar edemez ve ≥ 15 karakter olmalı,
 - Kalkidikum eklentilerinin `envanterNo` dizisi ve kimlik biçimi.
 
-Test sayısı 1 492 → **1 495**; 195 dosya.
+Test sayısı 1 492 → **1 495**; 195 dosya (9 Kasım 2026, bu turun ölçümü).
+Sayı sonradan değişir; **tek doğru kaynak** `npm run test:run` çıktısıdır —
+bu belge sayıyı tarihiyle birlikte saklar, güncel sayı iddiası taşımaz.
 
 ## 5. Onay
 
@@ -196,5 +198,6 @@ hiçbiri kodda bırakılmış bir yarım iş değil:
 
 Bu turda ayrıca kapatılanlar: `efes.md` üç hata, 53/57 gerekçe notu, rozetin
 sabit yanlış cümlesi, İngilizce arayüzde Türkçe not, beş görselin alt metni,
-arşiv kimlik eşlemesi. Hepsi testle kilitli: **1 495 test / 195 dosya**.
+arşiv kimlik eşlemesi. Hepsi testle kilitli: **1 495 test / 195 dosya**
+(9 Kasım 2026 ölçümü; güncel sayı için `npm run test:run`).
 
