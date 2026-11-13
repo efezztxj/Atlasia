@@ -53,7 +53,7 @@
     "fflate": "^0.8.3",
     "firebase": "^13.2.0",
     "lucide-react": "^1.66.0",
-    "maplibre-gl": "6.16.0",
+    "maplibre-gl": "6.17.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "suncalc": "^2.1.1",
